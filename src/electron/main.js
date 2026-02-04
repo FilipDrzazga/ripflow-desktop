@@ -1,8 +1,10 @@
 import { app, BrowserWindow } from "electron";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
+import process from "process";
 
 const __filename = fileURLToPath(import.meta.url);
+console.log(__filename);
 const __dirname = dirname(__filename);
 
 function createWindow() {
@@ -16,7 +18,7 @@ function createWindow() {
 
   // DEV: Vite
   if (!app.isPackaged) {
-    win.loadURL("http://localhost:5173/");
+    win.loadURL("http://localhost:5173");
     win.webContents.openDevTools();
   } else {
     // PROD: po buildzie Vite -> dist/ui/index.html
@@ -27,5 +29,5 @@ function createWindow() {
 app.whenReady().then(createWindow);
 
 app.on("window-all-closed", () => {
-  if (app.process.platform !== "darwin") app.quit();
+  if (process.platform !== "darwin") app.quit();
 });
