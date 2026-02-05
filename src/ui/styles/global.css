@@ -1,0 +1,121 @@
+:root {
+  /* === BACKGROUND === */
+  --bg-white: #ffffff;
+  --bg-page: #f9fafb;
+  --bg-subtle: #f3f4f6;
+  --bg-muted: #e5e7eb;
+
+  /* === BORDER === */
+  --border-light: #e5e7eb;
+  --border-default: #d1d5db;
+  --border-strong: #9ca3af;
+
+  /* === TEXT === */
+  --text-primary: #111827;
+  --text-secondary: #374151;
+  --text-tertiary: #6b7280;
+  --text-muted: #9ca3af;
+  --text-inverse: #ffffff;
+
+  /* === BUTTONS === */
+  --btn-primary-bg: #111827;
+  --btn-primary-hover: #1f2937;
+  --btn-primary-text: #ffffff;
+
+  --btn-secondary-bg: #f3f4f6;
+  --btn-secondary-hover: #e5e7eb;
+  --btn-secondary-text: #111827;
+
+  --btn-ghost-hover: #f3f4f6;
+  --btn-ghost-text: #374151;
+
+  --btn-disabled-bg: #e5e7eb;
+  --btn-disabled-text: #9ca3af;
+
+  /* === CARD === */
+  --card-bg: #ffffff;
+  --card-border: #e5e7eb;
+  --card-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --card-shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.06);
+
+  /* === GRAYS (CHARTS / UI) === */
+  --gray-900: #111827;
+  --gray-700: #374151;
+  --gray-500: #6b7280;
+  --gray-300: #d1d5db;
+
+  /* === ACCENT – BLUE === */
+  --accent-blue: #2563eb;
+  --accent-blue-hover: #1d4ed8;
+  --accent-blue-soft: #dbeafe;
+  --accent-blue-text: #ffffff;
+
+  /* === ACCENT – EMERALD === */
+  --accent-emerald: #10b981;
+  --accent-emerald-hover: #059669;
+  --accent-emerald-soft: #d1fae5;
+  --accent-emerald-text: #ffffff;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+}
+
+body {
+  font-family:
+    Inter,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    Helvetica,
+    Arial,
+    sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+
+  background: var(--bg-page);
+  color: var(--text-secondary);
+
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+
+  text-rendering: optimizeLegibility;
+}
+
+/* === ELEMENT RESET === */
+button,
+input,
+textarea,
+select {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  border: none;
+  background: none;
+  cursor: pointer;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+img,
+svg {
+  display: block;
+  max-width: 100%;
+}

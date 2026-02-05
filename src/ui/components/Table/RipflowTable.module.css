@@ -1,28 +1,36 @@
+.container {
+  width: 83%;
+  height: 60vh;
+  border: 1px solid var(--card-border);
+  box-shadow: var(--card-shadow);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
 .header {
   font-size: 12px;
   font-weight: 700;
-  color: #222531;
-  background: #ffffff;
-  height: 48px;
+  color: var(--text-primary);
+  /* background: var(--bg-subtle); */
+  height: 60px;
   padding: 0 16px;
-  border-bottom: 1px solid #e5e7eb;
-  text-align: left;
+  border-bottom: 1px solid var(--card-border);
   text-transform: none;
 }
 
 .row {
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--card-border);
   cursor: default;
-  background: #ffffff;
+  background: var(--bg-white);
 }
 .row:hover {
-  background: #eff1f5;
+  background: var(--bg-hover);
 }
 
 .cell {
   padding: 16px 16px;
   font-size: 12px;
   font-weight: 400;
-  color: #657084;
+  color: var(--text-secondary);
   vertical-align: middle;
 }

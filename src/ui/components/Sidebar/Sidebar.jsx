@@ -1,7 +1,14 @@
+import { useState } from "react";
+import { Button } from "@chakra-ui/react";
 import styles from "./Sidebar.module.css";
 import logo from "../../assets/image/Maake_Logo.webp";
 
+import { BsPrinterFill } from "react-icons/bs";
+import { IoIosAnalytics } from "react-icons/io";
+import { IoSettingsSharp } from "react-icons/io5";
+
 const Sidebar = () => {
+  const [isBtnActive, setIsBtnActive] = useState(false);
   return (
     <div className={styles.container}>
       <div className={styles.header}>
@@ -11,6 +18,26 @@ const Sidebar = () => {
         <div className={styles.header_textContainer}>
           <h1 className={styles.header_title}>Ripflow</h1>
           <p className={styles.header_subtitle}>Maake Automation easy</p>
+        </div>
+      </div>
+      <div className={styles.menu}>
+        <div className={styles.menu_item}>
+          <Button onClick={() => setIsBtnActive(!isBtnActive)} className={styles.menu_button}>
+            <BsPrinterFill />
+            Ripboard
+          </Button>
+        </div>
+        <div className={styles.menu_item}>
+          <Button onClick={() => setIsBtnActive(!isBtnActive)} className={styles.menu_button}>
+            <IoIosAnalytics />
+            Analytics
+          </Button>
+        </div>
+        <div className={styles.menu_item}>
+          <Button onClick={() => setIsBtnActive(!isBtnActive)} className={styles.menu_button}>
+            <IoSettingsSharp />
+            Settings
+          </Button>
         </div>
       </div>
     </div>

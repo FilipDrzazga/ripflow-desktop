@@ -1,5 +1,5 @@
 import { useReactTable, createColumnHelper, getCoreRowModel, flexRender } from "@tanstack/react-table";
-import { Table, Box, Badge } from "@chakra-ui/react";
+import { Table, Badge } from "@chakra-ui/react";
 import styles from "./RipflowTable.module.css";
 
 const DATA = [
@@ -221,15 +221,7 @@ const RipflowTable = () => {
   });
 
   return (
-    <Box
-      shadow={false}
-      borderWidth="1px"
-      borderColor="#eff1f5"
-      borderRadius="xl"
-      overflow="hidden"
-      width="87%"
-      height="70vh"
-    >
+    <div className={styles.container}>
       <Table.ScrollArea height="100%">
         <Table.Root
           size="sm"
@@ -265,7 +257,7 @@ const RipflowTable = () => {
           </tbody>
         </Table.Root>
       </Table.ScrollArea>
-    </Box>
+    </div>
   );
 };
 
