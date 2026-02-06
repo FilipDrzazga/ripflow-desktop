@@ -1,8 +1,16 @@
 .container {
   display: flex;
   flex-direction: column;
+  align-items: center; 
+  justify-content: space-evenly;
   height: 100%;
   width: 16%;
+}
+.divider {
+  width: 100%;
+  height: 1px;
+  background-color: var(--card-border);
+  margin: 20px 0;
 }
 .header {
   display: flex;
@@ -11,8 +19,7 @@
   justify-content: flex-start;
   gap: 20px;
   width: 100%;
-  height: 80px;
-  padding-left: 10px;
+  height: 80pxauto;
 }
 .header_textContainer {
   display: flex;
@@ -52,12 +59,14 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
-  margin-top: 20px;
 }
 .menu_item {
   width: 100%;
-  height: 50px;
+  height: 40px;
   border-radius: 10px;
+}
+.menu_item:last-child {
+  margin-top: auto;
 }
 
 .menu_button {
@@ -68,8 +77,23 @@
   height: 100%;
   font-size: 14px;
   font-weight: 500;
-  color: var(--text-muted);
+  color: var(--btn-disabled-text);
   border-radius: 10px;
+  border: var(--card-border);
+}
+.menu_button_active {
+  display: flex;
+  justify-content: flex-start;
+  gap: 15px;
+  width: 100%;
+  height: 100%;
+  font-size: 14px;
+  font-weight: 500;
+  border-radius: 10px;
+  color: var(--text-primary);
+  border: var(--card-border);
+  background-color: var(--bg-white);
+  box-shadow: var(--card-shadow);
 }
 .menu_button:hover {
   color: var(--text-primary);

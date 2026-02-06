@@ -1,13 +1,13 @@
 import "./styles/global.css";
 import styles from "./App.module.css";
-import RipflowTable from "./components/Table/RipflowTable";
+import DataTable from "./components/Table/DataTable";
 import Sidebar from "./components/Sidebar/Sidebar";
 
 const App = () => {
   return (
     <div className={styles.app}>
       <Sidebar />
-      <RipflowTable />
+      <DataTable />
     </div>
   );
 };

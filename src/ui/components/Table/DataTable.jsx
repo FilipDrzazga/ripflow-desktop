@@ -1,6 +1,7 @@
 import { useReactTable, createColumnHelper, getCoreRowModel, flexRender } from "@tanstack/react-table";
 import { Table, Badge } from "@chakra-ui/react";
-import styles from "./RipflowTable.module.css";
+import TableFilters from "../TableFilters/TableFilters";
+import styles from "./DataTable.module.css";
 
 const DATA = [
   {
@@ -213,7 +214,7 @@ const columns = [
   }),
 ];
 
-const RipflowTable = () => {
+const DataTable = () => {
   const table = useReactTable({
     data: DATA,
     columns,
@@ -222,6 +223,8 @@ const RipflowTable = () => {
 
   return (
     <div className={styles.container}>
+    <TableFilters />
+    <div className={styles.table_container}>
       <Table.ScrollArea height="100%">
         <Table.Root
           size="sm"
@@ -237,7 +240,7 @@ const RipflowTable = () => {
             {table.getHeaderGroups().map((headerGroup) => (
               <tr key={headerGroup.id}>
                 {headerGroup.headers.map((header) => (
-                  <th className={styles.header} key={header.id}>
+                  <th className={styles.table_header} key={header.id}>
                     {flexRender(header.column.columnDef.header, header.getContext())}
                   </th>
                 ))}
@@ -246,9 +249,9 @@ const RipflowTable = () => {
           </thead>
           <tbody>
             {table.getRowModel().rows.map((row) => (
-              <tr className={styles.row} key={row.id}>
+              <tr className={styles.table_row} key={row.id}>
                 {row.getVisibleCells().map((cell) => (
-                  <td className={styles.cell} key={cell.id}>
+                  <td className={styles.table_cell} key={cell.id}>
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
                   </td>
                 ))}
@@ -258,7 +261,8 @@ const RipflowTable = () => {
         </Table.Root>
       </Table.ScrollArea>
     </div>
+    </div>
   );
 };
 
-export default RipflowTable;
+export default DataTable;
