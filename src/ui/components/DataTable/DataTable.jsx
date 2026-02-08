@@ -1,6 +1,5 @@
 import { useReactTable, createColumnHelper, getCoreRowModel, flexRender } from "@tanstack/react-table";
 import { Table, Badge } from "@chakra-ui/react";
-import TableFilters from "../TableFilters/TableFilters";
 import styles from "./DataTable.module.css";
 
 const DATA = [
@@ -222,8 +221,6 @@ const DataTable = () => {
   });
 
   return (
-    <div className={styles.container}>
-    <TableFilters />
     <div className={styles.table_container}>
       <Table.ScrollArea height="100%">
         <Table.Root
@@ -260,7 +257,6 @@ const DataTable = () => {
           </tbody>
         </Table.Root>
       </Table.ScrollArea>
-    </div>
     </div>
   );
 };

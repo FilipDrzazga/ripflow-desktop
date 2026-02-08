@@ -1,0 +1,8 @@
+.filterbar {
+  width: 230px;
+  height: 40px;
+  border-radius: 10px;
+  border: var(--card-border);
+  box-shadow: var(--card-shadow);
+  background: var(--bg-white);
+}

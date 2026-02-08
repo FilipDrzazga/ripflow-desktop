@@ -1,13 +1,13 @@
 import "./styles/global.css";
 import styles from "./App.module.css";
-import DataTable from "./components/Table/DataTable";
+import Table from "./components/Table/Table";
 import Sidebar from "./components/Sidebar/Sidebar";
 
 const App = () => {
   return (
     <div className={styles.app}>
       <Sidebar />
-      <DataTable />
+      <Table />
     </div>
   );
 };
