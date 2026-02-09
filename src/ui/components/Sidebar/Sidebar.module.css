@@ -4,7 +4,10 @@
   align-items: center; 
   justify-content: space-evenly;
   height: 100%;
-  width: 16%;
+  width: 20%;
+  padding: 20px;
+  border-radius:10px;
+  background-color: var(--bg-page);
 }
 .divider {
   width: 100%;

@@ -1,20 +1,14 @@
-import { Input, InputGroup, ButtonGroup, Button, IconButton } from "@chakra-ui/react";
-import { TbFileSearch } from "react-icons/tb";
+import { Input, InputGroup } from "@chakra-ui/react";
+import { BiSearchAlt2 } from "react-icons/bi";
 import styles from "./TableFilterBar.module.css";
 
 const TableFilterBar = () => {
   return (
-    <>
-      <InputGroup startElement={<TbFileSearch />}>
-        <Input className={styles.filterbar} placeholder="..." size="md" variant="outline" />
+    <div className={styles.container}>
+      <InputGroup w='auto' startElement={<BiSearchAlt2 size={20} color="var(--text-secondary)" />}>
+        <Input className={styles.filterbar} placeholder="Search..." size="md" />
       </InputGroup>
-      <ButtonGroup size="sm" variant="outline" attached>
-        <Button variant="outline">Button</Button>
-        <IconButton variant="outline">
-          <TbFileSearch />
-        </IconButton>
-      </ButtonGroup>
-    </>
+    </div>
   );
 };
 

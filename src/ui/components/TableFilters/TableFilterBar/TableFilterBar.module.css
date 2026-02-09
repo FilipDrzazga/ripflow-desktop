@@ -1,3 +1,8 @@
+.container {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
 .filterbar {
   width: 230px;
   height: 40px;
@@ -5,4 +10,12 @@
   border: var(--card-border);
   box-shadow: var(--card-shadow);
   background: var(--bg-white);
+  color: var(--text-primary);
+}
+.filterbar:focus {
+  border-color: var(--accent-emerald-soft);
+}
+.filterbar::placeholder {
+  padding-left: 2px;
+  color: var(--text-muted);
 }
