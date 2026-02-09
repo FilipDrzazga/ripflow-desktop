@@ -4,8 +4,7 @@
   align-items: center;
   width: 79%;
   height: 60vh;
-  gap: 20px;
   padding: 20px;
-  border-radius:10px;
+  border-radius: 10px;
   background-color: var(--bg-page);
 }

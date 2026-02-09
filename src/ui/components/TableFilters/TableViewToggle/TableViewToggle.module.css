@@ -1,38 +1,50 @@
 .container {
-    width: auto;
-    height: 40px;
-    display: flex;
-    flex-direction: row;
-    align-items: flex-start;
-    justify-content: flex-start;
+  width: auto;
+  height: 40px;
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  justify-content: flex-start;
 }
-.single_btn {
-    width: 100px;
-    height: 40px;
-    border-radius: 10px 0 0 10px;
-    border: var(--card-border);
-    box-shadow: var(--card-shadow);
-    color: var(--btn-disabled-text);
+.all_btn {
+  width: 100px;
+  height: 40px;
+  border-radius: 10px 0 0 10px;
+  border: var(--card-border);
+  box-shadow: var(--card-shadow);
+  color: var(--btn-disabled-text);
 }
-.batch_btn {
-    width: 100px;
-    height: 40px;
-    border-radius: 0 10px 10px 0;
-    border: var(--card-border);
-    box-shadow: var(--card-shadow);
-    color: var(--btn-disabled-text);
+.error_btn {
+  width: 100px;
+  height: 40px;
+  border-radius: 0 10px 10px 0;
+  border: var(--card-border);
+  box-shadow: var(--card-shadow);
+  color: var(--btn-disabled-text);
 }
 
-.single_btn:hover, .batch_btn:hover {
-    background-color: var(--bg-subtle);
-    color: var(--text-primary);
-}
-.single_btn_active, .batch_btn_active {
-width: 100px;
-height: 40px;
-font-weight: 600;
+.all_btn:hover,
+.error_btn:hover {
+  background-color: var(--bg-subtle);
   color: var(--text-primary);
+}
+.all_btn_active {
+  width: 100px;
+  height: 40px;
+  border-radius: 10px 0 0 10px;
+  font-weight: 600;
+  color: var(--btn-primary-text);
   border: var(--card-border);
-  background-color: var(--bg-white);
+  background-color: var(--btn-primary-hover);
+  box-shadow: var(--card-shadow);
+}
+.error_btn_active {
+  width: 100px;
+  height: 40px;
+  border-radius: 0 10px 10px 0;
+  font-weight: 600;
+  color: var(--btn-primary-text);
+  border: var(--card-border);
+  background-color: var(--btn-primary-hover);
   box-shadow: var(--card-shadow);
 }

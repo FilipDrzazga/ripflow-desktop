@@ -1,5 +1,14 @@
-import { useReactTable, createColumnHelper, getCoreRowModel, flexRender } from "@tanstack/react-table";
-import { Table, Badge } from "@chakra-ui/react";
+import { useState } from "react";
+import {
+  useReactTable,
+  createColumnHelper,
+  getCoreRowModel,
+  flexRender,
+  getGroupedRowModel,
+  getExpandedRowModel,
+} from "@tanstack/react-table";
+import { Table, Badge, Button } from "@chakra-ui/react";
+import { TiArrowSortedDown, TiArrowSortedUp } from "react-icons/ti";
 import styles from "./DataTable.module.css";
 
 const DATA = [
@@ -166,7 +175,7 @@ const DATA = [
 ];
 
 const columnHelper = createColumnHelper();
-const columns = [
+const columnDef = [
   columnHelper.accessor("orderID", {
     header: "Order ID",
     cell: (info) => info.getValue(),
@@ -214,11 +223,23 @@ const columns = [
 ];
 
 const DataTable = () => {
+  const [grouping, setGrouping] = useState(["fabricName"]);
+  const [expanded, setExpanded] = useState(true);
+
   const table = useReactTable({
     data: DATA,
-    columns,
+    columns: columnDef,
     getCoreRowModel: getCoreRowModel(),
+    getGroupedRowModel: getGroupedRowModel(),
+    getExpandedRowModel: getExpandedRowModel(),
+    onExpandedChange: setExpanded,
+    state: {
+      grouping: grouping,
+      expanded: expanded,
+    },
   });
+
+  // console.log(table);
 
   return (
     <div className={styles.table_container}>
@@ -245,7 +266,34 @@ const DataTable = () => {
             ))}
           </thead>
           <tbody>
-            {table.getRowModel().rows.map((row) => (
+            {table.getRowModel().rows.map((row) => {
+              if (row.getIsGrouped()) {
+                return (
+                  <tr className={styles.table_row} key={row.id}>
+                    <td className={styles.table_cell} key={row.id} colSpan={table.getAllLeafColumns().length}>
+                      <Button className={styles.table_expanded_btn} onClick={row.getToggleExpandedHandler()}>
+                        {row.groupingColumn?.columnDef.header}
+                        {row.groupingValue}
+                        <Badge className={styles.badge} variant="solid" size="sm">
+                          {row.subRows.length}
+                        </Badge>
+                        {row.getIsExpanded() ? <TiArrowSortedDown /> : <TiArrowSortedUp />}
+                      </Button>
+                    </td>
+                  </tr>
+                );
+              }
+              return (
+                <tr className={styles.table_row} key={row.id}>
+                  {row.getVisibleCells().map((cell) => (
+                    <td className={styles.table_cell} key={cell.id}>
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </td>
+                  ))}
+                </tr>
+              );
+            })}
+            {/* {table.getRowModel().rows.map((row) => (
               <tr className={styles.table_row} key={row.id}>
                 {row.getVisibleCells().map((cell) => (
                   <td className={styles.table_cell} key={cell.id}>
@@ -253,7 +301,7 @@ const DataTable = () => {
                   </td>
                 ))}
               </tr>
-            ))}
+            ))} */}
           </tbody>
         </Table.Root>
       </Table.ScrollArea>
