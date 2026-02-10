@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { Button } from "@chakra-ui/react";
+import { HiOutlineClipboardList } from "react-icons/hi";
+import { MdErrorOutline  } from "react-icons/md";
 import styles from "./TableViewToggle.module.css";
 
 const TableViewToggle = () => {
@@ -17,15 +19,17 @@ const TableViewToggle = () => {
         size="md"
         onClick={handleButtonClick}
       >
+        <HiOutlineClipboardList />
         All
       </Button>
       <Button
-        className={`${isBtnActive === "Error List" ? styles.error_btn_active : styles.error_btn}`}
+        className={`${isBtnActive === "Error" ? styles.error_btn_active : styles.error_btn}`}
         variant="outline"
         size="md"
         onClick={handleButtonClick}
       >
-        Error List
+        <MdErrorOutline />
+        Error
       </Button>
     </div>
   );

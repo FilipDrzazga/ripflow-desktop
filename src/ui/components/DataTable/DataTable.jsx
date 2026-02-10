@@ -272,12 +272,12 @@ const DataTable = () => {
                   <tr className={styles.table_row} key={row.id}>
                     <td className={styles.table_cell} key={row.id} colSpan={table.getAllLeafColumns().length}>
                       <Button className={styles.table_expanded_btn} onClick={row.getToggleExpandedHandler()}>
-                        {row.groupingColumn?.columnDef.header}
-                        {row.groupingValue}
                         <Badge className={styles.badge} variant="solid" size="sm">
                           {row.subRows.length}
+                          {row.getIsExpanded() ? <TiArrowSortedDown /> : <TiArrowSortedUp />}
                         </Badge>
-                        {row.getIsExpanded() ? <TiArrowSortedDown /> : <TiArrowSortedUp />}
+                        {row.groupingColumn?.columnDef.header}
+                        {row.groupingValue}
                       </Button>
                     </td>
                   </tr>
