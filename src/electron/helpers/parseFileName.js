@@ -1,0 +1,445 @@
+// parsePrintFileName.js
+
+function nowIso() {
+  return new Date().toISOString();
+}
+
+function addError(out, code, message) {
+  out.errors.push({ code, message });
+}
+
+function addWarning(out, message) {
+  out.warnings.push(message);
+}
+
+function tokenizeFilename(fileName) {
+  // Keep original for meta, but parse using base name
+  const name = String(fileName || "").trim();
+
+  // Split by "_" and trim each token, drop empty tokens (because sometimes you have " Natural _45...")
+  const rawTokens = name
+    .split("_")
+    .map((t) => t.trim())
+    .filter(Boolean);
+
+  // Extract extension if last token ends with .pdf (or other)
+  let ext = "";
+  if (rawTokens.length) {
+    const last = rawTokens[rawTokens.length - 1];
+    const m = last.match(/\.([a-z0-9]+)$/i);
+    if (m) ext = m[1].toLowerCase();
+  }
+
+  // For tokens array, strip ".pdf" ONLY from the last token to make internalId easier,
+  // but keep ext separately in file meta.
+  const tokens = rawTokens.slice();
+  if (tokens.length) {
+    tokens[tokens.length - 1] = tokens[tokens.length - 1].replace(/\.pdf$/i, "");
+  }
+
+  return { tokens, ext: ext || "pdf" };
+}
+
+function findIndex(tokens, predicate) {
+  for (let i = 0; i < tokens.length; i++) {
+    if (predicate(tokens[i], i)) return i;
+  }
+  return -1;
+}
+
+function findLastIndex(tokens, predicate) {
+  for (let i = tokens.length - 1; i >= 0; i--) {
+    if (predicate(tokens[i], i)) return i;
+  }
+  return -1;
+}
+
+function parseOrderId(tokens) {
+  // Usually token[0] but safer to search
+  const i = findIndex(tokens, (t) => /^ON\d+$/i.test(t));
+  return i >= 0 ? tokens[i].toUpperCase() : null;
+}
+
+function parseXOfY(tokens) {
+  const i = findIndex(tokens, (t) => /^\d+of\d+$/i.test(t));
+  if (i < 0) return { xOfY: null, x: null, y: null, index: -1 };
+
+  const v = tokens[i].toLowerCase();
+  const m = v.match(/^(\d+)of(\d+)$/);
+  const x = m ? Number(m[1]) : null;
+  const y = m ? Number(m[2]) : null;
+
+  return { xOfY: tokens[i], x, y, index: i };
+}
+
+function detectKind(tokens, fileNameLower) {
+  // Use both tokens and raw filename to be robust
+  const joined = tokens.join(" ").toLowerCase();
+  if (joined.includes("custom square cushion") || fileNameLower.includes("custom square cushion")) {
+    return "CUSHION";
+  }
+  // XWD-based
+  const xwdIndex = findIndex(tokens, (t) => /^XWD[0-9a-f]+$/i.test(t));
+  if (xwdIndex >= 0) return "XWD_BASED";
+
+  return "UNKNOWN";
+}
+
+function detectPrintTypeFromText(textLower) {
+  if (textLower.includes("linear meter")) return "LM";
+  if (textLower.includes("fat quarter")) return "FQ";
+  if (textLower.includes("sample print")) return "SAMPLE";
+  if (textLower.includes("cushion")) return "CUSHION";
+  return "UNKNOWN";
+}
+
+function parseQtyToken(token) {
+  // "3x" => 3
+  const m = String(token || "")
+    .trim()
+    .match(/^(\d+)\s*x$/i);
+  if (!m) return null;
+  return Number(m[1]);
+}
+
+function extractSizeFromText(text) {
+  // e.g. "Fat Quarter - 65 x 48 cm", "Sample Print - 20 x 20 cm", or cushion token "45 x 45 cm"
+  const s = String(text || "");
+  const m = s.match(/(\d+(?:\.\d+)?)\s*x\s*(\d+(?:\.\d+)?)\s*cm/i);
+  if (!m) return null;
+  return `${m[1]} x ${m[2]} cm`;
+}
+
+function stripPrefixBeforeDash(s) {
+  // "Linear Meter - 1m increments" => "1m increments"
+  // "Sample Print - 20 x 20 cm" => "20 x 20 cm"
+  const idx = s.indexOf("-");
+  if (idx < 0) return s.trim();
+  return s.slice(idx + 1).trim();
+}
+
+/**
+ * Cushion format:
+ * ONxxxx _ nameParts... _ xOfY _ Custom Square Cushion _ material _ size _ option _ qty _ FF _ internalId(.pdf)
+ */
+function parseCushion(tokens, baseOut) {
+  const out = baseOut;
+
+  // Core anchors
+  out.orderId = parseOrderId(tokens);
+
+  const { xOfY, x, y, index: xOfYIndex } = parseXOfY(tokens);
+  out.xOfY = xOfY;
+  out.x = x;
+  out.y = y;
+
+  // Find FF index (prefer exact token "FF" but allow "FF.pdf" already stripped)
+  const ffIndex = findLastIndex(tokens, (t) => t.toUpperCase() === "FF");
+  if (ffIndex < 0) addWarning(out, "FF token not found (expected 'FF')");
+
+  // internalId is token after FF, OR last token if FF missing
+  let internalId = null;
+  if (ffIndex >= 0 && tokens[ffIndex + 1]) {
+    internalId = tokens[ffIndex + 1];
+  } else if (tokens.length) {
+    // last token is usually internal id when .pdf stripped, but can be artworkId in XWD-based
+    internalId = tokens[tokens.length - 1];
+  }
+
+  // If internalId looks like XWD... then probably wrong kind
+  if (internalId && /^XWD/i.test(internalId)) {
+    internalId = null;
+    addWarning(out, "Detected XWD-like tail in cushion parser; internalId not set.");
+  }
+
+  out.internalId = internalId;
+  out.artworkId = null;
+
+  // nameParts: tokens between orderId token and xOfY token.
+  // orderId might not be at 0, so find it
+  const orderIndex = findIndex(tokens, (t) => /^ON\d+$/i.test(t));
+  if (orderIndex >= 0 && xOfYIndex > orderIndex + 1) {
+    const parts = tokens.slice(orderIndex + 1, xOfYIndex);
+    out.customerName = parts.join(" ").trim() || null;
+  } else {
+    out.customerName = null;
+  }
+
+  // productName and other fields:
+  // After xOfYIndex, expect:
+  // [xOfY+1]=productName, [xOfY+2]=material, [xOfY+3]=size, [xOfY+4]=variant,
+  // then qty before FF
+  const after = xOfYIndex >= 0 ? tokens.slice(xOfYIndex + 1) : [];
+
+  // Try to locate product token containing "cushion"
+  const productRelIndex = findIndex(after, (t) => t.toLowerCase().includes("cushion"));
+  const productAbsIndex = productRelIndex >= 0 ? xOfYIndex + 1 + productRelIndex : -1;
+
+  out.productName = productAbsIndex >= 0 ? tokens[productAbsIndex] : "Custom Square Cushion";
+
+  // Heuristic for material/size/variant:
+  // If productAbsIndex exists, take next 3 tokens as material/size/variant when available
+  let material = null;
+  let size = null;
+  let variant = null;
+
+  if (productAbsIndex >= 0) {
+    material = tokens[productAbsIndex + 1] || null;
+    size = tokens[productAbsIndex + 2] || null;
+    variant = tokens[productAbsIndex + 3] || null;
+  } else if (xOfYIndex >= 0) {
+    // fallback to xOfYIndex offsets
+    material = tokens[xOfYIndex + 2] || null;
+    size = tokens[xOfYIndex + 3] || null;
+    variant = tokens[xOfYIndex + 4] || null;
+  }
+
+  out.material = material;
+  out.size = size ? size.trim() : null;
+  out.variant = variant ? variant.trim() : null;
+
+  // qty: token just before FF (common in cushion)
+  let qty = null;
+  if (ffIndex >= 1) {
+    const qtyToken = tokens[ffIndex - 1];
+    const n = Number(qtyToken);
+    if (Number.isFinite(n)) qty = n;
+  }
+  out.qty = qty;
+
+  // printType always cushion here
+  out.printType = "CUSHION";
+
+  return out;
+}
+
+/**
+ * XWD-based format:
+ * ONxxxx _ nameParts... _ xOfY _ material _ qty(x) _ type+variant _ XWD... _ FF(.pdf)
+ */
+function parseXwdBased(tokens, baseOut) {
+  const out = baseOut;
+
+  out.orderId = parseOrderId(tokens);
+
+  const { xOfY, x, y, index: xOfYIndex } = parseXOfY(tokens);
+  out.xOfY = xOfY;
+  out.x = x;
+  out.y = y;
+
+  // artworkId
+  const xwdIndex = findIndex(tokens, (t) => /^XWD[0-9a-f]+$/i.test(t));
+  out.artworkId = xwdIndex >= 0 ? tokens[xwdIndex] : null;
+
+  // FF token
+  const ffIndex = findLastIndex(tokens, (t) => t.toUpperCase() === "FF");
+  if (ffIndex < 0) addWarning(out, "FF token not found (expected 'FF')");
+
+  out.internalId = null;
+
+  // customerName: between orderId token and xOfY
+  const orderIndex = findIndex(tokens, (t) => /^ON\d+$/i.test(t));
+  if (orderIndex >= 0 && xOfYIndex > orderIndex + 1) {
+    out.customerName =
+      tokens
+        .slice(orderIndex + 1, xOfYIndex)
+        .join(" ")
+        .trim() || null;
+  } else {
+    out.customerName = null;
+  }
+
+  // material and qty usually right after xOfY
+  out.material = xOfYIndex >= 0 ? tokens[xOfYIndex + 1] || null : null;
+
+  // qty token like "1x", "3x", "2x"
+  const qtyToken = xOfYIndex >= 0 ? tokens[xOfYIndex + 2] : null;
+  out.qty = parseQtyToken(qtyToken);
+
+  // type/variant chunk: from xOfYIndex+3 up to (xwdIndex-1)
+  let typeVariant = null;
+  if (xOfYIndex >= 0 && xwdIndex > xOfYIndex) {
+    const start = xOfYIndex + 3;
+    const end = xwdIndex; // exclusive
+    if (start < end) typeVariant = tokens.slice(start, end).join(" _ ").trim();
+  }
+
+  const tvLower = (typeVariant || "").toLowerCase();
+  out.printType = detectPrintTypeFromText(tvLower);
+
+  // size extraction depends on printType
+  // For FQ/SAMPLE: extract from typeVariant, e.g. "... - 65 x 48 cm"
+  // For LM: usually no size, but variant after dash is meaningful
+  let size = null;
+  let variant = null;
+
+  if (out.printType === "LM") {
+    // variant: text after dash
+    variant = typeVariant ? stripPrefixBeforeDash(typeVariant) : null;
+    size = null;
+  } else if (out.printType === "FQ" || out.printType === "SAMPLE") {
+    size = typeVariant ? extractSizeFromText(typeVariant) : null;
+    // variant: whatever after dash too (will be "65 x 48 cm" / "20 x 20 cm")
+    variant = typeVariant ? stripPrefixBeforeDash(typeVariant) : null;
+  } else {
+    // Unknown - try best effort
+    size = typeVariant ? extractSizeFromText(typeVariant) : null;
+    variant = typeVariant ? stripPrefixBeforeDash(typeVariant) : null;
+  }
+
+  out.size = size;
+  out.variant = variant;
+  out.productName = null;
+
+  return out;
+}
+
+function validateCommon(out) {
+  // orderId
+  if (!out.orderId) {
+    addError(out, "MISSING_ORDER_ID", "OrderId not found (expected ON123456).");
+  }
+
+  // xOfY
+  if (!out.xOfY) {
+    addError(out, "MISSING_XOFY", "xOfY not found (expected e.g. 2of6).");
+  } else if (!/^\d+of\d+$/i.test(out.xOfY)) {
+    addError(out, "BAD_XOFY", `xOfY has invalid format: "${out.xOfY}".`);
+  } else {
+    // sanity check x <= y
+    if (Number.isFinite(out.x) && Number.isFinite(out.y)) {
+      if (!(out.y > 0) || !(out.x > 0) || out.x > out.y) {
+        addError(out, "BAD_XOFY", `xOfY seems invalid (x=${out.x}, y=${out.y}).`);
+      }
+    }
+  }
+
+  // printType
+  if (!out.printType || out.printType === "UNKNOWN") {
+    addError(out, "MISSING_PRINT_TYPE", "Print type could not be detected.");
+  }
+
+  // material
+  if (!out.material || !String(out.material).trim()) {
+    addError(out, "MISSING_MATERIAL", "Material not found.");
+  }
+
+  // qty
+  if (out.qty == null) {
+    addError(out, "MISSING_QTY", "Quantity not found.");
+  } else if (!Number.isFinite(out.qty) || out.qty <= 0) {
+    addError(out, "BAD_QTY", `Quantity invalid: "${out.qty}".`);
+  }
+
+  // ff is optional; treat missing as warning only
+  if (!out.ff) {
+    addWarning(out, "FF token missing (treated as warning).");
+  }
+}
+
+function validateByType(out) {
+  if (out.printType === "CUSHION") {
+    if (!out.internalId) {
+      addError(out, "MISSING_INTERNAL_ID", "Cushion internal id not found (expected token after FF).");
+    }
+    if (!out.size || !String(out.size).trim()) {
+      addError(out, "MISSING_SIZE", "Cushion size not found.");
+    }
+  }
+
+  if (out.printType === "LM" || out.printType === "FQ" || out.printType === "SAMPLE") {
+    // XWD-based must have artworkId
+    if (!out.artworkId) {
+      addError(out, "MISSING_ARTWORK_ID", "ArtworkId (XWD...) not found.");
+    }
+  }
+
+  if (out.printType === "FQ" || out.printType === "SAMPLE") {
+    if (!out.size) {
+      addError(out, "MISSING_SIZE", `${out.printType} requires size (e.g. 65 x 48 cm / 20 x 20 cm).`);
+    }
+  }
+}
+
+function parsePrintFileName(fileName, options = {}) {
+  const name = String(fileName || "");
+  const fileNameLower = name.toLowerCase();
+
+  const { tokens, ext } = tokenizeFilename(name);
+
+  const out = {
+    file: {
+      name,
+      ext,
+      dir: options.dir || null,
+      fullPath: options.fullPath || null,
+    },
+
+    orderId: null,
+    customerName: null,
+    xOfY: null,
+    x: null,
+    y: null,
+
+    printType: "UNKNOWN",
+    material: null,
+
+    qty: null,
+    size: null,
+    variant: null,
+    productName: null,
+
+    artworkId: null,
+    internalId: null,
+    ff: false,
+
+    tokens,
+    warnings: [],
+    errors: [],
+
+    status: "INVALID",
+    detectedAt: nowIso(),
+  };
+
+  // quick flags
+  out.ff = tokens.some((t) => t.toUpperCase() === "FF");
+
+  // detect kind → parse
+  const kind = detectKind(tokens, fileNameLower);
+
+  if (kind === "CUSHION") {
+    parseCushion(tokens, out);
+  } else if (kind === "XWD_BASED") {
+    parseXwdBased(tokens, out);
+  } else {
+    // best effort: still try to pull orderId/xOfY to show something in UI
+    out.orderId = parseOrderId(tokens);
+    const xo = parseXOfY(tokens);
+    out.xOfY = xo.xOfY;
+    out.x = xo.x;
+    out.y = xo.y;
+
+    out.printType = detectPrintTypeFromText(tokens.join(" ").toLowerCase());
+    addError(out, "UNKNOWN_FORMAT", "Filename format not recognized (neither Cushion nor XWD-based).");
+  }
+
+  // If parsed kind is XWD-based, but printType still UNKNOWN, add error
+  if (kind === "XWD_BASED" && out.printType === "UNKNOWN") {
+    addError(out, "MISSING_PRINT_TYPE", "Could not detect LM/FQ/SAMPLE from filename text.");
+  }
+
+  // Validation
+  validateCommon(out);
+  validateByType(out);
+
+  out.status = out.errors.length ? "INVALID" : "OK";
+
+  return out;
+}
+
+// Helpers to parse arrays of names
+function parseMany(fileNames, options = {}) {
+  return (fileNames || []).map((n) => parsePrintFileName(n, options));
+}
+
+export { parsePrintFileName, parseMany };

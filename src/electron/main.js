@@ -1,7 +1,11 @@
-import { app, BrowserWindow, Menu } from "electron";
+import { app, BrowserWindow, Menu, ipcMain } from "electron";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 import process from "process";
+import fs from "fs";
+import path from "path";
+import { isPDF } from "./helpers/isPDF.js";
+import { parsePrintFileName } from "./helpers/parseFileName.js";
 
 const __filename = fileURLToPath(import.meta.url);
 console.log(__filename);
@@ -9,8 +13,8 @@ const __dirname = dirname(__filename);
 
 function createWindow() {
   const win = new BrowserWindow({
-    width: 1500,
-    height: 980,
+    width: 950,
+    height: 700,
     resizable: false,
     maximizable: false,
     fullscreenable: false,
@@ -36,4 +40,40 @@ app.whenReady().then(() => {
 
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") app.quit();
+});
+
+ipcMain.handle("read-folder", async () => {
+  const PATH = "C:\\automation";
+  // read all folders in MAIN folder
+  const getJobsFolders = await fs.promises.readdir(PATH, { withFileTypes: true });
+  // check if the FOLDERS are directory
+  const jobsFolders = getJobsFolders.filter((folder) => folder.isDirectory()).map((folder) => folder.name);
+  const results = [];
+  //get job files inside each folder
+  for (const folder of jobsFolders) {
+    const mainPath = path.join(PATH, folder);
+
+    const getFilesInside = await fs.promises.readdir(mainPath, { withFileTypes: true });
+
+    const files = getFilesInside
+      .filter((file) => file.isFile())
+      .map(async (file) => {
+        const ispdf = await isPDF(path.join(mainPath, file.name));
+        if (!ispdf) return null;
+        return file.name;
+      });
+    const f = await Promise.all(files);
+    f.filter(Boolean).forEach((printJob) => {
+      const meta = parsePrintFileName(printJob);
+      if (!meta) return null;
+
+      results.push({
+        id: `${folder}_${printJob}`,
+        printFilePath: path.join(mainPath, printJob),
+        printFolder: folder,
+        ...meta,
+      });
+    });
+  }
+  return results;
 });
