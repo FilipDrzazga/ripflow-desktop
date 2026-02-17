@@ -3,7 +3,7 @@
     height: 60px;
     display: flex;
     flex-direction: row;
-    align-items: flex-start;
-    justify-content: space-between;
+    align-items: flex-end;
+    justify-content: flex-end;
     /* border: 1px solid var(--card-border); */
 }

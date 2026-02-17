@@ -8,7 +8,7 @@ import {
   getGroupedRowModel,
   getExpandedRowModel,
 } from "@tanstack/react-table";
-import { Table, Badge, Button } from "@chakra-ui/react";
+import { Table, Badge, Button, Checkbox } from "@chakra-ui/react";
 import { TiArrowSortedDown, TiArrowSortedUp } from "react-icons/ti";
 import styles from "./DataTable.module.css";
 
@@ -30,25 +30,27 @@ const columnDef = [
 ];
 
 const DataTable = () => {
+  const [grouping, setGrouping] = useState(["printFolder"]);
+  const [expanded, setExpanded] = useState(true);
+  const [rowSelection, setRowSelection] = useState({});
   const [columnVisibility, setColumnVisibility] = useState({
     printFolder: false,
   });
-  const [grouping, setGrouping] = useState(["printFolder"]);
-  const [expanded, setExpanded] = useState(true);
-
+  
   const table = useReactTable({
     data: useStore((state) => state.folders) || [],
     columns: columnDef,
     getCoreRowModel: getCoreRowModel(),
     getGroupedRowModel: getGroupedRowModel(),
     getExpandedRowModel: getExpandedRowModel(),
-    onExpandedChange: setExpanded,
+    onRowSelectionChange: setRowSelection,
+    onColumnVisibilityChange: setColumnVisibility,
     state: {
       columnVisibility: columnVisibility,
       grouping: grouping,
       expanded: expanded,
+      rowSelection: rowSelection,
     },
-    onColumnVisibilityChange: setColumnVisibility,
   });
 
   useEffect(() => {
@@ -56,6 +58,7 @@ const DataTable = () => {
       const res = await window.api.readFolder();
       if (!res) return;
       useStore.setState({ folders: res });
+      console.log(res)
     };
     getFolders();
   }, []);
@@ -104,10 +107,16 @@ const DataTable = () => {
               }
               return (
                 <tr className={styles.table_row} key={row.id}>
-                  {row.getVisibleCells().map((cell) => (
+                    <td className={styles.table_cell} key={row.id}>
+                    <Checkbox.Root checked={row.getIsSelected()}
+                    onCheckedChange={(e)=>row.toggleSelected(!!e.checked)}>
+                    <Checkbox.Control indeterminate={row.getIsSomeSelected?.() ?? false}/>
+                  </Checkbox.Root>
+                    </td>
+                  {row.getVisibleCells().map((cell) => (      
                     <td className={styles.table_cell} key={cell.id}>
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </td>
+                    </td>  
                   ))}
                 </tr>
               );

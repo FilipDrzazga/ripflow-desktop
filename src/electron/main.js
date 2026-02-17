@@ -13,8 +13,8 @@ const __dirname = dirname(__filename);
 
 function createWindow() {
   const win = new BrowserWindow({
-    width: 950,
-    height: 700,
+    width: 1000,
+    height: 800,
     resizable: false,
     maximizable: false,
     fullscreenable: false,
@@ -43,13 +43,10 @@ app.on("window-all-closed", () => {
 });
 
 ipcMain.handle("read-folder", async () => {
-  const PATH = "C:\\automation";
-  // read all folders in MAIN folder
+  const PATH = "O:\SPPrintReadyArtwork";
   const getJobsFolders = await fs.promises.readdir(PATH, { withFileTypes: true });
-  // check if the FOLDERS are directory
   const jobsFolders = getJobsFolders.filter((folder) => folder.isDirectory()).map((folder) => folder.name);
   const results = [];
-  //get job files inside each folder
   for (const folder of jobsFolders) {
     const mainPath = path.join(PATH, folder);
 
@@ -68,7 +65,6 @@ ipcMain.handle("read-folder", async () => {
       if (!meta) return null;
 
       results.push({
-        id: `${folder}_${printJob}`,
         printFilePath: path.join(mainPath, printJob),
         printFolder: folder,
         ...meta,
