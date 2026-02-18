@@ -14,6 +14,37 @@ import styles from "./DataTable.module.css";
 
 const columnHelper = createColumnHelper();
 const columnDef = [
+  columnHelper.display({
+    id: "select",
+    header: null,
+    cell: ({ row }) => {
+      console.log(row.getIsGrouped());
+      if (row.getIsGrouped()) {
+        const leafRows = row.getLeafRows();
+        const allSelected = leafRows.length > 0 && leafRows.every((r) => r.getIsSelected());
+        const someSelected = leafRows.some((r) => r.getIsSelected());
+        return (
+          <Checkbox.Root
+            checked={allSelected}
+            indeterminate={!allSelected && someSelected ? true : undefined}
+            onCheckedChange={(e) => {
+              const next = !!e.checked;
+              leafRows.forEach((r) => r.toggleSelected(next));
+            }}
+          >
+            <Checkbox.HiddenInput />
+            <Checkbox.Control />
+          </Checkbox.Root>
+        );
+      }
+      return (
+        <Checkbox.Root checked={row.getIsSelected()} onCheckedChange={(e) => row.toggleSelected(!!e.checked)}>
+          <Checkbox.HiddenInput />
+          <Checkbox.Control />
+        </Checkbox.Root>
+      );
+    },
+  }),
   columnHelper.accessor("printFolder", {
     header: "Folder Name",
     cell: () => null,
@@ -31,26 +62,29 @@ const columnDef = [
 
 const DataTable = () => {
   const [grouping, setGrouping] = useState(["printFolder"]);
-  const [expanded, setExpanded] = useState(true);
+  const [expanded, setExpanded] = useState({});
   const [rowSelection, setRowSelection] = useState({});
   const [columnVisibility, setColumnVisibility] = useState({
     printFolder: false,
   });
-  
+
   const table = useReactTable({
     data: useStore((state) => state.folders) || [],
     columns: columnDef,
-    getCoreRowModel: getCoreRowModel(),
-    getGroupedRowModel: getGroupedRowModel(),
-    getExpandedRowModel: getExpandedRowModel(),
-    onRowSelectionChange: setRowSelection,
-    onColumnVisibilityChange: setColumnVisibility,
     state: {
       columnVisibility: columnVisibility,
       grouping: grouping,
       expanded: expanded,
       rowSelection: rowSelection,
     },
+    getCoreRowModel: getCoreRowModel(),
+    getGroupedRowModel: getGroupedRowModel(),
+    getExpandedRowModel: getExpandedRowModel(),
+    onExpandedChange: setExpanded,
+    onColumnVisibilityChange: setColumnVisibility,
+    onRowSelectionChange: setRowSelection,
+    enableRowSelection: true,
+    getRowId: (row) => row.file?.path || `${row.printFolder}-${row.file?.name}`,
   });
 
   useEffect(() => {
@@ -58,10 +92,14 @@ const DataTable = () => {
       const res = await window.api.readFolder();
       if (!res) return;
       useStore.setState({ folders: res });
-      console.log(res)
+      console.log(res);
     };
     getFolders();
   }, []);
+
+  useEffect(() => {
+    console.log("ROW SELECTION:", rowSelection);
+  }, [rowSelection]);
 
   return (
     <div className={styles.table_container}>
@@ -107,16 +145,10 @@ const DataTable = () => {
               }
               return (
                 <tr className={styles.table_row} key={row.id}>
-                    <td className={styles.table_cell} key={row.id}>
-                    <Checkbox.Root checked={row.getIsSelected()}
-                    onCheckedChange={(e)=>row.toggleSelected(!!e.checked)}>
-                    <Checkbox.Control indeterminate={row.getIsSomeSelected?.() ?? false}/>
-                  </Checkbox.Root>
-                    </td>
-                  {row.getVisibleCells().map((cell) => (      
+                  {row.getVisibleCells().map((cell) => (
                     <td className={styles.table_cell} key={cell.id}>
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </td>  
+                    </td>
                   ))}
                 </tr>
               );

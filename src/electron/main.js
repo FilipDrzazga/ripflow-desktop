@@ -8,12 +8,11 @@ import { isPDF } from "./helpers/isPDF.js";
 import { parsePrintFileName } from "./helpers/parseFileName.js";
 
 const __filename = fileURLToPath(import.meta.url);
-console.log(__filename);
 const __dirname = dirname(__filename);
 
 function createWindow() {
   const win = new BrowserWindow({
-    width: 1000,
+    width: 1500,
     height: 800,
     resizable: false,
     maximizable: false,
@@ -43,10 +42,13 @@ app.on("window-all-closed", () => {
 });
 
 ipcMain.handle("read-folder", async () => {
-  const PATH = "O:\SPPrintReadyArtwork";
+  const PATH = "C:\\automation";
+  // read all folders in MAIN folder
   const getJobsFolders = await fs.promises.readdir(PATH, { withFileTypes: true });
+  // check if the FOLDERS are directory
   const jobsFolders = getJobsFolders.filter((folder) => folder.isDirectory()).map((folder) => folder.name);
   const results = [];
+  //get job files inside each folder
   for (const folder of jobsFolders) {
     const mainPath = path.join(PATH, folder);
 
@@ -61,10 +63,11 @@ ipcMain.handle("read-folder", async () => {
       });
     const f = await Promise.all(files);
     f.filter(Boolean).forEach((printJob) => {
-      const meta = parsePrintFileName(printJob);
+      const meta = parsePrintFileName(printJob, { fullPath: path.join(mainPath, printJob) });
       if (!meta) return null;
 
       results.push({
+        id: `${folder}_${printJob}`,
         printFilePath: path.join(mainPath, printJob),
         printFolder: folder,
         ...meta,
