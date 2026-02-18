@@ -18,7 +18,6 @@
   border-bottom: 1px solid var(--card-border);
   text-transform: none;
 }
-
 .table_row {
   width: 100%;
   border-bottom: 1px solid var(--card-border);
@@ -30,14 +29,13 @@
 }
 
 .table_cell {
-  /* display: flex;
-  align-items: center; */
   width: 100%;
   height: 40px;
   font-size: 12px;
   font-weight: 400;
   color: var(--text-secondary);
 }
+
 .table_expanded_btn {
   display: flex;
   flex-direction: row;

@@ -16,20 +16,23 @@ const columnHelper = createColumnHelper();
 const columnDef = [
   columnHelper.display({
     id: "select",
-    header: null,
+    header: () => <Checkbox.Root style={{visibility:'hidden'}} ><Checkbox.HiddenInput /><Checkbox.Control /></Checkbox.Root>,
+    size: 40,
+    minSize: 40,
+    maxSize: 40,
     cell: ({ row }) => {
-      console.log(row.getIsGrouped());
       if (row.getIsGrouped()) {
         const leafRows = row.getLeafRows();
         const allSelected = leafRows.length > 0 && leafRows.every((r) => r.getIsSelected());
         const someSelected = leafRows.some((r) => r.getIsSelected());
+
+        const groupChecked = allSelected ? true : someSelected ? "indeterminate" : false;
         return (
           <Checkbox.Root
-            checked={allSelected}
-            indeterminate={!allSelected && someSelected ? true : undefined}
+            variant='outline'
+            checked={groupChecked}
             onCheckedChange={(e) => {
-              const next = !!e.checked;
-              leafRows.forEach((r) => r.toggleSelected(next));
+              leafRows.forEach((r) => r.toggleSelected(!allSelected));
             }}
           >
             <Checkbox.HiddenInput />
@@ -51,18 +54,40 @@ const columnDef = [
     enableHiding: true,
   }),
   columnHelper.accessor((row) => row.file.name, {
+    id: "fileName",
     header: "File Name",
-    cell: (info) => info.getValue(),
+    cell: (info) => {
+      const row = info.row;
+      if(row.getIsGrouped()) {
+        return (
+          <Button className={styles.table_expanded_btn} variant="ghost" size="sm" cursor='default'>
+            <Badge className={styles.badge} variant="solid" size="sm">
+              {row.subRows.length}
+              {row.getIsExpanded() ? <TiArrowSortedDown /> : <TiArrowSortedUp />}
+            </Badge>
+            {row.groupingColumn?.columnDef.header}
+            {row.groupingValue}
+          </Button>
+        )
+      }
+      return info.getValue();
+    },
   }),
   columnHelper.accessor("status", {
     header: "Status",
-    cell: (info) => <Badge colorPalette={info.getValue() === "OK" ? "green" : "red"}>{info.getValue()}</Badge>,
+    cell:(info)=>{
+      const row = info.row;
+      if(row.getIsGrouped()) return null;
+      return <Badge colorPalette={info.getValue() === "OK" ? "green" : "red"}>{info.getValue()}</Badge>;
+    },
+    size:80,
+    minSize:80,
+    maxSize:80,
   }),
 ];
 
 const DataTable = () => {
   const [grouping, setGrouping] = useState(["printFolder"]);
-  const [expanded, setExpanded] = useState({});
   const [rowSelection, setRowSelection] = useState({});
   const [columnVisibility, setColumnVisibility] = useState({
     printFolder: false,
@@ -74,17 +99,16 @@ const DataTable = () => {
     state: {
       columnVisibility: columnVisibility,
       grouping: grouping,
-      expanded: expanded,
+      expanded: true,
       rowSelection: rowSelection,
     },
     getCoreRowModel: getCoreRowModel(),
     getGroupedRowModel: getGroupedRowModel(),
     getExpandedRowModel: getExpandedRowModel(),
-    onExpandedChange: setExpanded,
     onColumnVisibilityChange: setColumnVisibility,
     onRowSelectionChange: setRowSelection,
     enableRowSelection: true,
-    getRowId: (row) => row.file?.path || `${row.printFolder}-${row.file?.name}`,
+    getRowId: (row) => row.file?.fullPath || `${row.printFolder}/${row.file?.name}`,
   });
 
   useEffect(() => {
@@ -92,7 +116,6 @@ const DataTable = () => {
       const res = await window.api.readFolder();
       if (!res) return;
       useStore.setState({ folders: res });
-      console.log(res);
     };
     getFolders();
   }, []);
@@ -108,17 +131,15 @@ const DataTable = () => {
           size="sm"
           variant="simple"
           interactive
-          stickyHeader
           showColumnBorder={false}
           overflow="hidden"
-          height="100%"
           native
         >
           <thead>
             {table.getHeaderGroups().map((headerGroup) => (
               <tr key={headerGroup.id}>
                 {headerGroup.headers.map((header) => (
-                  <th className={styles.table_header} key={header.id}>
+                  <th className={styles.table_header} key={header.id} style={{ width: header.getSize(), textAlign: header.column.id === "status" ? "center" : "left" }}>
                     {flexRender(header.column.columnDef.header, header.getContext())}
                   </th>
                 ))}
@@ -127,26 +148,10 @@ const DataTable = () => {
           </thead>
           <tbody>
             {table.getRowModel().rows.map((row) => {
-              if (row.getIsGrouped()) {
-                return (
-                  <tr className={styles.table_row} key={row.id}>
-                    <td className={styles.table_cell} key={row.id} colSpan={table.getAllLeafColumns().length}>
-                      <Button className={styles.table_expanded_btn} onClick={row.getToggleExpandedHandler()}>
-                        <Badge className={styles.badge} variant="solid" size="sm">
-                          {row.subRows.length}
-                          {row.getIsExpanded() ? <TiArrowSortedDown /> : <TiArrowSortedUp />}
-                        </Badge>
-                        {row.groupingColumn?.columnDef.header}
-                        {row.groupingValue}
-                      </Button>
-                    </td>
-                  </tr>
-                );
-              }
               return (
                 <tr className={styles.table_row} key={row.id}>
                   {row.getVisibleCells().map((cell) => (
-                    <td className={styles.table_cell} key={cell.id}>
+                    <td className={styles.table_cell} key={cell.id} style={{ width: cell.column.getSize(), textAlign: cell.column.id === "status" ? "center" : "left" }}>
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </td>
                   ))}

@@ -42,7 +42,10 @@ app.on("window-all-closed", () => {
 });
 
 ipcMain.handle("read-folder", async () => {
-  const PATH = "C:\\automation";
+  const HOME_PATH = "C:\\automation";
+  const WORK_PATH = "O:\\SPPrintReadyArtwork";
+
+  const PATH = fs.existsSync(WORK_PATH) ? WORK_PATH : HOME_PATH;
   // read all folders in MAIN folder
   const getJobsFolders = await fs.promises.readdir(PATH, { withFileTypes: true });
   // check if the FOLDERS are directory
