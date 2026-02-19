@@ -1,11 +1,9 @@
-import DataTable from "../DataTable/DataTable";
-import TableFilters from "../TableFilters/TableFilters";
+import DataTable from "./DataTable/DataTable";
 import styles from "./Table.module.css";
 
 const Table = () => {
   return (
     <div className={styles.container}>
-      <TableFilters />
       <DataTable />
     </div>
   );
