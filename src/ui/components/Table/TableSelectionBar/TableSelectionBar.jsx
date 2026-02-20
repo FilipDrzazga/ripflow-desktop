@@ -2,11 +2,12 @@ import { useState, useEffect } from "react";
 import { LuShare, LuTrash2 } from "react-icons/lu";
 import { Button, ActionBar, RadioGroup } from "@chakra-ui/react";
 
-const TableSelectionBar = ({table, selectedCount}) => {
+const TableSelectionBar = ({table, selectedCount, selectedGroup}) => {
     const open = selectedCount > 0;
     if(!open) return null;
     const [radioValue, setRadioValue] = useState('undefined');
-    const printersArr = [{name: 'YUMI', value: 'YUMI'}, {name: 'YOKO', value:'YOKO'}];
+    const polyPrintersArr = [{name: 'YUMI', value: 'YUMI'}, {name: 'YOKO', value:'YOKO'}];
+    const cottonPrintersArr = [{name: 'DGEN', value: 'DGEN'}];
 
     const handleClearSelection = () => {
        table.resetRowSelection();
@@ -37,7 +38,7 @@ const TableSelectionBar = ({table, selectedCount}) => {
               </span>
             <ActionBar.Separator />
                 <RadioGroup.Root variant='subtle' size='sm' value={radioValue} onValueChange={(e) => setRadioValue(e.value)} style={{display:'flex', gap:'10px'}}>
-                {printersArr.map(printer =>{
+                {selectedGroup === 'polyester' ? polyPrintersArr.map(printer =>{
                     return(
                             <RadioGroup.Item key={printer.value} value={printer.value}>
                                 <RadioGroup.ItemHiddenInput />
@@ -45,7 +46,15 @@ const TableSelectionBar = ({table, selectedCount}) => {
                                 <RadioGroup.ItemText>{printer.name}</RadioGroup.ItemText>
                             </RadioGroup.Item>
                     )
-                })}
+                }) : selectedGroup === 'cotton' ? cottonPrintersArr.map(printer =>{
+                    return(
+                            <RadioGroup.Item key={printer.value} value={printer.value}>
+                                <RadioGroup.ItemHiddenInput />
+                                <RadioGroup.ItemIndicator />
+                                <RadioGroup.ItemText>{printer.name}</RadioGroup.ItemText>
+                            </RadioGroup.Item>
+                    )
+                }) : null}
                 </RadioGroup.Root>
               <ActionBar.Separator />
               <Button size='sm' variant='solid' bg='var(--accent-emerald)' color='var(--text-inverse)' onClick={handleSelectItems}>

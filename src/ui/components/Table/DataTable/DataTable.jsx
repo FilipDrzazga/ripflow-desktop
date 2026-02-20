@@ -42,7 +42,6 @@ const DataTable = () => {
     onRowSelectionChange: setRowSelection,
     getFilteredRowModel: getFilteredRowModel(),
    enableRowSelection: (row) => {
-  // blokuj group / placeholder rows
   if (row.getIsGrouped?.() || row.getIsPlaceholder?.()) return false;
 
   const r = row.original;
@@ -78,18 +77,19 @@ const DataTable = () => {
 }, [table.getState().rowSelection]);
 
   return (
-    <div className={styles.table_container}>
+    <>
+    
       <div className={styles.table_modulers}>
       <TableToggleView value={columnFilters.find((f) => f.id === "material")?.value || "all"} onChange={(value) => setColumnFilters([{ id: "material", value }])} />
       <TableRefreshBtn />
       </div>
+    <div className={styles.table_container}>
       <Table.ScrollArea height="100%">
         <Table.Root
           size="sm"
           variant="simple"
           interactive
           showColumnBorder={false}
-          overflow="hidden"
           native
         >
           <thead>
@@ -118,8 +118,9 @@ const DataTable = () => {
           </tbody>
         </Table.Root>
       </Table.ScrollArea>
-      <TableSelectionBar table={table} selectedCount={selectedCount} />
+      <TableSelectionBar table={table} selectedCount={selectedCount} selectedGroup={selectionGroup} />
     </div>
+    </>
   );
 };
 

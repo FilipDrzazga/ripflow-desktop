@@ -18,19 +18,26 @@
   width: 100%;
   height: 100px;
   background-color: var(--bg-white);
+  box-shadow: var(--card-shadow);
+  border: var(--card-border);
+  border-radius: 10px;
   padding-left: 20px;
   padding-right: 20px;
 }
 
 .table_header {
+  position: sticky;
+  top: 0; 
+  z-index: 10;
   width: 100%;
+  height: 60px;
   justify-content: flex-start;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--text-primary);
   background-color: var(--bg-white);
-  height: 40px;
   border-bottom: 1px solid var(--card-border);
+  box-shadow: var(--card-shadow-lg);
   text-transform: none;
 }
 .table_row {
@@ -59,11 +66,10 @@
   width: 100%;
   height: 40px;
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .badge {
-  /* font-size: 12px; */
   color: var(--accent-blue-text);
   background-color: var(--accent-blue);
 }
