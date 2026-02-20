@@ -1,10 +1,25 @@
 .table_container {
+  position: relative;
+  display: flex;
+  flex-direction: column;
   width: 100%;
   height: 100%;
   border-radius: 10px;
   border: var(--card-border);
   box-shadow: var(--card-shadow);
   overflow: hidden;
+}
+
+.table_modulers {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  height: 100px;
+  background-color: var(--bg-white);
+  padding-left: 20px;
+  padding-right: 20px;
 }
 
 .table_header {
@@ -45,10 +60,6 @@
   height: 40px;
   font-size: 14px;
   font-weight: 500;
-  border: var(--card-border);
-  box-shadow: var(--card-shadow);
-  color: var(--text-primary);
-  background-color: var(--bg-subtle);
 }
 
 .badge {

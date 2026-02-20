@@ -2,11 +2,11 @@ import { useState, useEffect } from "react";
 import { LuShare, LuTrash2 } from "react-icons/lu";
 import { Button, ActionBar, RadioGroup } from "@chakra-ui/react";
 
-const SelectionActionBar = ({table, selectedCount}) => {
+const TableSelectionBar = ({table, selectedCount}) => {
+    const open = selectedCount > 0;
+    if(!open) return null;
     const [radioValue, setRadioValue] = useState('undefined');
     const printersArr = [{name: 'YUMI', value: 'YUMI'}, {name: 'YOKO', value:'YOKO'}];
-    const open = selectedCount > 0;
-    console.log(radioValue)
 
     const handleClearSelection = () => {
        table.resetRowSelection();
@@ -62,4 +62,4 @@ const SelectionActionBar = ({table, selectedCount}) => {
     )
 }
 
-export default SelectionActionBar;
+export default TableSelectionBar;
