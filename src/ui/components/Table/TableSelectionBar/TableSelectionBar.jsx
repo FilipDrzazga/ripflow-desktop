@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { LuShare, LuTrash2 } from "react-icons/lu";
 import { Button, ActionBar, RadioGroup } from "@chakra-ui/react";
 
@@ -6,15 +6,22 @@ const TableSelectionBar = ({ table, selectedCount, selectedGroup }) => {
   const open = selectedCount > 0;
   if (!open) return null;
   const [radioValue, setRadioValue] = useState("undefined");
+  const printerName = useRef(null);
   const polyPrintersArr = [
     { name: "YUMI", value: "YUMI" },
     { name: "YOKO", value: "YOKO" },
   ];
   const cottonPrintersArr = [{ name: "DGEN", value: "DGEN" }];
 
+  const handleRadioChange = (e) => {
+    setRadioValue(e.value);
+    printerName.current = e.value;
+  };
+
   const handleClearSelection = () => {
     table.resetRowSelection();
     setRadioValue("undefined");
+    printerName.current = null;
   };
 
   const handleSelectItems = async () => {
@@ -22,6 +29,7 @@ const TableSelectionBar = ({ table, selectedCount, selectedGroup }) => {
       const selected = table.getSelectedRowModel().flatRows.map((r) => r.original);
 
       const payload = {
+        printer: printerName.current,
         materialGroup: selectedGroup,
         files: selected.map((f) => ({
           id: f.id,
@@ -82,7 +90,7 @@ const TableSelectionBar = ({ table, selectedCount, selectedGroup }) => {
             variant="subtle"
             size="sm"
             value={radioValue}
-            onValueChange={(e) => setRadioValue(e.value)}
+            onValueChange={handleRadioChange}
             style={{ display: "flex", gap: "10px" }}
           >
             {selectedGroup === "polyester"
