@@ -9,7 +9,12 @@ export function registerIpcHandlers() {
     try {
       return await createBatch(payload);
     } catch (err) {
-      return { ok: false, error: err?.message || String(err) };
+      return {
+        ok: false,
+        code: "UNKNOWN",
+        userMessage: "Unexpected application error.",
+        details: { rawMessage: err?.message || String(err) },
+      };
     }
   });
 }

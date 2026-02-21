@@ -5,10 +5,10 @@ const slug = (value, fallback = "NA") => {
   if (!s) return fallback;
   return s
     .toUpperCase()
-    .replace(/[<>:"/\\|?*\x00-\x1F]/g, "_") // windows forbidden
+    .replace(/[<>:"/\\|?*\x00-\x1F]/g, "_")
     .replace(/\s+/g, "_")
     .replace(/_+/g, "_")
-    .slice(0, 24); // keep ids readable
+    .slice(0, 24);
 };
 
 export const createBatchId = ({
