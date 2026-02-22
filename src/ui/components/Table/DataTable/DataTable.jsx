@@ -18,6 +18,7 @@ import { classifyMaterial } from "../../../config/materialGroups";
 
 const DataTable = () => {
   const [grouping, setGrouping] = useState(["printFolder"]);
+  const [removingIds, setRemovingIds] = useState(() => new Set());
   const [selectionGroup, setSelectionGroup] = useState(null);
   const [rowSelection, setRowSelection] = useState({});
   const [columnFilters, setColumnFilters] = useState([]);
@@ -57,6 +58,25 @@ const DataTable = () => {
   });
 
   const selectedCount = table.getSelectedRowModel().flatRows.length;
+
+  const startRemoveAnimation = (ids, ms = 220) => {
+    setRemovingIds((prev) => {
+      const next = new Set(prev);
+      ids.forEach((id) => next.add(String(id)));
+      return next;
+    });
+
+    // po ms zdejmujemy flagi (opcjonalnie – jeśli wiersze i tak znikną)
+    setTimeout(() => {
+      setRemovingIds((prev) => {
+        const next = new Set(prev);
+        ids.forEach((id) => next.delete(String(id)));
+        return next;
+      });
+    }, ms + 50);
+  };
+
+  const isLeaving = (row) => removingIds.has(String(row.original?.id));
 
   useEffect(() => {
     const selected = table.getSelectedRowModel().flatRows;
@@ -109,7 +129,7 @@ const DataTable = () => {
             <tbody>
               {table.getRowModel().rows.map((row) => {
                 return (
-                  <tr className={styles.table_row} key={row.id}>
+                  <tr className={`${styles.table_row} ${isLeaving(row) ? styles.rowLeaving : ""}`} key={row.id}>
                     {row.getVisibleCells().map((cell) => (
                       <td
                         className={styles.table_cell}
@@ -128,7 +148,12 @@ const DataTable = () => {
             </tbody>
           </Table.Root>
         </Table.ScrollArea>
-        <TableSelectionBar table={table} selectedCount={selectedCount} selectedGroup={selectionGroup} />
+        <TableSelectionBar
+          table={table}
+          selectedCount={selectedCount}
+          selectedGroup={selectionGroup}
+          startRemoveAnimation={startRemoveAnimation}
+        />
       </div>
     </>
   );

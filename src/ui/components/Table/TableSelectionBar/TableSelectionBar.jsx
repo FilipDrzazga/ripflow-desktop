@@ -4,7 +4,7 @@ import { LuShare, LuTrash2 } from "react-icons/lu";
 import { Button, ActionBar, RadioGroup } from "@chakra-ui/react";
 import { notifyBatchError, notifyBatchWarning, notifyBatchSuccess } from "../../ErrorBatchHandler/ErrorBatchHandler";
 
-const TableSelectionBar = ({ table, selectedCount, selectedGroup }) => {
+const TableSelectionBar = ({ table, selectedCount, selectedGroup, startRemoveAnimation }) => {
   const removeFilesByIds = useStore((s) => s.removeFilesByIds);
   const open = selectedCount > 0;
 
@@ -80,7 +80,13 @@ const TableSelectionBar = ({ table, selectedCount, selectedGroup }) => {
 
       const movedIds = (createBatchResponse.movedIds ?? []).filter(Boolean);
       if (movedIds.length) {
-        removeFilesByIds(movedIds);
+        // 1) animacja
+        startRemoveAnimation(movedIds, 1000);
+
+        // 2) faktyczne usunięcie po czasie animacji
+        setTimeout(() => {
+          removeFilesByIds(movedIds);
+        }, 1000);
         notifyBatchSuccess(
           "Batch created and list refreshed.",
           `${createBatchResponse.batchId} • Removed ${movedIds.length} items`,
