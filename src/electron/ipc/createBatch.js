@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { createBatchId, formatDay } from "./createBatchId.js";
 import { getBatchPaths } from "./batchPaths.js";
+import { version } from "node:os";
 
 /* ----------------------------- simple mutex ----------------------------- */
 /**
@@ -248,6 +249,7 @@ export async function createBatch({ files, materialGroup, printer }) {
 
       // ---------- 8) manifest: opis batcha jako "source of truth" ----------
       const manifest = {
+        version: 1,
         batchId,
         day,
         createdAt: now.toISOString(),
@@ -264,6 +266,13 @@ export async function createBatch({ files, materialGroup, printer }) {
         expectedCount: files.length,
         movedCount: moved.length,
         failedCount: 0,
+        events: [
+          {
+            at: now.toISOString(),
+            type: "CREATED",
+            note: `Batch created. files=${files.length}`,
+          },
+        ],
         files: moved.map((m) => ({
           fileName: m.fileName,
           sourcePath: m.to,
