@@ -4,7 +4,10 @@ import { createBatchId, formatDay } from "./createBatchId.js";
 import { getBatchPaths } from "./batchPaths.js";
 
 /* ----------------------------- simple mutex ----------------------------- */
-// Single-process mutex (good enough for one running Electron instance)
+/**
+ * Prosty lock, żeby nie odpalić dwóch batchy naraz (np. podwójny klik).
+ * Działa w obrębie jednej instancji Electron (single-process).
+ */
 let RIP_LOCK = false;
 
 async function withRipLock(fn) {
@@ -15,42 +18,61 @@ async function withRipLock(fn) {
       userMessage: "Ripping is already running. Please wait until it finishes.",
     };
   }
+
   RIP_LOCK = true;
   try {
     return await fn();
   } finally {
+    // finally odpali się zawsze: sukces / błąd / return
     RIP_LOCK = false;
   }
 }
 
 /* ----------------------------- fs helpers ------------------------------ */
+
+/** mkdir -p */
 async function ensureDir(dir) {
   await fs.mkdir(dir, { recursive: true });
 }
 
+/**
+ * Przeniesienie pliku:
+ * - najpierw rename (szybkie)
+ * - jak się nie uda (np. cross-device), to copy + unlink
+ */
 async function moveFileSafe(from, to) {
   try {
     await fs.rename(from, to);
-  } catch (_err) {
-    // Cross-device fallback, etc.
+  } catch {
     await fs.copyFile(from, to);
     await fs.unlink(from);
   }
 }
 
+/**
+ * Czyści nazwę pliku z niedozwolonych znaków (Windows-safe).
+ */
 function safeFileName(name) {
+  // eslint-disable-next-line no-control-regex
   return String(name).replace(/[<>:"/\\|?*\x00-\x1F]/g, "_");
 }
 
+/** usuń folder batcha w rollbacku (best-effort) */
 async function removeDirSafe(dir) {
   await fs.rm(dir, { recursive: true, force: true });
 }
 
 /* ------------------------------ error utils ------------------------------ */
+
+/** Jednolity format błędu dla UI */
 function appError(code, userMessage, details = {}) {
   return { ok: false, code, userMessage, details };
 }
 
+/**
+ * Zamienia typowe błędy FS na czytelne kody i wiadomości,
+ * plus zostawia raw szczegóły do debug.
+ */
 function mapFsError(err, fallbackCode = "FS_ERROR", fallbackMsg = "A file system error occurred.") {
   const rawCode = err?.code;
   const rawMessage = err?.message || String(err);
@@ -74,9 +96,19 @@ function mapFsError(err, fallbackCode = "FS_ERROR", fallbackMsg = "A file system
 }
 
 /* ----------------------------- main logic ------------------------------ */
+
+/**
+ * createBatch:
+ * - waliduje input
+ * - sprawdza pliki na dysku
+ * - tworzy foldery batcha
+ * - przenosi WSZYSTKIE pliki (albo rollback)
+ * - zapisuje manifest (albo rollback)
+ * - zwraca movedIds do szybkiego update UI
+ */
 export async function createBatch({ files, materialGroup, printer }) {
   return withRipLock(async () => {
-    // ---------- validation ----------
+    // ---------- 1) validation ----------
     if (!Array.isArray(files) || files.length === 0) {
       return appError("VALIDATION_NO_FILES", "No files selected for ripping.");
     }
@@ -89,7 +121,11 @@ export async function createBatch({ files, materialGroup, printer }) {
       return appError("VALIDATION_BAD_GROUP", "Invalid material group.");
     }
 
-    // ---------- pre-scan: resolve paths ----------
+    // ---------- 2) normalize input (resolve paths + names) ----------
+    // Zamieniamy różne możliwe pola w jednym standardzie:
+    // - from: skąd przenosimy
+    // - originalName: nazwa pliku
+    // - meta: reszta danych (orderId, qty, material itd.)
     const resolved = files.map((f) => {
       const from = f.sourcePath || f.printFilePath || f.fullPath;
       const originalName = f.fileName || f.file?.name || path.basename(from || "");
@@ -101,7 +137,7 @@ export async function createBatch({ files, materialGroup, printer }) {
       };
     });
 
-    // missing source paths
+    // ---------- 3) missing source paths ----------
     const missingSource = resolved.filter((r) => !r.from);
     if (missingSource.length) {
       return appError("VALIDATION_MISSING_SOURCE_PATH", "Some files are missing a source path.", {
@@ -109,7 +145,9 @@ export async function createBatch({ files, materialGroup, printer }) {
       });
     }
 
-    // optional but very useful: check source files exist
+    // ---------- 4) verify source files exist ----------
+    // Dzięki temu UI dostaje konkretną listę brakujących plików,
+    // a nie “random error w środku move”.
     const notFound = [];
     for (const r of resolved) {
       try {
@@ -130,6 +168,7 @@ export async function createBatch({ files, materialGroup, printer }) {
       return appError("VALIDATION_SOURCE_NOT_FOUND", "Some source files could not be found.", { notFound });
     }
 
+    // ---------- 5) compute batchId + paths ----------
     const now = new Date();
     const day = formatDay(now);
 
@@ -143,7 +182,7 @@ export async function createBatch({ files, materialGroup, printer }) {
 
     const paths = getBatchPaths({ day, batchId });
 
-    // ---------- create folders ----------
+    // ---------- 6) create batch folders ----------
     try {
       await ensureDir(paths.sourceDir);
       await ensureDir(paths.readyDir);
@@ -153,20 +192,28 @@ export async function createBatch({ files, materialGroup, printer }) {
       return mapFsError(err, "FS_MKDIR_FAILED", "Unable to create batch folders.");
     }
 
+    // moved: “co realnie przenieśliśmy”
     const moved = [];
+
+    // failed: info o rollback/cleanup fail (best-effort)
     const failed = [];
+
+    // rollbackMoves: lista “jak cofnąć to, co przenieśliśmy”
     const rollbackMoves = [];
+
+    // usedNames: żeby nie nadpisywać plików o tej samej nazwie w jednym folderze batcha
     const usedNames = new Set();
 
+    // ---------- 7) transactional part: move all OR rollback ----------
     try {
       for (const r of resolved) {
         const from = r.from;
-        const originalName = r.originalName;
 
-        let baseName = safeFileName(originalName || "file");
+        // a) sanitize name
+        let baseName = safeFileName(r.originalName || "file");
         let finalName = baseName;
 
-        // avoid duplicates in the batch
+        // b) avoid duplicates: file.png, file__1.png, file__2.png...
         let i = 1;
         while (usedNames.has(finalName.toLowerCase())) {
           const ext = path.extname(baseName);
@@ -178,17 +225,28 @@ export async function createBatch({ files, materialGroup, printer }) {
 
         const to = path.join(paths.sourceDir, finalName);
 
+        // c) move file
         try {
           await moveFileSafe(from, to);
         } catch (err) {
-          // Stop immediately (atomic behavior) and rollback what we already moved
+          // rzucamy "oznaczony" błąd, żeby niżej ładnie go sklasyfikować
           throw Object.assign(new Error("MOVE_FAILED"), { cause: err, from, to, fileName: finalName });
         }
 
-        moved.push({ from, to, fileName: finalName, meta: r.meta });
+        // d) zapisujemy co przenieśliśmy
+        moved.push({
+          id: r.id ?? null, // <-- dodane: prostsze dla UI
+          from,
+          to,
+          fileName: finalName,
+          meta: r.meta,
+        });
+
+        // e) i jak to cofnąć
         rollbackMoves.push({ from: to, to: from }); // reverse move
       }
 
+      // ---------- 8) manifest: opis batcha jako "source of truth" ----------
       const manifest = {
         batchId,
         day,
@@ -210,7 +268,7 @@ export async function createBatch({ files, materialGroup, printer }) {
           fileName: m.fileName,
           sourcePath: m.to,
           originalPath: m.from,
-          id: m.meta?.id ?? null,
+          id: m.meta?.id ?? m.id ?? null,
           orderId: m.meta?.orderId ?? null,
           printType: m.meta?.printType ?? null,
           qty: m.meta?.qty ?? null,
@@ -221,15 +279,20 @@ export async function createBatch({ files, materialGroup, printer }) {
         })),
       };
 
+      // zapis manifestu = warunek sukcesu
       try {
         await fs.writeFile(paths.manifestPath, JSON.stringify(manifest, null, 2), "utf-8");
       } catch (err) {
         throw Object.assign(new Error("MANIFEST_WRITE_FAILED"), { cause: err });
       }
 
-      return { ok: true, batchId, day, ...paths, moved, failed };
+      // ---------- 9) movedIds: do szybkiej aktualizacji UI (bez rescanu) ----------
+      const movedIds = moved.map((m) => m.id).filter(Boolean);
+
+      return { ok: true, batchId, day, ...paths, moved, movedIds, failed };
     } catch (err) {
-      // ---------- rollback ----------
+      // ---------- rollback section ----------
+      // Cofamy przeniesienia w odwrotnej kolejności (bezpieczniej).
       for (let i = rollbackMoves.length - 1; i >= 0; i--) {
         const { from, to } = rollbackMoves[i];
         try {

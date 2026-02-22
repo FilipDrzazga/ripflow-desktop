@@ -6,20 +6,20 @@ import styles from "./TableRefreshBtn.module.css";
 
 const TableRefreshBtn = () => {
   const [isLoading, setIsLoading] = useState(false);
-  const { setFolders } = useStore();
+  const { setFiles } = useStore();
 
   const handleRefresh = () => {
     setIsLoading(true);
-    const getFolders = async () => {
+    const getFiles = async () => {
       const res = await window.api.readFolder();
       if (!res) {
         setIsLoading(false);
         return;
       }
-      setFolders(res);
+      setFiles(res);
       setIsLoading(false);
     };
-    getFolders();
+    getFiles();
   };
 
   return (

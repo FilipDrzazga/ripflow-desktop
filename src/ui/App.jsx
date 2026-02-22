@@ -10,7 +10,7 @@ const App = () => {
     const getFolders = async () => {
       const res = await window.api.readFolder();
       if (!res) return;
-      useStore.setState({ folders: res });
+      useStore.setState({ files: res });
     };
     getFolders();
   }, []);

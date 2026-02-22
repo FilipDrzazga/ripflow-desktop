@@ -105,9 +105,9 @@ export function notifyBatchError(res) {
 }
 
 export function notifyBatchWarning(title, description) {
-  createToast({ type: "error", title, description, duration: 4000 });
+  createToast({ type: "error", title, description, duration: 6000 });
 }
 
 export function notifyBatchSuccess(title, description) {
-  createToast({ type: "success", title, description, duration: 3500 });
+  createToast({ type: "success", title, description, duration: 6000 });
 }

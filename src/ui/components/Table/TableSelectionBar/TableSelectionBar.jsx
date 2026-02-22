@@ -1,12 +1,13 @@
 import { useState, useEffect, useRef } from "react";
+import { useStore } from "../../../store/useStore";
 import { LuShare, LuTrash2 } from "react-icons/lu";
 import { Button, ActionBar, RadioGroup } from "@chakra-ui/react";
 import { notifyBatchError, notifyBatchWarning, notifyBatchSuccess } from "../../ErrorBatchHandler/ErrorBatchHandler";
 
 const TableSelectionBar = ({ table, selectedCount, selectedGroup }) => {
+  const removeFilesByIds = useStore((s) => s.removeFilesByIds);
   const open = selectedCount > 0;
 
-  // ✅ hooks before conditional return
   const [radioValue, setRadioValue] = useState("undefined");
   const printerName = useRef(null);
 
@@ -15,13 +16,6 @@ const TableSelectionBar = ({ table, selectedCount, selectedGroup }) => {
     { name: "YOKO", value: "YOKO" },
   ];
   const cottonPrintersArr = [{ name: "DGEN", value: "DGEN" }];
-
-  useEffect(() => {
-    if (!open) {
-      setRadioValue("undefined");
-      printerName.current = null;
-    }
-  }, [open]);
 
   const handleRadioChange = (e) => {
     setRadioValue(e.value);
@@ -48,7 +42,6 @@ const TableSelectionBar = ({ table, selectedCount, selectedGroup }) => {
         return;
       }
 
-      // Optional quick client-side validation (keeps UX snappy)
       const missing = selected.filter((f) => !(f.file?.fullPath || f.sourcePath || f.printFilePath));
       if (missing.length) {
         notifyBatchWarning("Missing source path.", `Problematic files: ${missing.length}`);
@@ -72,26 +65,39 @@ const TableSelectionBar = ({ table, selectedCount, selectedGroup }) => {
         })),
       };
 
-      const res = await window.api.createBatch(payload);
+      const createBatchResponse = await window.api.createBatch(payload);
 
-      if (!res?.ok) {
-        console.error("createBatch failed:", res);
-        notifyBatchError(res);
+      if (!createBatchResponse?.ok) {
+        console.error("createBatch failed:", createBatchResponse);
+        notifyBatchError(createBatchResponse);
         return;
       }
-
-      notifyBatchSuccess("Batch created.", res.batchId);
 
       table.resetRowSelection();
       setRadioValue("undefined");
       printerName.current = null;
+      // notifyBatchSuccess("Batch created.", createBatchResponse.batchId);
 
-      // refresh list...
+      const movedIds = (createBatchResponse.movedIds ?? []).filter(Boolean);
+      if (movedIds.length) {
+        removeFilesByIds(movedIds);
+        notifyBatchSuccess(
+          "Batch created and list refreshed.",
+          `${createBatchResponse.batchId} • Removed ${movedIds.length} items`,
+        );
+      }
     } catch (err) {
       console.error(err);
       notifyBatchError({ code: "UI_UNKNOWN", userMessage: "Unexpected UI error." });
     }
   };
+
+  useEffect(() => {
+    if (!open) {
+      setRadioValue("undefined");
+      printerName.current = null;
+    }
+  }, [open]);
 
   if (!open) return null;
 
