@@ -31,6 +31,7 @@ const TableSelectionBar = ({ table, selectedCount, selectedGroup, startRemoveAni
   const handleSelectItems = async () => {
     try {
       const selected = table.getSelectedRowModel().flatRows.map((r) => r.original);
+      console.log(selected)
 
       if (!selected.length) {
         notifyBatchWarning("No files selected.", "Please select at least one file.");
