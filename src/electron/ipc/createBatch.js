@@ -2,7 +2,6 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { createBatchId, formatDay } from "./createBatchId.js";
 import { getBatchPaths } from "./batchPaths.js";
-import { version } from "node:os";
 
 /* ----------------------------- simple mutex ----------------------------- */
 /**

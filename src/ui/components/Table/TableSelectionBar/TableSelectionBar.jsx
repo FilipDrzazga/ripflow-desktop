@@ -31,7 +31,6 @@ const TableSelectionBar = ({ table, selectedCount, selectedGroup, startRemoveAni
   const handleSelectItems = async () => {
     try {
       const selected = table.getSelectedRowModel().flatRows.map((r) => r.original);
-      console.log(selected)
 
       if (!selected.length) {
         notifyBatchWarning("No files selected.", "Please select at least one file.");
@@ -69,15 +68,18 @@ const TableSelectionBar = ({ table, selectedCount, selectedGroup, startRemoveAni
       const createBatchResponse = await window.api.createBatch(payload);
 
       if (!createBatchResponse?.ok) {
-        console.error("createBatch failed:", createBatchResponse);
         notifyBatchError(createBatchResponse);
         return;
       }
-
       table.resetRowSelection();
       setRadioValue("undefined");
       printerName.current = null;
-      // notifyBatchSuccess("Batch created.", createBatchResponse.batchId);
+      const productizeResponse = await window.api.sendBatchToProductize(createBatchResponse.batchRoot);
+
+        if (!productizeResponse?.ok) {
+          notifyBatchError(productizeResponse);
+          return;
+        }
 
       const movedIds = (createBatchResponse.movedIds ?? []).filter(Boolean);
       if (movedIds.length) {
