@@ -2,22 +2,26 @@ import { useEffect } from "react";
 import { useStore } from "./store/useStore";
 import "./styles/global.css";
 import styles from "./App.module.css";
-import Table from "./components/Table/Table";
-import { Toaster } from "@/components/Toaster/Toaster";
+import DataList from "./components/DataList/DataList";
 
 const App = () => {
+  const store = useStore();
   useEffect(() => {
-    const getFolders = async () => {
-      const res = await window.api.readFolder();
-      if (!res) return;
-      useStore.setState({ files: res });
+    const fetchFolders = async () => {
+      try {
+        const res = await window.api.readFolders();
+        if (!res.ok) return;
+        store.setFiles(res.data);
+        console.log(res.data);
+      } catch (err) {
+        console.log(err.message);
+      }
     };
-    getFolders();
+    fetchFolders();
   }, []);
   return (
     <div className={styles.app}>
-      <Table />
-      <Toaster />
+      <DataList />
     </div>
   );
 };

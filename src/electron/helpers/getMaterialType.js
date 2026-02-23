@@ -1,8 +1,5 @@
-// src/ui/config/materialGroups.js
-
 const normalize = (s) => (s ?? "").toString().trim();
 
-// COTTONS (Twoja lista)
 export const COTTON_MATERIALS = new Set(
   [
     "Stretch Lycra French Terry",
@@ -37,10 +34,9 @@ export const COTTON_MATERIALS = new Set(
     "Organic Calico Natural",
     "Calico Plain Cotton",
     "Drill",
-  ].map(normalize)
+  ].map(normalize),
 );
 
-// POLYESTERS (Twoja lista)
 export const POLY_MATERIALS = new Set(
   [
     "Eco Pique",
@@ -129,13 +125,13 @@ export const POLY_MATERIALS = new Set(
     "Eco Taffeta",
     "Eco Chiffon",
     "Stretch Jersey",
-  ].map(normalize)
+  ].map(normalize),
 );
 
-export function classifyMaterial(material) {
+export function getMaterialType(material) {
   const m = normalize(material);
   if (!m) return "unknown";
-  if (COTTON_MATERIALS.has(m)) return "cotton";
-  if (POLY_MATERIALS.has(m)) return "polyester";
+  if (COTTON_MATERIALS.has(m)) return "Cotton";
+  if (POLY_MATERIALS.has(m)) return "Poly";
   return "unknown"; // jeśli kiedyś dojdzie nowy materiał, od razu go wyłapiesz
 }

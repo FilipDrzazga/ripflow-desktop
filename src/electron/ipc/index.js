@@ -4,7 +4,13 @@ import { createBatch } from "./createBatch.js";
 import { sendBatchToProductize } from "./createXML.js";
 
 export function registerIpcHandlers() {
-  ipcMain.handle("read-folder", readFolders);
+  ipcMain.handle("read-folders", async () => {
+    try {
+      return await readFolders();
+    } catch (err) {
+      return err.message;
+    }
+  });
 
   ipcMain.handle("batch-create", async (_event, payload) => {
     try {
@@ -19,7 +25,7 @@ export function registerIpcHandlers() {
     }
   });
 
-  ipcMain.handle('batch-productize', async (_event, batchRoot) => {
+  ipcMain.handle("batch-productize", async (_event, batchRoot) => {
     try {
       return await sendBatchToProductize(batchRoot);
     } catch (err) {
@@ -30,5 +36,5 @@ export function registerIpcHandlers() {
         details: { rawMessage: err?.message || String(err) },
       };
     }
-  })
-};
+  });
+}
