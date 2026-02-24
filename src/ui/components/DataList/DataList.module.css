@@ -1,11 +1,13 @@
 .list_container {
+  position:relative;
   display: flex;
   flex-direction: column;
   gap: 20px;
-  width: 60%;
-  height: 100vh;
+  width: 90%;
+  height: 70vh;
   padding: 20px;
   border-radius: 20px;
+  overflow-y: auto;
 }
 
 .list_content {
@@ -18,10 +20,9 @@
   height: auto;
   padding: 0px 0px 20px 0px;
   border-radius: 20px;
-  border: 1px solid var(--border-light);
+  border: 1px solid var(--border-grey);
   box-shadow: var(--card-shadow);
-  background-color: white;
-  scroll-behavior: smooth;
+  background-color: var(--bg-white);
 }
 
 .list_title {
@@ -33,77 +34,89 @@
   height: 50px;
   padding: 5px 10px;
   border-radius: 20px 20px 0px 0px;
+  border-bottom: 1px solid var(--border-grey);
   font-size: 14px;
   font-weight: 600;
-  background-color: #f9f9f9;
-  color: #171717;
+  background-color: var(--bg-grey);
+  color: var(--text-black);
 }
 
 .list_items {
   display: flex;
   flex-direction: column;
-  /* align-items: center; */
-  /* justify-content: center; */
+  justify-content: space-between;
   gap: 10px;
   width: 100%;
   height: auto;
+  padding-left: 20px;
 }
 
 .list_item {
   display: flex;
-  justify-content: center;
+  justify-content: flex-start;
   align-items: center;
+  gap:10px;
   width: 100%;
   height: 50px;
-  /* padding: 10px; */
-  /* border-radius: 10px; */
 }
 .item_radio {
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  border: 2px solid #171717;
-  background-color: transparent;
+  border: 2px solid var(--border-grey);
+  background-color: var(--bg-white)
 }
 .item_name {
-  width: 90%;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  width: 80%;
   height: 100%;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 300;
-  color: var(--text-primary);
+  color: var(--text-black);
 }
 .item_type {
-  width: 3%;
-  height: 100%;
-  padding: 1px;
-  font-size: 12px;
+  display:flex;
+  align-items: center;
+  justify-content: center;
+  width: auto;
+  height: 40%;
+  padding: 2px 5px;
+  font-size: 10px;
   text-align: center;
   font-weight: 500;
-  border-radius: 5px;
+  border-radius: 20px;
   border: 1px solid #6302ce;
   background-color: #ddceff;
   color: #6302ce;
 }
 .item_material {
-  width: 3%;
-  height: 100%;
-  padding: 1px;
-  font-size: 12px;
+  display:flex;
+  align-items: center;
+  justify-content: center;
+  width: auto;
+  height: 40%;
+  padding: 2px 5px;
+  font-size: 10px;
   text-align: center;
   font-weight: 500;
-  border-radius: 25px;
+  border-radius: 20px;
   border: 1px solid #aa6902;
   background-color: #fec43e;
   color: #aa6902;
 }
 .item_status {
-  width: 3%;
-  height: 100%;
-  padding: 1px;
-  font-size: 12px;
+  display:flex;
+  align-items: center;
+  justify-content: center;
+  width: auto;
+  height: 40%;
+  padding: 2px 5px;
+  font-size: 10px;
   text-align: center;
   font-weight: 500;
-  border-radius: 5px;
+  border-radius: 20px;
   border: 1px solid #167847;
   background-color: #8aedbc;
   color: #167847;

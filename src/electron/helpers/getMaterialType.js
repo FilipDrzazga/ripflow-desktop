@@ -2,6 +2,7 @@ const normalize = (s) => (s ?? "").toString().trim();
 
 export const COTTON_MATERIALS = new Set(
   [
+    'Cotton Slub',
     "Stretch Lycra French Terry",
     "Poppy Lycra Jersey",
     "Organic Jersey Interlock",

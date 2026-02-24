@@ -9,6 +9,8 @@ const __dirname = dirname(__filename);
 
 function createWindow() {
   const win = new BrowserWindow({
+    width: 1400,
+    height: 900,
     resizable: false,
     maximizable: false,
     fullscreenable: false,
@@ -19,7 +21,7 @@ function createWindow() {
 
   // DEV: Vite
   if (!app.isPackaged) {
-    win.maximize();
+    // win.maximize();
     win.loadURL("http://localhost:5173");
     win.webContents.openDevTools();
   } else {

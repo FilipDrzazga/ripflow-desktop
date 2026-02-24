@@ -1,4 +1,5 @@
 import { useStore } from "../../store/useStore";
+import  Badge from "../Badge/Badge";
 import style from "./DataList.module.css";
 
 const DataList = () => {
@@ -17,9 +18,9 @@ const DataList = () => {
               <li key={item.id} className={style.list_item}>
                 <div className={style.item_radio}></div>
                 <div className={style.item_name}>{item.file.name}</div>
-                <div className={style.item_type}>{item.printType}</div>
-                <div className={style.item_material}>{item.materialType}</div>
-                <div className={style.item_status}>{item.status}</div>
+                <Badge type={item.printType} />
+                <Badge type={item.materialType} />
+                <Badge type={item.status} />
               </li>
             ))}
           </ul>
