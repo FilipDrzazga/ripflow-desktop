@@ -2,7 +2,9 @@
     display: flex;
     justify-content: center;
     align-items: center;
-    width:90px;
+    /* width:50% */
+    height: 100%;
+    flex:1;
 }
 .badge {
   display:flex;

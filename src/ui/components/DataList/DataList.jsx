@@ -1,5 +1,6 @@
 import { useStore } from "../../store/useStore";
 import  Badge from "../Badge/Badge";
+import Counter from "../Counter/Counter";
 import style from "./DataList.module.css";
 
 const DataList = () => {
@@ -15,11 +16,16 @@ const DataList = () => {
           <ul className={style.list_items}>
             {file.items.map((item) => (
               <li key={item.id} className={style.list_item}>
-                <div className={style.item_radio}></div>
-                <div className={style.item_name}>{item.file.name}</div>
-                <Badge type={item.printType} />
-                <Badge type={item.materialType} />
-                <Badge type={item.status} />
+                <div className={style.item_info}>
+                  <div className={style.item_radio}></div>
+                  <div className={style.item_name}>{item.file.name}</div>
+                </div>
+                <div className={style.item_badges}>
+                  <Counter/>
+                  <Badge type={item.printType} badgeText={item.printType} />
+                  <Badge type={item.materialType} badgeText={item.materialType} />
+                  <Badge type={item.status} badgeText={item.status} />
+                </div>
               </li>
             ))}
           </ul>

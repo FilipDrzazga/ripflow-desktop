@@ -12,6 +12,20 @@ function addWarning(out, message) {
   out.warnings.push(message);
 }
 
+// --- Print type labels (human-readable) + stable codes
+const PRINT_TYPE_LABEL = {
+  LM: "Linear Meter",
+  FQ: "Fat Quarter",
+  SAMPLE: "Sample",
+  CUSHION: "Square Cushion",
+  TEA_TOWEL: "Tea Towel",
+  UNKNOWN: "UNKNOWN",
+};
+
+function toPrintTypeLabel(code) {
+  return PRINT_TYPE_LABEL[code] || "UNKNOWN";
+}
+
 function tokenizeFilename(fileName) {
   // Keep original for meta, but parse using base name
   const name = String(fileName || "").trim();
@@ -75,9 +89,15 @@ function parseXOfY(tokens) {
 function detectKind(tokens, fileNameLower) {
   // Use both tokens and raw filename to be robust
   const joined = tokens.join(" ").toLowerCase();
+
   if (joined.includes("custom square cushion") || fileNameLower.includes("custom square cushion")) {
     return "CUSHION";
   }
+
+  if (joined.includes("custom tea towel") || fileNameLower.includes("custom tea towel")) {
+    return "TEA_TOWEL";
+  }
+
   // XWD-based
   const xwdIndex = findIndex(tokens, (t) => /^XWD[0-9a-f]+$/i.test(t));
   if (xwdIndex >= 0) return "XWD_BASED";
@@ -90,6 +110,7 @@ function detectPrintTypeFromText(textLower) {
   if (textLower.includes("fat quarter")) return "FQ";
   if (textLower.includes("sample print")) return "SAMPLE";
   if (textLower.includes("cushion")) return "CUSHION";
+  if (textLower.includes("tea towel")) return "TEA_TOWEL";
   return "UNKNOWN";
 }
 
@@ -156,7 +177,6 @@ function parseCushion(tokens, baseOut) {
   out.artworkId = null;
 
   // nameParts: tokens between orderId token and xOfY token.
-  // orderId might not be at 0, so find it
   const orderIndex = findIndex(tokens, (t) => /^ON\d+$/i.test(t));
   if (orderIndex >= 0 && xOfYIndex > orderIndex + 1) {
     const parts = tokens.slice(orderIndex + 1, xOfYIndex);
@@ -167,8 +187,7 @@ function parseCushion(tokens, baseOut) {
 
   // productName and other fields:
   // After xOfYIndex, expect:
-  // [xOfY+1]=productName, [xOfY+2]=material, [xOfY+3]=size, [xOfY+4]=variant,
-  // then qty before FF
+  // productName, material, size, variant, qty before FF
   const after = xOfYIndex >= 0 ? tokens.slice(xOfYIndex + 1) : [];
 
   // Try to locate product token containing "cushion"
@@ -177,8 +196,6 @@ function parseCushion(tokens, baseOut) {
 
   out.productName = productAbsIndex >= 0 ? tokens[productAbsIndex] : "Custom Square Cushion";
 
-  // Heuristic for material/size/variant:
-  // If productAbsIndex exists, take next 3 tokens as material/size/variant when available
   let material = null;
   let size = null;
   let variant = null;
@@ -188,7 +205,6 @@ function parseCushion(tokens, baseOut) {
     size = tokens[productAbsIndex + 2] || null;
     variant = tokens[productAbsIndex + 3] || null;
   } else if (xOfYIndex >= 0) {
-    // fallback to xOfYIndex offsets
     material = tokens[xOfYIndex + 2] || null;
     size = tokens[xOfYIndex + 3] || null;
     variant = tokens[xOfYIndex + 4] || null;
@@ -207,8 +223,76 @@ function parseCushion(tokens, baseOut) {
   }
   out.qty = qty;
 
-  // printType always cushion here
-  out.printType = "CUSHION";
+  out.printTypeCode = "CUSHION";
+  out.printType = toPrintTypeLabel(out.printTypeCode);
+
+  return out;
+}
+
+/**
+ * Tea towel format (cushion-like):
+ * ONxxxx _ nameParts... _ xOfY _ Custom Tea Towel _ material _ variant... _ qty _ FF _ internalId(.pdf)
+ *
+ * Example:
+ * ON311600_Amy_Lee_9of9_Custom Tea Towel_Drill _ Fully Sewn_4_FF_2185
+ * ON311503_Stephen_Deazley_3of3_Custom Tea Towel_Drill _ DIY Sew at Home_1_FF_2121.pdf
+ */
+function parseTeaTowel(tokens, baseOut) {
+  const out = baseOut;
+
+  out.orderId = parseOrderId(tokens);
+
+  const { xOfY, x, y, index: xOfYIndex } = parseXOfY(tokens);
+  out.xOfY = xOfY;
+  out.x = x;
+  out.y = y;
+
+  const ffIndex = findLastIndex(tokens, (t) => t.toUpperCase() === "FF");
+  if (ffIndex < 0) addWarning(out, "FF token not found (expected 'FF')");
+
+  out.internalId = ffIndex >= 0 && tokens[ffIndex + 1] ? tokens[ffIndex + 1] : tokens.at(-1) || null;
+  out.artworkId = null;
+
+  // customerName between orderId and xOfY
+  const orderIndex = findIndex(tokens, (t) => /^ON\d+$/i.test(t));
+  if (orderIndex >= 0 && xOfYIndex > orderIndex + 1) {
+    out.customerName = tokens.slice(orderIndex + 1, xOfYIndex).join(" ").trim() || null;
+  } else {
+    out.customerName = null;
+  }
+
+  // locate product token containing "tea towel"
+  const after = xOfYIndex >= 0 ? tokens.slice(xOfYIndex + 1) : [];
+  const productRelIndex = findIndex(after, (t) => t.toLowerCase().includes("tea towel"));
+  const productAbsIndex = productRelIndex >= 0 ? xOfYIndex + 1 + productRelIndex : -1;
+
+  out.productName = productAbsIndex >= 0 ? tokens[productAbsIndex] : "Custom Tea Towel";
+
+  // material is token after product
+  out.material = productAbsIndex >= 0 ? tokens[productAbsIndex + 1] || null : null;
+
+  // qty is usually number right before FF
+  let qty = null;
+  if (ffIndex >= 1) {
+    const n = Number(tokens[ffIndex - 1]);
+    if (Number.isFinite(n)) qty = n;
+  }
+  out.qty = qty;
+
+  // variant is everything between material and qty (up to ffIndex-1)
+  const variantStart = productAbsIndex >= 0 ? productAbsIndex + 2 : -1;
+  const variantEnd = ffIndex >= 0 ? ffIndex - 1 : tokens.length; // exclusive
+
+  if (variantStart >= 0 && variantStart < variantEnd) {
+    out.variant = tokens.slice(variantStart, variantEnd).join(" ").trim() || null;
+  } else {
+    out.variant = null;
+  }
+
+  out.size = null;
+
+  out.printTypeCode = "TEA_TOWEL";
+  out.printType = toPrintTypeLabel(out.printTypeCode);
 
   return out;
 }
@@ -265,24 +349,20 @@ function parseXwdBased(tokens, baseOut) {
   }
 
   const tvLower = (typeVariant || "").toLowerCase();
-  out.printType = detectPrintTypeFromText(tvLower);
+  out.printTypeCode = detectPrintTypeFromText(tvLower);
+  out.printType = toPrintTypeLabel(out.printTypeCode);
 
   // size extraction depends on printType
-  // For FQ/SAMPLE: extract from typeVariant, e.g. "... - 65 x 48 cm"
-  // For LM: usually no size, but variant after dash is meaningful
   let size = null;
   let variant = null;
 
-  if (out.printType === "LM") {
-    // variant: text after dash
+  if (out.printTypeCode === "LM") {
     variant = typeVariant ? stripPrefixBeforeDash(typeVariant) : null;
     size = null;
-  } else if (out.printType === "FQ" || out.printType === "SAMPLE") {
+  } else if (out.printTypeCode === "FQ" || out.printTypeCode === "SAMPLE") {
     size = typeVariant ? extractSizeFromText(typeVariant) : null;
-    // variant: whatever after dash too (will be "65 x 48 cm" / "20 x 20 cm")
     variant = typeVariant ? stripPrefixBeforeDash(typeVariant) : null;
   } else {
-    // Unknown - try best effort
     size = typeVariant ? extractSizeFromText(typeVariant) : null;
     variant = typeVariant ? stripPrefixBeforeDash(typeVariant) : null;
   }
@@ -315,7 +395,7 @@ function validateCommon(out) {
   }
 
   // printType
-  if (!out.printType || out.printType === "UNKNOWN") {
+  if (!out.printTypeCode || out.printTypeCode === "UNKNOWN") {
     addError(out, "MISSING_PRINT_TYPE", "Print type could not be detected.");
   }
 
@@ -338,7 +418,7 @@ function validateCommon(out) {
 }
 
 function validateByType(out) {
-  if (out.printType === "CUSHION") {
+  if (out.printTypeCode === "CUSHION") {
     if (!out.internalId) {
       addError(out, "MISSING_INTERNAL_ID", "Cushion internal id not found (expected token after FF).");
     }
@@ -347,14 +427,23 @@ function validateByType(out) {
     }
   }
 
-  if (out.printType === "LM" || out.printType === "FQ" || out.printType === "SAMPLE") {
+  if (out.printTypeCode === "TEA_TOWEL") {
+    if (!out.internalId) {
+      addError(out, "MISSING_INTERNAL_ID", "Tea Towel internal id not found (expected token after FF).");
+    }
+    if (!out.variant || !String(out.variant).trim()) {
+      addError(out, "MISSING_VARIANT", "Tea Towel variant not found (e.g. Fully Sewn / DIY Sew at Home).");
+    }
+  }
+
+  if (out.printTypeCode === "LM" || out.printTypeCode === "FQ" || out.printTypeCode === "SAMPLE") {
     // XWD-based must have artworkId
     if (!out.artworkId) {
       addError(out, "MISSING_ARTWORK_ID", "ArtworkId (XWD...) not found.");
     }
   }
 
-  if (out.printType === "FQ" || out.printType === "SAMPLE") {
+  if (out.printTypeCode === "FQ" || out.printTypeCode === "SAMPLE") {
     if (!out.size) {
       addError(out, "MISSING_SIZE", `${out.printType} requires size (e.g. 65 x 48 cm / 20 x 20 cm).`);
     }
@@ -381,7 +470,9 @@ function parsePrintFileName(fileName, options = {}) {
     x: null,
     y: null,
 
+    printTypeCode: "UNKNOWN",
     printType: "UNKNOWN",
+
     material: null,
 
     qty: null,
@@ -409,6 +500,8 @@ function parsePrintFileName(fileName, options = {}) {
 
   if (kind === "CUSHION") {
     parseCushion(tokens, out);
+  } else if (kind === "TEA_TOWEL") {
+    parseTeaTowel(tokens, out);
   } else if (kind === "XWD_BASED") {
     parseXwdBased(tokens, out);
   } else {
@@ -419,12 +512,14 @@ function parsePrintFileName(fileName, options = {}) {
     out.x = xo.x;
     out.y = xo.y;
 
-    out.printType = detectPrintTypeFromText(tokens.join(" ").toLowerCase());
-    addError(out, "UNKNOWN_FORMAT", "Filename format not recognized (neither Cushion nor XWD-based).");
+    out.printTypeCode = detectPrintTypeFromText(tokens.join(" ").toLowerCase());
+    out.printType = toPrintTypeLabel(out.printTypeCode);
+
+    addError(out, "UNKNOWN_FORMAT", "Filename format not recognized (neither Cushion nor Tea Towel nor XWD-based).");
   }
 
   // If parsed kind is XWD-based, but printType still UNKNOWN, add error
-  if (kind === "XWD_BASED" && out.printType === "UNKNOWN") {
+  if (kind === "XWD_BASED" && out.printTypeCode === "UNKNOWN") {
     addError(out, "MISSING_PRINT_TYPE", "Could not detect LM/FQ/SAMPLE from filename text.");
   }
 

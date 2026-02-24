@@ -49,15 +49,30 @@
   width: 100%;
   height: auto;
   padding-left: 20px;
+  padding-right: 20px;
 }
 
 .list_item {
   display: flex;
   justify-content: flex-start;
   align-items: center;
-  gap:10px;
   width: 100%;
   height: 50px;
+}
+.item_info{
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  gap:10px;
+  width: 70%;
+  height: 100%;
+}
+.item_badges {
+  display:flex;
+  align-items: center;
+  justify-content: flex-start;
+  width:30%;
+  height: 100%;
 }
 .item_radio {
   width: 10px;
@@ -72,52 +87,7 @@
   justify-content: flex-start;
   width: 80%;
   height: 100%;
-  font-size: 14px;
-  font-weight: 300;
+  font-size: 13px;
+  font-weight: 400;
   color: var(--text-black);
-}
-.item_type {
-  display:flex;
-  align-items: center;
-  justify-content: center;
-  width: auto;
-  height: 40%;
-  padding: 2px 5px;
-  font-size: 10px;
-  text-align: center;
-  font-weight: 500;
-  border-radius: 20px;
-  border: 1px solid #6302ce;
-  background-color: #ddceff;
-  color: #6302ce;
-}
-.item_material {
-  display:flex;
-  align-items: center;
-  justify-content: center;
-  width: auto;
-  height: 40%;
-  padding: 2px 5px;
-  font-size: 10px;
-  text-align: center;
-  font-weight: 500;
-  border-radius: 20px;
-  border: 1px solid #aa6902;
-  background-color: #fec43e;
-  color: #aa6902;
-}
-.item_status {
-  display:flex;
-  align-items: center;
-  justify-content: center;
-  width: auto;
-  height: 40%;
-  padding: 2px 5px;
-  font-size: 10px;
-  text-align: center;
-  font-weight: 500;
-  border-radius: 20px;
-  border: 1px solid #167847;
-  background-color: #8aedbc;
-  color: #167847;
 }
