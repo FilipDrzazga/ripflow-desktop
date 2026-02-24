@@ -1,17 +1,17 @@
 :root {
   /* === BACKGROUND === */
   --bg-white: #ffffff;
-  --bg-grey: #f9f9f9;
+  --bg-grey: #f5f6f8;
 
   --text-black:#171717;
   --text-grey: #737373;
   --text-white: #ffffff;
 
   /* === BORDER === */
-  --border-grey: #e9e9e9;
+  --border-grey: #e5e7eb;
 
   /* === CARD === */
-  --card-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --card-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
   --card-shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.06);
 }
 

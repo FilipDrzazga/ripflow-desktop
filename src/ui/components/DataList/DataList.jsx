@@ -7,14 +7,13 @@ const DataList = () => {
 
   return (
     <div className={style.list_container}>
-      {store.files.map((group) => (
-        <div key={group.printGroup} className={style.list_content}>
+      {store.files.map((file) => (
+        <div key={file.printGroup} className={style.list_content}>
           <div className={style.list_title}>
-            <div className={style.title_highlight}></div>
-            {group.printGroup}
+            {file.printGroup} <Badge type={file.count} />
           </div>
           <ul className={style.list_items}>
-            {group.items.map((item) => (
+            {file.items.map((item) => (
               <li key={item.id} className={style.list_item}>
                 <div className={style.item_radio}></div>
                 <div className={style.item_name}>{item.file.name}</div>

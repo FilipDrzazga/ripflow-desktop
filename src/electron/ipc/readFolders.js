@@ -4,6 +4,7 @@ import { getRootPath } from "../helpers/getRootPath.js";
 import { isPDF } from "../helpers/isPDF.js";
 import { parsePrintFileName } from "../helpers/parseFileName.js";
 import { getMaterialType } from "../helpers/getMaterialType.js";
+import { getFileAgeInDays } from "../helpers/getFileAgeInDays.js";
 
 export const readFolders = async () => {
   try {
@@ -21,6 +22,8 @@ export const readFolders = async () => {
 
         const jobs = getJobsInside.map(async (job) => {
           if (job.isFile()) {
+            const fileStats = await fs.promises.stat(path.join(PATH, folder.name, job.name));
+            if (fileStats.size === 0) return null;
             const ispdf = await isPDF(path.join(PATH, folder.name, job.name));
             if (!ispdf) return null;
             const meta = parsePrintFileName(job.name, { fullPath: path.join(PATH, folder.name, job.name), dir: PATH });
@@ -29,7 +32,10 @@ export const readFolders = async () => {
               id: `${folder.name}_${job.name}`,
               printGroup: folder.name,
               materialType: getMaterialType(meta.material),
+              createdAt: fileStats.birthtime,
+              diffDays: getFileAgeInDays(fileStats),
               ...meta,
+
             };
           }
         });

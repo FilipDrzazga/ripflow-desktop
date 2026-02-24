@@ -1,3 +1,9 @@
+.badge_container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width:90px;
+}
 .badge {
   display:flex;
   align-items: center;
