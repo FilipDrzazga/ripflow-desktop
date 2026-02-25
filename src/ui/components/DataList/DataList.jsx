@@ -21,7 +21,9 @@ const DataList = () => {
                   <div className={style.item_name}>{item.file.name}</div>
                 </div>
                 <div className={style.item_badges}>
-                  <Counter/>
+                  <Counter diffDays={item.diffDays}>
+                    <Badge type="DiffDays" badgeText={item.diffDays === 1 ? `NEW` : `${item.diffDays} DAYS`} />
+                  </Counter>
                   <Badge type={item.printType} badgeText={item.printType} />
                   <Badge type={item.materialType} badgeText={item.materialType} />
                   <Badge type={item.status} badgeText={item.status} />

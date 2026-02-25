@@ -2,7 +2,7 @@ import style from "./Badge.module.css";
 const badgeArr = [
     { type: 'Linear Meter', bgColor: '#f1f5f9', textColor: '#334155'},
     { type: 'Fat Quarter', bgColor: '#f1f5f9', textColor: '#334155' },
-    { type: 'Square Cushion', bgColor: '#f1f5f9', textColor: '#334155'},
+    { type: 'Cushion', bgColor: '#f1f5f9', textColor: '#334155'},
     { type: 'Sample', bgColor: '#f1f5f9', textColor: '#334155' },
     { type: 'Tea Towel', bgColor: '#f1f5f9', textColor: '#334155' },
     { type: 'Poly', bgColor: '#eef2ff', textColor: '#4338ca' },
@@ -10,6 +10,8 @@ const badgeArr = [
     { type: 'OK', bgColor: '#ecfdf5', textColor: '#047857' },
     { type: 'INVALID', bgColor: '#fffbeb', textColor: '#b45309' },
     { type: 'UNKNOWN', bgColor: '#fff7ed', textColor: '#c2410c' },
+    { type: 'DiffDays', bgColor: '#ffffff', textColor: '#171717' },
+
 
 ];
 

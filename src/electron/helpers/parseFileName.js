@@ -17,7 +17,7 @@ const PRINT_TYPE_LABEL = {
   LM: "Linear Meter",
   FQ: "Fat Quarter",
   SAMPLE: "Sample",
-  CUSHION: "Square Cushion",
+  CUSHION: "Cushion",
   TEA_TOWEL: "Tea Towel",
   UNKNOWN: "UNKNOWN",
 };
