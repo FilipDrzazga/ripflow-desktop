@@ -7,7 +7,7 @@ import { registerIpcHandlers } from "./ipc/index.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-function createWindow() {
+const mainWindow = () => {
   const win = new BrowserWindow({
     width: 1900,
     height: 1000,
@@ -28,12 +28,12 @@ function createWindow() {
     // PROD: po buildzie Vite -> dist/ui/index.html
     win.loadFile(join(app.getAppPath(), "dist/ui/index.html"));
   }
-}
+};
 
 app.whenReady().then(() => {
   // Menu.setApplicationMenu(null);
   registerIpcHandlers();
-  createWindow();
+  mainWindow();
 });
 
 app.on("window-all-closed", () => {

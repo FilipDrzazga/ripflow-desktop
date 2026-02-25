@@ -6,8 +6,12 @@ import { parsePrintFileName } from "../helpers/parseFileName.js";
 import { getMaterialType } from "../helpers/getMaterialType.js";
 import { getFileAgeInDays } from "../helpers/getFileAgeInDays.js";
 
-export const readFolders = async () => {
+export const readFolders = async ({ onProgress } = {}) => {
+  const progress = (label, percent) => {
+    if (typeof onProgress === "function") onProgress({ label, percent });
+  };
   try {
+    progress("Detecting main folder...", 0);
     const PATH = getRootPath();
     // check if the FOLDERS path exist
     const isFolderExist = await fs.promises.stat(PATH);
@@ -16,6 +20,7 @@ export const readFolders = async () => {
     const readMainFolder = await fs.promises.readdir(PATH, { withFileTypes: true });
 
     // read all subfolders and files inside
+    progress("Reading and parsing files...", 30);
     const readSubFolders = readMainFolder.map(async (folder) => {
       if (folder.isDirectory()) {
         const getJobsInside = await fs.promises.readdir(path.join(PATH, folder.name), { withFileTypes: true });
@@ -35,7 +40,6 @@ export const readFolders = async () => {
               createdAt: fileStats.birthtime,
               diffDays: getFileAgeInDays(fileStats),
               ...meta,
-
             };
           }
         });
@@ -46,6 +50,8 @@ export const readFolders = async () => {
 
     const nested = await Promise.all(readSubFolders);
     const files = nested.flat();
+
+    progress("Grouping files...", 80);
 
     const groupedByFolder = files.reduce((acc, item) => {
       const key = item.printGroup;
@@ -60,6 +66,7 @@ export const readFolders = async () => {
       count: items.length,
     }));
 
+    progress("Done!", 100);
     return { ok: true, data: groupedByFolderArray };
   } catch (err) {
     return {

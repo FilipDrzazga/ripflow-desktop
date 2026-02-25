@@ -1,19 +1,17 @@
 .badge_container {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    /* width:50% */
-    height: 100%;
-    flex:1;
-    /* background-color: pink; */
-    /* border: 1px solid black; */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 20%;
+  height: auto;
+  /* border: 1px solid black; */
 }
 .badge {
-  display:flex;
+  display: flex;
   align-items: center;
   justify-content: center;
   width: auto;
-  height: 40%;
+  height: auto;
   padding: 2px 5px;
   font-size: 10px;
   text-align: center;

@@ -4,14 +4,18 @@ import { createBatch } from "./createBatch.js";
 import { sendBatchToProductize } from "./createXML.js";
 
 export function registerIpcHandlers() {
-  ipcMain.handle("read-folders", async () => {
+  ipcMain.handle("read-folders", async (event) => {
     try {
-      return await readFolders();
+      return await readFolders({
+        onProgress: (payload) => {
+          // payload: { label, percent }
+          event.sender.send("read-folders:progress", payload);
+        },
+      });
     } catch (err) {
       return err.message;
     }
   });
-
   ipcMain.handle("batch-create", async (_event, payload) => {
     try {
       return await createBatch(payload);

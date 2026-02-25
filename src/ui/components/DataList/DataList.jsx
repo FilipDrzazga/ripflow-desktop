@@ -1,5 +1,5 @@
 import { useStore } from "../../store/useStore";
-import  Badge from "../Badge/Badge";
+import Badge from "../Badge/Badge";
 import Counter from "../Counter/Counter";
 import style from "./DataList.module.css";
 
@@ -10,9 +10,7 @@ const DataList = () => {
     <div className={style.list_container}>
       {store.files.map((file) => (
         <div key={file.printGroup} className={style.list_content}>
-          <div className={style.list_title}>
-            {file.printGroup} <Badge type={file.count} />
-          </div>
+          <div className={style.list_title}>{file.printGroup}</div>
           <ul className={style.list_items}>
             {file.items.map((item) => (
               <li key={item.id} className={style.list_item}>
