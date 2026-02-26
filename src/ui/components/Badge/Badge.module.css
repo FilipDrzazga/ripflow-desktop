@@ -2,16 +2,16 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  width: 20%;
+  width: 30%;
   height: auto;
 }
 .badge {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: auto;
-  height: auto;
-  padding: 3px 1px;
+  width: 90%;
+  height: 10%;
+  /* padding: 5px 3px; */
   font-size: 10px;
   text-align: center;
   font-weight: 600;
