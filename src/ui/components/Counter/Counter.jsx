@@ -8,6 +8,7 @@ const Counter = ({ diffDays, children })=>{
     const PROGRESS_COLORS = [
         '#86efac',
         '#facc15',
+        '#fb923c',
         '#f87171'
     ];
 
@@ -17,9 +18,9 @@ const Counter = ({ diffDays, children })=>{
         const visibleProgressPercent =  diffDays >= 1 ? Math.max(baseProgressPercent, MIN_VISIBLE) : 0;
         
         let color = PROGRESS_COLORS[0];
-         if(visibleProgressPercent >= 32) color = PROGRESS_COLORS[1];
-         if(visibleProgressPercent >= 67) color = PROGRESS_COLORS[2];
-       
+         if(visibleProgressPercent >= 25) color = PROGRESS_COLORS[1];
+         if(visibleProgressPercent >= 50) color = PROGRESS_COLORS[2];
+         if(visibleProgressPercent >= 75) color = PROGRESS_COLORS[3];
          return {
             width: `${visibleProgressPercent}%`,
             backgroundColor: color,

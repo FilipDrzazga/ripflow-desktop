@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useStore } from "./store/useStore";
 import "./styles/global.css";
 import styles from "./App.module.css";
@@ -7,14 +7,11 @@ import StartupLoader from "./components/StartupLoader/StartupLoader";
 
 const App = () => {
   const store = useStore();
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    let unsubscribe;
     const fetchFolders = async () => {
       try {
-        unsubscribe = window.api.onReadFoldersProgress((payload) => {
-          console.log(`${payload.label}: ${payload.percent}%`);
-        });
         const res = await window.api.readFolders();
         if (!res.ok) return;
         store.setFiles(res.data);
@@ -24,14 +21,11 @@ const App = () => {
       }
     };
     fetchFolders();
-    return () => {
-      if (unsubscribe) unsubscribe();
-    };
   }, []);
   return (
     <div className={styles.app}>
-      {/* <DataList /> */}
-      <StartupLoader />
+      {isLoading && <StartupLoader onDone={()=> setIsLoading(false)} />}
+      {!isLoading && <DataList />}
     </div>
   );
 };

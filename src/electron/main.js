@@ -23,7 +23,7 @@ const mainWindow = () => {
   if (!app.isPackaged) {
     // win.maximize();
     win.loadURL("http://localhost:5173");
-    win.webContents.openDevTools();
+    // win.webContents.openDevTools();
   } else {
     // PROD: po buildzie Vite -> dist/ui/index.html
     win.loadFile(join(app.getAppPath(), "dist/ui/index.html"));
