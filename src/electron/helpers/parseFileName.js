@@ -527,7 +527,7 @@ function parsePrintFileName(fileName, options = {}) {
   validateCommon(out);
   validateByType(out);
 
-  out.status = out.errors.length ? "INVALID" : "OK";
+  out.status = out.errors.length ? "INVALID" : "READY";
 
   return out;
 }

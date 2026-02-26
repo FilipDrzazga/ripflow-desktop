@@ -4,7 +4,7 @@
   flex-direction: column;
   gap: 20px;
   width: 90%;
-  height: 70vh;
+  height: 80vh;
   padding: 20px;
   border-radius: 20px;
   overflow-y: auto;
@@ -18,10 +18,10 @@
   justify-content: flex-start;
   gap: 20px;
   width: 100%;
-  height: auto;
+  height: 100%;
   padding: 0px 0px 20px 0px;
   border-radius: 20px;
-  border: 1px solid var(--border-grey);
+  /* border: 1px solid var(--border-grey); */
   box-shadow: var(--card-shadow);
   background-color: var(--bg-white);
 }

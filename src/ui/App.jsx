@@ -3,6 +3,7 @@ import { useStore } from "./store/useStore";
 import "./styles/global.css";
 import styles from "./App.module.css";
 import DataList from "./components/DataList/DataList";
+import DataFilters from "./components/DataFilters/DataFilters";
 import StartupLoader from "./components/StartupLoader/StartupLoader";
 
 const App = () => {
@@ -25,7 +26,12 @@ const App = () => {
   return (
     <div className={styles.app}>
       {isLoading && <StartupLoader onDone={()=> setIsLoading(false)} />}
-      {!isLoading && <DataList />}
+      {!isLoading && (
+        <>
+          <DataFilters />
+          <DataList />
+        </>
+      )}
     </div>
   );
 };

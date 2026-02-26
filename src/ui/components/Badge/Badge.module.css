@@ -4,7 +4,6 @@
   align-items: center;
   width: 20%;
   height: auto;
-  /* border: 1px solid black; */
 }
 .badge {
   display: flex;
@@ -12,9 +11,9 @@
   justify-content: center;
   width: auto;
   height: auto;
-  padding: 2px 5px;
+  padding: 3px 1px;
   font-size: 10px;
   text-align: center;
   font-weight: 600;
-  border-radius: 20px;
+  border-radius: 7px;
 }

@@ -7,7 +7,7 @@ const badgeArr = [
     { type: 'Tea Towel', bgColor: '#f1f5f9', textColor: '#334155' },
     { type: 'Poly', bgColor: '#eef2ff', textColor: '#4338ca' },
     { type: 'Cotton', bgColor: '#ecfeff', textColor: '#0e7490' },
-    { type: 'OK', bgColor: '#ecfdf5', textColor: '#047857' },
+    { type: 'READY', bgColor: '#ecfdf5', textColor: '#047857' },
     { type: 'INVALID', bgColor: '#fffbeb', textColor: '#b45309' },
     { type: 'UNKNOWN', bgColor: '#fff7ed', textColor: '#c2410c' },
     { type: 'DiffDays', bgColor: '#ffffff', textColor: '#171717' },
