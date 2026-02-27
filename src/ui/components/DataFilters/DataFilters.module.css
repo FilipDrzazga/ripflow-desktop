@@ -3,10 +3,9 @@
     justify-content: flex-start;
     align-items: center;
     gap: 20px;
-    width:90%;
+    width:100%;
     height:80px;
     padding-left:20px;
-    /* border:1px solid var(--border-grey); */
     border-radius: 20px;
     background-color: var(--bg-grey);
 }
@@ -19,6 +18,7 @@
     height: auto;
     padding: 8px 20px;
     border-radius: 10px;
+    border:1px solid var(--bg-grey-light);
     background-color: var(--bg-grey-light);
     box-shadow: var(--card-shadow);
     color: var(--text-disabled);
@@ -26,12 +26,12 @@
     font-weight: 600;
 }
 .filter_button:hover{
-    background-color: var(--bg-grey-light);
+    background-color: var(--bg-white);
     border:1px solid var(--bg-grey-light);
     color: var(--text-black);
 }
 .filter_button.active{
-    background-color: var(--primary-color);
-    color: var(--bg-white);
-    border:1px solid var(--primary-color);
+    background-color: var(--bg-black);
+    color: var(--text-white);
+    border:1px solid var(--border-black);
 }

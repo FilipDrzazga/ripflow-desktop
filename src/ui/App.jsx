@@ -16,9 +16,10 @@ const App = () => {
         const res = await window.api.readFolders();
         if (!res.ok) return;
         store.setFiles(res.data);
-        console.log(res.data);
+        store.setFilteredFiles(res.data);
+        // console.log(res.data);
       } catch (err) {
-        console.log(err.message);
+        // console.log(err.message);
       }
     };
     fetchFolders();

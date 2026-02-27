@@ -131,8 +131,8 @@ export const POLY_MATERIALS = new Set(
 
 export function getMaterialType(material) {
   const m = normalize(material);
-  if (!m) return "unknown";
-  if (COTTON_MATERIALS.has(m)) return "Cotton";
-  if (POLY_MATERIALS.has(m)) return "Poly";
-  return "unknown"; // jeśli kiedyś dojdzie nowy materiał, od razu go wyłapiesz
+  if (!m) return "Unknown";
+  if (COTTON_MATERIALS.has(m)) return "Cottons";
+  if (POLY_MATERIALS.has(m)) return "Polyesters";
+  return "Unknown"; // jeśli kiedyś dojdzie nowy materiał, od razu go wyłapiesz
 }

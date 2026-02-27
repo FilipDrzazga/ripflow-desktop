@@ -23,7 +23,7 @@
 .loader_title {
   font-size: 12px;
   font-weight: 600;
-  color: var(--text-black);
+  color: var(--text-primary);
 }
 .loader_track {
   width: 100%;
@@ -38,5 +38,5 @@
   width: 10%;
   height: 80%;
   border-radius: 2px;
-  background-color: var(--text-black);
+  background-color: var(--text-primary);
 }

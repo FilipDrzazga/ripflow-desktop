@@ -3,8 +3,9 @@
   --bg-white: #ffffff;
   --bg-grey: #f1f1f1;
   --bg-grey-light: #f7f7f7;
+  --bg-black: #303030;
 
-  --text-black: #303030;
+  --text-primary: #303030;
   --text-secondary: #616161;
   --text-disabled: #cacaca;
   --text-grey: #737373;
@@ -12,6 +13,7 @@
 
   /* === BORDER === */
   --border-grey: #e5e7eb;
+  --border-black: #303030;
 
   /* === CARD === */
   --card-shadow:0rem .3125rem .3125rem -.15625rem #00000008, 0rem .1875rem .1875rem -.09375rem #00000005, 0rem .125rem .125rem -.0625rem #00000005, 0rem .0625rem .0625rem -.03125rem #00000008, 0rem .03125rem .03125rem 0rem #0000000a, 0rem 0rem 0rem .0625rem #0000000f;

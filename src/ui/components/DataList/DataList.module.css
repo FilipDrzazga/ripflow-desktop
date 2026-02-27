@@ -3,8 +3,8 @@
   display: flex;
   flex-direction: column;
   gap: 20px;
-  width: 90%;
-  height: 80vh;
+  width: 100%;
+  height: 60vh;
   padding: 20px;
   border-radius: 20px;
   overflow-y: auto;
@@ -18,7 +18,7 @@
   justify-content: flex-start;
   gap: 20px;
   width: 100%;
-  height: 100%;
+  height: auto;
   padding: 0px 0px 20px 0px;
   border-radius: 20px;
   /* border: 1px solid var(--border-grey); */
@@ -39,7 +39,7 @@
   font-size: 16px;
   font-weight: 600;
   background-color: var(--bg-white);
-  color: var(--text-black);
+  color: var(--text-primary);
 }
 
 .list_items {

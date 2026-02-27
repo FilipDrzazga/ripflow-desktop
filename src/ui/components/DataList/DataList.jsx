@@ -8,7 +8,7 @@ const DataList = () => {
 
   return (
     <div className={style.list_container}>
-      {store.files.map((file) => (
+      {store.filteredFiles.map((file) => (
         <div key={file.printGroup} className={style.list_content}>
           <div className={style.list_title}>{file.printGroup}</div>
           <ul className={style.list_items}>

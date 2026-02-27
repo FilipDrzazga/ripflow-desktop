@@ -9,8 +9,8 @@ const __dirname = dirname(__filename);
 
 const mainWindow = () => {
   const win = new BrowserWindow({
-    width: 1900,
-    height: 1000,
+    width: 1600,
+    height: 1300,
     resizable: false,
     maximizable: false,
     fullscreenable: false,
