@@ -17,7 +17,7 @@ const App = () => {
         if (!res.ok) return;
         store.setFiles(res.data);
         store.setFilteredFiles(res.data);
-        // console.log(res.data);
+        console.log(res.data);
       } catch (err) {
         // console.log(err.message);
       }
@@ -26,7 +26,7 @@ const App = () => {
   }, []);
   return (
     <div className={styles.app}>
-      {isLoading && <StartupLoader onDone={()=> setIsLoading(false)} />}
+      {isLoading && <StartupLoader onDone={() => setIsLoading(false)} />}
       {!isLoading && (
         <>
           <DataFilters />
