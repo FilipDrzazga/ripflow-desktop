@@ -1,0 +1,98 @@
+.selection_container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: auto;
+  height: 80px;
+  padding: 0px 20px;
+  border-radius: 20px;
+  box-shadow: var(--card-shadow);
+  background-color: var(--bg-white);
+}
+
+.selection_items {
+  width: auto;
+  height: auto;
+  border: 2px dashed var(--bg-grey);
+  border-radius: 10px;
+  margin-right: 20px;
+  padding: 10px;
+}
+
+.separator {
+  width: 1px;
+  height: 30px;
+  background-color: var(--bg-grey);
+  /* box-shadow: var(--card-shadow); */
+}
+
+.selection_form {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 20px;
+  width: auto;
+  height: auto;
+  padding-left: 20px;
+  border-radius: 20px;
+  font-size: 16px;
+  font-weight: 600;
+}
+.selection_label {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 5px;
+  width: auto;
+  height: auto;
+  /* padding: 8px 20px; */
+  /* border-radius: 10px; */
+  /* border: 1px solid var(--bg-grey-light); */
+  /* background-color: var(--bg-grey-light); */
+  /* box-shadow: var(--card-shadow); */
+  /* color: var(--text-disabled); */
+}
+.selection_input {
+  width: 14px;
+  height: 14px;
+  text-align: center;
+  margin: auto;
+}
+.submit_button {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 5px;
+  width: auto;
+  height: auto;
+  padding: 8px 20px;
+  border-radius: 10px;
+  border: 1px solid var(--bg-grey-light);
+  background-color: var(--btn-submit-bg);
+  /* box-shadow: var(--card-shadow); */
+  color: var(--text-white);
+  font-size: 14px;
+  font-weight: 600;
+}
+.submit_button:hover {
+  background-color: var(--btn-submit-bg-hover);
+}
+.clear_button {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 5px;
+  width: auto;
+  height: auto;
+  padding: 8px 20px;
+  border-radius: 10px;
+  border: 1px solid var(--bg-grey-light);
+  background-color: var(--btn-clear-bg);
+  /* box-shadow: var(--card-shadow); */
+  color: var(--text-white);
+  font-size: 14px;
+  font-weight: 600;
+}
+.clear_button:hover {
+  background-color: var(--btn-clear-bg-hover);
+}

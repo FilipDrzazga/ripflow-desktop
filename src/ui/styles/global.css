@@ -15,9 +15,17 @@
   --border-grey: #e5e7eb;
   --border-black: #303030;
 
+  /*  === BTN === */
+  --btn-submit-bg: #16a34a;
+  --btn-submit-bg-hover: #15803d;
+  --btn-clear-bg: #dc2626;
+  --btn-clear-bg-hover: #991b1b;
+
   /* === CARD === */
-  --card-shadow:0rem .3125rem .3125rem -.15625rem #00000008, 0rem .1875rem .1875rem -.09375rem #00000005, 0rem .125rem .125rem -.0625rem #00000005, 0rem .0625rem .0625rem -.03125rem #00000008, 0rem .03125rem .03125rem 0rem #0000000a, 0rem 0rem 0rem .0625rem #0000000f;
-  --card-shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.06);
+  --card-shadow:
+    0rem 0.3125rem 0.3125rem -0.15625rem #00000008, 0rem 0.1875rem 0.1875rem -0.09375rem #00000005,
+    0rem 0.125rem 0.125rem -0.0625rem #00000005, 0rem 0.0625rem 0.0625rem -0.03125rem #00000008,
+    0rem 0.03125rem 0.03125rem 0rem #0000000a, 0rem 0rem 0rem 0.0625rem #0000000f;
 }
 
 *,

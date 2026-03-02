@@ -9,8 +9,11 @@ const DataFilters = () => {
   const store = useStore();
   const [isActive, setIsActive] = useState("All");
 
-  const hadleClick = (e) => {
-    const buttonText = e.target.innerText;
+  const handleClick = (e) => {
+    const parentButton = e.target.closest("button");
+    if (!parentButton) return;
+
+    const buttonText = parentButton.innerText.trim();
     setIsActive(buttonText);
 
     const filteredFiles = store.files.filter((file) => {
@@ -18,26 +21,28 @@ const DataFilters = () => {
     });
     if (buttonText === "All") return store.setFilteredFiles(store.files);
     store.setFilteredFiles(filteredFiles);
+
+    store.toggleClearSelection();
   };
   return (
     <div className={styles.filters_container}>
       <button
-        onClick={(e) => hadleClick(e)}
+        onClick={(e) => handleClick(e)}
         className={`${styles.filter_button} ${isActive === "All" ? styles.active : ""}`}
       >
         {isActive === "All" ? <HiClipboardDocumentList /> : <HiOutlineClipboardDocumentList />}All
       </button>
       <button
-        onClick={(e) => hadleClick(e)}
+        onClick={(e) => handleClick(e)}
         className={`${styles.filter_button} ${isActive === "Cottons" ? styles.active : ""}`}
       >
         {isActive === "Cottons" ? <IoLeaf /> : <IoLeafOutline />}Cottons
       </button>
       <button
-        onClick={(e) => hadleClick(e)}
+        onClick={(e) => handleClick(e)}
         className={`${styles.filter_button} ${isActive === "Polyesters" ? styles.active : ""}`}
       >
-        {isActive === "Polyesters" ? <PiPolygon /> : <PiPolygonFill />}Polyesters
+        {isActive === "Polyesters" ? <PiPolygonFill /> : <PiPolygon />}Polyesters
       </button>
     </div>
   );

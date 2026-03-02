@@ -19,11 +19,12 @@ export const useStore = create((set) => ({
   toggleGroupSelection: (groupItems) =>
     set((state) => {
       const newSelectedIds = new Set(state.selectedIds);
-      const allSelected = groupItems.every((item) => newSelectedIds.has(item.id));
+      const validItems = groupItems.filter((item) => item.status !== "INVALID");
+      const allSelected = validItems.every((item) => newSelectedIds.has(item.id));
       if (allSelected) {
-        groupItems.forEach((item) => newSelectedIds.delete(item.id));
+        validItems.forEach((item) => newSelectedIds.delete(item.id));
       } else {
-        groupItems.forEach((item) => newSelectedIds.add(item.id));
+        validItems.forEach((item) => newSelectedIds.add(item.id));
       }
       return { selectedIds: newSelectedIds };
     }),

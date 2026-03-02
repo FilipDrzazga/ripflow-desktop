@@ -5,6 +5,7 @@ import styles from "./App.module.css";
 import DataList from "./components/DataList/DataList";
 import DataFilters from "./components/DataFilters/DataFilters";
 import StartupLoader from "./components/StartupLoader/StartupLoader";
+import DataPrintSelection from "./components/DataPrintSelection/DataPrintSelection";
 
 const App = () => {
   const store = useStore();
@@ -31,6 +32,7 @@ const App = () => {
         <>
           <DataFilters />
           <DataList />
+          <DataPrintSelection />
         </>
       )}
     </div>
