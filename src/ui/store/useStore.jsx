@@ -1,7 +1,19 @@
 import { create } from "zustand";
 
-export const useStore = create((set) => ({
+export const useStore = create((set, get) => ({
   alerts: [],
+  setAlert: (alert) => {
+    const isAlertExists = get().alerts.some((item) => item.id === alert.id);
+    if (isAlertExists) {
+      return;
+    }
+    set((state) => ({ alerts: [alert, ...state.alerts].slice(0, 3) }));
+  },
+  deleteAlert: (id) =>
+    set((state) => ({
+      alerts: state.alerts.filter((alert) => alert.id !== id),
+    })),
+
   files: [],
   filteredFiles: [],
   setFiles: (files) => set({ files }),
