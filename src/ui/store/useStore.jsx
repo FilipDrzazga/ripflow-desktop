@@ -1,6 +1,7 @@
 import { create } from "zustand";
 
 export const useStore = create((set) => ({
+  alerts: [],
   files: [],
   filteredFiles: [],
   setFiles: (files) => set({ files }),

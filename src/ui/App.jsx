@@ -6,6 +6,7 @@ import DataList from "./components/DataList/DataList";
 import DataFilters from "./components/DataFilters/DataFilters";
 import StartupLoader from "./components/StartupLoader/StartupLoader";
 import DataPrintSelection from "./components/DataPrintSelection/DataPrintSelection";
+import AlertsHost from "./components/AlertsHost/AlertsHost";
 
 const App = () => {
   const store = useStore();
@@ -27,6 +28,7 @@ const App = () => {
   }, []);
   return (
     <div className={styles.app}>
+        <AlertsHost />
       {isLoading && <StartupLoader onDone={() => setIsLoading(false)} />}
       {!isLoading && (
         <>
