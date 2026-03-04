@@ -1,13 +1,14 @@
 import { create } from "zustand";
+import { subscribeWithSelector } from "zustand/middleware";
 
-export const useStore = create((set, get) => ({
+export const useStore = create(subscribeWithSelector((set, get) => ({
   alerts: [],
   setAlert: (alert) => {
     const isAlertExists = get().alerts.some((item) => item.id === alert.id);
     if (isAlertExists) {
       return;
     }
-    set((state) => ({ alerts: [alert, ...state.alerts].slice(0, 3) }));
+    set((state) => ({ alerts: [alert, ...state.alerts] }));
   },
   deleteAlert: (id) =>
     set((state) => ({
@@ -90,4 +91,4 @@ export const useStore = create((set, get) => ({
     }),
 
   toggleClearSelection: () => set(() => ({ selectedIds: new Set() })),
-}));
+})));

@@ -1,9 +1,11 @@
-import { useRef } from "react";
+import { useRef, useEffect } from "react";
 import { useStore } from "../../store/useStore";
 import { Flip } from "gsap/Flip";
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
 import { IoWarningOutline } from "react-icons/io5";
+import { MdErrorOutline } from "react-icons/md";
+import { IoCheckmarkCircleOutline } from "react-icons/io5";
 import style from "./AlertsHost.module.css";
 
 gsap.registerPlugin(Flip);
@@ -13,6 +15,7 @@ const alertTypes = [
     type: "Error",
     bgColor: "#fee2e2",
     textColor: "#b91c1c",
+    icon: <MdErrorOutline color="#b91c1c" />,
   },
   {
     type: "Warning",
@@ -24,6 +27,7 @@ const alertTypes = [
     type: "Success",
     bgColor: "#d1fae5",
     textColor: "#047857",
+    icon: <IoCheckmarkCircleOutline color="#047857" />,
   },
 ];
 
@@ -32,39 +36,71 @@ const AlertsHost = () => {
   const flipState = useRef(null);
   const store = useStore();
 
-  useGSAP(
-    () => {
-      if (!containerRef.current) return;
-
-      const items = Array.from(containerRef.current.children);
-
-      gsap.set(items, {
-        scale: (i) => 1 - i * 0.05,
-        zIndex: (i, el, arr) => arr.length - i,
-        boxShadow: (i) => `0 ${6 + i * 2}px ${16 + i * 4}px rgba(0,0,0,0.15)`,
-      });
-
-      if (flipState.current) {
-        Flip.from(flipState.current, {
-          duration: 0.4,
-          ease: "power2.out",
-          stagger: 0.05,
-          absolute: true,
-        });
+  useEffect(()=>{
+    const unsubscribe = useStore.subscribe(
+      (state) => state.alerts,
+      (alerts, prevState) => {
+        if(!containerRef.current) return;
+        if(!prevState) return;
+        if(alerts.length !== prevState.length) {
+        flipState.current = Flip.getState(Array.from(containerRef.current.children));
       }
+      }
+    );
+    return () => unsubscribe();
+  }, []);
 
-      if (items[0]) {
-        gsap.from(items[0], {
-          y: -100,
+  useGSAP(()=>{
+    if(!containerRef.current) return;
+    const children = containerRef.current ? Array.from(containerRef.current.children) : [];
+
+    if(flipState.current) {
+
+      Flip.from(flipState.current, {
+      duration: 0.3,
+      ease: "power1.inOut",
+      absolute: true,
+      onComplete: () =>{
+        gsap.to(children, {
+          scale: (i) => Math.max(1-i*0.06, 0.8),
+          zIndex: (i) => 999 - i,
           duration: 0.3,
-          ease: "power2.out",
+          ease: "power1.inOut",
+          overwrite: true,
         });
       }
+    });
 
-      flipState.current = Flip.getState(items);
-    },
-    { scope: containerRef, dependencies: [store.alerts] },
-  );
+    flipState.current = null;
+
+    } else {
+       gsap.to(children, {
+          scale: (i) => Math.max(1-i*0.06, 0.8),
+          zIndex: (i) => 999 - i,
+          duration: 0.3,
+          ease: "power1.inOut",
+          overwrite: true,
+        });
+    }
+
+    const newEl = containerRef.current.firstElementChild;
+    if(!newEl) return;
+
+    if(newEl.dataset.entered === '1') return;
+    newEl.dataset.entered = '1';
+
+    gsap.set(newEl, { zIndex: 1000 });
+    gsap.from(newEl, { y: -70, duration: 0.3, ease: "power1.inOut",onComplete:()=>{
+      gsap.to(newEl, {
+          scale: (i) => Math.max(1-i*0.06, 0.8),
+          zIndex: (i) => 999 - i,
+          duration: 0.3,
+          ease: "power1.inOut",
+          overwrite: true,
+        });
+    } });
+
+  },{dependencies:[store.alerts], scope: containerRef});
 
   return (
     <div ref={containerRef} className={style.alert_container}>
@@ -75,6 +111,7 @@ const AlertsHost = () => {
             key={alert.id}
             className={style.alert_content}
             style={{ backgroundColor: alertType.bgColor, color: alertType.textColor }}
+            data-id='item'
           >
             <div className={style.alert_icon}>{alertType.icon}</div>
             <div className={style.alert_description}>
