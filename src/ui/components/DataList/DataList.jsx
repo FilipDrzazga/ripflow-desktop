@@ -1,6 +1,7 @@
 import { useStore } from "../../store/useStore";
 import Badge from "../Badge/Badge";
 import DataDaysCounter from "../DataDaysCounter/DataDaysCounter";
+import { FiInbox } from "react-icons/fi";
 import style from "./DataList.module.css";
 
 const DataList = () => {
@@ -16,6 +17,7 @@ const DataList = () => {
 
   const lockMaterial = selectedMaterialTypes.size === 1 ? [...selectedMaterialTypes][0] : null;
   const hasSelection = store.selectedIds.size > 0;
+  const hasItems = store.filteredFiles.some((group) => group.items.length > 0);
 
   const handleGroupCheckboxChange = (e, group) => {
     e.stopPropagation();
@@ -25,6 +27,17 @@ const DataList = () => {
     e.stopPropagation();
     store.toggleItemSelection(item.id);
   };
+
+  if (!hasItems) {
+    return (
+      <div className={style.list_container}>
+        <div className={style.empty_state}>
+          <FiInbox className={style.empty_state_icon} />
+          <p className={style.empty_state_text}>Great job! All Done.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={style.list_container}>
