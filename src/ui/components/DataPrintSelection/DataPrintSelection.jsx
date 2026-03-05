@@ -34,8 +34,10 @@ const DataPrintSelection = () => {
       });
       return;
     }
-    // Tutaj możesz dodać logikę wysyłania danych do ripowania
-    console.log(`Ripowanie na ${selectedPrinter} dla materiału ${materialType}`);
+    const getFilesToPrint = store.files
+      .map((group) => group.items.filter((item) => store.selectedIds.has(item.id)))
+      .flat();
+    console.log(getFilesToPrint);
     store.toggleClearSelection();
     setSelectedPrinter(null);
   };
