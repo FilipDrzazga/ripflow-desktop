@@ -1,4 +1,4 @@
-export const createBatchId = (batchInfo) => {
+export const createBatchIds = (batchInfo) => {
   const getPrintGroupArr = batchInfo.map((item) => item.printGroup);
   const uniquePrintGroups = [...new Set(getPrintGroupArr)];
   const printGroup = uniquePrintGroups.length === 1 ? uniquePrintGroups[0] : "MIXED";
@@ -11,5 +11,11 @@ export const createBatchId = (batchInfo) => {
   const minutes = String(now.getMinutes()).padStart(2, "0");
   const seconds = String(now.getSeconds()).padStart(2, "0");
 
-  return `${day}${month}${year}-${hours}${minutes}${seconds}-${printGroup}-${batchInfo.printer}`;
+  const batchFolders = {
+    mainFolder: `${day}${month}${year}`,
+    subFolder: `${hours}${minutes}${seconds}-${printGroup}-${batchInfo[0].printer}`,
+
+  }
+
+  return batchFolders;
 };

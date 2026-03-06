@@ -1,10 +1,9 @@
 import fs from 'fs';
 import path from 'path';
-import { createBatchId } from '../helpers/createBatchId.js';
+import { createBatchIds } from '../helpers/createBatchIds.js';
+import {getRootPath} from '../helpers/getRootPath.js';
 
-const createBatch = async (batch) => {
-    const createBatch = async (batchInput) => {
-
+ export const createBatch = async (batch) => {
   /*
   ==========================================
   SECTION A — RESULT OBJECT / STATE
@@ -24,6 +23,19 @@ const createBatch = async (batch) => {
       deletedSourceFiles
       createdDirectories
   */
+     const result = {
+        success: false,
+        errors: [],
+        movedFiles:[],
+        skippedFiles:[],
+        rollbackPerformed: false,
+        batchId: null,
+    };
+
+    let lockHandle = null;
+    let copiedFiles = false;
+    let deletedSourceFiles = false;
+    let createdDirectories = false;
 
 
   /*
@@ -33,8 +45,8 @@ const createBatch = async (batch) => {
 
   Sprawdź:
   - czy batchInput istnieje
-  - czy batchInput jest obiektem
-  - czy wymagane pola istnieją
+  - czy batchInput jest arrayem
+  - czy batchInput nie jest pusty
 
   Przykłady wymaganych pól:
   - batchId
@@ -46,6 +58,18 @@ const createBatch = async (batch) => {
   - ERR_INVALID_ARG_TYPE
   - EINVAL
   */
+
+  if(!batch || batch.length === 0 || !Array.isArray(batch)) {
+    // moze napisac ogolny error handling i mapowanie errorow w osobnej funkcji zeby nie duplikowac kodu?
+    result.errors.push({
+        id:crypto.randomUUID(),
+        type: 'Error',
+        code: 'ERR_INVALID_ARG_TYPE',
+        title: 'Invalid batch input',
+        message: 'Batch input must be a non-empty array.',
+    });
+    return result;
+  }
 
 
   /*
@@ -70,10 +94,9 @@ const createBatch = async (batch) => {
   - ENAMETOOLONG
   - EINVAL
   */
-
-
-  let lockHandle = null
-  let rollbackPerformed = false
+const ROOT_PATH = getRootPath();
+const PRINTED_ROOT_PATH = path.join(ROOT_PATH, 'PRINTED');
+const BATCH_FOLDER_PATH = 
 
   try {
 
@@ -342,6 +365,5 @@ const createBatch = async (batch) => {
 
   }
 
-}
+};
 
-}

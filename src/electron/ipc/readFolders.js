@@ -31,7 +31,7 @@ export const readFolders = async ({ onProgress } = {}) => {
             if (fileStats.size === 0) return null;
             const ispdf = await isPDF(path.join(PATH, folder.name, job.name));
             if (!ispdf) return null;
-            const meta = parsePrintFileName(job.name, { fullPath: path.join(PATH, folder.name, job.name), dir: PATH });
+            const meta = parsePrintFileName(job.name, { fullPath: path.join(PATH, folder.name, job.name), dir: path.join(PATH, folder.name) });
             if (!meta) return null;
             return {
               id: `${folder.name}_${job.name}`,
