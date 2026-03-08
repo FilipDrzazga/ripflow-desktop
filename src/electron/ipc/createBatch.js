@@ -1,9 +1,9 @@
-import fs from 'fs';
-import path from 'path';
-import { createBatchIds } from '../helpers/createBatchIds.js';
-import {getRootPath} from '../helpers/getRootPath.js';
+import fs from "fs";
+import path from "path";
+import { createBatchIds } from "../helpers/createBatchIds.js";
+import { getRootPath } from "../helpers/getRootPath.js";
 
- export const createBatch = async (batch) => {
+export const createBatch = async (batch) => {
   /*
   ==========================================
   SECTION A — RESULT OBJECT / STATE
@@ -23,20 +23,35 @@ import {getRootPath} from '../helpers/getRootPath.js';
       deletedSourceFiles
       createdDirectories
   */
-     const result = {
-        success: false,
-        errors: [],
-        movedFiles:[],
-        skippedFiles:[],
-        rollbackPerformed: false,
-        batchId: null,
-    };
 
-    let lockHandle = null;
-    let copiedFiles = false;
-    let deletedSourceFiles = false;
-    let createdDirectories = false;
+  const STAGES = {
+    INIT: "init",
+    VALIDATE: "validate",
+    LOCK_CHECK: "lock_check",
+    LOCK: "lock",
+    DESTINATION_STRUCTURE: "destination_structure",
+    CREATE_TEMP: "create_temp",
+    COPY: "copy",
+    VERIFY: "verify",
+    DELETE_SOURCE: "delete_source",
+    COMMIT: "commit",
+    DONE: "done",
+  };
+  const result = {
+    success: false,
+    errors: [],
+    movedFiles: [],
+    skippedFiles: [],
+    rollbackPerformed: false,
+    batchId: null,
+  };
 
+  let stage = STAGES.INIT;
+
+  let lockHandle = null;
+  // let copiedFiles = false;
+  // let deletedSourceFiles = false;
+  // let createdDirectories = false;
 
   /*
   ==========================================
@@ -59,18 +74,17 @@ import {getRootPath} from '../helpers/getRootPath.js';
   - EINVAL
   */
 
-  if(!batch || batch.length === 0 || !Array.isArray(batch)) {
-    // moze napisac ogolny error handling i mapowanie errorow w osobnej funkcji zeby nie duplikowac kodu?
-    result.errors.push({
-        id:crypto.randomUUID(),
-        type: 'Error',
-        code: 'ERR_INVALID_ARG_TYPE',
-        title: 'Invalid batch input',
-        message: 'Batch input must be a non-empty array.',
+  stage = STAGES.VALIDATE;
+  if (!batch || batch.length === 0 || !Array.isArray(batch)) {
+    throw Object.assign(new Error("Invalid batch input: Batch must be a non-empty array."), {
+      code: "ERR_INVALID_ARG_TYPE",
+      stage,
+      type: "Error",
+      title: "Invalid batch input",
+      message: "Batch input must be a non-empty array.",
     });
-    return result;
+    // moze napisac ogolny error handling i mapowanie errorow w osobnej funkcji zeby nie duplikowac kodu?
   }
-
 
   /*
   ==========================================
@@ -94,12 +108,18 @@ import {getRootPath} from '../helpers/getRootPath.js';
   - ENAMETOOLONG
   - EINVAL
   */
-const ROOT_PATH = getRootPath();
-const PRINTED_ROOT_PATH = path.join(ROOT_PATH, 'PRINTED');
-const BATCH_FOLDER_PATH = 
+
+  const ROOT_PATH = getRootPath();
+  const SOURCE_FOLDER_PATHS = [...new Set(batch.map((item) => path.resolve(item.file.dir)))];
+  const PRINTED_ROOT_PATH = path.join(ROOT_PATH, "PRINTED");
+  const BATCH_FOLDER_PATH = path.join(
+    PRINTED_ROOT_PATH,
+    createBatchIds(batch).mainFolder,
+    createBatchIds(batch).subFolder,
+  );
 
   try {
-
+    stage = STAGES.VALIDATE;
     /*
     ==========================================
     SECTION D — SOURCE FILE VALIDATION
@@ -116,6 +136,39 @@ const BATCH_FOLDER_PATH =
     - EISDIR
     */
 
+    stage = STAGES.VALIDATE;
+
+    for (const item of batch) {
+      const sourcePath = path.resolve(item.file.fullPath);
+
+      let stat;
+
+      try {
+        stat = await fs.stat(sourcePath);
+      } catch (err) {
+        if (err.code === "ENOENT") {
+          throw Object.assign(new Error(`Source file does not exist: ${sourcePath}`), {
+            code: "ENOENT",
+            stage,
+            type: "Error",
+            title: "Invalid source file",
+            message: `Source file does not exist: ${sourcePath}`,
+          });
+        }
+
+        throw err;
+      }
+
+      if (!stat.isFile()) {
+        throw Object.assign(new Error(`Source path is not a file: ${sourcePath}`), {
+          code: "EISDIR",
+          stage,
+          type: "Error",
+          title: "Invalid source file",
+          message: `Source path is not a file: ${sourcePath}`,
+        });
+      }
+    }
 
     /*
     ==========================================
@@ -132,7 +185,31 @@ const BATCH_FOLDER_PATH =
     Możliwe błędy / sytuacje:
     - EEXIST
     */
+    stage = STAGES.LOCK_CHECK;
+    for (const folderPath of SOURCE_FOLDER_PATHS) {
+      let lock = false;
+      const lockPath = path.join(folderPath, ".lock");
 
+      try {
+        lock = await fs.promises.access(lockPath, fs.constants.F_OK);
+        if (lock) {
+          lock = true;
+          throw Object.assign(new Error(`Lock file exists in source folder: ${folderPath}`), {
+            code: "EEXIST",
+            stage,
+            type: "Error",
+            title: "Source folder locked",
+            message: `Lock file exists in source folder: ${folderPath}`,
+          });
+        }
+      } catch (err) {
+        if (err.code === "ENOENT") {
+          lock = false;
+          continue;
+        }
+        throw err;
+      }
+    }
 
     /*
     ==========================================
@@ -156,7 +233,32 @@ const BATCH_FOLDER_PATH =
     - EACCES
     - EPERM
     */
-
+    stage = STAGES.LOCK;
+    for (const folderPath of SOURCE_FOLDER_PATHS) {
+      const lockPath = path.join(folderPath, ".lock");
+      try {
+        lockHandle = await fs.promises.open(lockPath, "wx");
+        await lockHandle.write(
+          JSON.stringify({
+            pid: process.pid,
+            batchId: createBatchIds(batch).mainFolder,
+            timestamp: new Date().toISOString(),
+          }),
+        );
+        // lockHandle = handle; // moze trzeba bedzie trzymac wszystkie uchwyty do lockow zeby je potem zamknac?
+      } catch (err) {
+        if (err.code === "EEXIST") {
+          throw Object.assign(new Error(`Lock file already exists: ${lockPath}`), {
+            code: "EEXIST",
+            stage,
+            type: "Error",
+            title: "Source folder locked",
+            message: `Lock file already exists: ${lockPath}`,
+          });
+        }
+        throw err;
+      }
+    }
 
     /*
     ==========================================
@@ -179,8 +281,50 @@ const BATCH_FOLDER_PATH =
     - EROFS
     - ENOSPC
     */
-
-
+    stage = STAGES.DESTINATION_STRUCTURE;
+    await fs.promises.mkdir(PRINTED_ROOT_PATH, { recursive: true });
+    try {
+      await fs.promises.access(BATCH_FOLDER_PATH, fs.constants.F_OK);
+    } catch (err) {
+      if (err.code === "ENOENT") {
+        await fs.promises.mkdir(BATCH_FOLDER_PATH, { recursive: true });
+      }
+      if (err.code === "EEXIST") {
+        const dirname = path.dirname(PRINTED_ROOT_PATH);
+        const basename = path.basename(BATCH_FOLDER_PATH);
+        const newBatchFolderPath = path.join(dirname, `${basename}_${crypto.randomUUID()}`);
+        await fs.promises.mkdir(newBatchFolderPath, { recursive: true });
+        return;
+      }
+      if (err.code === "EROFS") {
+        throw Object.assign(new Error(`Destination is read-only: ${BATCH_FOLDER_PATH}`), {
+          code: "EROFS",
+          stage,
+          type: "Error",
+          title: "Destination is read-only",
+          message: `Destination is read-only: ${BATCH_FOLDER_PATH}`,
+        });
+      }
+      if (err.code === "ENOSPC") {
+        throw Object.assign(new Error(`No space left on device to create batch folder: ${BATCH_FOLDER_PATH}`), {
+          code: "ENOSPC",
+          stage,
+          type: "Error",
+          title: "No space left on device",
+          message: `No space left on device to create batch folder: ${BATCH_FOLDER_PATH}`,
+        });
+      }
+      if (err.code === "EACCES" || err.code === "EPERM") {
+        throw Object.assign(new Error(`Permission denied to create batch folder: ${BATCH_FOLDER_PATH}`), {
+          code: err.code,
+          stage,
+          type: "Error",
+          title: "Permission denied",
+          message: `Permission denied to create batch folder: ${BATCH_FOLDER_PATH}`,
+        });
+      }
+      throw err;
+    }
     /*
     ==========================================
     SECTION H — CREATE TEMP STAGING FOLDER
@@ -205,8 +349,6 @@ const BATCH_FOLDER_PATH =
     - EPERM
     - ENOSPC
     */
-
-
     /*
     ==========================================
     SECTION I — FILE NAME COLLISION CHECK
@@ -222,8 +364,6 @@ const BATCH_FOLDER_PATH =
     Możliwe błędy / sytuacje:
     - EEXIST
     */
-
-
     /*
     ==========================================
     SECTION J — COPY FILES TO TEMP
@@ -245,8 +385,6 @@ const BATCH_FOLDER_PATH =
     - EMFILE
     - ENFILE
     */
-
-
     /*
     ==========================================
     SECTION K — VERIFY COPIED FILES
@@ -267,8 +405,6 @@ const BATCH_FOLDER_PATH =
     - EACCES
     - EPERM
     */
-
-
     /*
     ==========================================
     SECTION L — DELETE SOURCE FILES
@@ -285,8 +421,6 @@ const BATCH_FOLDER_PATH =
     - EPERM
     - EBUSY
     */
-
-
     /*
     ==========================================
     SECTION M — COMMIT BATCH
@@ -308,10 +442,7 @@ const BATCH_FOLDER_PATH =
     - EPERM
     - EBUSY
     */
-
-
   } catch (error) {
-
     /*
     ==========================================
     SECTION N — ERROR HANDLING
@@ -324,8 +455,6 @@ const BATCH_FOLDER_PATH =
 
     mapuj błędy na czytelne komunikaty
     */
-
-
     /*
     ==========================================
     SECTION O — ROLLBACK
@@ -343,10 +472,7 @@ const BATCH_FOLDER_PATH =
     - EPERM
     - EBUSY
     */
-
-
   } finally {
-
     /*
     ==========================================
     SECTION P — RELEASE LOCK
@@ -362,8 +488,5 @@ const BATCH_FOLDER_PATH =
     - EPERM
     - EACCES
     */
-
   }
-
 };
-
