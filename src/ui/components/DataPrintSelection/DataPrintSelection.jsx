@@ -37,9 +37,33 @@ const DataPrintSelection = () => {
     const getFilesToPrint = store.files
       .map((group) => group.items.filter((item) => store.selectedIds.has(item.id)))
       .flat();
-    console.log(getFilesToPrint);
-    store.toggleClearSelection();
-    setSelectedPrinter(null);
+    const print = getFilesToPrint.map((item) => ({ ...item, printer: selectedPrinter }));
+    console.log(Array.isArray(print));
+    const res = window.api.createBatch(print);
+    res
+      .then((result) => {
+        if (!result.success) {
+          store.setAlert({
+            id: crypto.randomUUID(),
+            type: result.errors.map((err) => err.type).join("; ") || "Error",
+            title: result.errors.map((err) => err.title).join("; ") || "Batch creation failed",
+            message: result.errors.map((err) => err.message).join("; ") || "An unknown error occurred.",
+          });
+          return;
+        }
+        store.toggleClearSelection();
+        setSelectedPrinter(null);
+        store.setAlert({
+          id: crypto.randomUUID(),
+          type: "Success",
+          title: "Batch created successfully",
+          message: `Batch ID: ${result.batchId}`,
+        });
+      })
+      .catch((err) => {
+        console.error("Error creating batch:", err);
+      });
+    // console.log(getFilesToPrint);
   };
 
   const handleClearBtn = () => {

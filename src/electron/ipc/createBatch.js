@@ -3,43 +3,46 @@ import path from "path";
 import { createBatchIds } from "../helpers/createBatchIds.js";
 import { getRootPath } from "../helpers/getRootPath.js";
 
-export const createBatch = async (batch) => {
-  /*
-  ==========================================
-  SECTION A — RESULT OBJECT / STATE
-  ==========================================
+const STAGES = {
+  INIT: "init",
+  VALIDATE: "validate",
+  LOCK: "lock",
+  DESTINATION_STRUCTURE: "destination_structure",
+  COPY: "copy",
+  VERIFY: "verify",
+  COMMIT: "commit",
+  DELETE_SOURCE: "delete_source",
+  ROLLBACK: "rollback",
+  DONE: "done",
+};
 
-  - przygotuj obiekt result który funkcja zwróci
-  - success
-  - errors
-  - warnings
-  - movedFiles
-  - skippedFiles
-  - rollbackPerformed
+const exists = async (targetPath) => {
+  try {
+    await fs.promises.access(targetPath, fs.constants.F_OK);
+    return true;
+  } catch (err) {
+    if (err.code === "ENOENT") {
+      return false;
+    }
+    throw err;
+  }
+};
 
-  - przygotuj zmienne pomocnicze:
-      lockHandle
-      copiedFiles
-      deletedSourceFiles
-      createdDirectories
-  */
-
-  const STAGES = {
-    INIT: "init",
-    VALIDATE: "validate",
-    LOCK_CHECK: "lock_check",
-    LOCK: "lock",
-    DESTINATION_STRUCTURE: "destination_structure",
-    CREATE_TEMP: "create_temp",
-    COPY: "copy",
-    VERIFY: "verify",
-    DELETE_SOURCE: "delete_source",
-    COMMIT: "commit",
-    DONE: "done",
+const toBatchError = (error, stage, fallbackTitle = "Batch creation failed") => {
+  return {
+    code: error.code || "UNKNOWN_ERROR",
+    message: error.message || "An unknown error occurred.",
+    stage: error.stage || stage || "unknown",
+    type: error.type || "Error",
+    title: error.title || fallbackTitle,
   };
+};
+
+export const createBatch = async (batch) => {
   const result = {
     success: false,
     errors: [],
+    warnings: [],
     movedFiles: [],
     skippedFiles: [],
     rollbackPerformed: false,
@@ -47,446 +50,218 @@ export const createBatch = async (batch) => {
   };
 
   let stage = STAGES.INIT;
+  const lockRecords = [];
+  const copiedFiles = [];
+  const deletedSourceFiles = [];
 
-  let lockHandle = null;
-  // let copiedFiles = false;
-  // let deletedSourceFiles = false;
-  // let createdDirectories = false;
-
-  /*
-  ==========================================
-  SECTION B — INPUT VALIDATION
-  ==========================================
-
-  Sprawdź:
-  - czy batchInput istnieje
-  - czy batchInput jest arrayem
-  - czy batchInput nie jest pusty
-
-  Przykłady wymaganych pól:
-  - batchId
-  - sourceFiles / sourceFolders
-  - printedRoot
-  - targetSubfolder
-
-  Możliwe błędy:
-  - ERR_INVALID_ARG_TYPE
-  - EINVAL
-  */
-
-  stage = STAGES.VALIDATE;
-  if (!batch || batch.length === 0 || !Array.isArray(batch)) {
-    throw Object.assign(new Error("Invalid batch input: Batch must be a non-empty array."), {
-      code: "ERR_INVALID_ARG_TYPE",
-      stage,
-      type: "Error",
-      title: "Invalid batch input",
-      message: "Batch input must be a non-empty array.",
-    });
-    // moze napisac ogolny error handling i mapowanie errorow w osobnej funkcji zeby nie duplikowac kodu?
-  }
-
-  /*
-  ==========================================
-  SECTION C — PATH NORMALIZATION
-  ==========================================
-
-  - użyj path.resolve / path.normalize
-  - upewnij się że wszystkie ścieżki są absolutne
-  - zabezpiecz się przed path traversal (../)
-
-  Wylicz wszystkie ścieżki które będą potrzebne:
-
-  - printedRootPath
-  - batchFolderPath
-  - tempBatchFolderPath
-  - targetSubfolderPath
-  - lockPath
-  - manifestPath
-
-  Możliwe błędy:
-  - ENAMETOOLONG
-  - EINVAL
-  */
-
-  const ROOT_PATH = getRootPath();
-  const SOURCE_FOLDER_PATHS = [...new Set(batch.map((item) => path.resolve(item.file.dir)))];
-  const PRINTED_ROOT_PATH = path.join(ROOT_PATH, "PRINTED");
-  const BATCH_FOLDER_PATH = path.join(
-    PRINTED_ROOT_PATH,
-    createBatchIds(batch).mainFolder,
-    createBatchIds(batch).subFolder,
-  );
+  let tempBatchFolderPath = null;
+  let finalBatchFolderPath = null;
+  let committed = false;
 
   try {
     stage = STAGES.VALIDATE;
-    /*
-    ==========================================
-    SECTION D — SOURCE FILE VALIDATION
-    ==========================================
 
-    Sprawdź:
-    - czy każdy source file istnieje
-    - czy jest plikiem (nie folderem)
-    - czy nie jest 0 bytes (opcjonalnie)
+    if (!Array.isArray(batch) || batch.length === 0) {
+      throw Object.assign(new Error("Batch must be a non-empty array."), {
+        code: "ERR_INVALID_ARG_TYPE",
+        stage,
+        title: "Invalid batch input",
+      });
+    }
 
-    Możliwe błędy:
-    - ENOENT
-    - ENOTDIR
-    - EISDIR
-    */
+    const ROOT_PATH = getRootPath();
+    const PRINTED_ROOT_PATH = path.resolve(ROOT_PATH, "PRINTED");
+    const batchIds = createBatchIds(batch);
 
-    stage = STAGES.VALIDATE;
+    const sourceEntries = batch.map((item, index) => {
+      const sourcePath = path.resolve(item?.file?.fullPath || "");
+      const fileName = path.basename(sourcePath);
 
-    for (const item of batch) {
-      const sourcePath = path.resolve(item.file.fullPath);
+      if (!item?.file?.fullPath) {
+        throw Object.assign(new Error(`Missing source file path at index ${index}.`), {
+          code: "EINVAL",
+          stage,
+          title: "Invalid source file",
+        });
+      }
 
+      return {
+        sourcePath,
+        fileName,
+        sourceDir: path.dirname(sourcePath),
+      };
+    });
+
+    const sourceFileNames = new Set();
+    for (const entry of sourceEntries) {
+      if (sourceFileNames.has(entry.fileName)) {
+        throw Object.assign(new Error("File name collision detected in batch."), {
+          code: "EEXIST",
+          stage,
+          title: "File name collision",
+        });
+      }
+      sourceFileNames.add(entry.fileName);
+    }
+
+    for (const entry of sourceEntries) {
       let stat;
-
       try {
-        stat = await fs.stat(sourcePath);
+        stat = await fs.promises.stat(entry.sourcePath);
       } catch (err) {
         if (err.code === "ENOENT") {
-          throw Object.assign(new Error(`Source file does not exist: ${sourcePath}`), {
+          throw Object.assign(new Error(`Source file does not exist: ${entry.sourcePath}`), {
             code: "ENOENT",
             stage,
-            type: "Error",
             title: "Invalid source file",
-            message: `Source file does not exist: ${sourcePath}`,
           });
         }
-
         throw err;
       }
 
       if (!stat.isFile()) {
-        throw Object.assign(new Error(`Source path is not a file: ${sourcePath}`), {
+        throw Object.assign(new Error(`Source path is not a file: ${entry.sourcePath}`), {
           code: "EISDIR",
           stage,
-          type: "Error",
           title: "Invalid source file",
-          message: `Source path is not a file: ${sourcePath}`,
         });
       }
+
+      entry.size = stat.size;
     }
 
-    /*
-    ==========================================
-    SECTION E — LOCK CHECK
-    ==========================================
-
-    Sprawdź:
-    - czy w folderach źródłowych nie ma już .lock
-    - czy w folderze docelowym nie ma .lock
-
-    Jeżeli lock istnieje:
-    - przerwij operację
-
-    Możliwe błędy / sytuacje:
-    - EEXIST
-    */
-    stage = STAGES.LOCK_CHECK;
-    for (const folderPath of SOURCE_FOLDER_PATHS) {
-      let lock = false;
-      const lockPath = path.join(folderPath, ".lock");
-
-      try {
-        lock = await fs.promises.access(lockPath, fs.constants.F_OK);
-        if (lock) {
-          lock = true;
-          throw Object.assign(new Error(`Lock file exists in source folder: ${folderPath}`), {
-            code: "EEXIST",
-            stage,
-            type: "Error",
-            title: "Source folder locked",
-            message: `Lock file exists in source folder: ${folderPath}`,
-          });
-        }
-      } catch (err) {
-        if (err.code === "ENOENT") {
-          lock = false;
-          continue;
-        }
-        throw err;
-      }
-    }
-
-    /*
-    ==========================================
-    SECTION F — ACQUIRE LOCK (ATOMIC)
-    ==========================================
-
-    Spróbuj stworzyć lock:
-
-    fs.open(lockPath, "wx")
-
-    Jeżeli już istnieje:
-    - EEXIST
-
-    Opcjonalnie zapisz w locku:
-    - pid
-    - batchId
-    - timestamp
-
-    Możliwe błędy:
-    - EEXIST
-    - EACCES
-    - EPERM
-    */
     stage = STAGES.LOCK;
-    for (const folderPath of SOURCE_FOLDER_PATHS) {
-      const lockPath = path.join(folderPath, ".lock");
+    for (const sourceFolderPath of [...new Set(sourceEntries.map((entry) => entry.sourceDir))]) {
+      const lockPath = path.join(sourceFolderPath, ".lock");
+
       try {
-        lockHandle = await fs.promises.open(lockPath, "wx");
-        await lockHandle.write(
+        const handle = await fs.promises.open(lockPath, "wx");
+        await handle.writeFile(
           JSON.stringify({
             pid: process.pid,
-            batchId: createBatchIds(batch).mainFolder,
+            batchId: batchIds.mainFolder,
             timestamp: new Date().toISOString(),
           }),
         );
-        // lockHandle = handle; // moze trzeba bedzie trzymac wszystkie uchwyty do lockow zeby je potem zamknac?
+        lockRecords.push({ handle, lockPath });
       } catch (err) {
         if (err.code === "EEXIST") {
           throw Object.assign(new Error(`Lock file already exists: ${lockPath}`), {
             code: "EEXIST",
             stage,
-            type: "Error",
             title: "Source folder locked",
-            message: `Lock file already exists: ${lockPath}`,
           });
         }
         throw err;
       }
     }
 
-    /*
-    ==========================================
-    SECTION G — DESTINATION STRUCTURE
-    ==========================================
-
-    Sprawdź czy printedRoot istnieje
-    jeśli nie -> mkdir
-
-    Sprawdź czy batch folder istnieje
-    jeśli tak -> zdecyduj co zrobić:
-      - fail
-      - prefix
-      - nowy batchId
-
-    Możliwe błędy:
-    - ENOENT
-    - EACCES
-    - EPERM
-    - EROFS
-    - ENOSPC
-    */
     stage = STAGES.DESTINATION_STRUCTURE;
     await fs.promises.mkdir(PRINTED_ROOT_PATH, { recursive: true });
-    try {
-      await fs.promises.access(BATCH_FOLDER_PATH, fs.constants.F_OK);
-    } catch (err) {
-      if (err.code === "ENOENT") {
-        await fs.promises.mkdir(BATCH_FOLDER_PATH, { recursive: true });
-      }
-      if (err.code === "EEXIST") {
-        const dirname = path.dirname(PRINTED_ROOT_PATH);
-        const basename = path.basename(BATCH_FOLDER_PATH);
-        const newBatchFolderPath = path.join(dirname, `${basename}_${crypto.randomUUID()}`);
-        await fs.promises.mkdir(newBatchFolderPath, { recursive: true });
-        return;
-      }
-      if (err.code === "EROFS") {
-        throw Object.assign(new Error(`Destination is read-only: ${BATCH_FOLDER_PATH}`), {
-          code: "EROFS",
-          stage,
-          type: "Error",
-          title: "Destination is read-only",
-          message: `Destination is read-only: ${BATCH_FOLDER_PATH}`,
-        });
-      }
-      if (err.code === "ENOSPC") {
-        throw Object.assign(new Error(`No space left on device to create batch folder: ${BATCH_FOLDER_PATH}`), {
-          code: "ENOSPC",
-          stage,
-          type: "Error",
-          title: "No space left on device",
-          message: `No space left on device to create batch folder: ${BATCH_FOLDER_PATH}`,
-        });
-      }
-      if (err.code === "EACCES" || err.code === "EPERM") {
-        throw Object.assign(new Error(`Permission denied to create batch folder: ${BATCH_FOLDER_PATH}`), {
-          code: err.code,
-          stage,
-          type: "Error",
-          title: "Permission denied",
-          message: `Permission denied to create batch folder: ${BATCH_FOLDER_PATH}`,
-        });
-      }
-      throw err;
+
+    const baseFinalPath = path.join(PRINTED_ROOT_PATH, batchIds.mainFolder, batchIds.subFolder);
+    finalBatchFolderPath = baseFinalPath;
+    let suffix = 1;
+    while (await exists(finalBatchFolderPath)) {
+      finalBatchFolderPath = `${baseFinalPath}_${suffix}`;
+      suffix += 1;
     }
-    /*
-    ==========================================
-    SECTION H — CREATE TEMP STAGING FOLDER
-    ==========================================
 
-    Utwórz:
+    tempBatchFolderPath = path.join(
+      PRINTED_ROOT_PATH,
+      `.tmp-${batchIds.mainFolder}-${batchIds.subFolder}-${process.pid}-${Date.now()}`,
+    );
 
-    _TEMP_<batchId>
+    await fs.promises.mkdir(tempBatchFolderPath, { recursive: true });
 
-    To jest staging area
+    stage = STAGES.COPY;
+    for (const entry of sourceEntries) {
+      const tempTargetPath = path.join(tempBatchFolderPath, entry.fileName);
 
-    Utwórz subfoldery które będą potrzebne
-    np:
-    - LM
-    - SAMPLE
-    - FQ
-    - CUSHION
+      await fs.promises.copyFile(entry.sourcePath, tempTargetPath, fs.constants.COPYFILE_EXCL);
+      copiedFiles.push({
+        sourcePath: entry.sourcePath,
+        tempPath: tempTargetPath,
+        finalPath: path.join(finalBatchFolderPath, entry.fileName),
+        size: entry.size,
+      });
+    }
 
-    Możliwe błędy:
-    - ENOENT
-    - EACCES
-    - EPERM
-    - ENOSPC
-    */
-    /*
-    ==========================================
-    SECTION I — FILE NAME COLLISION CHECK
-    ==========================================
+    stage = STAGES.VERIFY;
+    for (const copied of copiedFiles) {
+      const copiedStat = await fs.promises.stat(copied.tempPath);
+      if (!copiedStat.isFile() || copiedStat.size !== copied.size) {
+        throw Object.assign(new Error(`Copied file verification failed: ${copied.tempPath}`), {
+          code: "EIO",
+          stage,
+          title: "Copy verification failed",
+        });
+      }
+    }
 
-    Sprawdź czy pliki z różnych folderów
-    nie mają takich samych nazw.
+    stage = STAGES.COMMIT;
+    await fs.promises.mkdir(path.dirname(finalBatchFolderPath), { recursive: true });
+    await fs.promises.rename(tempBatchFolderPath, finalBatchFolderPath);
+    committed = true;
 
-    Jeśli konflikt:
-    - fail fast
-    - lub zmień nazwę
+    stage = STAGES.DELETE_SOURCE;
+    for (const copied of copiedFiles) {
+      await fs.promises.unlink(copied.sourcePath);
+      deletedSourceFiles.push(copied);
+      result.movedFiles.push(copied.sourcePath);
+    }
 
-    Możliwe błędy / sytuacje:
-    - EEXIST
-    */
-    /*
-    ==========================================
-    SECTION J — COPY FILES TO TEMP
-    ==========================================
-
-    Kopiuj pliki do temp folderu.
-
-    NIE usuwaj jeszcze source.
-
-    Po każdej kopii:
-    - zapisz w copiedFiles
-
-    Możliwe błędy:
-    - ENOENT
-    - EACCES
-    - EPERM
-    - EBUSY
-    - ENOSPC
-    - EMFILE
-    - ENFILE
-    */
-    /*
-    ==========================================
-    SECTION K — VERIFY COPIED FILES
-    ==========================================
-
-    Zweryfikuj każdy plik:
-
-    stat(source)
-    stat(temp)
-
-    Porównaj size
-
-    Jeśli mismatch:
-    - przerwij operację
-
-    Możliwe błędy:
-    - ENOENT
-    - EACCES
-    - EPERM
-    */
-    /*
-    ==========================================
-    SECTION L — DELETE SOURCE FILES
-    ==========================================
-
-    Dopiero teraz usuń source files.
-
-    Po każdym usunięciu:
-    - zapisz w deletedSourceFiles
-
-    Możliwe błędy:
-    - ENOENT
-    - EACCES
-    - EPERM
-    - EBUSY
-    */
-    /*
-    ==========================================
-    SECTION M — COMMIT BATCH
-    ==========================================
-
-    Zamień:
-
-    _TEMP_<batchId>
-
-    na finalny batch folder
-
-    lub przenieś pliki z temp.
-
-    Opcjonalnie zapisz manifest.json
-
-    Możliwe błędy:
-    - EXDEV
-    - ENOENT
-    - EPERM
-    - EBUSY
-    */
+    result.success = true;
+    result.batchId = `${batchIds.mainFolder}/${path.basename(finalBatchFolderPath)}`;
+    stage = STAGES.DONE;
   } catch (error) {
-    /*
-    ==========================================
-    SECTION N — ERROR HANDLING
-    ==========================================
+    result.errors.push(toBatchError(error, stage));
 
-    Zapisz:
-    - error.code
-    - error.message
-    - etap operacji
+    stage = STAGES.ROLLBACK;
 
-    mapuj błędy na czytelne komunikaty
-    */
-    /*
-    ==========================================
-    SECTION O — ROLLBACK
-    ==========================================
+    for (const fileRecord of deletedSourceFiles) {
+      try {
+        const restoreFromPath = committed ? fileRecord.finalPath : fileRecord.tempPath;
+        const sourceExists = await exists(fileRecord.sourcePath);
 
-    Jeśli coś poszło nie tak:
+        if (!sourceExists) {
+          await fs.promises.copyFile(restoreFromPath, fileRecord.sourcePath);
+        }
+      } catch (restoreErr) {
+        result.warnings.push(`Failed to restore source file ${fileRecord.sourcePath}: ${restoreErr.message}`);
+      }
+    }
 
-    - usuń copiedFiles z temp
-    - usuń temp folder
-    - NIE usuwaj nic więcej jeśli nie masz pewności
-
-    Możliwe błędy:
-    - ENOENT
-    - ENOTEMPTY
-    - EPERM
-    - EBUSY
-    */
+    try {
+      if (committed && finalBatchFolderPath) {
+        await fs.promises.rm(finalBatchFolderPath, { recursive: true, force: true });
+      }
+      if (!committed && tempBatchFolderPath) {
+        await fs.promises.rm(tempBatchFolderPath, { recursive: true, force: true });
+      }
+      result.rollbackPerformed = true;
+    } catch (rollbackErr) {
+      result.warnings.push(`Rollback cleanup failed: ${rollbackErr.message}`);
+    }
   } finally {
-    /*
-    ==========================================
-    SECTION P — RELEASE LOCK
-    ==========================================
+    for (const lockRecord of lockRecords) {
+      try {
+        await lockRecord.handle.close();
+      } catch (err) {
+        if (err.code !== "EBADF") {
+          result.warnings.push(`Failed to close lock handle ${lockRecord.lockPath}: ${err.message}`);
+        }
+      }
 
-    - zamknij lockHandle
-    - usuń .lock file
-
-    ignoruj ENOENT jeśli lock nie istnieje
-
-    Możliwe błędy:
-    - EBADF
-    - EPERM
-    - EACCES
-    */
+      try {
+        await fs.promises.unlink(lockRecord.lockPath);
+      } catch (err) {
+        if (err.code !== "ENOENT") {
+          result.warnings.push(`Failed to remove lock file ${lockRecord.lockPath}: ${err.message}`);
+        }
+      }
+    }
   }
+
+  return result;
 };

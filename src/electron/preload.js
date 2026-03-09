@@ -8,4 +8,5 @@ contextBridge.exposeInMainWorld("api", {
 
     return () => ipcRenderer.removeListener("read-folders:progress", handler);
   },
+  createBatch: (batch) => ipcRenderer.invoke("create-batch", batch),
 });
