@@ -16,11 +16,31 @@ const App = () => {
     const fetchFolders = async () => {
       try {
         const res = await window.api.readFolders();
-        if (!res.success) return;
-        store.setFiles(res.data);
-        store.setFilteredFiles(res.data);
+        if (res.success) {
+          store.setAlert({
+            id: crypto.randomUUID(),
+            type: "Success",
+            title: "Folders loaded",
+            message: "The folder data has been successfully loaded.",
+          });
+          store.setFiles(res.data);
+          store.setFilteredFiles(res.data);
+        } else {
+          const firstError = res.errors?.[0];
+          store.setAlert({
+            id: crypto.randomUUID(),
+            type: firstError?.type || "Error",
+            title: firstError?.title || "Failed to load folders",
+            message: firstError?.message || "An unknown error occurred while loading folders.",
+          });
+        }
       } catch (err) {
-        // console.log(err.message);
+        store.setAlert({
+          id: crypto.randomUUID(),
+          type: err?.type || "Error",
+          title: err?.title || "Failed to load folders",
+          message: err?.message || "An unexpected error occurred while loading folders.",
+        });
       }
     };
     fetchFolders();
