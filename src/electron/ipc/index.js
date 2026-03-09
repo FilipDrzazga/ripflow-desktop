@@ -7,7 +7,6 @@ export function registerIpcHandlers() {
     try {
       return await readFolders({
         onProgress: (payload) => {
-          // payload: { label, percent }
           event.sender.send("read-folders:progress", payload);
         },
       });

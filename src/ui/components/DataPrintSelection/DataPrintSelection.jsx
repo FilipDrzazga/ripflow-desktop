@@ -38,12 +38,14 @@ const DataPrintSelection = () => {
       .map((group) => group.items.filter((item) => store.selectedIds.has(item.id)))
       .flat();
     const print = getFilesToPrint.map((item) => ({ ...item, printer: selectedPrinter }));
+    console.log(print);
     const handleCreateBatch = async () => {
       try {
         const createBatchResponse = await window.api.createBatch(print);
 
         if (!createBatchResponse.success) {
           const firstError = createBatchResponse.errors?.[0];
+          console.log("Batch creation failed:", createBatchResponse);
 
           store.setAlert({
             id: crypto.randomUUID(),
@@ -51,9 +53,9 @@ const DataPrintSelection = () => {
             title: firstError?.title || "Batch creation failed",
             message: firstError?.message || "An unknown error occurred.",
           });
-          console.error("Batch creation errors:", createBatchResponse.errors);
           return;
         }
+        console.log("Batch creation errors:", createBatchResponse);
         store.setAlert({
           id: crypto.randomUUID(),
           type: "Success",

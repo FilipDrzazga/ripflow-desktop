@@ -12,7 +12,7 @@ export const createBatchIds = (batchInfo) => {
   const seconds = String(now.getSeconds()).padStart(2, "0");
 
   const batchFolders = {
-    mainFolder: `${day}${month}${year}`,
+    mainFolder: `${day}-${month}-${year}`,
     subFolder: `PRINTED_${hours}${minutes}${seconds}-${printGroup}-${batchInfo[0].printer}`,
   };
 
