@@ -16,10 +16,9 @@ const App = () => {
     const fetchFolders = async () => {
       try {
         const res = await window.api.readFolders();
-        if (!res.ok) return;
+        if (!res.success) return;
         store.setFiles(res.data);
         store.setFilteredFiles(res.data);
-        console.log(res.data);
       } catch (err) {
         // console.log(err.message);
       }
@@ -28,7 +27,7 @@ const App = () => {
   }, []);
   return (
     <div className={styles.app}>
-        <AlertsHost />
+      <AlertsHost />
       {isLoading && <StartupLoader onDone={() => setIsLoading(false)} />}
       {!isLoading && (
         <>

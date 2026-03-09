@@ -6,55 +6,103 @@ import { parsePrintFileName } from "../helpers/parseFileName.js";
 import { getMaterialType } from "../helpers/getMaterialType.js";
 import { getFileAgeInDays } from "../helpers/getFileAgeInDays.js";
 
+const STAGES = {
+  INIT: "init",
+  VALIDATE_ROOT: "validate_root",
+  READ_MAIN: "read_main",
+  READ_SUBFOLDERS: "read_subfolders",
+  GROUP: "group",
+  DONE: "done",
+};
+
+const toReadFoldersError = (error, stage, fallbackTitle = "Read folders failed") => ({
+  code: error.code || "UNKNOWN_ERROR",
+  message: error.message || "An unknown error occurred.",
+  stage: error.stage || stage || "unknown",
+  type: error.type || "Error",
+  title: error.title || fallbackTitle,
+});
+
 export const readFolders = async ({ onProgress } = {}) => {
+  const result = {
+    success: false,
+    data: [],
+    errors: [],
+    warnings: [],
+  };
+  let stage = STAGES.INIT;
+
   const progress = (label, percent) => {
     if (typeof onProgress === "function") onProgress({ label, percent });
   };
+
   try {
     progress("Detecting main folder...", 0);
+    stage = STAGES.VALIDATE_ROOT;
     const PATH = getRootPath();
-    // check if the FOLDERS path exist
-    const isFolderExist = await fs.promises.stat(PATH);
-    if (!isFolderExist.isDirectory()) throw new Error("Folder does not exist");
-    // read all folders in MAIN folder
+    let rootStat;
+
+    try {
+      rootStat = await fs.promises.stat(PATH);
+    } catch (err) {
+      if (err.code === "ENOENT") {
+        throw Object.assign(new Error(`Root folder does not exist: ${PATH}`), {
+          code: "ENOENT",
+          stage,
+          title: "Invalid root folder",
+        });
+      }
+      throw err;
+    }
+
+    if (!rootStat.isDirectory()) {
+      throw Object.assign(new Error(`Root path is not a directory: ${PATH}`), {
+        code: "ENOTDIR",
+        stage,
+        title: "Invalid root folder",
+      });
+    }
+
+    stage = STAGES.READ_MAIN;
     const readMainFolder = await fs.promises.readdir(PATH, { withFileTypes: true });
 
-    // read all subfolders and files inside
     progress("Reading and parsing files...", 30);
+    stage = STAGES.READ_SUBFOLDERS;
     const readSubFolders = readMainFolder.map(async (folder) => {
-      if (folder.isDirectory()) {
-        const getJobsInside = await fs.promises.readdir(path.join(PATH, folder.name), { withFileTypes: true });
+      if (!folder.isDirectory()) return [];
+      const folderPath = path.join(PATH, folder.name);
+      const getJobsInside = await fs.promises.readdir(folderPath, { withFileTypes: true });
 
-        const jobs = getJobsInside.map(async (job) => {
-          if (job.isFile()) {
-            const fileStats = await fs.promises.stat(path.join(PATH, folder.name, job.name));
-            if (fileStats.size === 0) return null;
-            const ispdf = await isPDF(path.join(PATH, folder.name, job.name));
-            if (!ispdf) return null;
-            const meta = parsePrintFileName(job.name, {
-              fullPath: path.join(PATH, folder.name, job.name),
-              dir: path.join(PATH, folder.name),
-            });
-            if (!meta) return null;
-            return {
-              id: `${folder.name}_${job.name}`,
-              printGroup: folder.name,
-              materialType: getMaterialType(meta.material),
-              createdAt: fileStats.birthtime,
-              diffDays: getFileAgeInDays(fileStats),
-              ...meta,
-            };
-          }
+      const jobs = getJobsInside.map(async (job) => {
+        if (!job.isFile()) return null;
+        const fullPath = path.join(folderPath, job.name);
+        const fileStats = await fs.promises.stat(fullPath);
+        if (fileStats.size === 0) return null;
+        const ispdf = await isPDF(fullPath);
+        if (!ispdf) return null;
+        const meta = parsePrintFileName(job.name, {
+          fullPath,
+          dir: folderPath,
         });
-        const res = await Promise.all(jobs);
-        return res.filter(Boolean);
-      }
+        if (!meta) return null;
+        return {
+          id: `${folder.name}_${job.name}`,
+          printGroup: folder.name,
+          materialType: getMaterialType(meta.material),
+          createdAt: fileStats.birthtime,
+          diffDays: getFileAgeInDays(fileStats),
+          ...meta,
+        };
+      });
+      const res = await Promise.all(jobs);
+      return res.filter(Boolean);
     });
 
     const nested = await Promise.all(readSubFolders);
     const files = nested.flat();
 
     progress("Grouping files...", 80);
+    stage = STAGES.GROUP;
 
     const groupedByFolder = files.reduce((acc, item) => {
       const key = item.printGroup;
@@ -70,13 +118,13 @@ export const readFolders = async ({ onProgress } = {}) => {
     }));
 
     progress("Done!", 100);
-    return { ok: true, data: groupedByFolderArray };
+    result.success = true;
+    result.data = groupedByFolderArray;
+    stage = STAGES.DONE;
+    return result;
   } catch (err) {
-    return {
-      ok: false,
-      place: "READ_FOLDER",
-      code: "READ_FOLDER_ERROR",
-      message: err.message,
-    };
+    result.errors.push(toReadFoldersError(err, stage));
+    progress("Failed to load folders", 100);
+    return result;
   }
 };

@@ -40,10 +40,10 @@ const DataPrintSelection = () => {
     const print = getFilesToPrint.map((item) => ({ ...item, printer: selectedPrinter }));
     const handleCreateBatch = async () => {
       try {
-        const result = await window.api.createBatch(print);
+        const createBatchResponse = await window.api.createBatch(print);
 
-        if (!result.success) {
-          const firstError = result.errors?.[0];
+        if (!createBatchResponse.success) {
+          const firstError = createBatchResponse.errors?.[0];
 
           store.setAlert({
             id: crypto.randomUUID(),
@@ -51,18 +51,28 @@ const DataPrintSelection = () => {
             title: firstError?.title || "Batch creation failed",
             message: firstError?.message || "An unknown error occurred.",
           });
-          console.error("Batch creation errors:", result.errors);
+          console.error("Batch creation errors:", createBatchResponse.errors);
           return;
         }
-        store.toggleClearSelection();
-        setSelectedPrinter(null);
-
         store.setAlert({
           id: crypto.randomUUID(),
           type: "Success",
           title: "Batch created successfully",
-          message: `Batch ID: ${result.batchId}`,
+          message: `Batch ID: ${createBatchResponse.batchId}`,
         });
+        const readFoldersResponse = await window.api.readFolders();
+        if (readFoldersResponse.success) {
+          store.setAlert({
+            id: crypto.randomUUID(),
+            type: "Success",
+            title: "Folders reloaded",
+            message: "The folder data has been refreshed.",
+          });
+          store.setFiles(readFoldersResponse.data);
+          store.setFilteredFiles(readFoldersResponse.data);
+        }
+        store.toggleClearSelection();
+        setSelectedPrinter(null);
       } catch (err) {
         store.setAlert({
           id: crypto.randomUUID(),
