@@ -38,32 +38,41 @@ const DataPrintSelection = () => {
       .map((group) => group.items.filter((item) => store.selectedIds.has(item.id)))
       .flat();
     const print = getFilesToPrint.map((item) => ({ ...item, printer: selectedPrinter }));
-    console.log(Array.isArray(print));
-    const res = window.api.createBatch(print);
-    res
-      .then((result) => {
+    const handleCreateBatch = async () => {
+      try {
+        const result = await window.api.createBatch(print);
+
         if (!result.success) {
+          const firstError = result.errors?.[0];
+
           store.setAlert({
             id: crypto.randomUUID(),
-            type: result.errors.map((err) => err.type).join("; ") || "Error",
-            title: result.errors.map((err) => err.title).join("; ") || "Batch creation failed",
-            message: result.errors.map((err) => err.message).join("; ") || "An unknown error occurred.",
+            type: firstError?.type || "Error",
+            title: firstError?.title || "Batch creation failed",
+            message: firstError?.message || "An unknown error occurred.",
           });
+          console.error("Batch creation errors:", result.errors);
           return;
         }
         store.toggleClearSelection();
         setSelectedPrinter(null);
+
         store.setAlert({
           id: crypto.randomUUID(),
           type: "Success",
           title: "Batch created successfully",
           message: `Batch ID: ${result.batchId}`,
         });
-      })
-      .catch((err) => {
-        console.error("Error creating batch:", err);
-      });
-    // console.log(getFilesToPrint);
+      } catch (err) {
+        store.setAlert({
+          id: crypto.randomUUID(),
+          type: "Error",
+          title: err?.title || "Batch creation failed",
+          message: err?.message || "Unexpected system error.",
+        });
+      }
+    };
+    handleCreateBatch();
   };
 
   const handleClearBtn = () => {

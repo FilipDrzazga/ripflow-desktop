@@ -13,9 +13,8 @@ export const createBatchIds = (batchInfo) => {
 
   const batchFolders = {
     mainFolder: `${day}${month}${year}`,
-    subFolder: `${hours}${minutes}${seconds}-${printGroup}-${batchInfo[0].printer}`,
-
-  }
+    subFolder: `PRINTED_${hours}${minutes}${seconds}-${printGroup}-${batchInfo[0].printer}`,
+  };
 
   return batchFolders;
 };
