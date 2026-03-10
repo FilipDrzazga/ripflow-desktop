@@ -38,14 +38,12 @@ const DataPrintSelection = () => {
       .map((group) => group.items.filter((item) => store.selectedIds.has(item.id)))
       .flat();
     const print = getFilesToPrint.map((item) => ({ ...item, printer: selectedPrinter }));
-    console.log(print);
     const handleCreateBatch = async () => {
       try {
         const createBatchResponse = await window.api.createBatch(print);
 
         if (!createBatchResponse.success) {
           const firstError = createBatchResponse.errors?.[0];
-          console.log("Batch creation failed:", createBatchResponse);
 
           store.setAlert({
             id: crypto.randomUUID(),
@@ -54,14 +52,36 @@ const DataPrintSelection = () => {
             message: firstError?.message || "An unknown error occurred.",
           });
           return;
+        } else {
+          store.setAlert({
+            id: crypto.randomUUID(),
+            type: "Success",
+            title: "Batch created successfully",
+            message: `Batch ID: ${createBatchResponse.batchId}`,
+          });
+          console.log(createBatchResponse.batchId);
+          const createXMLResponse = await window.api.createXML(print, {
+            batchId: createBatchResponse.batchId,
+          });
+
+          if (!createXMLResponse.success) {
+            const firstError = createXMLResponse.errors?.[0];
+            store.setAlert({
+              id: crypto.randomUUID(),
+              type: firstError?.type || "Error",
+              title: firstError?.title || "XML creation failed",
+              message: firstError?.message || "An unknown error occurred.",
+            });
+            return;
+          } else {
+            store.setAlert({
+              id: crypto.randomUUID(),
+              type: "Success",
+              title: "XML created successfully",
+              message: `Batch ID: ${createBatchResponse.batchId}`,
+            });
+          }
         }
-        console.log("Batch creation errors:", createBatchResponse);
-        store.setAlert({
-          id: crypto.randomUUID(),
-          type: "Success",
-          title: "Batch created successfully",
-          message: `Batch ID: ${createBatchResponse.batchId}`,
-        });
         const readFoldersResponse = await window.api.readFolders();
         if (readFoldersResponse.success) {
           store.setAlert({
@@ -76,6 +96,7 @@ const DataPrintSelection = () => {
         store.toggleClearSelection();
         setSelectedPrinter(null);
       } catch (err) {
+        console.error("Error during batch creation or XML generation:", err);
         store.setAlert({
           id: crypto.randomUUID(),
           type: "Error",

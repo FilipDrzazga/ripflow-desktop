@@ -17,14 +17,14 @@ const App = () => {
       try {
         const res = await window.api.readFolders();
         if (res.success) {
+          store.setFiles(res.data);
+          store.setFilteredFiles(res.data);
           store.setAlert({
             id: crypto.randomUUID(),
             type: "Success",
             title: "Folders loaded",
             message: "The folder data has been successfully loaded.",
           });
-          store.setFiles(res.data);
-          store.setFilteredFiles(res.data);
         } else {
           const firstError = res.errors?.[0];
           store.setAlert({
