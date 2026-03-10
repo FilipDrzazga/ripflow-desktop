@@ -51,6 +51,7 @@ const DataPrintSelection = () => {
             title: firstError?.title || "Batch creation failed",
             message: firstError?.message || "An unknown error occurred.",
           });
+
           return;
         } else {
           store.setAlert({
@@ -59,7 +60,7 @@ const DataPrintSelection = () => {
             title: "Batch created successfully",
             message: `Batch ID: ${createBatchResponse.batchId}`,
           });
-          console.log(createBatchResponse.batchId);
+
           const createXMLResponse = await window.api.createXML(print, {
             batchId: createBatchResponse.batchId,
           });
@@ -72,6 +73,7 @@ const DataPrintSelection = () => {
               title: firstError?.title || "XML creation failed",
               message: firstError?.message || "An unknown error occurred.",
             });
+
             return;
           } else {
             store.setAlert({
@@ -82,6 +84,7 @@ const DataPrintSelection = () => {
             });
           }
         }
+
         const readFoldersResponse = await window.api.readFolders();
         if (readFoldersResponse.success) {
           store.setAlert({
@@ -91,8 +94,8 @@ const DataPrintSelection = () => {
             message: "The folder data has been refreshed.",
           });
           store.setFiles(readFoldersResponse.data);
-          store.setFilteredFiles(readFoldersResponse.data);
         }
+
         store.toggleClearSelection();
         setSelectedPrinter(null);
       } catch (err) {
@@ -105,6 +108,7 @@ const DataPrintSelection = () => {
         });
       }
     };
+
     handleCreateBatch();
   };
 

@@ -51,37 +51,43 @@ const buildPFJobXML = (batch, batchId) => {
 
   const xml = `
     <Job>
-        <NestingGroup>TEXTILE_MAIN</NestingGroup>
+      <PhysicalGroup>${escapeXml(batch[0]?.materialType)}</PhysicalGroup>
+      <NestingGroup>TEXTILE_MAIN</NestingGroup>
+      <LogisticGroup>${escapeXml(batchId)}</LogisticGroup>
 
-        <UserData>
-          <Item Key="BatchId" Value="${escapeXml(batchId)}" />
-          <Item Key="Printer" Value="${escapeXml(batch[0]?.printer || "")}" />
-            <Item Key="Source" Value="RipFlow" />
-        </UserData>
+      <UserData>
+        <Item Key="BatchId" Value="${escapeXml(batchId)}" />
+        <Item Key="Printer" Value="${escapeXml(batch[0]?.printer || "")}" />
+        <Item Key="Source" Value="RipFlow" />
+      </UserData>
 
-        <Documents>
-            ${batch
-              .map((item) => {
-                const sourcePath = path.resolve(String(item?.file?.fullPath || ""));
-                const fileName = path.basename(sourcePath);
-                const finalPath = path.join(BASE_FINAL_PATH, fileName);
-                return `<Document>
-              <Path>${escapeXml(finalPath)}</Path>
-              <Name>${escapeXml(item?.file?.name)}</Name>
-              <Copies>${escapeXml(item.qty)}</Copies>
-              <DocumentId>${escapeXml(item.artworkId)}</DocumentId>
-                <UserData>
-                  <Item Key="MaterialType" Value="${escapeXml(item.materialType)}" />
-                  <Item Key="OrderId" Value="${escapeXml(item.orderId)}" />
-                  <Item Key="PrintType" Value="${escapeXml(item.printType)}" />
-                  <Item Key="Printer" Value="${escapeXml(item.printer)}" />
-                  <Item Key="Size" Value="${escapeXml(item.variant)}" />
-                  <Item Key="OriginalSourcePath" Value="${escapeXml(sourcePath)}" />
-                </UserData>
-            </Document>`;
-              })
-              .join("\n")}
-        </Documents>
+      <Documents>
+          ${batch
+            .map((item) => {
+              const sourcePath = path.resolve(String(item?.file?.fullPath || ""));
+              const fileName = path.basename(sourcePath);
+              const finalPath = path.join(BASE_FINAL_PATH, fileName);
+              return `
+        <Document>
+          <Path>${escapeXml(finalPath)}</Path>
+          <Name>${escapeXml(item?.file?.name)}</Name>
+          <Copies>${escapeXml(item.qty)}</Copies>
+          <DocumentId>${escapeXml(item.artworkId)}</DocumentId>
+            <UserData>
+              <Item Key="Material" Value="${escapeXml(item.material)}" />
+              <Item Key="MaterialType" Value="${escapeXml(item.materialType)}" />
+              <Item Key="OrderId" Value="${escapeXml(item.orderId)}" />
+              <Item Key="PrintType" Value="${escapeXml(item.printType)}" />
+              <Item Key="PrintTypeCode" Value="${escapeXml(item.printTypeCode)}" />
+              <Item Key="Printer" Value="${escapeXml(item.printer)}" />
+              <Item Key="Size" Value="${escapeXml(item.size)}" />
+              <Item Key="Variant" Value="${escapeXml(item.variant)}" />
+              <Item Key="OriginalSourcePath" Value="${escapeXml(sourcePath)}" />
+            </UserData>
+        </Document>`;
+            })
+            .join("\n")}
+      </Documents>
     </Job>`;
   return xml;
 };

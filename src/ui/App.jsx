@@ -18,7 +18,6 @@ const App = () => {
         const res = await window.api.readFolders();
         if (res.success) {
           store.setFiles(res.data);
-          store.setFilteredFiles(res.data);
           store.setAlert({
             id: crypto.randomUUID(),
             type: "Success",
