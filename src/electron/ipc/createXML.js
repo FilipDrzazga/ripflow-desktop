@@ -50,17 +50,11 @@ const buildPFJobXML = (batch, batchId) => {
   const BASE_FINAL_PATH = path.join(PRINTED_ROOT_PATH, batchId);
 
   const xml = `
-    <Job>
+    <RipFlowJob>
+      <BatchId>${escapeXml(batchId)}</BatchId>
+      <Printer>${escapeXml(batch[0]?.printer)}</Printer>
       <PhysicalGroup>${escapeXml(batch[0]?.materialType)}</PhysicalGroup>
-      <NestingGroup>TEXTILE_MAIN</NestingGroup>
       <LogisticGroup>${escapeXml(batchId)}</LogisticGroup>
-
-      <UserData>
-        <Item Key="BatchId" Value="${escapeXml(batchId)}" />
-        <Item Key="Printer" Value="${escapeXml(batch[0]?.printer || "")}" />
-        <Item Key="Source" Value="RipFlow" />
-      </UserData>
-
       <Documents>
           ${batch
             .map((item) => {
@@ -73,22 +67,21 @@ const buildPFJobXML = (batch, batchId) => {
           <Name>${escapeXml(item?.file?.name)}</Name>
           <Copies>${escapeXml(item.qty)}</Copies>
           <DocumentId>${escapeXml(item.artworkId)}</DocumentId>
-            <UserData>
-              <Item Key="Material" Value="${escapeXml(item.material)}" />
-              <Item Key="MaterialType" Value="${escapeXml(item.materialType)}" />
-              <Item Key="OrderId" Value="${escapeXml(item.orderId)}" />
-              <Item Key="PrintType" Value="${escapeXml(item.printType)}" />
-              <Item Key="PrintTypeCode" Value="${escapeXml(item.printTypeCode)}" />
-              <Item Key="Printer" Value="${escapeXml(item.printer)}" />
-              <Item Key="Size" Value="${escapeXml(item.size)}" />
-              <Item Key="Variant" Value="${escapeXml(item.variant)}" />
-              <Item Key="OriginalSourcePath" Value="${escapeXml(sourcePath)}" />
-            </UserData>
+          <Width>${escapeXml(item.width)}</Width>
+          <Height>${escapeXml(item.height)}</Height>
+          <Material>${escapeXml(item.material)}</Material>
+          <MaterialType>${escapeXml(item.materialType)}</MaterialType>
+          <OrderId>${escapeXml(item.orderId)}</OrderId>
+          <PrintType>${escapeXml(item.printType)}</PrintType>
+          <PrintTypeCode>${escapeXml(item.printTypeCode)}</PrintTypeCode>
+          <Size>${item.size ? escapeXml(item.size) : ""}</Size>
+          <Variant>${escapeXml(item.variant)}</Variant>
+          <OriginalSourcePath>${escapeXml(sourcePath)}</OriginalSourcePath>
         </Document>`;
             })
             .join("\n")}
       </Documents>
-    </Job>`;
+    </RipFlowJob>`;
   return xml;
 };
 

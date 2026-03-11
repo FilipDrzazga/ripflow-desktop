@@ -139,6 +139,46 @@ function stripPrefixBeforeDash(s) {
   return s.slice(idx + 1).trim();
 }
 
+function toMm(value, unit) {
+  if (!Number.isFinite(value)) return null;
+  return String(unit || "").toLowerCase() === "cm" ? value * 10 : value;
+}
+
+function parseDimensionsFromText(text) {
+  // e.g. "45 x 45 cm" => 450 x 450 (mm), "450 x 450 mm" => 450 x 450
+  const s = String(text || "")
+    .trim()
+    .replace(/,/g, ".");
+
+  const m = s.match(/(\d+(?:\.\d+)?)\s*x\s*(\d+(?:\.\d+)?)\s*(cm|mm)\b/i);
+  if (!m) return { width: null, height: null };
+
+  const w = Number(m[1]);
+  const h = Number(m[2]);
+  const unit = m[3];
+
+  return {
+    width: toMm(w, unit),
+    height: toMm(h, unit),
+  };
+}
+
+function applyDimensions(out, text) {
+  const { width, height } = parseDimensionsFromText(text);
+  out.width = width;
+  out.height = height;
+}
+
+function applyLmDimensions(out) {
+  // Current business rule for Linear Meter:
+  // fixed printable width 1420 mm and length based on qty in meters.
+  if (out.printTypeCode !== "LM") return;
+  if (!Number.isFinite(out.qty) || out.qty <= 0) return;
+
+  out.width = 1420;
+  out.height = out.qty * 1000;
+}
+
 /**
  * Cushion format:
  * ONxxxx _ nameParts... _ xOfY _ Custom Square Cushion _ material _ size _ option _ qty _ FF _ internalId(.pdf)
@@ -213,6 +253,7 @@ function parseCushion(tokens, baseOut) {
   out.material = material;
   out.size = size ? size.trim() : null;
   out.variant = variant ? variant.trim() : null;
+  applyDimensions(out, out.size);
 
   // qty: token just before FF (common in cushion)
   let qty = null;
@@ -256,7 +297,11 @@ function parseTeaTowel(tokens, baseOut) {
   // customerName between orderId and xOfY
   const orderIndex = findIndex(tokens, (t) => /^ON\d+$/i.test(t));
   if (orderIndex >= 0 && xOfYIndex > orderIndex + 1) {
-    out.customerName = tokens.slice(orderIndex + 1, xOfYIndex).join(" ").trim() || null;
+    out.customerName =
+      tokens
+        .slice(orderIndex + 1, xOfYIndex)
+        .join(" ")
+        .trim() || null;
   } else {
     out.customerName = null;
   }
@@ -290,6 +335,7 @@ function parseTeaTowel(tokens, baseOut) {
   }
 
   out.size = null;
+  applyDimensions(out, out.size);
 
   out.printTypeCode = "TEA_TOWEL";
   out.printType = toPrintTypeLabel(out.printTypeCode);
@@ -370,6 +416,8 @@ function parseXwdBased(tokens, baseOut) {
   out.size = size;
   out.variant = variant;
   out.productName = null;
+  applyDimensions(out, out.size);
+  applyLmDimensions(out);
 
   return out;
 }
@@ -448,6 +496,10 @@ function validateByType(out) {
       addError(out, "MISSING_SIZE", `${out.printType} requires size (e.g. 65 x 48 cm / 20 x 20 cm).`);
     }
   }
+
+  if (out.size && (out.width == null || out.height == null)) {
+    addWarning(out, "Size exists but width/height could not be parsed.");
+  }
 }
 
 function parsePrintFileName(fileName, options = {}) {
@@ -477,6 +529,8 @@ function parsePrintFileName(fileName, options = {}) {
 
     qty: null,
     size: null,
+    width: null,
+    height: null,
     variant: null,
     productName: null,
 

@@ -38,6 +38,7 @@ const DataPrintSelection = () => {
       .map((group) => group.items.filter((item) => store.selectedIds.has(item.id)))
       .flat();
     const print = getFilesToPrint.map((item) => ({ ...item, printer: selectedPrinter }));
+    console.log(print);
     const handleCreateBatch = async () => {
       try {
         const createBatchResponse = await window.api.createBatch(print);
