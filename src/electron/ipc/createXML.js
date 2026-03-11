@@ -1,4 +1,4 @@
-import { getRootPath } from "../helpers/getRootPath.js";
+import { getStorageRootPath, getXmlRootPath } from "../helpers/getRootPath.js";
 import path from "path";
 import fs from "fs";
 
@@ -45,7 +45,7 @@ const normalizeBatchId = (createdBatchId) => {
 };
 
 const buildPFJobXML = (batch, batchId) => {
-  const ROOT_PATH = getRootPath();
+  const ROOT_PATH = getXmlRootPath();
   const PRINTED_ROOT_PATH = path.resolve(ROOT_PATH, "PRINTED");
   const BASE_FINAL_PATH = path.join(PRINTED_ROOT_PATH, batchId);
 
@@ -114,7 +114,7 @@ export async function submitBatchToPrintFactory(batch, createdBatchId) {
     }
     result.batchId = normalizedBatchId;
 
-    const ROOT_PATH = getRootPath();
+    const ROOT_PATH = getStorageRootPath();
     const AUTOMATION_WORKFLOW_PATH = path.resolve(ROOT_PATH, "AUTOMATION_WORKFLOW");
 
     try {

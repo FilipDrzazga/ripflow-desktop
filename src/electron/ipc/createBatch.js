@@ -1,7 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { createBatchIds } from "../helpers/createBatchIds.js";
-import { getRootPath } from "../helpers/getRootPath.js";
+import { getStorageRootPath } from "../helpers/getRootPath.js";
 
 const STAGES = {
   INIT: "init",
@@ -69,7 +69,7 @@ export const createBatch = async (batch) => {
       });
     }
 
-    const ROOT_PATH = getRootPath();
+    const ROOT_PATH = getStorageRootPath();
     const PRINTED_ROOT_PATH = path.resolve(ROOT_PATH, "PRINTED");
     const batchIds = createBatchIds(batch);
 
