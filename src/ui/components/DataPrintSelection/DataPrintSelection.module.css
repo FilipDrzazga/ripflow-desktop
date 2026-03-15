@@ -51,12 +51,6 @@
   gap: 5px;
   width: auto;
   height: auto;
-  /* padding: 8px 20px; */
-  /* border-radius: 10px; */
-  /* border: 1px solid var(--bg-grey-light); */
-  /* background-color: var(--bg-grey-light); */
-  /* box-shadow: var(--card-shadow); */
-  /* color: var(--text-disabled); */
 }
 .selection_input {
   width: 14px;
@@ -65,11 +59,11 @@
   margin: auto;
 }
 .selection_input:disabled {
-  opacity:0.5;
+  opacity: 0.5;
   cursor: not-allowed;
 }
 .selection_label:has(input:disabled) {
-  opacity:0.5;
+  opacity: 0.5;
   cursor: not-allowed;
 }
 .submit_button {
@@ -81,15 +75,19 @@
   height: auto;
   padding: 8px 20px;
   border-radius: 10px;
-  border: 1px solid var(--bg-grey-light);
-  background-color: var(--btn-submit-bg);
-  /* box-shadow: var(--card-shadow); */
-  color: var(--text-white);
+  /* border: 1px solid #b7e4c7; */
+  background-color: #d8f3dc;
+  color: #2d6a4f;
   font-size: 14px;
   font-weight: 600;
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    color 0.2s ease;
 }
 .submit_button:hover {
-  background-color: var(--btn-submit-bg-hover);
+  background-color: #c7ebd1;
+  border-color: #95d5b2;
 }
 .clear_button {
   display: flex;
@@ -100,13 +98,17 @@
   height: auto;
   padding: 8px 20px;
   border-radius: 10px;
-  border: 1px solid var(--bg-grey-light);
-  background-color: var(--btn-clear-bg);
-  /* box-shadow: var(--card-shadow); */
-  color: var(--text-white);
+  /* border: 1px solid #f2c6d2; */
+  background-color: #fde2e4;
+  color: #9d4d66;
   font-size: 14px;
   font-weight: 600;
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    color 0.2s ease;
 }
 .clear_button:hover {
-  background-color: var(--btn-clear-bg-hover);
+  background-color: #f9d2d8;
+  border-color: #e7b3c0;
 }
