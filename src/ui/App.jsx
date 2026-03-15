@@ -9,41 +9,18 @@ import DataPrintSelection from "./components/DataPrintSelection/DataPrintSelecti
 import AlertsHost from "./components/AlertsHost/AlertsHost";
 
 const App = () => {
-  const store = useStore();
+  const refreshFiles = useStore((state) => state.refreshFiles);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const fetchFolders = async () => {
-      try {
-        const res = await window.api.readFolders();
-        if (res.success) {
-          store.setFiles(res.data);
-          store.setAlert({
-            id: crypto.randomUUID(),
-            type: "Success",
-            title: "Folders loaded",
-            message: "The folder data has been successfully loaded.",
-          });
-        } else {
-          const firstError = res.errors?.[0];
-          store.setAlert({
-            id: crypto.randomUUID(),
-            type: firstError?.type || "Error",
-            title: firstError?.title || "Failed to load folders",
-            message: firstError?.message || "An unknown error occurred while loading folders.",
-          });
-        }
-      } catch (err) {
-        store.setAlert({
-          id: crypto.randomUUID(),
-          type: err?.type || "Error",
-          title: err?.title || "Failed to load folders",
-          message: err?.message || "An unexpected error occurred while loading folders.",
-        });
-      }
+      await refreshFiles({
+        successTitle: "Folders loaded",
+        successMessage: "The folder data has been successfully loaded.",
+      });
     };
     fetchFolders();
-  }, []);
+  }, [refreshFiles]);
   return (
     <div className={styles.app}>
       <AlertsHost />

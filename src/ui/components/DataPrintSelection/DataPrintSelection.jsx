@@ -86,18 +86,7 @@ const DataPrintSelection = () => {
           }
         }
 
-        const readFoldersResponse = await window.api.readFolders();
-        if (readFoldersResponse.success) {
-          store.setAlert({
-            id: crypto.randomUUID(),
-            type: "Success",
-            title: "Folders reloaded",
-            message: "The folder data has been refreshed.",
-          });
-          store.setFiles(readFoldersResponse.data);
-        }
-
-        store.toggleClearSelection();
+        await store.refreshFiles({ clearSelection: true });
         setSelectedPrinter(null);
       } catch (err) {
         console.error("Error during batch creation or XML generation:", err);

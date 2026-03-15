@@ -35,6 +35,7 @@ export const useStore = create(
 
     files: [],
     filteredFiles: [],
+    isRefreshingFiles: false,
     setFiles: (files) =>
       set((state) => ({
         files,
@@ -113,5 +114,61 @@ export const useStore = create(
       }),
 
     toggleClearSelection: () => set(() => ({ selectedIds: new Set() })),
+    refreshFiles: async ({
+      successTitle = "Folders reloaded",
+      successMessage = "The folder data has been refreshed.",
+      errorTitle = "Failed to load folders",
+      errorMessage = "An unexpected error occurred while loading folders.",
+      showSuccessAlert = true,
+      clearSelection = false,
+    } = {}) => {
+      if (get().isRefreshingFiles) return { success: false, skipped: true };
+
+      set({ isRefreshingFiles: true });
+
+      try {
+        const res = await window.api.readFolders();
+
+        if (res.success) {
+          set((state) => ({
+            files: res.data,
+            filteredFiles: applyTabFilter(res.data, state.activeTab),
+            selectedIds: clearSelection ? new Set() : state.selectedIds,
+          }));
+
+          if (showSuccessAlert) {
+            get().setAlert({
+              id: crypto.randomUUID(),
+              type: "Success",
+              title: successTitle,
+              message: successMessage,
+            });
+          }
+
+          return res;
+        }
+
+        const firstError = res.errors?.[0];
+        get().setAlert({
+          id: crypto.randomUUID(),
+          type: firstError?.type || "Error",
+          title: firstError?.title || errorTitle,
+          message: firstError?.message || errorMessage,
+        });
+
+        return res;
+      } catch (err) {
+        get().setAlert({
+          id: crypto.randomUUID(),
+          type: err?.type || "Error",
+          title: err?.title || errorTitle,
+          message: err?.message || errorMessage,
+        });
+
+        return { success: false, errors: [err] };
+      } finally {
+        set({ isRefreshingFiles: false });
+      }
+    },
   })),
 );

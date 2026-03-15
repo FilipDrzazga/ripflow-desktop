@@ -2,10 +2,11 @@
   display: flex;
   justify-content: flex-start;
   align-items: flex-end;
+  flex-wrap: wrap;
   gap: 20px;
   width: 98%;
-  height: 80px;
-  padding-left: 20px;
+  min-height: 80px;
+  padding: 16px 20px 0 5px;
   background-color: var(--bg-grey);
 }
 .filter_button {
@@ -23,14 +24,43 @@
   color: var(--text-disabled);
   font-size: 14px;
   font-weight: 600;
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    color 0.2s ease,
+    opacity 0.2s ease;
 }
 .filter_button:hover {
   background-color: var(--bg-white);
   border: 1px solid var(--bg-grey-light);
   color: var(--text-black);
 }
+.filter_button:disabled {
+  cursor: not-allowed;
+  opacity: 0.75;
+}
 .filter_button.active {
   background-color: var(--bg-black);
   color: var(--text-white);
   border: 1px solid var(--border-black);
+}
+.refresh_button {
+  margin-left: auto;
+  min-width: 140px;
+  color: var(--text-black);
+}
+.refresh_button:disabled {
+  color: var(--text-secondary);
+}
+.spinning_icon {
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
