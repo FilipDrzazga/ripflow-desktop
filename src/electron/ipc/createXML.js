@@ -53,7 +53,6 @@ const buildPFJobXML = (batch, batchId) => {
     <RipFlowJob>
       <BatchId>${escapeXml(batchId)}</BatchId>
       <Printer>${escapeXml(batch[0]?.printer)}</Printer>
-      <PhysicalGroup>${escapeXml(batch[0]?.materialType)}</PhysicalGroup>
       <LogisticGroup>${escapeXml(batchId)}</LogisticGroup>
       <Documents>
           ${batch
@@ -65,18 +64,14 @@ const buildPFJobXML = (batch, batchId) => {
         <Document>
           <Path>${escapeXml(finalPath)}</Path>
           <Name>${escapeXml(item?.file?.name)}</Name>
-          <Copies>${escapeXml(item.qty)}</Copies>
+          <Copies>${escapeXml(item.printTypeCode) === "LM" ? 1 : escapeXml(item.qty)}</Copies>
           <DocumentId>${escapeXml(item.artworkId)}</DocumentId>
           <Width>${escapeXml(item.width)}</Width>
           <Height>${escapeXml(item.height)}</Height>
           <Material>${escapeXml(item.material)}</Material>
           <MaterialType>${escapeXml(item.materialType)}</MaterialType>
           <OrderId>${escapeXml(item.orderId)}</OrderId>
-          <PrintType>${escapeXml(item.printType)}</PrintType>
           <PrintTypeCode>${escapeXml(item.printTypeCode)}</PrintTypeCode>
-          <Size>${item.size ? escapeXml(item.size) : ""}</Size>
-          <Variant>${escapeXml(item.variant)}</Variant>
-          <OriginalSourcePath>${escapeXml(sourcePath)}</OriginalSourcePath>
         </Document>`;
             })
             .join("\n")}
@@ -144,7 +139,7 @@ export async function submitBatchToPrintFactory(batch, createdBatchId) {
     }
 
     const safeBatchId = normalizedBatchId.replace(FILE_SAFE_BATCH_ID_PATTERN, "_");
-    const xmlFileName = `job-${safeBatchId}.xml`;
+    const xmlFileName = `${safeBatchId}.xml`;
     const tempXmlPath = path.join(AUTOMATION_WORKFLOW_PATH, `${xmlFileName}.tmp`);
     const finalXmlPath = path.join(AUTOMATION_WORKFLOW_PATH, xmlFileName);
 
