@@ -53,7 +53,9 @@ const buildPFJobXML = (batch, batchId) => {
     <RipFlowJob>
       <BatchId>${escapeXml(batchId)}</BatchId>
       <Printer>${escapeXml(batch[0]?.printer)}</Printer>
+      <NestingGroup>${escapeXml(batchId)}</NestingGroup>
       <LogisticGroup>${escapeXml(batchId)}</LogisticGroup>
+      <PhisicalGroup>${escapeXml(batchId)}</PhisicalGroup>
       <Documents>
           ${batch
             .map((item) => {
@@ -62,6 +64,9 @@ const buildPFJobXML = (batch, batchId) => {
               const finalPath = path.join(BASE_FINAL_PATH, fileName);
               return `
         <Document>
+          <NestingGroup>${escapeXml(batchId)}</NestingGroup>
+          <LogisticGroup>${escapeXml(batchId)}</LogisticGroup>
+          <PhisicalGroup>${escapeXml(batchId)}</PhisicalGroup>
           <Path>${escapeXml(finalPath)}</Path>
           <Name>${escapeXml(item?.file?.name)}</Name>
           <Copies>${escapeXml(item.printTypeCode) === "LM" ? 1 : escapeXml(item.qty)}</Copies>

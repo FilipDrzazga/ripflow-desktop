@@ -170,13 +170,26 @@ function applyDimensions(out, text) {
 }
 
 function applyLmDimensions(out) {
-  // Current business rule for Linear Meter:
-  // fixed printable width 1420 mm and length based on qty in meters.
-  if (out.printTypeCode !== "LM") return;
-  if (!Number.isFinite(out.qty) || out.qty <= 0) return;
+  if (out.printTypeCode === "LM") {
+    // Keep current business rule for Linear Meter:
+    // fixed printable width 1420 mm and length based on qty in meters.
+    if (!Number.isFinite(out.qty) || out.qty <= 0) return;
 
-  out.width = 1420;
-  out.height = out.qty * 1000;
+    out.width = 1420;
+    out.height = out.qty * 1000;
+    return;
+  }
+
+  if (out.printTypeCode === "SAMPLE") {
+    out.width = 220;
+    out.height = 200;
+    return;
+  }
+
+  if (out.printTypeCode === "FQ") {
+    out.width = 670;
+    out.height = 480;
+  }
 }
 
 /**
@@ -521,27 +534,21 @@ function parsePrintFileName(fileName, options = {}) {
     xOfY: null,
     x: null,
     y: null,
-
     printTypeCode: "UNKNOWN",
     printType: "UNKNOWN",
-
     material: null,
-
     qty: null,
     size: null,
     width: null,
     height: null,
     variant: null,
     productName: null,
-
     artworkId: null,
     internalId: null,
     ff: false,
-
     tokens,
     warnings: [],
     errors: [],
-
     status: "INVALID",
     detectedAt: nowIso(),
   };
