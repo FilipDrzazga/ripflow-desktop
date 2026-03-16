@@ -1,4 +1,5 @@
 import { getStorageRootPath, getXmlRootPath } from "../helpers/getRootPath.js";
+import { randomUUID } from "crypto";
 import path from "path";
 import fs from "fs";
 
@@ -49,13 +50,19 @@ const buildPFJobXML = (batch, batchId) => {
   const PRINTED_ROOT_PATH = path.resolve(ROOT_PATH, "PRINTED");
   const BASE_FINAL_PATH = path.join(PRINTED_ROOT_PATH, batchId);
 
+  const getPrintGroupArr = batch.map((item) => item.printGroup);
+  const uniquePrintGroups = [...new Set(getPrintGroupArr)];
+  const printGroup = uniquePrintGroups.length === 1 ? uniquePrintGroups[0] : "MIXED";
+
+  const id = randomUUID();
+
   const xml = `
     <RipFlowJob>
       <BatchId>${escapeXml(batchId)}</BatchId>
       <Printer>${escapeXml(batch[0]?.printer)}</Printer>
-      <NestingGroup>${escapeXml(batchId)}</NestingGroup>
-      <LogisticGroup>${escapeXml(batchId)}</LogisticGroup>
-      <PhisicalGroup>${escapeXml(batchId)}</PhisicalGroup>
+      <NestingGroup>${escapeXml(id)}</NestingGroup>
+      <LogisticGroup>${escapeXml(id)}</LogisticGroup>
+      <PhisicalGroup>${escapeXml(printGroup)}</PhisicalGroup>
       <Documents>
           ${batch
             .map((item) => {
@@ -64,9 +71,6 @@ const buildPFJobXML = (batch, batchId) => {
               const finalPath = path.join(BASE_FINAL_PATH, fileName);
               return `
         <Document>
-          <NestingGroup>${escapeXml(batchId)}</NestingGroup>
-          <LogisticGroup>${escapeXml(batchId)}</LogisticGroup>
-          <PhisicalGroup>${escapeXml(batchId)}</PhisicalGroup>
           <Path>${escapeXml(finalPath)}</Path>
           <Name>${escapeXml(item?.file?.name)}</Name>
           <Copies>${escapeXml(item.printTypeCode) === "LM" ? 1 : escapeXml(item.qty)}</Copies>

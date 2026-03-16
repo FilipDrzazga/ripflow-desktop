@@ -55,6 +55,7 @@ const DataPrintSelection = () => {
 
           return;
         } else {
+          console.log(createBatchResponse);
           store.setAlert({
             id: crypto.randomUUID(),
             type: "Success",
