@@ -1,6 +1,7 @@
 import { useStore } from "../../store/useStore";
 import Badge from "../Badge/Badge";
 import DataDaysCounter from "../DataDaysCounter/DataDaysCounter";
+import { estimatePrintLength } from "../../helpers/estimatePrintLength";
 import { FiInbox } from "react-icons/fi";
 import style from "./DataList.module.css";
 
@@ -69,6 +70,7 @@ const DataList = () => {
                 onChange={(e) => handleGroupCheckboxChange(e, group)}
               />
               {group.printGroup}
+              <div className={style.estimated_length}>{estimatePrintLength(group.items).fixedTotalLengthM}m</div>
             </label>
             <ul className={style.list_items}>
               {group.items.map((item) => {
