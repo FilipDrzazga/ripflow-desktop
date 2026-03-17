@@ -2,6 +2,7 @@ import { getStorageRootPath, getXmlRootPath } from "../helpers/getRootPath.js";
 import { randomUUID } from "crypto";
 import path from "path";
 import fs from "fs";
+import { estimatePrintLength } from "../helpers/estimatePrintLength.js";
 
 const STAGES = {
   INIT: "init",
@@ -55,13 +56,15 @@ const buildPFJobXML = (batch, batchId) => {
   const printGroup = uniquePrintGroups.length === 1 ? uniquePrintGroups[0] : "MIXED";
 
   const id = randomUUID();
+  const estimated = estimatePrintLength(batch);
+  const logisticGroup = `${id}_${estimated.fixedTotalLengthM}m`;
 
   const xml = `
     <RipFlowJob>
       <BatchId>${escapeXml(batchId)}</BatchId>
       <Printer>${escapeXml(batch[0]?.printer)}</Printer>
       <NestingGroup>${escapeXml(id)}</NestingGroup>
-      <LogisticGroup>${escapeXml(id)}</LogisticGroup>
+      <LogisticGroup>${escapeXml(logisticGroup)}</LogisticGroup>
       <PhisicalGroup>${escapeXml(printGroup)}</PhisicalGroup>
       <Documents>
           ${batch

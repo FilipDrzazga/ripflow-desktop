@@ -70,7 +70,7 @@ const DataList = () => {
                 onChange={(e) => handleGroupCheckboxChange(e, group)}
               />
               {group.printGroup}
-              <div className={style.estimated_length}>{estimatePrintLength(group.items).fixedTotalLengthM}m</div>
+              <div className={style.estimated_length}>{estimatePrintLength(group.items).fixedTotalLengthM} m</div>
             </label>
             <ul className={style.list_items}>
               {group.items.map((item) => {

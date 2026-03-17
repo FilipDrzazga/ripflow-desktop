@@ -1,7 +1,7 @@
 const POLYESTER_MATERIAL_WIDTH = 1550;
 const COTTONS_MATERIAL_WIDTH = 1450;
-const POLYESTER_MARGIN = 5; //mm
-const COTTONS_MARGIN = 10; //mm
+const POLYESTER_MARGIN = 5;
+const COTTONS_MARGIN = 10;
 
 export const estimatePrintLength = (files) => {
   const hasCotton = files.some((file) => file.materialType === "Cottons");
@@ -49,11 +49,11 @@ export const estimatePrintLength = (files) => {
   }
 
   const totalLengthM = totalLengthMm / 1000;
-
   const fixedTotalLengthM = Number(totalLengthM.toFixed(2));
 
   return {
     totalLengthMm,
+    totalLengthM,
     fixedTotalLengthM,
     rowsCount,
   };
