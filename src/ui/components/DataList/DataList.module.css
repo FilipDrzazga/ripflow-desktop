@@ -9,6 +9,7 @@
   border-radius: 20px;
   overflow-y: auto;
   background-color: var(--bg-gray);
+  /* background-color: red; */
 }
 
 .list_content {
@@ -90,6 +91,7 @@
   justify-content: flex-start;
   width: 30%;
   height: 100%;
+  /* background-color: purple; */
 }
 .item_name {
   display: flex;

@@ -5,12 +5,11 @@ const badgeArr = [
   { type: "Cushion", bgColor: "#f1f5f9", textColor: "#334155" },
   { type: "Sample", bgColor: "#f1f5f9", textColor: "#334155" },
   { type: "Tea Towel", bgColor: "#f1f5f9", textColor: "#334155" },
-  { type: "Polyesters", bgColor: "#eef2ff", textColor: "#4338ca" },
-  { type: "Cottons", bgColor: "#ecfeff", textColor: "#0e7490" },
-  { type: "READY", bgColor: "#ecfdf5", textColor: "#61d041" },
-  { type: "INVALID", bgColor: "#fffbeb", textColor: "#b45309" },
-  { type: "UNKNOWN", bgColor: "#fff7ed", textColor: "#c2410c" },
-  { type: "DiffDays", bgColor: "#ffffff", textColor: "#171717" },
+  { type: "Polyesters", bgColor: "#f4e7ff", textColor: "#b542ff" },
+  { type: "Cottons", bgColor: "#daeaff", textColor: "#2477f7" },
+  { type: "READY", bgColor: "#d9fbe5", textColor: "#05c95d" },
+  { type: "INVALID", bgColor: "#fff7c1", textColor: "#ecb809" },
+  { type: "UNKNOWN", bgColor: "#fff7c1", textColor: "#ecb809" },
 ];
 
 const Badge = ({ type, badgeText }) => {

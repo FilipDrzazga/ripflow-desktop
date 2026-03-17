@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import styles from "./DataDaysCounter.module.css";
 
-const DataDaysCounter = ({ diffDays, children }) => {
+const DataDaysCounter = ({ diffDays }) => {
   const MAX_DAYS = 3;
   const MIN_VISIBLE = 5;
 
@@ -29,7 +29,7 @@ const DataDaysCounter = ({ diffDays, children }) => {
 
   return (
     <div className={styles.counter_container}>
-      {children}
+      <div className={styles.counter_text}>{diffDays === 1 ? `NEW` : `${diffDays} DAYS`}</div>
       <div className={styles.counter_track}>
         <div className={styles.counter_fill} style={fillCounterBar()}></div>
       </div>

@@ -75,9 +75,8 @@
   height: auto;
   padding: 8px 20px;
   border-radius: 10px;
-  /* border: 1px solid #b7e4c7; */
-  background-color: #d8f3dc;
-  color: #2d6a4f;
+  background-color: #d6f9e4;
+  color: #05c95d;
   font-size: 14px;
   font-weight: 600;
   transition:
@@ -86,8 +85,8 @@
     color 0.2s ease;
 }
 .submit_button:hover {
-  background-color: #c7ebd1;
-  border-color: #95d5b2;
+  background-color: rgb(179, 235, 195);
+  border-color: #a1d3b7;
 }
 .clear_button {
   display: flex;
@@ -98,9 +97,8 @@
   height: auto;
   padding: 8px 20px;
   border-radius: 10px;
-  /* border: 1px solid #f2c6d2; */
-  background-color: #fde2e4;
-  color: #9d4d66;
+  background-color: #ffe7e5;
+  color: #e63641;
   font-size: 14px;
   font-weight: 600;
   transition:

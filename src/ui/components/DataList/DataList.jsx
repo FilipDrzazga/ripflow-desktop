@@ -97,9 +97,7 @@ const DataList = () => {
                       </label>
                     </div>
                     <div className={style.item_badges}>
-                      <DataDaysCounter diffDays={item.diffDays}>
-                        <Badge type="DiffDays" badgeText={item.diffDays === 1 ? `NEW` : `${item.diffDays} DAYS`} />
-                      </DataDaysCounter>
+                      <DataDaysCounter diffDays={item.diffDays} />
                       <Badge type={item.printType} badgeText={item.printType} />
                       <Badge type={item.materialType} badgeText={item.materialType} />
                       <Badge type={item.status} badgeText={item.status} />

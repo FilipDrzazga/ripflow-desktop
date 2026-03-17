@@ -5,8 +5,6 @@
   justify-content: center;
   width: 50%;
   height: 100%;
-  /* border: 1px solid green; */
-  /* background-color: blueviolet; */
 }
 .counter_track {
   width: 50%;
@@ -23,4 +21,10 @@
   height: 5px;
   border-radius: 20px;
   background-color: var(--text-black);
+}
+.counter_text {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-black);
+  margin-bottom: 1px;
 }

@@ -36,6 +36,7 @@ export const useStore = create(
     files: [],
     filteredFiles: [],
     isRefreshingFiles: false,
+    lastFilesRefreshAt: null,
     setFiles: (files) =>
       set((state) => ({
         files,
@@ -134,6 +135,7 @@ export const useStore = create(
             files: res.data,
             filteredFiles: applyTabFilter(res.data, state.activeTab),
             selectedIds: clearSelection ? new Set() : state.selectedIds,
+            lastFilesRefreshAt: new Date().toISOString(),
           }));
 
           if (showSuccessAlert) {
