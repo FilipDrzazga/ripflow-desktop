@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import style from "./ProductionOverviewCard.module.css";
 import { useStore } from "../../../store/useStore";
-import { estimatePrintLength } from "../../../helpers/estimatePrintLength";
+import { estimateMaterialLengthByGroups } from "../../../helpers/estimatePrintLength";
 import { LuAlarmClock } from "react-icons/lu";
 
 const MATERIAL_COLORS = {
@@ -24,6 +24,7 @@ const MATERIAL_COLORS = {
 
 const ProductionPrintCard = () => {
   const store = useStore();
+  const files = useStore((state) => state.files);
   const allItems = store.files.flatMap((group) => group.items);
   const lastFilesRefreshAt = useStore((state) => state.lastFilesRefreshAt);
   const [now, setNow] = useState(() => Date.now());
@@ -46,17 +47,12 @@ const ProductionPrintCard = () => {
   }, [allItems]);
 
   const materialLengths = useMemo(() => {
-    const byMaterial = allItems.reduce((acc, item) => {
-      const key = item.materialType || "Unknown";
-      acc[key] = [...(acc[key] || []), item];
-      return acc;
-    }, {});
-
-    return Object.entries(byMaterial).reduce((acc, [material, items]) => {
-      acc[material] = estimatePrintLength(items).fixedTotalLengthM;
-      return acc;
-    }, {});
-  }, [allItems]);
+    return {
+      Cottons: estimateMaterialLengthByGroups(files, "Cottons"),
+      Polyesters: estimateMaterialLengthByGroups(files, "Polyesters"),
+      Unknown: estimateMaterialLengthByGroups(files, "Unknown"),
+    };
+  }, [files]);
 
   const cottonsShare = materialStats.find((material) => material.label === "Cottons")?.percentage ?? 0;
   const polyestersShare = materialStats.find((material) => material.label === "Polyesters")?.percentage ?? 0;

@@ -15,28 +15,8 @@
 .card_content {
   display: flex;
   flex-direction: column;
-  gap: 20px;
-  width: 100%;
-}
-
-.card_header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
   gap: 10px;
   width: 100%;
-  color: var(--text-primary);
-}
-
-.card_header_title {
-  font-size: 24px;
-  font-weight: 700;
-}
-
-.card_header_value {
-  font-size: 20px;
-  font-weight: 500;
-  color: var(--text-primary);
 }
 
 .card_columns {
@@ -48,7 +28,7 @@
   display: flex;
   flex: 1;
   flex-direction: column;
-  gap: 16px;
+  gap: 10px;
   min-width: 0;
 }
 
@@ -60,13 +40,13 @@
 
 .card_column_header {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
-  gap: 12px;
+  gap: 10px;
 }
 
 .card_column_title {
-  font-size: 18px;
+  font-size: 24px;
   font-weight: 700;
   color: var(--text-primary);
 }

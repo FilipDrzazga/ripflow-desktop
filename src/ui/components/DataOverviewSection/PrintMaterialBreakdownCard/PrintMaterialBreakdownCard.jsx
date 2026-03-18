@@ -16,8 +16,8 @@ const MATERIAL_SECTIONS = [
     label: "Polyesters",
     palette: ["#6c57ff", "#8f76ff", "#b39eff"],
     othersColor: "#ddd1ff",
-    badgeBackground: "#eee9ff",
-    badgeText: "#6347d8",
+    badgeBackground: "#f4e7ff",
+    badgeText: "#b542ff",
   },
 ];
 

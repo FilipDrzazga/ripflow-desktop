@@ -58,3 +58,14 @@ export const estimatePrintLength = (files) => {
     rowsCount,
   };
 };
+
+export const estimateMaterialLengthByGroups = (groups, materialType) => {
+  const totalLength = (groups || [])
+    .filter((group) => group.items.some((item) => item.materialType === materialType))
+    .reduce((sum, group) => {
+      const groupItems = group.items.filter((item) => item.materialType === materialType);
+      return sum + estimatePrintLength(groupItems).fixedTotalLengthM;
+    }, 0);
+
+  return Number(totalLength.toFixed(2));
+};
