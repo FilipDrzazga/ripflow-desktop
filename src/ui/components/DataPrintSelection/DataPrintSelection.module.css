@@ -1,10 +1,16 @@
 .selection_container {
+  position: fixed;
+  left: 50%;
+  bottom: 20px;
+  transform: translateX(-50%);
+  z-index: 30;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: auto;
-  height: 80px;
-  padding: 0px 20px;
+  width: max-content;
+  max-width: calc(100vw - 40px);
+  min-height: 80px;
+  padding: 0 20px;
   border-radius: 20px;
   box-shadow: var(--card-shadow);
   background-color: var(--bg-white);
@@ -34,6 +40,7 @@
 
 .selection_form {
   display: flex;
+  flex-wrap: wrap;
   justify-content: center;
   align-items: center;
   gap: 20px;
@@ -109,4 +116,17 @@
 .clear_button:hover {
   background-color: #f9d2d8;
   border-color: #e7b3c0;
+}
+
+@media (max-width: 900px) {
+  .selection_container {
+    width: calc(100vw - 24px);
+    bottom: 12px;
+    padding: 16px;
+  }
+
+  .selection_form {
+    gap: 12px;
+    padding-left: 16px;
+  }
 }

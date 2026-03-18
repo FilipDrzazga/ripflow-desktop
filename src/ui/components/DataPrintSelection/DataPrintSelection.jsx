@@ -1,6 +1,10 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import gsap from "gsap";
+import { useGSAP } from "@gsap/react";
 import { useStore } from "../../store/useStore";
 import style from "./DataPrintSelection.module.css";
+
+gsap.registerPlugin(useGSAP);
 
 const DataPrintSelection = () => {
   const printers = [
@@ -10,8 +14,10 @@ const DataPrintSelection = () => {
   ];
   const [selectedPrinter, setSelectedPrinter] = useState(null);
   const store = useStore();
+  const contentRef = useRef(null);
 
   const isSelectionMode = store.selectedIds.size > 0;
+  const [isRendered, setIsRendered] = useState(isSelectionMode);
   const selectedMaterialTypes = new Set();
   store.filteredFiles.forEach((group) => {
     group.items.forEach((item) => {
@@ -22,6 +28,52 @@ const DataPrintSelection = () => {
   });
 
   const materialType = selectedMaterialTypes.size === 1 ? [...selectedMaterialTypes][0] : null;
+
+  useEffect(() => {
+    if (isSelectionMode) {
+      setIsRendered(true);
+    }
+  }, [isSelectionMode]);
+
+  useGSAP(
+    () => {
+      if (!isRendered || !contentRef.current) return;
+
+      const content = contentRef.current;
+
+      gsap.killTweensOf(content);
+
+      if (isSelectionMode) {
+        gsap.set(content, {
+          y: 32,
+          autoAlpha: 0,
+        });
+
+        gsap.to(content, {
+          y: 0,
+          autoAlpha: 1,
+          duration: 0.34,
+          ease: "power2.out",
+          overwrite: true,
+        });
+
+        return;
+      }
+
+      gsap.to(content, {
+        y: 32,
+        autoAlpha: 0,
+        duration: 0.24,
+        ease: "power2.in",
+        overwrite: true,
+        onComplete: () => {
+          gsap.set(content, { clearProps: "transform,opacity,visibility" });
+          setIsRendered(false);
+        },
+      });
+    },
+    { dependencies: [isRendered, isSelectionMode] },
+  );
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -38,7 +90,6 @@ const DataPrintSelection = () => {
       .map((group) => group.items.filter((item) => store.selectedIds.has(item.id)))
       .flat();
     const print = getFilesToPrint.map((item) => ({ ...item, printer: selectedPrinter }));
-    console.log(print);
     const handleCreateBatch = async () => {
       try {
         const createBatchResponse = await window.api.createBatch(print);
@@ -55,7 +106,6 @@ const DataPrintSelection = () => {
 
           return;
         } else {
-          console.log(createBatchResponse);
           store.setAlert({
             id: crypto.randomUUID(),
             type: "Success",
@@ -108,8 +158,10 @@ const DataPrintSelection = () => {
     store.toggleClearSelection();
   };
 
+  if (!isRendered) return null;
+
   return (
-    <div className={`${style.selection_container} ${isSelectionMode ? style.active : ""}`}>
+    <div className={`${style.selection_container} ${isSelectionMode ? style.active : ""}`} ref={contentRef}>
       <div className={style.selection_items}>
         {store.selectedIds.size > 1
           ? `${store.selectedIds.size} items selected`

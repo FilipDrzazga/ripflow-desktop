@@ -6,7 +6,7 @@ import DataList from "./components/DataList/DataList";
 import DataFilters from "./components/DataFilters/DataFilters";
 import StartupLoader from "./components/StartupLoader/StartupLoader";
 import DataPrintSelection from "./components/DataPrintSelection/DataPrintSelection";
-import ProductionPrintCard from "./components/ProductionPrintCard/ProductionPrintCard";
+import DataOverviewSection from "./components/DataOverviewSection/DataOverviewSection";
 import AlertsHost from "./components/AlertsHost/AlertsHost";
 
 const App = () => {
@@ -28,7 +28,7 @@ const App = () => {
       {isLoading && <StartupLoader onDone={() => setIsLoading(false)} />}
       {!isLoading && (
         <>
-          <ProductionPrintCard />
+          <DataOverviewSection />
           <DataFilters />
           <DataList />
           <DataPrintSelection />

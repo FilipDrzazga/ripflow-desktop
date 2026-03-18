@@ -18,10 +18,10 @@
   height: auto;
   padding: 8px 20px;
   border-radius: 10px;
+  background-color: var(--bg-white);
   border: 1px solid var(--bg-grey-light);
-  background-color: var(--bg-grey-light);
+  color: var(--text-black);
   box-shadow: var(--card-shadow);
-  color: var(--text-disabled);
   font-size: 14px;
   font-weight: 600;
   transition:
@@ -30,15 +30,15 @@
     color 0.2s ease,
     opacity 0.2s ease;
 }
-.filter_button:hover {
+/* .filter_button:hover {
   background-color: var(--bg-white);
   border: 1px solid var(--bg-grey-light);
   color: var(--text-black);
-}
-.filter_button:disabled {
+} */
+/* .filter_button:disabled {
   cursor: not-allowed;
   opacity: 0.75;
-}
+} */
 .filter_button.active {
   background-color: var(--bg-black);
   color: var(--text-white);
