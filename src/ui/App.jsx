@@ -10,6 +10,7 @@ import DataOverviewSection from "./components/DataOverviewSection/DataOverviewSe
 import AlertsHost from "./components/AlertsHost/AlertsHost";
 
 const App = () => {
+  const store = useStore();
   const refreshFiles = useStore((state) => state.refreshFiles);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -21,6 +22,7 @@ const App = () => {
       });
     };
     fetchFolders();
+    console.log(store.files);
   }, [refreshFiles]);
   return (
     <div className={styles.app}>

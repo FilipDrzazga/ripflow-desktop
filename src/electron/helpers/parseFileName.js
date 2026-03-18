@@ -192,6 +192,13 @@ function applyLmDimensions(out) {
   }
 }
 
+function applyTeaTowelDimensions(out) {
+  if (out.printTypeCode === "TEA_TOWEL") {
+    out.width = 700;
+    out.height = 500;
+  }
+}
+
 /**
  * Cushion format:
  * ONxxxx _ nameParts... _ xOfY _ Custom Square Cushion _ material _ size _ option _ qty _ FF _ internalId(.pdf)
@@ -348,10 +355,10 @@ function parseTeaTowel(tokens, baseOut) {
   }
 
   out.size = null;
-  applyDimensions(out, out.size);
 
   out.printTypeCode = "TEA_TOWEL";
   out.printType = toPrintTypeLabel(out.printTypeCode);
+  applyTeaTowelDimensions(out);
 
   return out;
 }

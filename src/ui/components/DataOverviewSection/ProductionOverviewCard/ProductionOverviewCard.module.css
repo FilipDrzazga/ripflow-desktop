@@ -69,6 +69,7 @@
   align-items: center;
   gap: 10px;
   width: 50%;
+  height: auto;
 }
 
 .card_material_dot {
@@ -94,11 +95,13 @@
   align-items: center;
   justify-content: center;
   width: 70px;
+  padding: 2px 0px;
   border-radius: 999px;
   width: 25%;
 }
 
 .card_material_metric_sum {
+  padding: 2px 0px;
   font-size: 14px;
   font-weight: 600;
 }
@@ -108,8 +111,7 @@
   align-items: center;
   gap: 8px;
   width: 100%;
-  margin-top: 20px;
-  padding-top: 16px;
+  padding-top: 18px;
   border-top: 1px solid var(--border-grey);
 }
 .card_footer_icon {
