@@ -13,14 +13,19 @@ const DataPrintSelection = () => {
     { name: "YUMI", value: "YUMI", materialType: "Polyesters" },
   ];
   const [selectedPrinter, setSelectedPrinter] = useState(null);
-  const store = useStore();
+  const files = useStore((state) => state.files);
+  const filteredFiles = useStore((state) => state.filteredFiles);
+  const selectedIds = useStore((state) => state.selectedIds);
+  const setAlert = useStore((state) => state.setAlert);
+  const clearSelection = useStore((state) => state.toggleClearSelection);
+  const refreshFiles = useStore((state) => state.refreshFiles);
   const contentRef = useRef(null);
 
-  const isSelectionMode = store.selectedIds.size > 0;
+  const isSelectionMode = selectedIds.size > 0;
   const selectedMaterialTypes = new Set();
-  store.filteredFiles.forEach((group) => {
+  filteredFiles.forEach((group) => {
     group.items.forEach((item) => {
-      if (store.selectedIds.has(item.id)) {
+      if (selectedIds.has(item.id)) {
         selectedMaterialTypes.add(item.materialType);
       }
     });
@@ -67,7 +72,7 @@ const DataPrintSelection = () => {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!selectedPrinter) {
-      store.setAlert({
+      setAlert({
         id: crypto.randomUUID(),
         type: "Warning",
         title: "No printer selected",
@@ -75,65 +80,51 @@ const DataPrintSelection = () => {
       });
       return;
     }
-    const getFilesToPrint = store.files
-      .map((group) => group.items.filter((item) => store.selectedIds.has(item.id)))
+    const getFilesToPrint = files
+      .map((group) => group.items.filter((item) => selectedIds.has(item.id)))
       .flat();
     const print = getFilesToPrint.map((item) => ({ ...item, printer: selectedPrinter }));
     const handleCreateBatch = async () => {
       try {
-        const createBatchResponse = await window.api.createBatch(print);
+        const submitBatchResponse = await window.api.submitBatch(print);
 
-        if (!createBatchResponse.success) {
-          const firstError = createBatchResponse.errors?.[0];
+        if (!submitBatchResponse.success) {
+          const firstError = submitBatchResponse.errors?.[0];
 
-          store.setAlert({
+          setAlert({
             id: crypto.randomUUID(),
             type: firstError?.type || "Error",
-            title: firstError?.title || "Batch creation failed",
+            title: firstError?.title || "Batch submission failed",
             message: firstError?.message || "An unknown error occurred.",
           });
 
-          return;
-        } else {
-          store.setAlert({
-            id: crypto.randomUUID(),
-            type: "Success",
-            title: "Batch created successfully",
-            message: `Batch ID: ${createBatchResponse.batchId}`,
-          });
-
-          const createXMLResponse = await window.api.createXML(print, {
-            batchId: createBatchResponse.batchId,
-          });
-
-          if (!createXMLResponse.success) {
-            const firstError = createXMLResponse.errors?.[0];
-            store.setAlert({
+          if (submitBatchResponse.rollbackPerformed) {
+            setAlert({
               id: crypto.randomUUID(),
-              type: firstError?.type || "Error",
-              title: firstError?.title || "XML creation failed",
-              message: firstError?.message || "An unknown error occurred.",
-            });
-
-            return;
-          } else {
-            store.setAlert({
-              id: crypto.randomUUID(),
-              type: "Success",
-              title: "XML created successfully",
-              message: `Batch ID: ${createBatchResponse.batchId}`,
+              type: "Warning",
+              title: "Batch rolled back",
+              message: "The batch was automatically reverted, so the source files stayed in their original folders.",
             });
           }
+
+          return;
         }
 
-        await store.refreshFiles({ clearSelection: true });
+        setAlert({
+          id: crypto.randomUUID(),
+          type: "Success",
+          title: "Batch submitted successfully",
+          message: `Batch ID: ${submitBatchResponse.batchId}`,
+        });
+
+        await refreshFiles({ clearSelection: true });
         setSelectedPrinter(null);
       } catch (err) {
         console.error("Error during batch creation or XML generation:", err);
-        store.setAlert({
+        setAlert({
           id: crypto.randomUUID(),
           type: "Error",
-          title: err?.title || "Batch creation failed",
+          title: err?.title || "Batch submission failed",
           message: err?.message || "Unexpected system error.",
         });
       }
@@ -144,15 +135,13 @@ const DataPrintSelection = () => {
 
   const handleClearBtn = () => {
     setSelectedPrinter(null);
-    store.toggleClearSelection();
+    clearSelection();
   };
 
   return (
     <div className={`${style.selection_container} ${isSelectionMode ? style.active : ""}`} ref={contentRef}>
       <div className={style.selection_items}>
-        {store.selectedIds.size > 1
-          ? `${store.selectedIds.size} items selected`
-          : `${store.selectedIds.size} item selected`}
+        {selectedIds.size > 1 ? `${selectedIds.size} items selected` : `${selectedIds.size} item selected`}
       </div>
       <div className={style.separator}></div>
       <form className={style.selection_form} onSubmit={handleSubmit}>

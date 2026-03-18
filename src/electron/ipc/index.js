@@ -1,7 +1,8 @@
 import { ipcMain } from "electron";
 import { readFolders } from "./readFolders.js";
-import { createBatch } from "./createBatch.js";
-import { submitBatchToPrintFactory } from "./createXML.js";
+import { submitBatch } from "./submitBatch.js";
+import { openPreview } from "./openPreview.js";
+import { openInFolder } from "./openInFolder.js";
 
 export function registerIpcHandlers() {
   ipcMain.handle("read-folders", async (event) => {
@@ -14,16 +15,28 @@ export function registerIpcHandlers() {
     } catch (err) {
       return {
         success: false,
-        message: err.message,
+        errors: [
+          {
+            code: err.code || "UNKNOWN_ERROR",
+            message: err.message || "An unknown error occurred.",
+            stage: err.stage || "read-folders",
+            type: err.type || "Error",
+            title: err.title || "Read folders failed",
+          },
+        ],
       };
     }
   });
 
-  ipcMain.handle("create-batch", async (_event, batch) => {
-    return createBatch(batch);
+  ipcMain.handle("submit-batch", async (_event, batch) => {
+    return submitBatch(batch);
   });
 
-  ipcMain.handle("create-xml", async (_event, batch, createdBatchId) => {
-    return submitBatchToPrintFactory(batch, createdBatchId);
+  ipcMain.handle("open-preview", async (_event, filePath) => {
+    return openPreview(filePath);
+  });
+
+  ipcMain.handle("open-in-folder", async (_event, filePath) => {
+    return openInFolder(filePath);
   });
 }

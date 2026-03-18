@@ -16,6 +16,9 @@ const mainWindow = () => {
     fullscreenable: false,
     webPreferences: {
       preload: join(__dirname, "preload.js"),
+      contextIsolation: true,
+      nodeIntegration: false,
+      webSecurity: true,
     },
   });
 

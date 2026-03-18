@@ -23,11 +23,10 @@ const MATERIAL_COLORS = {
 };
 
 const ProductionPrintCard = () => {
-  const store = useStore();
   const files = useStore((state) => state.files);
-  const allItems = store.files.flatMap((group) => group.items);
   const lastFilesRefreshAt = useStore((state) => state.lastFilesRefreshAt);
   const [now, setNow] = useState(() => Date.now());
+  const allItems = useMemo(() => files.flatMap((group) => group.items), [files]);
 
   const materialStats = useMemo(() => {
     const materialCounts = allItems.reduce((acc, item) => {

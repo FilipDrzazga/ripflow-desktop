@@ -38,6 +38,15 @@ const toBatchError = (error, stage, fallbackTitle = "Batch creation failed") => 
   };
 };
 
+const getPrintedRootPath = () => {
+  const rootPath = getStorageRootPath();
+  return path.resolve(rootPath, "PRINTED");
+};
+
+const getBatchFolderPath = (batchId) => {
+  return path.join(getPrintedRootPath(), batchId);
+};
+
 export const createBatch = async (batch) => {
   const result = {
     success: false,
@@ -69,8 +78,7 @@ export const createBatch = async (batch) => {
       });
     }
 
-    const ROOT_PATH = getStorageRootPath();
-    const PRINTED_ROOT_PATH = path.resolve(ROOT_PATH, "PRINTED");
+    const PRINTED_ROOT_PATH = getPrintedRootPath();
     const batchIds = createBatchIds(batch);
 
     const sourceEntries = batch.map((item, index) => {
@@ -261,6 +269,79 @@ export const createBatch = async (batch) => {
         }
       }
     }
+  }
+
+  return result;
+};
+
+export const rollbackBatch = async (batch, batchId) => {
+  const result = {
+    success: false,
+    errors: [],
+    warnings: [],
+    restoredFiles: [],
+    rollbackPerformed: false,
+  };
+
+  let stage = STAGES.INIT;
+
+  try {
+    stage = STAGES.VALIDATE;
+
+    if (!Array.isArray(batch) || batch.length === 0) {
+      throw Object.assign(new Error("Batch must be a non-empty array."), {
+        code: "ERR_INVALID_ARG_TYPE",
+        stage,
+        title: "Invalid batch input",
+      });
+    }
+
+    if (typeof batchId !== "string" || batchId.trim() === "") {
+      throw Object.assign(new Error("Batch ID is required for rollback."), {
+        code: "ERR_INVALID_BATCH_ID",
+        stage,
+        title: "Invalid batch ID",
+      });
+    }
+
+    const normalizedBatchId = batchId.trim();
+    const batchFolderPath = getBatchFolderPath(normalizedBatchId);
+    const batchFolderExists = await exists(batchFolderPath);
+
+    if (!batchFolderExists) {
+      throw Object.assign(new Error(`Created batch folder does not exist: ${batchFolderPath}`), {
+        code: "ENOENT",
+        stage,
+        title: "Batch rollback failed",
+      });
+    }
+
+    stage = STAGES.ROLLBACK;
+
+    for (const item of batch) {
+      const sourcePath = path.resolve(item?.file?.fullPath || "");
+      const fileName = path.basename(sourcePath);
+      const batchFilePath = path.join(batchFolderPath, fileName);
+
+      if (!sourcePath) {
+        throw Object.assign(new Error("Missing source file path during rollback."), {
+          code: "EINVAL",
+          stage,
+          title: "Batch rollback failed",
+        });
+      }
+
+      await fs.promises.mkdir(path.dirname(sourcePath), { recursive: true });
+      await fs.promises.rename(batchFilePath, sourcePath);
+      result.restoredFiles.push(sourcePath);
+    }
+
+    await fs.promises.rm(batchFolderPath, { recursive: true, force: true });
+    result.success = true;
+    result.rollbackPerformed = true;
+    stage = STAGES.DONE;
+  } catch (error) {
+    result.errors.push(toBatchError(error, stage, "Batch rollback failed"));
   }
 
   return result;

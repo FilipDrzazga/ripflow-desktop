@@ -76,6 +76,13 @@
   align-items: center;
   width: 100%;
   height: 50px;
+  padding: 0 8px;
+  border-radius: 14px;
+}
+
+.list_item:hover,
+.list_item_active {
+  background-color: var(--bg-grey-light);
 }
 .item_info {
   display: flex;
@@ -102,6 +109,7 @@
   font-size: 13px;
   font-weight: 400;
   color: var(--text-black);
+  cursor: default;
 }
 
 .checkbox {
@@ -133,7 +141,7 @@
   z-index: 9999;
 }
 
-/* Strzałka */
+/* Strza??ka */
 .item_name[data-tooltip]:hover::before {
   content: "";
   position: absolute;

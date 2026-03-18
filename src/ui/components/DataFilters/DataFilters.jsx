@@ -5,45 +5,49 @@ import { PiPolygon, PiPolygonFill } from "react-icons/pi";
 import styles from "./DataFilters.module.css";
 
 const DataFilters = () => {
-  const store = useStore();
+  const activeTab = useStore((state) => state.activeTab);
+  const isRefreshingFiles = useStore((state) => state.isRefreshingFiles);
+  const setActiveTab = useStore((state) => state.setActiveTab);
+  const clearSelection = useStore((state) => state.toggleClearSelection);
+  const refreshFiles = useStore((state) => state.refreshFiles);
 
   const handleClick = (tab) => {
-    store.setActiveTab(tab);
-    store.toggleClearSelection();
+    setActiveTab(tab);
+    clearSelection();
   };
 
   const handleRefresh = async () => {
-    await store.refreshFiles({ clearSelection: true });
+    await refreshFiles({ clearSelection: true });
   };
 
   return (
     <div className={styles.filters_container}>
       <button
         onClick={() => handleClick("All")}
-        className={`${styles.filter_button} ${store.activeTab === "All" ? styles.active : ""}`}
+        className={`${styles.filter_button} ${activeTab === "All" ? styles.active : ""}`}
       >
-        {store.activeTab === "All" ? <HiClipboardDocumentList /> : <HiOutlineClipboardDocumentList />}All
+        {activeTab === "All" ? <HiClipboardDocumentList /> : <HiOutlineClipboardDocumentList />}All
       </button>
       <button
         onClick={() => handleClick("Cottons")}
-        className={`${styles.filter_button} ${store.activeTab === "Cottons" ? styles.active : ""}`}
+        className={`${styles.filter_button} ${activeTab === "Cottons" ? styles.active : ""}`}
       >
-        {store.activeTab === "Cottons" ? <IoLeaf /> : <IoLeafOutline />}Cottons
+        {activeTab === "Cottons" ? <IoLeaf /> : <IoLeafOutline />}Cottons
       </button>
       <button
         onClick={() => handleClick("Polyesters")}
-        className={`${styles.filter_button} ${store.activeTab === "Polyesters" ? styles.active : ""}`}
+        className={`${styles.filter_button} ${activeTab === "Polyesters" ? styles.active : ""}`}
       >
-        {store.activeTab === "Polyesters" ? <PiPolygonFill /> : <PiPolygon />}Polyesters
+        {activeTab === "Polyesters" ? <PiPolygonFill /> : <PiPolygon />}Polyesters
       </button>
       <button
         type="button"
         onClick={handleRefresh}
-        disabled={store.isRefreshingFiles}
+        disabled={isRefreshingFiles}
         className={`${styles.filter_button} ${styles.refresh_button}`}
       >
-        <HiArrowPath className={store.isRefreshingFiles ? styles.spinning_icon : ""} />
-        {store.isRefreshingFiles ? "Refreshing..." : "Refresh list"}
+        <HiArrowPath className={isRefreshingFiles ? styles.spinning_icon : ""} />
+        {isRefreshingFiles ? "Refreshing..." : "Refresh list"}
       </button>
     </div>
   );

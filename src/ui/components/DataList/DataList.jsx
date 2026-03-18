@@ -1,33 +1,160 @@
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { useStore } from "../../store/useStore";
 import Badge from "../Badge/Badge";
+import ContextMenu from "../ContextMenu/ContextMenu";
 import DataDaysCounter from "../DataDaysCounter/DataDaysCounter";
 import { estimatePrintLength } from "../../helpers/estimatePrintLength";
 import { FiInbox } from "react-icons/fi";
 import style from "./DataList.module.css";
 
 const DataList = () => {
-  const store = useStore();
+  const filteredFiles = useStore((state) => state.filteredFiles);
+  const selectedIds = useStore((state) => state.selectedIds);
+  const toggleGroupSelection = useStore((state) => state.toggleGroupSelection);
+  const toggleItemSelection = useStore((state) => state.toggleItemSelection);
+  const setAlert = useStore((state) => state.setAlert);
+  const [contextMenu, setContextMenu] = useState(null);
+  const activeContextItemId = contextMenu?.item?.id || null;
 
   const selectedMaterialTypes = new Set();
 
-  store.filteredFiles.forEach((group) => {
+  filteredFiles.forEach((group) => {
     group.items.forEach((item) => {
-      if (store.selectedIds.has(item.id)) selectedMaterialTypes.add(item.materialType);
+      if (selectedIds.has(item.id)) selectedMaterialTypes.add(item.materialType);
     });
   });
 
   const lockMaterial = selectedMaterialTypes.size === 1 ? [...selectedMaterialTypes][0] : null;
-  const hasSelection = store.selectedIds.size > 0;
-  const hasItems = store.filteredFiles.some((group) => group.items.length > 0);
+  const hasSelection = selectedIds.size > 0;
+  const hasItems = filteredFiles.some((group) => group.items.length > 0);
 
   const handleGroupCheckboxChange = (e, group) => {
     e.stopPropagation();
-    store.toggleGroupSelection(group.items);
+    toggleGroupSelection(group.items);
   };
   const handleItemCheckboxChange = (e, item) => {
     e.stopPropagation();
-    store.toggleItemSelection(item.id);
+    toggleItemSelection(item.id);
   };
+  const closeContextMenu = () => setContextMenu(null);
+
+  const handleOpenPreview = async (item) => {
+    try {
+      const response = await window.api.openPreview(item.file.fullPath);
+
+      if (response?.success) {
+        return;
+      }
+
+      const firstError = response?.errors?.[0];
+      throw {
+        type: firstError?.type || "Error",
+        title: firstError?.title || "Preview failed",
+        message: firstError?.message || "The file could not be opened.",
+      };
+    } catch (error) {
+      setAlert({
+        id: crypto.randomUUID(),
+        type: error?.type || "Error",
+        title: error?.title || "Preview failed",
+        message: error?.message || "The file could not be opened.",
+      });
+    }
+  };
+
+  const handleOpenInFolder = async (item) => {
+    try {
+      const response = await window.api.openInFolder(item.file.fullPath);
+
+      if (response?.success) {
+        return;
+      }
+
+      const firstError = response?.errors?.[0];
+      throw {
+        type: firstError?.type || "Error",
+        title: firstError?.title || "Open folder failed",
+        message: firstError?.message || "The folder could not be opened.",
+      };
+    } catch (error) {
+      setAlert({
+        id: crypto.randomUUID(),
+        type: error?.type || "Error",
+        title: error?.title || "Open folder failed",
+        message: error?.message || "The folder could not be opened.",
+      });
+    }
+  };
+
+  const handleOpenInShopify = (item) => {
+    setAlert({
+      id: crypto.randomUUID(),
+      type: "Warning",
+      title: "Shopify pending",
+      message: `Shopify action for ${item.orderId || item.file.name} is not connected yet.`,
+    });
+  };
+
+  const handleItemContextMenu = (e, item) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    setContextMenu({
+      item,
+      x: e.clientX,
+      y: e.clientY,
+    });
+  };
+
+  const handleBackdropContextMenu = (event) => {
+    const backdrop = event.currentTarget;
+    backdrop.style.pointerEvents = "none";
+    const underlyingElement = document.elementFromPoint(event.clientX, event.clientY);
+    backdrop.style.pointerEvents = "";
+
+    const nextItemId = underlyingElement?.closest?.("[data-context-item-id]")?.dataset?.contextItemId;
+
+    if (!nextItemId) {
+      closeContextMenu();
+      return;
+    }
+
+    let nextItem = null;
+
+    filteredFiles.forEach((group) => {
+      group.items.forEach((item) => {
+        if (item.id === nextItemId) {
+          nextItem = item;
+        }
+      });
+    });
+
+    if (!nextItem) {
+      closeContextMenu();
+      return;
+    }
+
+    setContextMenu({
+      item: nextItem,
+      x: event.clientX,
+      y: event.clientY,
+    });
+  };
+
+  useEffect(() => {
+    if (!contextMenu) return undefined;
+
+    const handleEscape = (event) => {
+      if (event.key === "Escape") closeContextMenu();
+    };
+
+    document.addEventListener("keydown", handleEscape);
+
+    return () => {
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, [contextMenu]);
 
   if (!hasItems) {
     return (
@@ -42,10 +169,10 @@ const DataList = () => {
 
   return (
     <div className={style.list_container}>
-      {store.filteredFiles.map((group, groupId) => {
+      {filteredFiles.map((group, groupId) => {
         const groupIds = group.items.map((item) => item.id);
 
-        const groupSelectedCount = groupIds.filter((id) => store.selectedIds.has(id)).length;
+        const groupSelectedCount = groupIds.filter((id) => selectedIds.has(id)).length;
 
         const isGroupSelected = groupIds.length > 0 && groupSelectedCount === groupIds.length;
         const isGroupIndeterminate = groupSelectedCount > 0 && !isGroupSelected;
@@ -82,7 +209,12 @@ const DataList = () => {
                 else if (isLocked) tooltip = `Cannot mix ${lockMaterial} with ${item.materialType}`;
 
                 return (
-                  <li key={item.id} className={style.list_item}>
+                  <li
+                    key={item.id}
+                    data-context-item-id={item.id}
+                    className={`${style.list_item} ${activeContextItemId === item.id ? style.list_item_active : ""}`}
+                    onContextMenu={(e) => handleItemContextMenu(e, item)}
+                  >
                     <div className={style.item_info}>
                       <label htmlFor={item.id} className={style.item_name} data-tooltip={tooltip}>
                         <input
@@ -90,7 +222,7 @@ const DataList = () => {
                           id={item.id}
                           type="checkbox"
                           className={style.checkbox}
-                          checked={store.selectedIds.has(item.id)}
+                          checked={selectedIds.has(item.id)}
                           onChange={(e) => handleItemCheckboxChange(e, item)}
                         />
                         {item.file.name}
@@ -109,6 +241,43 @@ const DataList = () => {
           </div>
         );
       })}
+      {contextMenu &&
+        createPortal(
+          <ContextMenu
+            id="data-list-context-menu"
+            anchorX={contextMenu.x}
+            anchorY={contextMenu.y}
+            onClose={closeContextMenu}
+            onBackdropContextMenu={handleBackdropContextMenu}
+            options={[
+              {
+                id: "preview",
+                label: "Preview image",
+                onClick: async () => {
+                  closeContextMenu();
+                  await handleOpenPreview(contextMenu.item);
+                },
+              },
+              {
+                id: "folder",
+                label: "Open in Folder",
+                onClick: async () => {
+                  closeContextMenu();
+                  await handleOpenInFolder(contextMenu.item);
+                },
+              },
+              {
+                id: "shopify",
+                label: "Open in Shopify",
+                onClick: () => {
+                  closeContextMenu();
+                  handleOpenInShopify(contextMenu.item);
+                },
+              },
+            ]}
+          />,
+          document.body,
+        )}
     </div>
   );
 };

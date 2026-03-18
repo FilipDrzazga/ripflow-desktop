@@ -15,12 +15,6 @@
   --border-grey: #e5e7eb;
   --border-black: #303030;
 
-  /*  === BTN === */
-  --btn-submit-bg: #16a34a;
-  --btn-submit-bg-hover: #15803d;
-  --btn-clear-bg: #dc2626;
-  --btn-clear-bg-hover: #991b1b;
-
   /* === CARD === */
   --card-shadow:
     0rem 0.3125rem 0.3125rem -0.15625rem #00000008, 0rem 0.1875rem 0.1875rem -0.09375rem #00000005,
