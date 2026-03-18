@@ -25,8 +25,8 @@ const mainWindow = () => {
     win.loadURL("http://localhost:5173");
     // win.webContents.openDevTools();
   } else {
-    // PROD: po buildzie Vite -> dist/ui/index.html
-    win.loadFile(join(app.getAppPath(), "dist/ui/index.html"));
+    // PROD: po buildzie Vite -> dist/index.html
+    win.loadFile(join(app.getAppPath(), "dist/index.html"));
   }
 };
 

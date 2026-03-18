@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
 import { useStore } from "../../store/useStore";
@@ -17,7 +17,6 @@ const DataPrintSelection = () => {
   const contentRef = useRef(null);
 
   const isSelectionMode = store.selectedIds.size > 0;
-  const [isRendered, setIsRendered] = useState(isSelectionMode);
   const selectedMaterialTypes = new Set();
   store.filteredFiles.forEach((group) => {
     group.items.forEach((item) => {
@@ -29,15 +28,9 @@ const DataPrintSelection = () => {
 
   const materialType = selectedMaterialTypes.size === 1 ? [...selectedMaterialTypes][0] : null;
 
-  useEffect(() => {
-    if (isSelectionMode) {
-      setIsRendered(true);
-    }
-  }, [isSelectionMode]);
-
   useGSAP(
     () => {
-      if (!isRendered || !contentRef.current) return;
+      if (!contentRef.current) return;
 
       const content = contentRef.current;
 
@@ -66,13 +59,9 @@ const DataPrintSelection = () => {
         duration: 0.24,
         ease: "power2.in",
         overwrite: true,
-        onComplete: () => {
-          gsap.set(content, { clearProps: "transform,opacity,visibility" });
-          setIsRendered(false);
-        },
       });
     },
-    { dependencies: [isRendered, isSelectionMode] },
+    { dependencies: [isSelectionMode] },
   );
 
   const handleSubmit = (e) => {
@@ -157,8 +146,6 @@ const DataPrintSelection = () => {
     setSelectedPrinter(null);
     store.toggleClearSelection();
   };
-
-  if (!isRendered) return null;
 
   return (
     <div className={`${style.selection_container} ${isSelectionMode ? style.active : ""}`} ref={contentRef}>

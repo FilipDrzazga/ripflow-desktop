@@ -1,4 +1,3 @@
-import { useEffect } from "react";
 import styles from "./DataDaysCounter.module.css";
 
 const DataDaysCounter = ({ diffDays }) => {
@@ -22,10 +21,6 @@ const DataDaysCounter = ({ diffDays }) => {
       boxShadow: `0 2px 6px ${color}30, 0 4px 16px ${color}25`,
     };
   };
-
-  useEffect(() => {
-    fillCounterBar();
-  }, [diffDays]);
 
   return (
     <div className={styles.counter_container}>

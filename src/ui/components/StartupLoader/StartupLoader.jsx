@@ -49,7 +49,7 @@ const StartupLoader = ({onDone}) => {
         }
         return prev;
       })
-    },2)
+    },16)
 
     return () => clearInterval(interval);
   },[realProgressPercent])
