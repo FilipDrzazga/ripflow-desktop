@@ -103,6 +103,28 @@
   font-weight: 600;
 }
 
+.card_footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-grey);
+}
+.card_footer_icon {
+  width: 20px;
+  height: 20px;
+  color: var(--text-secondary);
+}
+
+.card_footer_text {
+  display: block;
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--text-secondary);
+}
+
 @media (max-width: 1200px) {
   .card {
     width: 100%;

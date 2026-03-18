@@ -1,7 +1,8 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import style from "./ProductionOverviewCard.module.css";
 import { useStore } from "../../../store/useStore";
 import { estimatePrintLength } from "../../../helpers/estimatePrintLength";
+import { LuAlarmClock } from "react-icons/lu";
 
 const MATERIAL_COLORS = {
   Cottons: {
@@ -24,6 +25,8 @@ const MATERIAL_COLORS = {
 const ProductionPrintCard = () => {
   const store = useStore();
   const allItems = store.files.flatMap((group) => group.items);
+  const lastFilesRefreshAt = useStore((state) => state.lastFilesRefreshAt);
+  const [now, setNow] = useState(() => Date.now());
 
   const materialStats = useMemo(() => {
     const materialCounts = allItems.reduce((acc, item) => {
@@ -62,6 +65,36 @@ const ProductionPrintCard = () => {
   const cottonsCount = materialStats.find((material) => material.label === "Cottons")?.count ?? 0;
   const polyestersCount = materialStats.find((material) => material.label === "Polyesters")?.count ?? 0;
 
+  useEffect(() => {
+    if (!lastFilesRefreshAt) return undefined;
+
+    const intervalId = window.setInterval(() => {
+      setNow(Date.now());
+    }, 60000);
+
+    return () => window.clearInterval(intervalId);
+  }, [lastFilesRefreshAt]);
+
+  const lastRefreshLabel = useMemo(() => {
+    if (!lastFilesRefreshAt) return "Last refresh: not available";
+
+    const refreshedAt = new Date(lastFilesRefreshAt).getTime();
+
+    if (Number.isNaN(refreshedAt)) return "Last refresh: not available";
+
+    const diffMs = Math.max(0, now - refreshedAt);
+    const diffMinutes = Math.floor(diffMs / 60000);
+
+    if (diffMinutes < 1) return "Last refresh: just now";
+    if (diffMinutes < 60) return `Last refresh: ${diffMinutes} min ago`;
+
+    const diffHours = Math.floor(diffMinutes / 60);
+    if (diffHours < 24) return `Last refresh: ${diffHours} h ago`;
+
+    const diffDays = Math.floor(diffHours / 24);
+    return `Last refresh: ${diffDays} d ago`;
+  }, [lastFilesRefreshAt, now]);
+
   return (
     <div className={style.card}>
       <div className={style.card_content}>
@@ -69,7 +102,6 @@ const ProductionPrintCard = () => {
           <span className={style.card_header_title}>Inbox</span>
           <span className={style.card_header_value}>{allItems.length} Files</span>
         </div>
-
         <div className={style.card_bar}>
           {materialStats.map((material) => (
             <div
@@ -79,7 +111,6 @@ const ProductionPrintCard = () => {
             />
           ))}
         </div>
-
         <div className={style.card_material_container}>
           <div className={style.card_material_group}>
             <div className={style.card_material_box}>
@@ -87,29 +118,27 @@ const ProductionPrintCard = () => {
               <span className={style.card_material_label}>Cottons</span>
               <span className={style.card_material_sum}>{Math.round(cottonsShare)}%</span>
             </div>
-
             <div
               className={style.card_material_metric}
               style={{ background: MATERIAL_COLORS.Cottons.badgeBackground, color: MATERIAL_COLORS.Cottons.badgeText }}
             >
               <span className={style.card_material_metric_sum}>~{cottonsLength} m</span>
             </div>
-
             <div
               className={style.card_material_metric}
               style={{ background: MATERIAL_COLORS.Cottons.badgeBackground, color: MATERIAL_COLORS.Cottons.badgeText }}
             >
-              <span className={style.card_material_metric_sum}>{cottonsCount} files</span>
+              <span className={style.card_material_metric_sum}>
+                {cottonsCount} {cottonsCount > 1 ? "files" : "file"}
+              </span>
             </div>
           </div>
-
           <div className={style.card_material_group}>
             <div className={style.card_material_box}>
               <span className={style.card_material_dot} style={{ backgroundColor: MATERIAL_COLORS.Polyesters.bar }} />
               <span className={style.card_material_label}>Polyesters</span>
               <span className={style.card_material_sum}>{Math.round(polyestersShare)}%</span>
             </div>
-
             <div
               className={style.card_material_metric}
               style={{
@@ -127,9 +156,15 @@ const ProductionPrintCard = () => {
                 color: MATERIAL_COLORS.Polyesters.badgeText,
               }}
             >
-              <span className={style.card_material_metric_sum}>{polyestersCount} files</span>
+              <span className={style.card_material_metric_sum}>
+                {polyestersCount} {polyestersCount > 1 ? "files" : "file"}
+              </span>
             </div>
           </div>
+        </div>
+        <div className={style.card_footer}>
+          <LuAlarmClock className={style.card_footer_icon} />
+          <span className={style.card_footer_text}>{lastRefreshLabel}</span>
         </div>
       </div>
     </div>
