@@ -6,9 +6,7 @@
   --bg-black: #303030;
 
   --text-primary: #303030;
-  w: #616161;
-  --text-disabled: #cacaca;
-  --text-grey: #737373;
+  --text-secondary: #616161;
   --text-white: #ffffff;
 
   /* === BORDER === */
@@ -50,7 +48,7 @@ body {
   font-size: 14px;
   line-height: 1.5;
 
-  background: var(--bg-page);
+  background: var(--bg-grey);
   color: var(--text-secondary);
 
   -webkit-font-smoothing: antialiased;

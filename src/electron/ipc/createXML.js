@@ -2,7 +2,7 @@ import { getStorageRootPath, getXmlRootPath } from "../helpers/getRootPath.js";
 import { randomUUID } from "crypto";
 import path from "path";
 import fs from "fs";
-import { estimatePrintLength } from "../helpers/estimatePrintLength.js";
+import { estimatePrintLength } from "../../shared/estimatePrintLength.js";
 
 const STAGES = {
   INIT: "init",

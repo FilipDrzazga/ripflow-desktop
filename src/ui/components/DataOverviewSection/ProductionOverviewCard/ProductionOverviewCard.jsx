@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import style from "./ProductionOverviewCard.module.css";
 import { useStore } from "../../../store/useStore";
-import { estimateMaterialLengthByGroups } from "../../../helpers/estimatePrintLength";
+import { estimateMaterialLengthByGroups } from "../../../../shared/estimatePrintLength";
 import { LuAlarmClock } from "react-icons/lu";
 
 const MATERIAL_COLORS = {

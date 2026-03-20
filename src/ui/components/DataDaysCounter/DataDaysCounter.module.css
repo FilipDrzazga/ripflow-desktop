@@ -20,11 +20,11 @@
 .counter_fill {
   height: 5px;
   border-radius: 20px;
-  background-color: var(--text-black);
+  background-color: var(--text-primary);
 }
 .counter_text {
   font-size: 10px;
   font-weight: 600;
-  color: var(--text-black);
+  color: var(--text-primary);
   margin-bottom: 1px;
 }

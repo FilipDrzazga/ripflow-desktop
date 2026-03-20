@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import style from "./PrintMaterialBreakdownCard.module.css";
 import OthersTooltip from "./OthersTooltip";
 import { useStore } from "../../../store/useStore";
-import { estimatePrintLength } from "../../../helpers/estimatePrintLength";
+import { estimatePrintLength } from "../../../../shared/estimatePrintLength";
 
 const MATERIAL_SECTIONS = [
   {

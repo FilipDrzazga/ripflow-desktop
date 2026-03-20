@@ -4,7 +4,7 @@ import { useStore } from "../../store/useStore";
 import Badge from "../Badge/Badge";
 import ContextMenu from "../ContextMenu/ContextMenu";
 import DataDaysCounter from "../DataDaysCounter/DataDaysCounter";
-import { estimatePrintLength } from "../../helpers/estimatePrintLength";
+import { estimatePrintLength } from "../../../shared/estimatePrintLength";
 import { FiInbox } from "react-icons/fi";
 import style from "./DataList.module.css";
 
