@@ -1,13 +1,21 @@
 import { create } from "zustand";
 import { subscribeWithSelector } from "zustand/middleware";
 
-const applyTabFilter = (files, activeTab) => {
-  if (activeTab === "All") return files;
+const applyFilters = (files, activeTab, searchQuery) => {
+  const query = searchQuery.trim().toLowerCase();
 
   return files
     .map((group) => ({
       ...group,
-      items: group.items.filter((item) => item.materialType === activeTab),
+      items: group.items.filter((item) => {
+        if (activeTab !== "All" && item.materialType !== activeTab) return false;
+        if (query) {
+          const matchesOrderId = item.orderId?.toLowerCase().includes(query);
+          const matchesCustomer = item.customerName?.toLowerCase().includes(query);
+          return matchesOrderId || matchesCustomer;
+        }
+        return true;
+      }),
     }))
     .filter((group) => group.items.length > 0);
 };
@@ -18,7 +26,13 @@ export const useStore = create(
     setActiveTab: (tab) =>
       set((state) => ({
         activeTab: tab,
-        filteredFiles: applyTabFilter(state.files, tab),
+        filteredFiles: applyFilters(state.files, tab, state.searchQuery),
+      })),
+    searchQuery: "",
+    setSearchQuery: (query) =>
+      set((state) => ({
+        searchQuery: query,
+        filteredFiles: applyFilters(state.files, state.activeTab, query),
       })),
     alerts: [],
     setAlert: (alert) => {
@@ -40,7 +54,7 @@ export const useStore = create(
     setFiles: (files) =>
       set((state) => ({
         files,
-        filteredFiles: applyTabFilter(files, state.activeTab),
+        filteredFiles: applyFilters(files, state.activeTab, state.searchQuery),
       })),
     setFilteredFiles: (filteredFiles) => set({ filteredFiles }),
     selectedIds: new Set(),
@@ -133,7 +147,7 @@ export const useStore = create(
         if (res.success) {
           set((state) => ({
             files: res.data,
-            filteredFiles: applyTabFilter(res.data, state.activeTab),
+            filteredFiles: applyFilters(res.data, state.activeTab, state.searchQuery),
             selectedIds: clearSelection ? new Set() : state.selectedIds,
             lastFilesRefreshAt: new Date().toISOString(),
           }));

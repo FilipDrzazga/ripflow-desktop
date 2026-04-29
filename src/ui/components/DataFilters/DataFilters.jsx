@@ -2,6 +2,7 @@ import { useStore } from "../../store/useStore";
 import { HiArrowPath, HiClipboardDocumentList, HiOutlineClipboardDocumentList } from "react-icons/hi2";
 import { IoLeaf, IoLeafOutline } from "react-icons/io5";
 import { PiPolygon, PiPolygonFill } from "react-icons/pi";
+import { HiMagnifyingGlass, HiXMark } from "react-icons/hi2";
 import styles from "./DataFilters.module.css";
 
 const DataFilters = () => {
@@ -10,6 +11,8 @@ const DataFilters = () => {
   const setActiveTab = useStore((state) => state.setActiveTab);
   const clearSelection = useStore((state) => state.toggleClearSelection);
   const refreshFiles = useStore((state) => state.refreshFiles);
+  const searchQuery = useStore((state) => state.searchQuery);
+  const setSearchQuery = useStore((state) => state.setSearchQuery);
 
   const handleClick = (tab) => {
     setActiveTab(tab);
@@ -40,15 +43,32 @@ const DataFilters = () => {
       >
         {activeTab === "Polyesters" ? <PiPolygonFill /> : <PiPolygon />}Polyesters
       </button>
-      <button
-        type="button"
-        onClick={handleRefresh}
-        disabled={isRefreshingFiles}
-        className={`${styles.filter_button} ${styles.refresh_button}`}
-      >
-        <HiArrowPath className={isRefreshingFiles ? styles.spinning_icon : ""} />
-        {isRefreshingFiles ? "Refreshing..." : "Refresh list"}
-      </button>
+      <div className={styles.right_group}>
+        <div className={styles.search_wrapper}>
+          <HiMagnifyingGlass className={styles.search_icon} />
+          <input
+            className={styles.search_input}
+            type="text"
+            placeholder="Search by order no. or customer..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+          {searchQuery && (
+            <button className={styles.search_clear} type="button" onClick={() => setSearchQuery("")}>
+              <HiXMark />
+            </button>
+          )}
+        </div>
+        <button
+          type="button"
+          onClick={handleRefresh}
+          disabled={isRefreshingFiles}
+          className={`${styles.filter_button} ${styles.refresh_button}`}
+        >
+          <HiArrowPath className={isRefreshingFiles ? styles.spinning_icon : ""} />
+          {isRefreshingFiles ? "Refreshing..." : "Refresh list"}
+        </button>
+      </div>
     </div>
   );
 };
