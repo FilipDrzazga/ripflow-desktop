@@ -120,7 +120,6 @@ const DataPrintSelection = () => {
         await refreshFiles({ clearSelection: true });
         setSelectedPrinter(null);
       } catch (err) {
-        console.error("Error during batch creation or XML generation:", err);
         setAlert({
           id: crypto.randomUUID(),
           type: "Error",
@@ -130,7 +129,7 @@ const DataPrintSelection = () => {
       }
     };
 
-    handleCreateBatch();
+    return handleCreateBatch();
   };
 
   const handleClearBtn = () => {

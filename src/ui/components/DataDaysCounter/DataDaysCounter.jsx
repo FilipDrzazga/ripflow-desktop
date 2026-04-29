@@ -7,7 +7,7 @@ const DataDaysCounter = ({ diffDays }) => {
   const PROGRESS_COLORS = ["#86efac", "#facc15", "#fb923c", "#f87171"];
 
   const fillCounterBar = () => {
-    const dayPassed = Math.max(diffDays - 1);
+    const dayPassed = Math.max(diffDays - 1, 0);
     const baseProgressPercent = Math.min((dayPassed / MAX_DAYS) * 100, 100);
     const visibleProgressPercent = diffDays >= 1 ? Math.max(baseProgressPercent, MIN_VISIBLE) : 0;
 
