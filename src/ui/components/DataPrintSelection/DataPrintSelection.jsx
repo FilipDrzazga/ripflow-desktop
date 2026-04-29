@@ -160,7 +160,7 @@ const DataPrintSelection = () => {
           </label>
         ))}
         <div className={style.separator}></div>
-        <button className={style.submit_button} type="submit">
+        <button className={style.submit_button} type="submit" disabled={!selectedPrinter}>
           Rip
         </button>
         <button className={style.clear_button} type="reset" onClick={handleClearBtn}>

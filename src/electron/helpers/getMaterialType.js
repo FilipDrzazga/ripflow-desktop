@@ -2,7 +2,7 @@ const normalize = (s) => (s ?? "").toString().trim();
 
 export const COTTON_MATERIALS = new Set(
   [
-    'Cotton Slub',
+    "Cotton Slub",
     "Stretch Lycra French Terry",
     "Poppy Lycra Jersey",
     "Organic Jersey Interlock",
@@ -105,7 +105,7 @@ export const POLY_MATERIALS = new Set(
     "Luxe Velvet",
     "3-Pass Blackout FR",
     "Bayeux Upholstery",
-    "Leos Cotton mix",
+    "Leos Cotton Mix",
     "Eco Velvet",
     "DSTK - Heavy Chenille",
     "Eco Dynamica Lycra",

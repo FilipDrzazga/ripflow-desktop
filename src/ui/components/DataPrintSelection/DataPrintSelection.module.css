@@ -91,9 +91,13 @@
     border-color 0.2s ease,
     color 0.2s ease;
 }
-.submit_button:hover {
+.submit_button:hover:not(:disabled) {
   background-color: rgb(179, 235, 195);
   border-color: #a1d3b7;
+}
+.submit_button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 .clear_button {
   display: flex;
