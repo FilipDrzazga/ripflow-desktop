@@ -13,6 +13,7 @@ const DataPrintSelection = () => {
     { name: "YUMI", value: "YUMI", materialType: "Polyesters" },
   ];
   const [selectedPrinter, setSelectedPrinter] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const files = useStore((state) => state.files);
   const filteredFiles = useStore((state) => state.filteredFiles);
   const selectedIds = useStore((state) => state.selectedIds);
@@ -80,11 +81,10 @@ const DataPrintSelection = () => {
       });
       return;
     }
-    const getFilesToPrint = files
-      .map((group) => group.items.filter((item) => selectedIds.has(item.id)))
-      .flat();
+    const getFilesToPrint = files.map((group) => group.items.filter((item) => selectedIds.has(item.id))).flat();
     const print = getFilesToPrint.map((item) => ({ ...item, printer: selectedPrinter }));
     const handleCreateBatch = async () => {
+      setIsSubmitting(true);
       try {
         const submitBatchResponse = await window.api.submitBatch(print);
 
@@ -126,6 +126,8 @@ const DataPrintSelection = () => {
           title: err?.title || "Batch submission failed",
           message: err?.message || "Unexpected system error.",
         });
+      } finally {
+        setIsSubmitting(false);
       }
     };
 
@@ -152,7 +154,7 @@ const DataPrintSelection = () => {
               name="printSelection"
               type="radio"
               value={printer.value}
-              disabled={materialType !== printer.materialType}
+              disabled={materialType !== printer.materialType || isSubmitting}
               checked={selectedPrinter === printer.value}
               onChange={() => setSelectedPrinter(printer.value)}
             />
@@ -160,10 +162,14 @@ const DataPrintSelection = () => {
           </label>
         ))}
         <div className={style.separator}></div>
-        <button className={style.submit_button} type="submit" disabled={!selectedPrinter}>
-          Rip
+        <button
+          className={`${style.submit_button} ${isSubmitting ? style.submit_button_loading : ""}`}
+          type="submit"
+          disabled={!selectedPrinter || isSubmitting}
+        >
+          {isSubmitting ? <span className={style.spinner} /> : "Rip"}
         </button>
-        <button className={style.clear_button} type="reset" onClick={handleClearBtn}>
+        <button className={style.clear_button} type="reset" onClick={handleClearBtn} disabled={isSubmitting}>
           Clear Selection
         </button>
       </form>

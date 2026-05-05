@@ -1,4 +1,5 @@
 // parsePrintFileName.js
+import { COTTON_LM_WIDTHS, DEFAULT_LM_WIDTH } from "./getMaterialType.js";
 
 function nowIso() {
   return new Date().toISOString();
@@ -171,11 +172,10 @@ function applyDimensions(out, text) {
 
 function applyLmDimensions(out) {
   if (out.printTypeCode === "LM") {
-    // Keep current business rule for Linear Meter:
-    // fixed printable width 1420 mm and length based on qty in meters.
     if (!Number.isFinite(out.qty) || out.qty <= 0) return;
 
-    out.width = 1420;
+    const material = (out.material ?? "").trim();
+    out.width = COTTON_LM_WIDTHS[material] ?? DEFAULT_LM_WIDTH;
     out.height = out.qty * 1000;
     return;
   }

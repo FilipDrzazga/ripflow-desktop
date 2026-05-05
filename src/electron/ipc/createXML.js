@@ -65,7 +65,8 @@ const buildPFJobXML = (batch, batchId) => {
       <Printer>${escapeXml(batch[0]?.printer)}</Printer>
       <NestingGroup>${escapeXml(id)}</NestingGroup>
       <LogisticGroup>${escapeXml(logisticGroup)}</LogisticGroup>
-      <PhisicalGroup>${escapeXml(printGroup)}</PhisicalGroup>
+      <PhisicalGroup>${escapeXml(printGroup)}_${escapeXml(estimated.fixedTotalLengthM)}m
+      </PhisicalGroup>
       <Documents>
           ${batch
             .map((item) => {
