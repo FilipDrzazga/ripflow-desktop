@@ -79,6 +79,7 @@
   align-items: center;
   gap: 5px;
   width: auto;
+  min-width: 64px;
   height: auto;
   padding: 8px 20px;
   border-radius: 10px;
@@ -89,11 +90,16 @@
   transition:
     background-color 0.2s ease,
     border-color 0.2s ease,
-    color 0.2s ease;
+    color 0.2s ease,
+    transform 0.15s ease;
 }
 .submit_button:hover:not(:disabled) {
   background-color: rgb(179, 235, 195);
   border-color: #a1d3b7;
+}
+.submit_button:active:not(:disabled) {
+  transform: scale(0.93);
+  transition: transform 0.08s ease;
 }
 .submit_button:disabled {
   opacity: 0.4;

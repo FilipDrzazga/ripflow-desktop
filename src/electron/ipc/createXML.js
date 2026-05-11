@@ -46,14 +46,24 @@ const normalizeBatchId = (createdBatchId) => {
   return "";
 };
 
+const getWorkflowFolderName = (printer) => {
+  if (printer === "DGEN") return "AUTOMATION_WORKFLOW_COTTON";
+  if (printer === "YOKO" || printer === "YUMI") return "AUTOMATION_WORKFLOW_POLY";
+};
+
 const buildPFJobXML = (batch, batchId) => {
   const ROOT_PATH = getXmlRootPath();
-  const PRINTED_ROOT_PATH = path.resolve(ROOT_PATH, "PRINTED");
-  const BASE_FINAL_PATH = path.join(PRINTED_ROOT_PATH, batchId);
+  const PRINTED_ROOT_PATH = `${ROOT_PATH}\\PRINTED`;
+  const normalizedBatchId = batchId.replace(/\//g, "\\");
+  const BASE_FINAL_PATH = `${PRINTED_ROOT_PATH}\\${normalizedBatchId}`;
+  console.log("=== XML PATH DEBUG ===");
+  console.log("ROOT_PATH:", ROOT_PATH);
+  console.log("batchId raw:", batchId);
+  console.log("BASE_FINAL_PATH:", BASE_FINAL_PATH);
 
   const getPrintGroupArr = batch.map((item) => item.printGroup);
   const uniquePrintGroups = [...new Set(getPrintGroupArr)];
-  const printGroup = uniquePrintGroups.length === 1 ? uniquePrintGroups[0] : "MIXED";
+  const printGroup = uniquePrintGroups.length === 1 ? uniquePrintGroups[0] : "SAMPLES";
 
   const id = randomUUID();
   const estimated = estimatePrintLength(batch);
@@ -65,14 +75,13 @@ const buildPFJobXML = (batch, batchId) => {
       <Printer>${escapeXml(batch[0]?.printer)}</Printer>
       <NestingGroup>${escapeXml(id)}</NestingGroup>
       <LogisticGroup>${escapeXml(logisticGroup)}</LogisticGroup>
-      <PhisicalGroup>${escapeXml(printGroup)}_${escapeXml(estimated.fixedTotalLengthM)}m
-      </PhisicalGroup>
+      <PhysicalGroup>${escapeXml(printGroup)}_${escapeXml(estimated.fixedTotalLengthM)}m</PhysicalGroup>
       <Documents>
           ${batch
             .map((item) => {
               const sourcePath = path.resolve(String(item?.file?.fullPath || ""));
               const fileName = path.basename(sourcePath);
-              const finalPath = path.join(BASE_FINAL_PATH, fileName);
+              const finalPath = `${BASE_FINAL_PATH}\\${fileName}`;
               return `
         <Document>
           <Path>${escapeXml(finalPath)}</Path>
@@ -80,7 +89,7 @@ const buildPFJobXML = (batch, batchId) => {
           <Copies>${escapeXml(item.printTypeCode) === "LM" ? 1 : escapeXml(item.qty)}</Copies>
           <DocumentId>${escapeXml(item.artworkId)}</DocumentId>
           <Width>${escapeXml(item.width)}</Width>
-          <Height>${escapeXml(item.height)}</Height>
+          <Height>${item.printTypeCode === "LM" ? 1000 : escapeXml(item.height)}</Height>
           <Material>${escapeXml(item.material)}</Material>
           <MaterialType>${escapeXml(item.materialType)}</MaterialType>
           <OrderId>${escapeXml(item.orderId)}</OrderId>
@@ -123,7 +132,7 @@ export async function submitBatchToPrintFactory(batch, createdBatchId) {
     result.batchId = normalizedBatchId;
 
     const ROOT_PATH = getStorageRootPath();
-    const AUTOMATION_WORKFLOW_PATH = path.resolve(ROOT_PATH, "AUTOMATION_WORKFLOW");
+    const AUTOMATION_WORKFLOW_PATH = `${ROOT_PATH}\\${getWorkflowFolderName(batch[0]?.printer)}`;
 
     try {
       await fs.promises.access(AUTOMATION_WORKFLOW_PATH, fs.constants.W_OK);

@@ -162,7 +162,7 @@ export const COTTON_LM_WIDTHS = {
   "Limani Linen": 1370,
   "DSTK - Organic Jersey Interlock": 1420,
   "Organic Stratos Linen": 1370,
-  "Organic Nimbus Linen": 1420,
+  "Organic Nimbus Linen": 1370,
   "Organic Calico Natural": 1420,
   "Calico Plain Cotton": 1420,
   Drill: 1420,

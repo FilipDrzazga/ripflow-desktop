@@ -1,8 +1,6 @@
 import fs from "fs";
-import path from "path";
 import { createBatch, rollbackBatch } from "./createBatch.js";
 import { submitBatchToPrintFactory } from "./createXML.js";
-import { getStorageRootPath } from "../helpers/getRootPath.js";
 
 const toSubmitBatchError = (error, stage, fallbackTitle = "Batch submission failed") => {
   return {
@@ -14,15 +12,10 @@ const toSubmitBatchError = (error, stage, fallbackTitle = "Batch submission fail
   };
 };
 
-const cleanupXmlFile = async (batchId) => {
-  if (typeof batchId !== "string" || batchId.trim() === "") {
+const cleanupXmlFile = async (xmlPath) => {
+  if (typeof xmlPath !== "string" || xmlPath.trim() === "") {
     return;
   }
-
-  const rootPath = getStorageRootPath();
-  const automationWorkflowPath = path.resolve(rootPath, "AUTOMATION_WORKFLOW");
-  const safeBatchId = batchId.trim().replace(/[^a-zA-Z0-9_-]/g, "_");
-  const xmlPath = path.join(automationWorkflowPath, `${safeBatchId}.xml`);
 
   try {
     await fs.promises.unlink(xmlPath);
@@ -65,7 +58,7 @@ export const submitBatch = async (batch) => {
       const rollbackErrors = rollbackResult.errors || [];
 
       try {
-        await cleanupXmlFile(createdBatchResult.batchId);
+        await cleanupXmlFile(xmlResult.finalXmlPath);
       } catch (cleanupError) {
         result.warnings.push(`Failed to clean up XML file: ${cleanupError.message}`);
       }
