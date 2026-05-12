@@ -46,6 +46,18 @@ const normalizeBatchId = (createdBatchId) => {
   return "";
 };
 
+const isVelvet = (item) =>
+  item.material?.toLowerCase().includes("velvet") ||
+  item.file?.name?.toLowerCase().includes("velvet");
+
+const isLinen = (item) =>
+  item.material?.toLowerCase().includes("linen") ||
+  item.file?.name?.toLowerCase().includes("linen");
+
+const isBlossom = (item) =>
+  item.material?.toLowerCase().includes("blossom") ||
+  item.file?.name?.toLowerCase().includes("blossom");
+
 const getWorkflowFolderName = (printer) => {
   if (printer === "DGEN") return "AUTOMATION_WORKFLOW_COTTON";
   if (printer === "YOKO" || printer === "YUMI") return "AUTOMATION_WORKFLOW_POLY";
@@ -94,6 +106,9 @@ const buildPFJobXML = (batch, batchId) => {
           <MaterialType>${escapeXml(item.materialType)}</MaterialType>
           <OrderId>${escapeXml(item.orderId)}</OrderId>
           <PrintTypeCode>${escapeXml(item.printTypeCode)}</PrintTypeCode>
+          <IsVelvet>${isVelvet(item)}</IsVelvet>
+          <IsLinen>${isLinen(item)}</IsLinen>
+          <IsBlossom>${isBlossom(item)}</IsBlossom>
         </Document>`;
             })
             .join("\n")}

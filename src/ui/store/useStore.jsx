@@ -12,7 +12,8 @@ const applyFilters = (files, activeTab, searchQuery) => {
         if (query) {
           const matchesOrderId = item.orderId?.toLowerCase().includes(query);
           const matchesCustomer = item.customerName?.toLowerCase().includes(query);
-          return matchesOrderId || matchesCustomer;
+          const matchesMaterial = item.material?.toLowerCase().includes(query);
+          return matchesOrderId || matchesCustomer || matchesMaterial;
         }
         return true;
       }),

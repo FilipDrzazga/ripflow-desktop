@@ -49,7 +49,7 @@ const DataFilters = () => {
           <input
             className={styles.search_input}
             type="text"
-            placeholder="Search by order no. or customer..."
+            placeholder="Search by order no., customer or material..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />

@@ -39,17 +39,29 @@ function tokenizeFilename(fileName) {
     .map((t) => t.trim())
     .filter(Boolean);
 
+  // Merge tokens starting with "(" into the previous token (with a space).
+  // Handles material names like "Eco Lotus Twill_(Water Repellant)" which should
+  // be a single token: "Eco Lotus Twill (Water Repellant)".
+  const mergedTokens = [];
+  for (const t of rawTokens) {
+    if (t.startsWith("(") && mergedTokens.length > 0) {
+      mergedTokens[mergedTokens.length - 1] += " " + t;
+    } else {
+      mergedTokens.push(t);
+    }
+  }
+
   // Extract extension if last token ends with .pdf (or other)
   let ext = "";
-  if (rawTokens.length) {
-    const last = rawTokens[rawTokens.length - 1];
+  if (mergedTokens.length) {
+    const last = mergedTokens[mergedTokens.length - 1];
     const m = last.match(/\.([a-z0-9]+)$/i);
     if (m) ext = m[1].toLowerCase();
   }
 
   // For tokens array, strip ".pdf" ONLY from the last token to make internalId easier,
   // but keep ext separately in file meta.
-  const tokens = rawTokens.slice();
+  const tokens = mergedTokens.slice();
   if (tokens.length) {
     tokens[tokens.length - 1] = tokens[tokens.length - 1].replace(/\.pdf$/i, "");
   }
