@@ -4,7 +4,7 @@
   left: 50%;
   width: 400px;
   min-height: 120px;
-  transform: translate(-50%, 0%);
+  transform: translate(calc(-50% + var(--navbar-width) / 2), 0%);
   background-color: transparent;
   z-index: 1000;
   pointer-events: auto;

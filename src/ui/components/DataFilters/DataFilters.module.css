@@ -4,9 +4,9 @@
   align-items: flex-end;
   flex-wrap: wrap;
   gap: 20px;
-  width: 98%;
+  width: 100%;
   height: auto;
-  padding: 0px 20px 0 5px;
+  padding: 0 20px;
   background-color: var(--bg-grey);
 }
 .filter_button {
@@ -101,6 +101,74 @@
 }
 .search_clear:hover {
   color: var(--text-black);
+}
+.sort_wrapper {
+  position: relative;
+}
+.sort_button {
+  width: 125px;
+  padding-left: 12px;
+  padding-right: 12px;
+  justify-content: space-between;
+}
+.sort_btn_label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.sort_chevron {
+  display: flex;
+  align-items: center;
+  padding-left: 8px;
+  margin-left: 4px;
+  border-left: 1px solid var(--bg-grey-light);
+}
+.sort_button.active .sort_chevron {
+  border-left-color: rgba(255, 255, 255, 0.3);
+}
+.sort_dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 100;
+  width: 125px;
+  padding: 6px;
+  border: 1px solid rgba(34, 51, 84, 0.08);
+  border-radius: 14px;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+  box-shadow: 0 20px 40px rgba(27, 39, 94, 0.14);
+}
+.sort_option {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 9px 10px;
+  border-radius: 10px;
+  background: none;
+  border: none;
+  text-align: left;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition:
+    background-color 0.16s ease,
+    color 0.16s ease;
+}
+.sort_option:hover {
+  background-color: var(--bg-grey-light);
+}
+.sort_option_active {
+  color: var(--text-black);
+}
+.sort_option_content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.sort_option_content svg {
+  font-size: 16px;
+  flex-shrink: 0;
 }
 .refresh_button {
   min-width: 140px;

@@ -1,10 +1,30 @@
 import { create } from "zustand";
 import { subscribeWithSelector } from "zustand/middleware";
+import { estimatePrintLength } from "../../shared/estimatePrintLength";
 
-const applyFilters = (files, activeTab, searchQuery) => {
+const applySort = (groups, sortOrder) => {
+  if (!sortOrder) return groups;
+  const sorted = [...groups];
+  if (sortOrder === "meters_desc") {
+    sorted.sort(
+      (a, b) =>
+        estimatePrintLength(b.items).fixedTotalLengthM -
+        estimatePrintLength(a.items).fixedTotalLengthM,
+    );
+  } else if (sortOrder === "date_asc") {
+    sorted.sort((a, b) => {
+      const aMin = Math.min(...a.items.map((i) => new Date(i.createdAt).getTime()));
+      const bMin = Math.min(...b.items.map((i) => new Date(i.createdAt).getTime()));
+      return aMin - bMin;
+    });
+  }
+  return sorted;
+};
+
+const applyFilters = (files, activeTab, searchQuery, sortOrder) => {
   const query = searchQuery.trim().toLowerCase();
 
-  return files
+  const filtered = files
     .map((group) => ({
       ...group,
       items: group.items.filter((item) => {
@@ -19,6 +39,8 @@ const applyFilters = (files, activeTab, searchQuery) => {
       }),
     }))
     .filter((group) => group.items.length > 0);
+
+  return applySort(filtered, sortOrder);
 };
 
 export const useStore = create(
@@ -27,13 +49,19 @@ export const useStore = create(
     setActiveTab: (tab) =>
       set((state) => ({
         activeTab: tab,
-        filteredFiles: applyFilters(state.files, tab, state.searchQuery),
+        filteredFiles: applyFilters(state.files, tab, state.searchQuery, state.sortOrder),
       })),
     searchQuery: "",
     setSearchQuery: (query) =>
       set((state) => ({
         searchQuery: query,
-        filteredFiles: applyFilters(state.files, state.activeTab, query),
+        filteredFiles: applyFilters(state.files, state.activeTab, query, state.sortOrder),
+      })),
+    sortOrder: null,
+    setSortOrder: (order) =>
+      set((state) => ({
+        sortOrder: order,
+        filteredFiles: applyFilters(state.files, state.activeTab, state.searchQuery, order),
       })),
     alerts: [],
     setAlert: (alert) => {
@@ -55,7 +83,7 @@ export const useStore = create(
     setFiles: (files) =>
       set((state) => ({
         files,
-        filteredFiles: applyFilters(files, state.activeTab, state.searchQuery),
+        filteredFiles: applyFilters(files, state.activeTab, state.searchQuery, state.sortOrder),
       })),
     setFilteredFiles: (filteredFiles) => set({ filteredFiles }),
     selectedIds: new Set(),
@@ -148,7 +176,7 @@ export const useStore = create(
         if (res.success) {
           set((state) => ({
             files: res.data,
-            filteredFiles: applyFilters(res.data, state.activeTab, state.searchQuery),
+            filteredFiles: applyFilters(res.data, state.activeTab, state.searchQuery, state.sortOrder),
             selectedIds: clearSelection ? new Set() : state.selectedIds,
             lastFilesRefreshAt: new Date().toISOString(),
           }));

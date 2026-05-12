@@ -4,12 +4,12 @@
   flex-direction: column;
   gap: 20px;
   width: 100%;
-  height: 60vh;
+  flex: 1;
+  min-height: 0;
   padding: 0px 20px 20px 20px;
   border-radius: 20px;
   overflow-y: auto;
   background-color: var(--bg-grey);
-  /* background-color: red; */
 }
 
 .list_content {

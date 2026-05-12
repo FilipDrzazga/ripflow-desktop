@@ -1,9 +1,26 @@
+import { useEffect, useRef, useState } from "react";
 import { useStore } from "../../store/useStore";
-import { HiArrowPath, HiClipboardDocumentList, HiOutlineClipboardDocumentList } from "react-icons/hi2";
+import {
+  HiArrowPath,
+  HiClipboardDocumentList,
+  HiOutlineClipboardDocumentList,
+  HiMagnifyingGlass,
+  HiXMark,
+  HiArrowsUpDown,
+  HiChevronDown,
+  HiChevronUp,
+  HiArrowTrendingDown,
+  HiClock,
+} from "react-icons/hi2";
 import { IoLeaf, IoLeafOutline } from "react-icons/io5";
 import { PiPolygon, PiPolygonFill } from "react-icons/pi";
-import { HiMagnifyingGlass, HiXMark } from "react-icons/hi2";
 import styles from "./DataFilters.module.css";
+
+const SORT_OPTIONS = [
+  { value: null, label: "Sort by", icon: HiArrowsUpDown },
+  { value: "meters_desc", label: "Meters", icon: HiArrowTrendingDown },
+  { value: "date_asc", label: "Oldest", icon: HiClock },
+];
 
 const DataFilters = () => {
   const activeTab = useStore((state) => state.activeTab);
@@ -13,6 +30,20 @@ const DataFilters = () => {
   const refreshFiles = useStore((state) => state.refreshFiles);
   const searchQuery = useStore((state) => state.searchQuery);
   const setSearchQuery = useStore((state) => state.setSearchQuery);
+  const sortOrder = useStore((state) => state.sortOrder);
+  const setSortOrder = useStore((state) => state.setSortOrder);
+
+  const [sortOpen, setSortOpen] = useState(false);
+  const sortRef = useRef(null);
+
+  useEffect(() => {
+    if (!sortOpen) return;
+    const handleClick = (e) => {
+      if (!sortRef.current?.contains(e.target)) setSortOpen(false);
+    };
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [sortOpen]);
 
   const handleClick = (tab) => {
     setActiveTab(tab);
@@ -22,6 +53,9 @@ const DataFilters = () => {
   const handleRefresh = async () => {
     await refreshFiles({ clearSelection: true });
   };
+
+  const activeSortOption = SORT_OPTIONS.find((o) => o.value === sortOrder) ?? SORT_OPTIONS[0];
+  const ActiveSortIcon = activeSortOption.icon;
 
   return (
     <div className={styles.filters_container}>
@@ -49,7 +83,7 @@ const DataFilters = () => {
           <input
             className={styles.search_input}
             type="text"
-            placeholder="Search by order no., customer or material..."
+            placeholder="Search..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
@@ -57,6 +91,42 @@ const DataFilters = () => {
             <button className={styles.search_clear} type="button" onClick={() => setSearchQuery("")}>
               <HiXMark />
             </button>
+          )}
+        </div>
+        <div className={styles.sort_wrapper} ref={sortRef}>
+          <button
+            type="button"
+            className={`${styles.filter_button} ${styles.sort_button} ${sortOrder !== null ? styles.active : ""}`}
+            onClick={() => setSortOpen((v) => !v)}
+          >
+            <span className={styles.sort_btn_label}>
+              <ActiveSortIcon />
+              {activeSortOption.label}
+            </span>
+            <span className={styles.sort_chevron}>{sortOpen ? <HiChevronUp /> : <HiChevronDown />}</span>
+          </button>
+          {sortOpen && (
+            <div className={styles.sort_dropdown}>
+              {SORT_OPTIONS.map((opt) => {
+                const OptIcon = opt.icon;
+                return (
+                  <button
+                    key={String(opt.value)}
+                    type="button"
+                    className={`${styles.sort_option} ${sortOrder === opt.value ? styles.sort_option_active : ""}`}
+                    onClick={() => {
+                      setSortOrder(opt.value);
+                      setSortOpen(false);
+                    }}
+                  >
+                    <span className={styles.sort_option_content}>
+                      <OptIcon />
+                      {opt.label}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
           )}
         </div>
         <button

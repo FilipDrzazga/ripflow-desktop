@@ -3,10 +3,29 @@
   width: 100%;
   height: 100vh;
   display: flex;
+  flex-direction: row;
+  background-color: var(--bg-grey);
+  overflow: hidden;
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  padding: 24px 28px 24px 20px;
+  gap: 28px;
+  overflow: hidden;
+  min-width: 0;
+}
+
+.placeholder {
+  display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: flex-end;
-  gap: 30px;
-  padding: 20px;
-  background-color: var(--bg-grey);
+  justify-content: center;
+  flex: 1;
+  gap: 12px;
+  color: var(--text-secondary);
+  font-size: 14px;
+  font-weight: 500;
 }

@@ -9,11 +9,14 @@ const __dirname = dirname(__filename);
 
 const mainWindow = () => {
   const win = new BrowserWindow({
-    width: 1600,
-    height: 1300,
-    resizable: false,
-    maximizable: false,
+    width: 1280,
+    height: 800,
+    minWidth: 960,
+    minHeight: 640,
+    resizable: true,
+    maximizable: true,
     fullscreenable: false,
+    show: false,
     webPreferences: {
       preload: join(__dirname, "preload.js"),
       contextIsolation: true,
@@ -22,9 +25,13 @@ const mainWindow = () => {
     },
   });
 
+  win.once("ready-to-show", () => {
+    win.maximize();
+    win.show();
+  });
+
   // DEV: Vite
   if (!app.isPackaged) {
-    // win.maximize();
     win.loadURL("http://localhost:5173");
     // win.webContents.openDevTools();
   } else {

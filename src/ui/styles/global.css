@@ -1,4 +1,6 @@
 :root {
+  --navbar-width: 104px;
+
   /* === BACKGROUND === */
   --bg-white: #ffffff;
   --bg-grey: #f1f1f1;
