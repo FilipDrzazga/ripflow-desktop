@@ -1,5 +1,6 @@
 import fs from "fs";
 import path from "path";
+import { PDFDocument } from "pdf-lib";
 import { createBatchIds } from "../helpers/createBatchIds.js";
 import { getStorageRootPath } from "../helpers/getRootPath.js";
 
@@ -45,6 +46,24 @@ const getPrintedRootPath = () => {
 
 const getBatchFolderPath = (batchId) => {
   return path.join(getPrintedRootPath(), batchId);
+};
+
+const copyPdfFirstPage = async (srcPath, destPath) => {
+  const srcBytes = await fs.promises.readFile(srcPath);
+  const srcDoc = await PDFDocument.load(srcBytes);
+
+  if (srcDoc.getPageCount() <= 1) {
+    await fs.promises.copyFile(srcPath, destPath, fs.constants.COPYFILE_EXCL);
+    const stat = await fs.promises.stat(destPath);
+    return stat.size;
+  }
+
+  const outDoc = await PDFDocument.create();
+  const [page] = await outDoc.copyPages(srcDoc, [0]);
+  outDoc.addPage(page);
+  const outBytes = await outDoc.save();
+  await fs.promises.writeFile(destPath, outBytes, { flag: "wx" });
+  return outBytes.byteLength;
 };
 
 export const createBatch = async (batch) => {
@@ -186,12 +205,22 @@ export const createBatch = async (batch) => {
     for (const entry of sourceEntries) {
       const tempTargetPath = path.join(tempBatchFolderPath, entry.fileName);
 
-      await fs.promises.copyFile(entry.sourcePath, tempTargetPath, fs.constants.COPYFILE_EXCL);
+      let writtenSize;
+      try {
+        writtenSize = await copyPdfFirstPage(entry.sourcePath, tempTargetPath);
+      } catch (err) {
+        throw Object.assign(new Error(`Failed to copy file ${entry.fileName}: ${err.message}`), {
+          code: err.code || "EIO",
+          stage,
+          title: "File copy failed",
+        });
+      }
+
       copiedFiles.push({
         sourcePath: entry.sourcePath,
         tempPath: tempTargetPath,
         finalPath: path.join(finalBatchFolderPath, entry.fileName),
-        size: entry.size,
+        size: writtenSize,
       });
     }
 

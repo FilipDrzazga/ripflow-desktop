@@ -1,51 +1,61 @@
+import { COTTON_LM_WIDTHS, DEFAULT_LM_WIDTH } from "../electron/helpers/getMaterialType.js";
+
 const POLYESTER_MATERIAL_WIDTH = 1550;
-const COTTONS_MATERIAL_WIDTH = 1450;
 const POLYESTER_MARGIN = 5;
 const COTTONS_MARGIN = 10;
 
-export const estimatePrintLength = (files) => {
-  const hasCotton = files.some((file) => file.materialType === "Cottons");
-  const materialWidth = hasCotton ? COTTONS_MATERIAL_WIDTH : POLYESTER_MATERIAL_WIDTH;
-  const materialMargin = hasCotton ? COTTONS_MARGIN : POLYESTER_MARGIN;
+function getRollWidth(file) {
+  if (file.materialType !== "Cottons") return POLYESTER_MATERIAL_WIDTH;
+  const material = (file.material ?? "").toString().trim();
+  return COTTON_LM_WIDTHS[material] ?? DEFAULT_LM_WIDTH;
+}
 
-  const expandedItems = [];
+export const estimatePrintLength = (files) => {
+  const groupsByWidth = new Map();
 
   for (const file of files) {
     const width = Number(file.width);
     const height = Number(file.height);
     const quantity = Number(file.printTypeCode === "LM" ? 1 : file.qty);
+    const margin = file.materialType === "Cottons" ? COTTONS_MARGIN : POLYESTER_MARGIN;
+    const rollWidth = getRollWidth(file);
 
     if (!Number.isFinite(width) || !Number.isFinite(height) || !Number.isFinite(quantity) || quantity <= 0) {
       continue;
     }
 
+    if (!groupsByWidth.has(rollWidth)) groupsByWidth.set(rollWidth, []);
+
     for (let i = 0; i < quantity; i++) {
-      expandedItems.push({ width, height: height + materialMargin });
+      groupsByWidth.get(rollWidth).push({ width, height: height + margin });
     }
   }
 
-  expandedItems.sort((a, b) => b.height - a.height);
-
-  let currentRowWidth = 0;
-  let currentRowHeight = 0;
   let totalLengthMm = 0;
   let rowsCount = 0;
 
-  for (const item of expandedItems) {
-    if (currentRowWidth + item.width <= materialWidth) {
-      currentRowWidth += item.width;
-      currentRowHeight = Math.max(currentRowHeight, item.height);
-    } else {
+  for (const [rollWidth, items] of groupsByWidth) {
+    items.sort((a, b) => b.height - a.height);
+
+    let currentRowWidth = 0;
+    let currentRowHeight = 0;
+
+    for (const item of items) {
+      if (currentRowWidth + item.width <= rollWidth) {
+        currentRowWidth += item.width;
+        currentRowHeight = Math.max(currentRowHeight, item.height);
+      } else {
+        totalLengthMm += currentRowHeight;
+        rowsCount += 1;
+        currentRowWidth = item.width;
+        currentRowHeight = item.height;
+      }
+    }
+
+    if (currentRowWidth > 0) {
       totalLengthMm += currentRowHeight;
       rowsCount += 1;
-      currentRowWidth = item.width;
-      currentRowHeight = item.height;
     }
-  }
-
-  if (currentRowWidth > 0) {
-    totalLengthMm += currentRowHeight;
-    rowsCount += 1;
   }
 
   const totalLengthM = totalLengthMm / 1000;

@@ -1,5 +1,7 @@
 // parsePrintFileName.js
-import { COTTON_LM_WIDTHS, DEFAULT_LM_WIDTH } from "./getMaterialType.js";
+import { COTTON_LM_WIDTHS, DEFAULT_LM_WIDTH, POLY_MATERIALS } from "./getMaterialType.js";
+
+const POLY_LM_WIDTH = 1550;
 
 function nowIso() {
   return new Date().toISOString();
@@ -175,7 +177,8 @@ function applyLmDimensions(out) {
     if (!Number.isFinite(out.qty) || out.qty <= 0) return;
 
     const material = (out.material ?? "").trim();
-    out.width = COTTON_LM_WIDTHS[material] ?? DEFAULT_LM_WIDTH;
+    const isPoly = POLY_MATERIALS.has(material);
+    out.width = isPoly ? POLY_LM_WIDTH : (COTTON_LM_WIDTHS[material] ?? DEFAULT_LM_WIDTH);
     out.height = out.qty * 1000;
     return;
   }
