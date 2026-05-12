@@ -101,7 +101,7 @@ const buildPFJobXML = (batch, batchId) => {
           <Copies>${escapeXml(item.printTypeCode) === "LM" ? 1 : escapeXml(item.qty)}</Copies>
           <DocumentId>${escapeXml(item.artworkId)}</DocumentId>
           <Width>${escapeXml(item.width)}</Width>
-          <Height>${item.printTypeCode === "LM" ? 1000 : escapeXml(item.height)}</Height>
+          <Height>${escapeXml(item.height)}</Height>
           <Material>${escapeXml(item.material)}</Material>
           <MaterialType>${escapeXml(item.materialType)}</MaterialType>
           <OrderId>${escapeXml(item.orderId)}</OrderId>

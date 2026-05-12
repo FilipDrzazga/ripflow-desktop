@@ -11,6 +11,7 @@ import {
   HiChevronUp,
   HiArrowTrendingDown,
   HiClock,
+  HiFunnel,
 } from "react-icons/hi2";
 import { IoLeaf, IoLeafOutline } from "react-icons/io5";
 import { PiPolygon, PiPolygonFill } from "react-icons/pi";
@@ -20,6 +21,15 @@ const SORT_OPTIONS = [
   { value: null, label: "Sort by", icon: HiArrowsUpDown },
   { value: "meters_desc", label: "Meters", icon: HiArrowTrendingDown },
   { value: "date_asc", label: "Oldest", icon: HiClock },
+];
+
+const PRINT_TYPE_OPTIONS = [
+  { value: null, label: "All Types" },
+  { value: "LM", label: "Linear Meter" },
+  { value: "FQ", label: "Fat Quarter" },
+  { value: "SAMPLE", label: "Sample" },
+  { value: "CUSHION", label: "Cushion" },
+  { value: "TEA_TOWEL", label: "Tea Towel" },
 ];
 
 const DataFilters = () => {
@@ -32,9 +42,13 @@ const DataFilters = () => {
   const setSearchQuery = useStore((state) => state.setSearchQuery);
   const sortOrder = useStore((state) => state.sortOrder);
   const setSortOrder = useStore((state) => state.setSortOrder);
+  const printTypeFilter = useStore((state) => state.printTypeFilter);
+  const setPrintTypeFilter = useStore((state) => state.setPrintTypeFilter);
 
   const [sortOpen, setSortOpen] = useState(false);
+  const [typeOpen, setTypeOpen] = useState(false);
   const sortRef = useRef(null);
+  const typeRef = useRef(null);
 
   useEffect(() => {
     if (!sortOpen) return;
@@ -44,6 +58,15 @@ const DataFilters = () => {
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
   }, [sortOpen]);
+
+  useEffect(() => {
+    if (!typeOpen) return;
+    const handleClick = (e) => {
+      if (!typeRef.current?.contains(e.target)) setTypeOpen(false);
+    };
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [typeOpen]);
 
   const handleClick = (tab) => {
     setActiveTab(tab);
@@ -56,6 +79,7 @@ const DataFilters = () => {
 
   const activeSortOption = SORT_OPTIONS.find((o) => o.value === sortOrder) ?? SORT_OPTIONS[0];
   const ActiveSortIcon = activeSortOption.icon;
+  const activePrintTypeOption = PRINT_TYPE_OPTIONS.find((o) => o.value === printTypeFilter) ?? PRINT_TYPE_OPTIONS[0];
 
   return (
     <div className={styles.filters_container}>
@@ -77,6 +101,38 @@ const DataFilters = () => {
       >
         {activeTab === "Polyesters" ? <PiPolygonFill /> : <PiPolygon />}Polyesters
       </button>
+      <div className={styles.filter_separator} />
+      <div className={styles.sort_wrapper} ref={typeRef}>
+        <button
+          type="button"
+          className={`${styles.filter_button} ${styles.type_button} ${printTypeFilter !== null ? styles.active : ""}`}
+          onClick={() => setTypeOpen((v) => !v)}
+        >
+          <span className={styles.sort_btn_label}>
+            <HiFunnel />
+            {activePrintTypeOption.label}
+          </span>
+          <span className={styles.sort_chevron}>{typeOpen ? <HiChevronUp /> : <HiChevronDown />}</span>
+        </button>
+        {typeOpen && (
+          <div className={`${styles.sort_dropdown} ${styles.type_dropdown}`}>
+            {PRINT_TYPE_OPTIONS.map((opt) => (
+              <button
+                key={String(opt.value)}
+                type="button"
+                className={`${styles.sort_option} ${printTypeFilter === opt.value ? styles.sort_option_active : ""}`}
+                onClick={() => {
+                  setPrintTypeFilter(opt.value);
+                  clearSelection();
+                  setTypeOpen(false);
+                }}
+              >
+                <span className={styles.sort_option_content}>{opt.label}</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
       <div className={styles.right_group}>
         <div className={styles.search_wrapper}>
           <HiMagnifyingGlass className={styles.search_icon} />
