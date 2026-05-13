@@ -9,6 +9,7 @@ import DataPrintSelection from "./components/DataPrintSelection/DataPrintSelecti
 import DataOverviewSection from "./components/DataOverviewSection/DataOverviewSection";
 import AlertsHost from "./components/AlertsHost/AlertsHost";
 import NavBar from "./components/NavBar/NavBar";
+import TitleBar from "./components/TitleBar/TitleBar";
 import { LuConstruction } from "react-icons/lu";
 
 const PlaceholderView = ({ title }) => (
@@ -35,10 +36,11 @@ const App = () => {
 
   return (
     <div className={styles.app}>
+      <TitleBar />
       <AlertsHost />
       {isLoading && <StartupLoader onDone={() => setIsLoading(false)} />}
       {!isLoading && (
-        <>
+        <div className={styles.body}>
           <NavBar activeView={activeView} onViewChange={setActiveView} />
           <main className={styles.content}>
             {activeView === "print" && (
@@ -53,7 +55,7 @@ const App = () => {
             {activeView === "settings" && <PlaceholderView title="Settings" />}
           </main>
           <DataPrintSelection />
-        </>
+        </div>
       )}
     </div>
   );

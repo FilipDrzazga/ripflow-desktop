@@ -117,11 +117,12 @@ const buildPFJobXML = (batch, batchId) => {
   return xml;
 };
 
-export async function submitBatchToPrintFactory(batch, createdBatchId) {
+export async function submitBatchToPrintFactory(batch, createdBatchId, batchFolderPath) {
   const result = {
     success: false,
     errors: [],
     finalXmlPath: null,
+    localXmlPath: null,
     batchId: null,
   };
 
@@ -212,6 +213,25 @@ export async function submitBatchToPrintFactory(batch, createdBatchId) {
 
     result.success = true;
     result.finalXmlPath = finalXmlPath;
+
+    if (typeof batchFolderPath === "string" && batchFolderPath.trim() !== "") {
+      const localTempXmlPath = path.join(batchFolderPath, `${xmlFileName}.tmp`);
+      const localFinalXmlPath = path.join(batchFolderPath, xmlFileName);
+      try {
+        await fs.promises.writeFile(localTempXmlPath, xml, "utf8");
+        await fs.promises.rename(localTempXmlPath, localFinalXmlPath);
+        result.localXmlPath = localFinalXmlPath;
+      } catch (localErr) {
+        try {
+          await fs.promises.unlink(localTempXmlPath);
+        } catch {
+          // Ignore temp cleanup error.
+        }
+        result.warnings = result.warnings || [];
+        result.warnings.push(`Failed to write local XML copy to batch folder: ${localErr.message}`);
+      }
+    }
+
     stage = STAGES.DONE;
   } catch (err) {
     result.errors = [toXMLError(err, stage)];

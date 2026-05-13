@@ -1,4 +1,4 @@
-import { app, BrowserWindow } from "electron";
+import { app, BrowserWindow, ipcMain } from "electron";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 import process from "process";
@@ -16,6 +16,7 @@ const mainWindow = () => {
     resizable: true,
     maximizable: true,
     fullscreenable: false,
+    frame: false,
     show: false,
     webPreferences: {
       preload: join(__dirname, "preload.js"),
@@ -24,6 +25,13 @@ const mainWindow = () => {
       webSecurity: true,
     },
   });
+
+  ipcMain.on("window:minimize", () => win.minimize());
+  ipcMain.on("window:maximize", () => {
+    if (win.isMaximized()) win.unmaximize();
+    else win.maximize();
+  });
+  ipcMain.on("window:close", () => win.close());
 
   win.once("ready-to-show", () => {
     win.maximize();

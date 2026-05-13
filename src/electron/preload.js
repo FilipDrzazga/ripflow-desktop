@@ -44,6 +44,9 @@ const api = Object.freeze({
     assertPath(filePath);
     return ipcRenderer.invoke("open-in-folder", filePath);
   },
+  minimizeWindow: () => ipcRenderer.send("window:minimize"),
+  maximizeWindow: () => ipcRenderer.send("window:maximize"),
+  closeWindow: () => ipcRenderer.send("window:close"),
 });
 
 contextBridge.exposeInMainWorld("api", api);

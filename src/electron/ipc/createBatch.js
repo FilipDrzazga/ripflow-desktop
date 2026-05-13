@@ -255,6 +255,7 @@ export const createBatch = async (batch) => {
     console.log("finalBatchFolderPath:", finalBatchFolderPath);
     console.log("batchId result:", `${batchIds.mainFolder}/${path.basename(finalBatchFolderPath)}`);
     result.batchId = `${batchIds.mainFolder}/${path.basename(finalBatchFolderPath)}`;
+    result.finalBatchFolderPath = finalBatchFolderPath;
     stage = STAGES.DONE;
   } catch (error) {
     result.errors.push(toBatchError(error, stage));

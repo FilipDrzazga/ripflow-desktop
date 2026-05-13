@@ -51,7 +51,7 @@ export const submitBatch = async (batch) => {
 
     result.batchId = createdBatchResult.batchId;
 
-    const xmlResult = await submitBatchToPrintFactory(batch, createdBatchResult.batchId);
+    const xmlResult = await submitBatchToPrintFactory(batch, createdBatchResult.batchId, createdBatchResult.finalBatchFolderPath);
 
     if (!xmlResult.success) {
       const rollbackResult = await rollbackBatch(batch, createdBatchResult.batchId);
@@ -80,7 +80,8 @@ export const submitBatch = async (batch) => {
       success: true,
       batchId: createdBatchResult.batchId,
       finalXmlPath: xmlResult.finalXmlPath,
-      warnings: [...createdBatchResult.warnings],
+      localXmlPath: xmlResult.localXmlPath,
+      warnings: [...createdBatchResult.warnings, ...(xmlResult.warnings || [])],
     };
   } catch (error) {
     result.errors = [toSubmitBatchError(error, "submit")];
