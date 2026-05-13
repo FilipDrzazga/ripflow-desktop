@@ -11,6 +11,7 @@ import AlertsHost from "./components/AlertsHost/AlertsHost";
 import NavBar from "./components/NavBar/NavBar";
 import TitleBar from "./components/TitleBar/TitleBar";
 import { LuConstruction } from "react-icons/lu";
+import BatchHistory from "./components/BatchHistory/BatchHistory";
 
 const PlaceholderView = ({ title }) => (
   <div className={styles.placeholder}>
@@ -50,7 +51,7 @@ const App = () => {
                 <DataList />
               </>
             )}
-            {activeView === "batch" && <PlaceholderView title="Batch" />}
+            {activeView === "batch" && <BatchHistory />}
             {activeView === "logs" && <PlaceholderView title="Logs" />}
             {activeView === "settings" && <PlaceholderView title="Settings" />}
           </main>

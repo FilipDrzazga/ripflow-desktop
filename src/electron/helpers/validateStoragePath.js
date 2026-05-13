@@ -7,7 +7,7 @@ const isPathInsideRoot = (targetPath, rootPath) => {
   return relative !== "" && !relative.startsWith("..") && !path.isAbsolute(relative);
 };
 
-export const assertStorageFilePath = async (filePath, { title = "Invalid file path", stage = "validate" } = {}) => {
+export const assertStorageFilePath = async (filePath, { title = "Invalid file path", stage = "validate", allowDirectory = false } = {}) => {
   if (typeof filePath !== "string" || filePath.trim() === "") {
     throw Object.assign(new Error("File path is required."), {
       code: "ERR_INVALID_ARG_TYPE",
@@ -42,7 +42,7 @@ export const assertStorageFilePath = async (filePath, { title = "Invalid file pa
     throw error;
   }
 
-  if (!stats.isFile()) {
+  if (!allowDirectory && !stats.isFile()) {
     throw Object.assign(new Error(`Path is not a file: ${normalizedPath}`), {
       code: "EISDIR",
       stage,

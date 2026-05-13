@@ -44,6 +44,34 @@ const api = Object.freeze({
     assertPath(filePath);
     return ipcRenderer.invoke("open-in-folder", filePath);
   },
+  readPrintedFolder: () => ipcRenderer.invoke("read-printed-folder"),
+  regenerateXml: (batchPath) => {
+    assertPath(batchPath);
+    return ipcRenderer.invoke("regenerate-xml", batchPath);
+  },
+  rollbackBatch: (batchPath) => {
+    assertPath(batchPath);
+    return ipcRenderer.invoke("rollback-batch-history", batchPath);
+  },
+  rollbackFile: (filePath, batchPath) => {
+    assertPath(filePath);
+    assertPath(batchPath);
+    return ipcRenderer.invoke("rollback-file-history", filePath, batchPath);
+  },
+  deleteBatch: (batchPath) => {
+    assertPath(batchPath);
+    return ipcRenderer.invoke("delete-batch", batchPath);
+  },
+  startBatchWatcher: () => ipcRenderer.invoke("start-batch-watcher"),
+  stopBatchWatcher: () => ipcRenderer.invoke("stop-batch-watcher"),
+  onBatchUpdate: (callback) => {
+    if (typeof callback !== "function") {
+      throw new TypeError("Batch update callback must be a function.");
+    }
+    const handler = (_event, payload) => callback(payload);
+    ipcRenderer.on("batch:update", handler);
+    return () => ipcRenderer.removeListener("batch:update", handler);
+  },
   minimizeWindow: () => ipcRenderer.send("window:minimize"),
   maximizeWindow: () => ipcRenderer.send("window:maximize"),
   closeWindow: () => ipcRenderer.send("window:close"),

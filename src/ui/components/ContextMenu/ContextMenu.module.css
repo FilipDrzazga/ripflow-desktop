@@ -64,3 +64,12 @@
   background-color: #ffe7e5;
   color: #e63641;
 }
+
+.menu_item_danger {
+  color: #e63641;
+}
+
+.menu_item_danger:hover {
+  background-color: #ffe7e5;
+  color: #e63641;
+}

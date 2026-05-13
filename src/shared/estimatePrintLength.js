@@ -1,13 +1,15 @@
-import { COTTON_LM_WIDTHS, DEFAULT_LM_WIDTH } from "../electron/helpers/getMaterialType.js";
-
-const POLYESTER_MATERIAL_WIDTH = 1550;
-const POLYESTER_MARGIN = 5;
-const COTTONS_MARGIN = 10;
+import {
+  LM_ROLL_POLY,
+  LM_ROLL_COTTON,
+  LM_ROLL_COTTON_DEFAULT,
+  MARGIN_COTTON,
+  MARGIN_POLY,
+} from "./printWidths.js";
 
 function getRollWidth(file) {
-  if (file.materialType !== "Cottons") return POLYESTER_MATERIAL_WIDTH;
+  if (file.materialType !== "Cottons") return LM_ROLL_POLY;
   const material = (file.material ?? "").toString().trim();
-  return COTTON_LM_WIDTHS[material] ?? DEFAULT_LM_WIDTH;
+  return LM_ROLL_COTTON[material] ?? LM_ROLL_COTTON_DEFAULT;
 }
 
 export const estimatePrintLength = (files) => {
@@ -17,7 +19,7 @@ export const estimatePrintLength = (files) => {
     const width = Number(file.width);
     const height = Number(file.height);
     const quantity = Number(file.printTypeCode === "LM" ? 1 : file.qty);
-    const margin = file.materialType === "Cottons" ? COTTONS_MARGIN : POLYESTER_MARGIN;
+    const margin = file.materialType === "Cottons" ? MARGIN_COTTON : MARGIN_POLY;
     const rollWidth = getRollWidth(file);
 
     if (!Number.isFinite(width) || !Number.isFinite(height) || !Number.isFinite(quantity) || quantity <= 0) {

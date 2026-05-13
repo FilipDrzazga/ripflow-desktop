@@ -1,6 +1,6 @@
 const normalize = (s) => (s ?? "").toString().trim();
 
-export const COTTON_MATERIALS = new Set(
+const COTTON_MATERIALS = new Set(
   [
     "Cotton Slub",
     "Stretch Lycra French Terry",
@@ -129,44 +129,6 @@ export const POLY_MATERIALS = new Set(
     "Stretch Jersey",
   ].map(normalize),
 );
-
-export const DEFAULT_LM_WIDTH = 1420;
-
-export const COTTON_LM_WIDTHS = {
-  "Cotton Slub": 1420,
-  "Stretch Lycra French Terry": 1420,
-  "Poppy Lycra Jersey": 1420,
-  "Organic Jersey Interlock": 1420,
-  "Organic Iris Jersey": 1420,
-  "Single Cotton Elastane Jersey": 1420,
-  "DSTK - Stretch Lycra French Terry": 1420,
-  "Organic Drill Natural": 1420,
-  Panama: 1420,
-  "Organic Leve Panama Natural": 1420,
-  "Hector Linen": 1420,
-  Poplin: 1420,
-  "Light Twill": 1420,
-  "Organic Drill Optic": 1420,
-  "Organic Optic Calico": 1420,
-  Satin: 1420,
-  "Top Sateen": 1420,
-  "Organic Blossom Muslin Gauze": 1270,
-  "Organic Panama Natural": 1420,
-  "Organic Leve Cotton Panama Natural": 1420,
-  "Organic Jasmine Lycra Jersey": 1420,
-  "Cotton Denim": 1420,
-  "Organic Poplin": 1420,
-  "Organic Satin": 1420,
-  "Optic White Organic Panama": 1420,
-  "Melino Linen": 1370,
-  "Limani Linen": 1370,
-  "DSTK - Organic Jersey Interlock": 1420,
-  "Organic Stratos Linen": 1370,
-  "Organic Nimbus Linen": 1370,
-  "Organic Calico Natural": 1420,
-  "Calico Plain Cotton": 1420,
-  Drill: 1420,
-};
 
 export function getMaterialType(material) {
   const m = normalize(material);

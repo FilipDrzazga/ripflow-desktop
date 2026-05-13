@@ -1,7 +1,13 @@
 // parsePrintFileName.js
-import { COTTON_LM_WIDTHS, DEFAULT_LM_WIDTH, POLY_MATERIALS } from "./getMaterialType.js";
-
-const POLY_LM_WIDTH = 1550;
+import { POLY_MATERIALS } from "./getMaterialType.js";
+import {
+  LM_XML_POLY,
+  LM_XML_COTTON,
+  LM_XML_COTTON_DEFAULT,
+  DIMS_SAMPLE,
+  DIMS_FQ,
+  DIMS_TEA_TOWEL,
+} from "../../shared/printWidths.js";
 
 function nowIso() {
   return new Date().toISOString();
@@ -190,27 +196,27 @@ function applyLmDimensions(out) {
 
     const material = (out.material ?? "").trim();
     const isPoly = POLY_MATERIALS.has(material);
-    out.width = isPoly ? POLY_LM_WIDTH : (COTTON_LM_WIDTHS[material] ?? DEFAULT_LM_WIDTH);
+    out.width = isPoly ? LM_XML_POLY : (LM_XML_COTTON[material] ?? LM_XML_COTTON_DEFAULT);
     out.height = out.qty * 1000;
     return;
   }
 
   if (out.printTypeCode === "SAMPLE") {
-    out.width = 220;
-    out.height = 200;
+    out.width = DIMS_SAMPLE.width;
+    out.height = DIMS_SAMPLE.height;
     return;
   }
 
   if (out.printTypeCode === "FQ") {
-    out.width = 670;
-    out.height = 480;
+    out.width = DIMS_FQ.width;
+    out.height = DIMS_FQ.height;
   }
 }
 
 function applyTeaTowelDimensions(out) {
   if (out.printTypeCode === "TEA_TOWEL") {
-    out.width = 700;
-    out.height = 500;
+    out.width = DIMS_TEA_TOWEL.width;
+    out.height = DIMS_TEA_TOWEL.height;
   }
 }
 

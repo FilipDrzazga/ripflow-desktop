@@ -1,3 +1,4 @@
+import fs from "fs";
 import { shell } from "electron";
 import { assertStorageFilePath } from "../helpers/validateStoragePath.js";
 
@@ -30,10 +31,16 @@ export const openInFolder = async (filePath) => {
   try {
     stage = STAGES.VALIDATE;
 
-    const validatedPath = await assertStorageFilePath(filePath, { stage, title: "Invalid file path" });
+    const validatedPath = await assertStorageFilePath(filePath, { stage, title: "Invalid file path", allowDirectory: true });
 
     stage = STAGES.OPEN;
-    shell.showItemInFolder(validatedPath);
+
+    const stats = await fs.promises.stat(validatedPath);
+    if (stats.isDirectory()) {
+      await shell.openPath(validatedPath);
+    } else {
+      shell.showItemInFolder(validatedPath);
+    }
 
     result.success = true;
     stage = STAGES.DONE;

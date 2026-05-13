@@ -4,6 +4,14 @@ import style from "./ContextMenu.module.css";
 
 const EDGE_OFFSET = 12;
 
+const resolveIcon = (option) => {
+  if (option.icon) return option.icon;
+  if (option.id === "preview") return <FiEye />;
+  if (option.id === "folder") return <FiFolder />;
+  if (option.id === "shopify") return <FiShoppingBag />;
+  return null;
+};
+
 const ContextMenu = ({ id, anchorX, anchorY, options, onClose, onBackdropContextMenu }) => {
   const menuRef = useRef(null);
 
@@ -58,22 +66,24 @@ const ContextMenu = ({ id, anchorX, anchorY, options, onClose, onBackdropContext
         role="menu"
         aria-label="Item actions"
       >
-        {options.map((option) => (
-          <button
-            key={option.id}
-            type="button"
-            className={style.menu_item}
-            onClick={option.onClick}
-            role="menuitem"
-          >
-            <span className={style.menu_item_icon}>
-              {option.id === "preview" && <FiEye />}
-              {option.id === "folder" && <FiFolder />}
-              {option.id === "shopify" && <FiShoppingBag />}
-            </span>
-            {option.label}
-          </button>
-        ))}
+        {options.map((option) => {
+          if (option.separator) {
+            return <div key={option.id} className={style.menu_divider} aria-hidden="true" />;
+          }
+
+          return (
+            <button
+              key={option.id}
+              type="button"
+              className={`${style.menu_item} ${option.danger ? style.menu_item_danger : ""}`}
+              onClick={option.onClick}
+              role="menuitem"
+            >
+              <span className={style.menu_item_icon}>{resolveIcon(option)}</span>
+              {option.label}
+            </button>
+          );
+        })}
         <div className={style.menu_divider} aria-hidden="true" />
         <button type="button" className={style.menu_item_secondary} onClick={onClose}>
           <span className={style.menu_item_icon}>
