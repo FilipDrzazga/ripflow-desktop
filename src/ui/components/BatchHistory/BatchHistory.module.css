@@ -15,7 +15,7 @@
 .topbar {
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: 14px;
   height: 76px;
   padding: 0 28px;
   border-bottom: 1px solid var(--border-grey);
@@ -35,7 +35,8 @@
   position: relative;
   display: flex;
   align-items: center;
-  width: 280px;
+  flex: 0 1 280px;
+  min-width: 120px;
 }
 
 .search_icon {
@@ -102,6 +103,7 @@
   display: flex;
   align-items: center;
   gap: 20px;
+  flex-shrink: 0;
 }
 
 .printer_btn {

@@ -246,6 +246,7 @@ const AlertsHost = () => {
     <div
       ref={containerRef}
       className={style.alert_container}
+      style={{ pointerEvents: renderedAlerts.length === 0 ? "none" : "auto" }}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >

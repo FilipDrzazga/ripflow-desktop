@@ -77,6 +77,10 @@ const api = Object.freeze({
     if (!isPlainObject(settings)) throw new TypeError("Settings must be a plain object.");
     return ipcRenderer.invoke("settings:set", settings);
   },
+  showConfirm: (message) => {
+    if (!isNonEmptyString(message)) throw new TypeError("Confirm message must be a non-empty string.");
+    return ipcRenderer.invoke("dialog:confirm", message);
+  },
   selectFolder: () => ipcRenderer.invoke("dialog:select-folder"),
   minimizeWindow: () => ipcRenderer.send("window:minimize"),
   maximizeWindow: () => ipcRenderer.send("window:maximize"),

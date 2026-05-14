@@ -44,6 +44,7 @@ const BatchHistory = () => {
   const pendingAnimationsRef = useRef(new Set());
   const elementRefsRef = useRef(new Map());
   const isInitialLoadRef = useRef(true);
+  const searchInputRef = useRef(null);
 
   const loadData = useCallback(async () => {
     setIsLoading(true);
@@ -214,6 +215,24 @@ const BatchHistory = () => {
     });
   };
 
+  // When search is active, auto-expand all days and batches so results are
+  // immediately visible. useEffect (not useLayoutEffect) is intentional: sync
+  // DOM mutations from useLayoutEffect can prevent focus from returning to the
+  // search input after Electron's native confirm dialogs.
+  useEffect(() => {
+    if (!searchQuery.trim()) return;
+    setExpandedDays((prev) => {
+      const next = new Set(prev);
+      dayGroups.forEach((d) => next.add(d.date));
+      return next;
+    });
+    setExpandedBatches((prev) => {
+      const next = new Set(prev);
+      dayGroups.forEach((d) => d.batches.forEach((b) => next.add(b.path)));
+      return next;
+    });
+  }, [searchQuery, dayGroups]);
+
   const filteredDayGroups = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
 
@@ -289,7 +308,7 @@ const BatchHistory = () => {
 
   const handleRollbackFile = useCallback(
     async (filePath, batchPath) => {
-      if (!window.confirm("Move this file back to the inbox? It will be available for printing again.")) return;
+      if (!(await window.api.showConfirm("Move this file back to the inbox? It will be available for printing again."))) return;
       try {
         const res = await window.api.rollbackFile(filePath, batchPath);
         if (res?.success) {
@@ -298,6 +317,7 @@ const BatchHistory = () => {
             { stage: "rollback", code: "FILE_ROLLED_BACK", detail: { filePath, batchPath } },
           );
           await loadData();
+          searchInputRef.current?.focus();
         } else {
           const err = res?.errors?.[0];
           throw {
@@ -322,7 +342,7 @@ const BatchHistory = () => {
 
   const handleRollbackBatch = useCallback(
     async (batchPath) => {
-      if (!window.confirm("Move all files in this batch back to the inbox? The XML will remain.")) return;
+      if (!(await window.api.showConfirm("Move all files in this batch back to the inbox? The XML will remain."))) return;
       try {
         const res = await window.api.rollbackBatch(batchPath);
         if (res?.success) {
@@ -331,6 +351,7 @@ const BatchHistory = () => {
             { stage: "rollback", code: "BATCH_ROLLED_BACK", detail: { batchPath } },
           );
           await loadData();
+          searchInputRef.current?.focus();
         } else {
           const err = res?.errors?.[0];
           throw {
@@ -354,7 +375,7 @@ const BatchHistory = () => {
   );
 
   const handleDeleteBatch = useCallback(async (batchPath) => {
-    if (!window.confirm("Permanently delete this empty batch folder? This cannot be undone.")) return;
+    if (!(await window.api.showConfirm("Permanently delete this empty batch folder? This cannot be undone."))) return;
     try {
       const res = await window.api.deleteBatch(batchPath);
       if (res?.success) {
@@ -367,6 +388,7 @@ const BatchHistory = () => {
             .map((day) => ({ ...day, batches: day.batches.filter((b) => b.path !== batchPath) }))
             .filter((day) => day.batches.length > 0),
         );
+        searchInputRef.current?.focus();
       } else {
         const err = res?.errors?.[0];
         throw {
@@ -424,6 +446,7 @@ const BatchHistory = () => {
         <div className={style.search_wrapper}>
           <HiMagnifyingGlass className={style.search_icon} />
           <input
+            ref={searchInputRef}
             className={style.search_input}
             type="text"
             placeholder="Search batches or files..."
@@ -431,7 +454,14 @@ const BatchHistory = () => {
             onChange={(e) => setSearchQuery(e.target.value)}
           />
           {searchQuery && (
-            <button className={style.search_clear} type="button" onClick={() => setSearchQuery("")}>
+            <button
+              className={style.search_clear}
+              type="button"
+              onClick={() => {
+                setSearchQuery("");
+                searchInputRef.current?.focus();
+              }}
+            >
               <HiXMark />
             </button>
           )}
@@ -476,7 +506,7 @@ const BatchHistory = () => {
         )}
 
         {filteredDayGroups.map((day) => {
-          const isDayExpanded = expandedDays.has(day.date) || !!searchQuery;
+          const isDayExpanded = expandedDays.has(day.date);
 
           return (
             <div key={day.date} className={style.day_group}>
@@ -495,7 +525,7 @@ const BatchHistory = () => {
                 <div className={style.day_batches}>
                   {day.batches.map((batch) => {
                     const isBatchExpanded = expandedBatches.has(batch.path);
-                    const showFiles = isBatchExpanded || !!searchQuery;
+                    const showFiles = isBatchExpanded;
                     const isRolledBack = batch.status === "rolled_back";
                     const printerColors = PRINTER_COLORS[batch.printer] || { bg: "#f0f0f0", color: "#555" };
 

@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain } from "electron";
+import { app, BrowserWindow, ipcMain, dialog } from "electron";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 import process from "process";
@@ -33,6 +33,17 @@ const mainWindow = () => {
     else win.maximize();
   });
   ipcMain.on("window:close", () => win.close());
+
+  ipcMain.handle("dialog:confirm", async (_event, message) => {
+    const { response } = await dialog.showMessageBox(win, {
+      type: "question",
+      buttons: ["Cancel", "OK"],
+      defaultId: 1,
+      cancelId: 0,
+      message,
+    });
+    return response === 1;
+  });
 
   win.once("ready-to-show", () => {
     win.maximize();
