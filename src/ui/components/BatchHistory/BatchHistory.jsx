@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { notify } from "../../utils/notify";
+import { useStore } from "../../store/useStore";
 import ContextMenu from "../ContextMenu/ContextMenu";
 import gsap from "gsap";
 import {
@@ -31,6 +32,7 @@ const parseDayFromBatchPath = (batchPath) => {
 };
 
 const BatchHistory = () => {
+  const setBatchDays = useStore((state) => state.setBatchDays);
   const [dayGroups, setDayGroups] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -167,6 +169,10 @@ const BatchHistory = () => {
       cleanup();
     };
   }, [loadData, handleBatchUpdate]);
+
+  useEffect(() => {
+    setBatchDays(dayGroups);
+  }, [dayGroups, setBatchDays]);
 
   // Animate new items after state update
   useEffect(() => {

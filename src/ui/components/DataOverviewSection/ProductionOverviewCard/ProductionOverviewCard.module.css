@@ -4,7 +4,8 @@
   justify-content: flex-start;
   align-items: flex-start;
   gap: 5px;
-  width: 23%;
+  flex: 1 1 0;
+  min-width: 0;
   height: 100%;
   padding: 20px;
   border-radius: 20px;
@@ -129,7 +130,6 @@
 
 @media (max-width: 1200px) {
   .card {
-    width: 100%;
-    margin-left: 0;
+    flex: 1 1 100%;
   }
 }

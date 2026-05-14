@@ -20,6 +20,7 @@ const DataPrintSelection = () => {
   const selectedIds = useStore((state) => state.selectedIds);
   const clearSelection = useStore((state) => state.toggleClearSelection);
   const refreshFiles = useStore((state) => state.refreshFiles);
+  const refreshBatchDays = useStore((state) => state.refreshBatchDays);
   const contentRef = useRef(null);
 
   const isSelectionMode = selectedIds.size > 0;
@@ -130,6 +131,7 @@ const DataPrintSelection = () => {
         );
 
         await refreshFiles({ clearSelection: true });
+        refreshBatchDays();
         setSelectedPrinter(null);
       } catch (err) {
         notify(

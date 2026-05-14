@@ -44,6 +44,21 @@ const applyFilters = (files, activeTab, searchQuery, sortOrder, printTypeFilter)
   return applySort(filtered, sortOrder);
 };
 
+export const getLastBatch = (batchDays) => {
+  if (!batchDays || batchDays.length === 0) return null;
+  for (const day of batchDays) {
+    if (!day.batches || day.batches.length === 0) continue;
+    // readdir returns PRINTED_HHMMSS-... folders alphabetically → oldest-first,
+    // so iterate in reverse to find the newest active batch
+    for (let i = day.batches.length - 1; i >= 0; i--) {
+      if (day.batches[i].status === "active") return { batch: day.batches[i], day };
+    }
+    // All rolled back — still show the newest one
+    return { batch: day.batches[day.batches.length - 1], day };
+  }
+  return null;
+};
+
 export const useStore = create(
   subscribeWithSelector((set, get) => ({
     activeTab: "All",
@@ -82,6 +97,17 @@ export const useStore = create(
       set((state) => ({
         alerts: state.alerts.filter((alert) => alert.id !== id),
       })),
+
+    batchDays: [],
+    setBatchDays: (days) => set({ batchDays: days }),
+    refreshBatchDays: async () => {
+      try {
+        const res = await window.api.readPrintedFolder();
+        if (res.success) set({ batchDays: res.data });
+      } catch (e) {
+        void e;
+      }
+    },
 
     logs: [],
     addLog: (log) => set((state) => ({ logs: [log, ...state.logs] })),

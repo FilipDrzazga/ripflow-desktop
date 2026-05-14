@@ -24,6 +24,7 @@ const PlaceholderView = ({ title }) => (
 
 const App = () => {
   const refreshFiles = useStore((state) => state.refreshFiles);
+  const refreshBatchDays = useStore((state) => state.refreshBatchDays);
   const [isLoading, setIsLoading] = useState(true);
   const [activeView, setActiveView] = useState("print");
 
@@ -33,9 +34,10 @@ const App = () => {
         successTitle: "Folders loaded",
         successMessage: "The folder data has been successfully loaded.",
       });
+      refreshBatchDays();
     };
     fetchFolders();
-  }, [refreshFiles]);
+  }, [refreshFiles, refreshBatchDays]);
 
   return (
     <div className={styles.app}>
