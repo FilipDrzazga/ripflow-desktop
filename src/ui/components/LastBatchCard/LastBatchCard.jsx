@@ -28,6 +28,7 @@ const formatTimestamp = (batch, day) => {
 
 const LastBatchCard = () => {
   const batchDays = useStore((state) => state.batchDays);
+  const isBatchSubmitting = useStore((state) => state.isBatchSubmitting);
   const result = useMemo(() => getLastBatch(batchDays), [batchDays]);
 
   const printLength = useMemo(() => {
@@ -41,6 +42,7 @@ const LastBatchCard = () => {
         <div className={style.card_content}>
           <div className={style.card_header}>
             <span className={style.card_header_title}>Last batch</span>
+            {isBatchSubmitting && <span className={style.spinner} />}
           </div>
           <div className={style.empty_state}>
             <span className={style.empty_state_text}>No batches yet</span>
@@ -59,12 +61,17 @@ const LastBatchCard = () => {
       <div className={style.card_content}>
         <div className={style.card_header}>
           <span className={style.card_header_title}>Last batch</span>
-          <span
-            className={style.printer_badge}
-            style={{ backgroundColor: printerColors.bg, color: printerColors.color }}
-          >
-            {batch.printer}
-          </span>
+          <div className={style.header_right}>
+            {isBatchSubmitting && <span className={style.spinner} />}
+            {!isBatchSubmitting && (
+              <span
+                className={style.printer_badge}
+                style={{ backgroundColor: printerColors.bg, color: printerColors.color }}
+              >
+                {batch.printer}
+              </span>
+            )}
+          </div>
         </div>
 
         <div className={style.stats_row}>

@@ -98,6 +98,9 @@ export const useStore = create(
         alerts: state.alerts.filter((alert) => alert.id !== id),
       })),
 
+    isBatchSubmitting: false,
+    setIsBatchSubmitting: (val) => set({ isBatchSubmitting: val }),
+
     batchDays: [],
     setBatchDays: (days) => set({ batchDays: days }),
     refreshBatchDays: async () => {

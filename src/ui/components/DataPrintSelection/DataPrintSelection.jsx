@@ -21,6 +21,7 @@ const DataPrintSelection = () => {
   const clearSelection = useStore((state) => state.toggleClearSelection);
   const refreshFiles = useStore((state) => state.refreshFiles);
   const refreshBatchDays = useStore((state) => state.refreshBatchDays);
+  const setIsBatchSubmitting = useStore((state) => state.setIsBatchSubmitting);
   const contentRef = useRef(null);
 
   const isSelectionMode = selectedIds.size > 0;
@@ -84,6 +85,7 @@ const DataPrintSelection = () => {
     const print = getFilesToPrint.map((item) => ({ ...item, printer: selectedPrinter }));
     const handleCreateBatch = async () => {
       setIsSubmitting(true);
+      setIsBatchSubmitting(true);
       try {
         const submitBatchResponse = await window.api.submitBatch(print);
 
@@ -131,7 +133,7 @@ const DataPrintSelection = () => {
         );
 
         await refreshFiles({ clearSelection: true });
-        refreshBatchDays();
+        await refreshBatchDays();
         setSelectedPrinter(null);
       } catch (err) {
         notify(
@@ -144,6 +146,7 @@ const DataPrintSelection = () => {
         );
       } finally {
         setIsSubmitting(false);
+        setIsBatchSubmitting(false);
       }
     };
 

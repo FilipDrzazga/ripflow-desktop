@@ -191,7 +191,7 @@ const DataFilters = () => {
           disabled={isRefreshingFiles}
           className={`${styles.filter_button} ${styles.refresh_button}`}
         >
-          <HiArrowPath className={isRefreshingFiles ? styles.spinning_icon : ""} />
+          {isRefreshingFiles ? <span className={styles.spinner} /> : <HiArrowPath />}
           {isRefreshingFiles ? "Refreshing..." : "Refresh list"}
         </button>
       </div>
