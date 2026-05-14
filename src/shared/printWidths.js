@@ -56,7 +56,7 @@ export const LM_ROLL_COTTON = {
   "Organic Drill Natural": 1420,
   Panama: 1420,
   "Organic Leve Panama Natural": 1420,
-  "Hector Linen": 1420,
+  "Hector Linen": 1460,
   Poplin: 1420,
   "Light Twill": 1420,
   "Organic Drill Optic": 1420,

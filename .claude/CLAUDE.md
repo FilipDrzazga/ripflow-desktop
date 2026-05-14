@@ -21,6 +21,7 @@
 | Animacje      | GSAP 2.1.2 + @gsap/react 2.1.2       |
 | Ikony         | React Icons 5.5.0 (Lucide `Lu*`)     |
 | PDF           | pdf-lib 1.17.1 (kopiowanie 1. strony)|
+| Ustawienia    | electron-store (persystentne JSON w userData) |
 | Dev tooling   | ESLint 9, Concurrently, wait-on      |
 
 ---
@@ -36,7 +37,8 @@ ripflow-desktop/
 │   │   ├── helpers/           # Funkcje pomocnicze (pure logic)
 │   │   │   ├── parseFileName.js       # Parsowanie nazw plików (600+ linii, główna logika!)
 │   │   │   ├── getMaterialType.js     # Klasyfikacja materiału (bawełna/poliester)
-│   │   │   ├── getRootPath.js         # Rozwiązywanie ścieżek storage
+│   │   │   ├── getSettings.js         # Odczyt/zapis ustawień przez electron-store
+│   │   │   ├── getRootPath.js         # Rozwiązywanie ścieżek storage (czyta z getSettings)
 │   │   │   ├── createBatchIds.js      # Generowanie ID batcha
 │   │   │   ├── getFileAgeInDays.js
 │   │   │   ├── isPDF.js
@@ -68,6 +70,7 @@ ripflow-desktop/
 │   │   │   │   ├── PrintMaterialBreakdownCard/ # Top grupy per materiał
 │   │   │   │   └── OthersTooltip/     # Tooltip dla "Others" w breakdown
 │   │   │   ├── BatchHistory/          # Widok historii batchy (drzewo day→batch→file)
+│   │   │   ├── Settings/              # Widok ustawień — wybór ścieżek storage i XML
 │   │   │   ├── StartupLoader/         # Progress bar przy ładowaniu
 │   │   │   ├── AlertsHost/            # Toast notyfikacje (stacked, auto-dismiss 3s)
 │   │   │   ├── Badge/                 # Kolorowe badges (print type, material, status)
@@ -101,7 +104,7 @@ ripflow-desktop/
 INBOX → PARSING FILES NAME → DISPLAY UI → SELECTING JOBS/PRINTER → CREATING BATCH/XML → CREATING FOLDERS → TAKING XML FILE BY WORKFLOW PRINTFACTORY → PRINT
 ```
 
-1. Aplikacja skanuje folder `O:\SPPrintReadyArtwork` (fallback: `C:\SPPrintReadyArtwork`)
+1. Aplikacja skanuje folder ustawiony w electron-store (domyślnie `O:\SPPrintReadyArtwork`)
 2. Parsuje nazwy plików PDF → wyciąga metadane (typ produktu, materiał, ilość, wymiary)
 3. Operator wybiera pliki + drukarkę → submit batcha
 4. Aplikacja przenosi pliki atomicznie (temp dir → rename) z rollbackiem przy błędzie
@@ -118,7 +121,7 @@ App ma 4 widoki (`activeView` string):
 | `"print"`   | DataOverviewSection + DataFilters + DataList | Zaimplementowany |
 | `"batch"`   | BatchHistory                           | Zaimplementowany |
 | `"logs"`    | PlaceholderView                        | Placeholder    |
-| `"settings"`| PlaceholderView                        | Placeholder    |
+| `"settings"`| Settings                               | Zaimplementowany |
 
 Nawigacja przez **NavBar** (lewa kolumna). Layout: `TitleBar` (top) + `NavBar` (left) + `content` (center) + `DataPrintSelection` (right, animowany).
 
@@ -170,16 +173,24 @@ Nawigacja przez **NavBar** (lewa kolumna). Layout: `TitleBar` (top) + `NavBar` (
 
 ---
 
-## Ścieżki storage (`getRootPath.js`)
+## Ścieżki storage (`getRootPath.js` + `getSettings.js`)
 
+Ścieżki są **persystowane przez electron-store** (`src/electron/helpers/getSettings.js`) i edytowalne przez użytkownika w widoku Settings. `getRootPath.js` czyta je z `getSettings()` — brak hardkodowanych stałych.
+
+**Domyślne wartości:**
 ```
-Work:   O:\SPPrintReadyArtwork           ← priorytet jeśli istnieje
-Home:   C:\SPPrintReadyArtwork           ← fallback
-XML:    \\192.168.0.17\Original_files\SPPrintReadyArtwork
-Workflow Cotton: {ROOT}\AUTOMATION_WORKFLOW_COTTON   ← dla DGEN
-Workflow Poly:   {ROOT}\AUTOMATION_WORKFLOW_POLY     ← dla YOKO/YUMI
-Printed:         {ROOT}\PRINTED\DD-MM-YYYY\PRINTED_HHMMSS-GROUP-PRINTER\
+storagePath: O:\SPPrintReadyArtwork
+xmlPath:     \\192.168.0.17\Original_files\SPPrintReadyArtwork
 ```
+
+**Pochodne ścieżki (wyliczane w kodzie):**
+```
+Workflow Cotton: {storagePath}\AUTOMATION_WORKFLOW_COTTON   ← dla DGEN
+Workflow Poly:   {storagePath}\AUTOMATION_WORKFLOW_POLY     ← dla YOKO/YUMI
+Printed:         {storagePath}\PRINTED\DD-MM-YYYY\PRINTED_HHMMSS-GROUP-PRINTER\
+```
+
+Dane są zapisywane w `%APPDATA%\ripflow-desktop\config.json` (Electron userData).
 
 ---
 
@@ -217,6 +228,11 @@ window.api.deleteBatch(batchPath)             // usuń pusty batch (bez PDFs)
 window.api.startBatchWatcher()                // filesystem watcher na PRINTED/
 window.api.stopBatchWatcher()                 // zatrzymaj watcher
 window.api.onBatchUpdate(callback)            // realtime updates z watchera
+
+// Ustawienia
+window.api.getSettings()                      // zwraca { success, settings: { storagePath, xmlPath } }
+window.api.setSettings({ storagePath, xmlPath }) // zapisuje po walidacji fs.existsSync; zwraca { success, error? }
+window.api.selectFolder()                     // natywny dialog wyboru folderu; zwraca { success, canceled, path }
 
 // Pliki
 window.api.openPreview(filePath)              // otwórz PDF
@@ -353,6 +369,13 @@ Progress bar → wiek pliku: "NEW" (zielony) → X DAYS (żółty → pomarańcz
 ### `ContextMenu`
 Portal-based popup z edge detection, separator support, danger items (czerwone). Zamyka się na click, ESC, backdrop.
 
+### `Settings`
+Widok ustawień (zakładka "settings" w NavBar). Karta z dwoma polami:
+- **Storage Path (INBOX)** — lokalny folder skanowany przez `readFolders`
+- **XML Workflow Path** — ścieżka sieciowa do której trafiają pliki XML dla PrintFactory
+
+Przycisk Browse otwiera natywny dialog (`dialog:select-folder`). Save waliduje oba pola przez `fs.existsSync` po stronie main procesu przed zapisem. Wynik przez `notify()` (Success/Error toast).
+
 ### `StartupLoader`
 Pełnoekranowy loader przy starcie. Odbiera `read-folders:progress` i animuje pasek postępu (GSAP, 16ms interpolacja).
 
@@ -390,7 +413,7 @@ Alias `@` w UI → `./src/ui` (np. `import { useStore } from '@/store/useStore'`
 ## Co jest jeszcze planowane (z README)
 
 - Integracja z PrintFactory Cloud API
-- UI do zarządzania materiałami i ustawieniami (widok "settings" — placeholder)
+- UI do zarządzania materiałami (widok "settings" — częściowo zaimplementowany)
 - Real-time śledzenie produkcji (widok "logs" — placeholder)
 - Multi-user synchronizacja
 - Integracja z Shopify (placeholder w ContextMenu DataList)
@@ -408,4 +431,6 @@ Alias `@` w UI → `./src/ui` (np. `import { useStore } from '@/store/useStore'`
 - Szerokość rolki bawełny: **1420mm** (nie 1450mm)
 - Material lock w selekcji: nie można mieszać Cottons i Polyesters w jednym batchu
 - BatchHistory ma real-time watcher — pamiętaj o `stopBatchWatcher()` przy unmount
+- Ścieżki storage są w **electron-store** (`getSettings.js`) — nigdy nie hardkoduj ich ponownie w `getRootPath.js`
+- `settings:set` waliduje ścieżki przez `fs.existsSync` — sieciowa ścieżka XML musi być dostępna w momencie zapisu
 - Brak testów automatycznych w projekcie

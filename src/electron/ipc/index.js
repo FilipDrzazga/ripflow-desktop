@@ -1,4 +1,4 @@
-import { ipcMain } from "electron";
+import { ipcMain, dialog, BrowserWindow } from "electron";
 import fs from "fs";
 import path from "path";
 import { readFolders } from "./readFolders.js";
@@ -9,6 +9,7 @@ import { readPrintedFolder, readSingleBatch, parseBatchFolderName } from "./read
 import { rollbackBatchFromHistory, rollbackFileFromHistory, regenerateXmlForBatch, deleteBatchFolder } from "./batchHistoryHandlers.js";
 import { getStorageRootPath } from "../helpers/getRootPath.js";
 import { parsePrintFileName } from "../helpers/parseFileName.js";
+import { getSettings, setSettings } from "../helpers/getSettings.js";
 
 const DAY_FOLDER_RE = /^\d{2}-\d{2}-\d{4}$/;
 
@@ -173,5 +174,35 @@ export function registerIpcHandlers() {
     }
     watcherSender = null;
     return { success: true };
+  });
+
+  ipcMain.handle("settings:get", () => {
+    return { success: true, settings: getSettings() };
+  });
+
+  ipcMain.handle("settings:set", (_event, settings) => {
+    const { storagePath, xmlPath } = settings ?? {};
+    if (!storagePath || !xmlPath) {
+      return { success: false, error: "Both paths are required." };
+    }
+    if (!fs.existsSync(storagePath)) {
+      return { success: false, error: `Storage path does not exist: ${storagePath}` };
+    }
+    if (!fs.existsSync(xmlPath)) {
+      return { success: false, error: `XML path does not exist: ${xmlPath}` };
+    }
+    setSettings({ storagePath, xmlPath });
+    return { success: true };
+  });
+
+  ipcMain.handle("dialog:select-folder", async (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    const result = await dialog.showOpenDialog(win, {
+      properties: ["openDirectory"],
+    });
+    if (result.canceled || result.filePaths.length === 0) {
+      return { success: true, canceled: true, path: null };
+    }
+    return { success: true, canceled: false, path: result.filePaths[0] };
   });
 }

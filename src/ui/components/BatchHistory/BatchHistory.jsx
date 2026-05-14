@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { useStore } from "../../store/useStore";
 import { notify } from "../../utils/notify";
 import ContextMenu from "../ContextMenu/ContextMenu";
 import gsap from "gsap";
@@ -65,13 +64,17 @@ const BatchHistory = () => {
             title: err?.title || "Failed to load batch history",
             message: err?.message || "Could not read the PRINTED folder.",
           },
-          { stage: "readFolders", code: "READ_BATCH_HISTORY_FAILED" }
+          { stage: "readFolders", code: "READ_BATCH_HISTORY_FAILED" },
         );
       }
     } catch (err) {
       notify(
-        { type: "Error", title: "Failed to load batch history", message: err?.message || "An unexpected error occurred." },
-        { stage: "readFolders", code: "READ_BATCH_HISTORY_EXCEPTION" }
+        {
+          type: "Error",
+          title: "Failed to load batch history",
+          message: err?.message || "An unexpected error occurred.",
+        },
+        { stage: "readFolders", code: "READ_BATCH_HISTORY_EXCEPTION" },
       );
     } finally {
       setIsLoading(false);
@@ -237,12 +240,20 @@ const BatchHistory = () => {
       const res = await window.api.openPreview(filePath);
       if (!res?.success) {
         const err = res?.errors?.[0];
-        throw { type: err?.type || "Error", title: err?.title || "Preview failed", message: err?.message || "Could not open file." };
+        throw {
+          type: err?.type || "Error",
+          title: err?.title || "Preview failed",
+          message: err?.message || "Could not open file.",
+        };
       }
     } catch (err) {
       notify(
-        { type: err?.type || "Error", title: err?.title || "Preview failed", message: err?.message || "Could not open file." },
-        { stage: "app", code: "OPEN_PREVIEW_FAILED" }
+        {
+          type: err?.type || "Error",
+          title: err?.title || "Preview failed",
+          message: err?.message || "Could not open file.",
+        },
+        { stage: "app", code: "OPEN_PREVIEW_FAILED" },
       );
     }
   }, []);
@@ -252,59 +263,89 @@ const BatchHistory = () => {
       const res = await window.api.openInFolder(filePath);
       if (!res?.success) {
         const err = res?.errors?.[0];
-        throw { type: err?.type || "Error", title: err?.title || "Open folder failed", message: err?.message || "Could not open folder." };
+        throw {
+          type: err?.type || "Error",
+          title: err?.title || "Open folder failed",
+          message: err?.message || "Could not open folder.",
+        };
       }
     } catch (err) {
       notify(
-        { type: err?.type || "Error", title: err?.title || "Open folder failed", message: err?.message || "Could not open folder." },
-        { stage: "app", code: "OPEN_FOLDER_FAILED" }
+        {
+          type: err?.type || "Error",
+          title: err?.title || "Open folder failed",
+          message: err?.message || "Could not open folder.",
+        },
+        { stage: "app", code: "OPEN_FOLDER_FAILED" },
       );
     }
   }, []);
 
-  const handleRollbackFile = useCallback(async (filePath, batchPath) => {
-    if (!window.confirm("Move this file back to the inbox? It will be available for printing again.")) return;
-    try {
-      const res = await window.api.rollbackFile(filePath, batchPath);
-      if (res?.success) {
+  const handleRollbackFile = useCallback(
+    async (filePath, batchPath) => {
+      if (!window.confirm("Move this file back to the inbox? It will be available for printing again.")) return;
+      try {
+        const res = await window.api.rollbackFile(filePath, batchPath);
+        if (res?.success) {
+          notify(
+            { type: "Success", title: "File rolled back", message: "The file has been moved back to the inbox." },
+            { stage: "rollback", code: "FILE_ROLLED_BACK", detail: { filePath, batchPath } },
+          );
+          await loadData();
+        } else {
+          const err = res?.errors?.[0];
+          throw {
+            type: err?.type || "Error",
+            title: err?.title || "Rollback failed",
+            message: err?.message || "Could not roll back file.",
+          };
+        }
+      } catch (err) {
         notify(
-          { type: "Success", title: "File rolled back", message: "The file has been moved back to the inbox." },
-          { stage: "rollback", code: "FILE_ROLLED_BACK", detail: { filePath, batchPath } }
+          {
+            type: err?.type || "Error",
+            title: err?.title || "Rollback failed",
+            message: err?.message || "Could not roll back file.",
+          },
+          { stage: "rollback", code: "FILE_ROLLBACK_FAILED" },
         );
-        await loadData();
-      } else {
-        const err = res?.errors?.[0];
-        throw { type: err?.type || "Error", title: err?.title || "Rollback failed", message: err?.message || "Could not roll back file." };
       }
-    } catch (err) {
-      notify(
-        { type: err?.type || "Error", title: err?.title || "Rollback failed", message: err?.message || "Could not roll back file." },
-        { stage: "rollback", code: "FILE_ROLLBACK_FAILED" }
-      );
-    }
-  }, [loadData]);
+    },
+    [loadData],
+  );
 
-  const handleRollbackBatch = useCallback(async (batchPath) => {
-    if (!window.confirm("Move all files in this batch back to the inbox? The XML will remain.")) return;
-    try {
-      const res = await window.api.rollbackBatch(batchPath);
-      if (res?.success) {
+  const handleRollbackBatch = useCallback(
+    async (batchPath) => {
+      if (!window.confirm("Move all files in this batch back to the inbox? The XML will remain.")) return;
+      try {
+        const res = await window.api.rollbackBatch(batchPath);
+        if (res?.success) {
+          notify(
+            { type: "Success", title: "Batch rolled back", message: "All files have been moved back to the inbox." },
+            { stage: "rollback", code: "BATCH_ROLLED_BACK", detail: { batchPath } },
+          );
+          await loadData();
+        } else {
+          const err = res?.errors?.[0];
+          throw {
+            type: err?.type || "Error",
+            title: err?.title || "Rollback failed",
+            message: err?.message || "Could not roll back batch.",
+          };
+        }
+      } catch (err) {
         notify(
-          { type: "Success", title: "Batch rolled back", message: "All files have been moved back to the inbox." },
-          { stage: "rollback", code: "BATCH_ROLLED_BACK", detail: { batchPath } }
+          {
+            type: err?.type || "Error",
+            title: err?.title || "Rollback failed",
+            message: err?.message || "Could not roll back batch.",
+          },
+          { stage: "rollback", code: "BATCH_ROLLBACK_FAILED" },
         );
-        await loadData();
-      } else {
-        const err = res?.errors?.[0];
-        throw { type: err?.type || "Error", title: err?.title || "Rollback failed", message: err?.message || "Could not roll back batch." };
       }
-    } catch (err) {
-      notify(
-        { type: err?.type || "Error", title: err?.title || "Rollback failed", message: err?.message || "Could not roll back batch." },
-        { stage: "rollback", code: "BATCH_ROLLBACK_FAILED" }
-      );
-    }
-  }, [loadData]);
+    },
+    [loadData],
+  );
 
   const handleDeleteBatch = useCallback(async (batchPath) => {
     if (!window.confirm("Permanently delete this empty batch folder? This cannot be undone.")) return;
@@ -313,21 +354,29 @@ const BatchHistory = () => {
       if (res?.success) {
         notify(
           { type: "Success", title: "Batch deleted", message: "The empty batch folder has been deleted." },
-          { stage: "app", code: "BATCH_DELETED", detail: { batchPath } }
+          { stage: "app", code: "BATCH_DELETED", detail: { batchPath } },
         );
         setDayGroups((prev) =>
           prev
             .map((day) => ({ ...day, batches: day.batches.filter((b) => b.path !== batchPath) }))
-            .filter((day) => day.batches.length > 0)
+            .filter((day) => day.batches.length > 0),
         );
       } else {
         const err = res?.errors?.[0];
-        throw { type: err?.type || "Error", title: err?.title || "Delete failed", message: err?.message || "Could not delete batch." };
+        throw {
+          type: err?.type || "Error",
+          title: err?.title || "Delete failed",
+          message: err?.message || "Could not delete batch.",
+        };
       }
     } catch (err) {
       notify(
-        { type: err?.type || "Error", title: err?.title || "Delete failed", message: err?.message || "Could not delete batch." },
-        { stage: "app", code: "BATCH_DELETE_FAILED" }
+        {
+          type: err?.type || "Error",
+          title: err?.title || "Delete failed",
+          message: err?.message || "Could not delete batch.",
+        },
+        { stage: "app", code: "BATCH_DELETE_FAILED" },
       );
     }
   }, []);
@@ -338,16 +387,24 @@ const BatchHistory = () => {
       if (res?.success) {
         notify(
           { type: "Success", title: "XML regenerated", message: "The batch XML has been regenerated." },
-          { stage: "createXML", code: "XML_REGENERATED", detail: { batchPath } }
+          { stage: "createXML", code: "XML_REGENERATED", detail: { batchPath } },
         );
       } else {
         const err = res?.errors?.[0];
-        throw { type: err?.type || "Error", title: err?.title || "XML regeneration failed", message: err?.message || "Could not regenerate XML." };
+        throw {
+          type: err?.type || "Error",
+          title: err?.title || "XML regeneration failed",
+          message: err?.message || "Could not regenerate XML.",
+        };
       }
     } catch (err) {
       notify(
-        { type: err?.type || "Error", title: err?.title || "XML regeneration failed", message: err?.message || "Could not regenerate XML." },
-        { stage: "createXML", code: "XML_REGEN_FAILED" }
+        {
+          type: err?.type || "Error",
+          title: err?.title || "XML regeneration failed",
+          message: err?.message || "Could not regenerate XML.",
+        },
+        { stage: "createXML", code: "XML_REGEN_FAILED" },
       );
     }
   }, []);
@@ -390,16 +447,14 @@ const BatchHistory = () => {
           type="button"
           className={style.collapse_btn}
           title="Collapse all"
-          onClick={() => { setExpandedDays(new Set()); setExpandedBatches(new Set()); }}
+          onClick={() => {
+            setExpandedDays(new Set());
+            setExpandedBatches(new Set());
+          }}
         >
           <LuChevronsDownUp size={15} />
         </button>
-        <button
-          type="button"
-          className={style.refresh_btn}
-          onClick={loadData}
-          disabled={isLoading}
-        >
+        <button type="button" className={style.refresh_btn} onClick={loadData} disabled={isLoading}>
           <LuRefreshCw size={15} className={isLoading ? style.spinning_icon : ""} />
           {isLoading ? "Refreshing..." : "Refresh"}
         </button>

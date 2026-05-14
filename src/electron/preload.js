@@ -72,6 +72,12 @@ const api = Object.freeze({
     ipcRenderer.on("batch:update", handler);
     return () => ipcRenderer.removeListener("batch:update", handler);
   },
+  getSettings: () => ipcRenderer.invoke("settings:get"),
+  setSettings: (settings) => {
+    if (!isPlainObject(settings)) throw new TypeError("Settings must be a plain object.");
+    return ipcRenderer.invoke("settings:set", settings);
+  },
+  selectFolder: () => ipcRenderer.invoke("dialog:select-folder"),
   minimizeWindow: () => ipcRenderer.send("window:minimize"),
   maximizeWindow: () => ipcRenderer.send("window:maximize"),
   closeWindow: () => ipcRenderer.send("window:close"),

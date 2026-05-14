@@ -13,6 +13,7 @@ import TitleBar from "./components/TitleBar/TitleBar";
 import { LuConstruction } from "react-icons/lu";
 import BatchHistory from "./components/BatchHistory/BatchHistory";
 import SessionLogs from "./components/SessionLogs/SessionLogs";
+import Settings from "./components/Settings/Settings";
 
 const PlaceholderView = ({ title }) => (
   <div className={styles.placeholder}>
@@ -54,7 +55,7 @@ const App = () => {
             )}
             {activeView === "batch" && <BatchHistory />}
             {activeView === "logs" && <SessionLogs />}
-            {activeView === "settings" && <PlaceholderView title="Settings" />}
+            {activeView === "settings" && <Settings />}
           </main>
           <DataPrintSelection />
         </div>

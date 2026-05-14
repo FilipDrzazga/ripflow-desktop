@@ -1,0 +1,127 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.card {
+  background-color: var(--bg-white);
+  border-radius: 20px;
+  box-shadow: var(--card-shadow);
+  overflow: hidden;
+  max-width: 680px;
+  width: 100%;
+}
+
+.card_header {
+  padding: 24px 28px;
+  border-bottom: 1px solid var(--border-grey);
+}
+
+.title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.card_body {
+  padding: 24px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.input_row {
+  display: flex;
+  gap: 8px;
+}
+
+.input {
+  flex: 1;
+  padding: 9px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border-grey);
+  background-color: var(--bg-grey-light);
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 500;
+  outline: none;
+  transition:
+    border-color 0.2s ease,
+    background-color 0.2s ease;
+}
+
+.input:focus {
+  border-color: var(--border-black);
+  background-color: var(--bg-white);
+}
+
+.browse_btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--border-grey);
+  background-color: var(--bg-white);
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 600;
+  box-shadow: var(--card-shadow);
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: border-color 0.15s ease;
+}
+
+.browse_btn:hover {
+  border-color: var(--border-black);
+}
+
+.hint {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.card_footer {
+  padding: 20px 28px;
+  border-top: 1px solid var(--border-grey);
+  display: flex;
+  justify-content: flex-end;
+}
+
+.save_btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 20px;
+  border-radius: 10px;
+  background-color: var(--bg-black);
+  color: var(--text-white);
+  font-size: 13px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+}
+
+.save_btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
