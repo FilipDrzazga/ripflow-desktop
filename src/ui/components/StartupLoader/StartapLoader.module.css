@@ -40,3 +40,9 @@
   border-radius: 2px;
   background-color: var(--text-primary);
 }
+.loader_logo {
+  margin-top: 24px;
+  width: 90px;
+  height: auto;
+  opacity: 0.4;
+}

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useStore } from "../../store/useStore";
+import { notify } from "../../utils/notify";
 import ContextMenu from "../ContextMenu/ContextMenu";
 import gsap from "gsap";
 import {
@@ -31,7 +32,6 @@ const parseDayFromBatchPath = (batchPath) => {
 };
 
 const BatchHistory = () => {
-  const setAlert = useStore((state) => state.setAlert);
   const [dayGroups, setDayGroups] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -59,24 +59,24 @@ const BatchHistory = () => {
         }
       } else {
         const err = res.errors?.[0];
-        setAlert({
-          id: crypto.randomUUID(),
-          type: err?.type || "Error",
-          title: err?.title || "Failed to load batch history",
-          message: err?.message || "Could not read the PRINTED folder.",
-        });
+        notify(
+          {
+            type: err?.type || "Error",
+            title: err?.title || "Failed to load batch history",
+            message: err?.message || "Could not read the PRINTED folder.",
+          },
+          { stage: "readFolders", code: "READ_BATCH_HISTORY_FAILED" }
+        );
       }
     } catch (err) {
-      setAlert({
-        id: crypto.randomUUID(),
-        type: "Error",
-        title: "Failed to load batch history",
-        message: err?.message || "An unexpected error occurred.",
-      });
+      notify(
+        { type: "Error", title: "Failed to load batch history", message: err?.message || "An unexpected error occurred." },
+        { stage: "readFolders", code: "READ_BATCH_HISTORY_EXCEPTION" }
+      );
     } finally {
       setIsLoading(false);
     }
-  }, [setAlert]);
+  }, []);
 
   const handleBatchUpdate = useCallback((payload) => {
     const { type, batch, batchPath, file } = payload;
@@ -232,114 +232,125 @@ const BatchHistory = () => {
       .filter((day) => day.batches.length > 0);
   }, [dayGroups, searchQuery, activePrinters]);
 
-  const handleOpenPreview = useCallback(
-    async (filePath) => {
-      try {
-        const res = await window.api.openPreview(filePath);
-        if (!res?.success) {
-          const err = res?.errors?.[0];
-          throw { type: err?.type || "Error", title: err?.title || "Preview failed", message: err?.message || "Could not open file." };
-        }
-      } catch (err) {
-        setAlert({ id: crypto.randomUUID(), type: err?.type || "Error", title: err?.title || "Preview failed", message: err?.message || "Could not open file." });
+  const handleOpenPreview = useCallback(async (filePath) => {
+    try {
+      const res = await window.api.openPreview(filePath);
+      if (!res?.success) {
+        const err = res?.errors?.[0];
+        throw { type: err?.type || "Error", title: err?.title || "Preview failed", message: err?.message || "Could not open file." };
       }
-    },
-    [setAlert],
-  );
+    } catch (err) {
+      notify(
+        { type: err?.type || "Error", title: err?.title || "Preview failed", message: err?.message || "Could not open file." },
+        { stage: "app", code: "OPEN_PREVIEW_FAILED" }
+      );
+    }
+  }, []);
 
-  const handleOpenInFolder = useCallback(
-    async (filePath) => {
-      try {
-        const res = await window.api.openInFolder(filePath);
-        if (!res?.success) {
-          const err = res?.errors?.[0];
-          throw { type: err?.type || "Error", title: err?.title || "Open folder failed", message: err?.message || "Could not open folder." };
-        }
-      } catch (err) {
-        setAlert({ id: crypto.randomUUID(), type: err?.type || "Error", title: err?.title || "Open folder failed", message: err?.message || "Could not open folder." });
+  const handleOpenInFolder = useCallback(async (filePath) => {
+    try {
+      const res = await window.api.openInFolder(filePath);
+      if (!res?.success) {
+        const err = res?.errors?.[0];
+        throw { type: err?.type || "Error", title: err?.title || "Open folder failed", message: err?.message || "Could not open folder." };
       }
-    },
-    [setAlert],
-  );
+    } catch (err) {
+      notify(
+        { type: err?.type || "Error", title: err?.title || "Open folder failed", message: err?.message || "Could not open folder." },
+        { stage: "app", code: "OPEN_FOLDER_FAILED" }
+      );
+    }
+  }, []);
 
-  const handleRollbackFile = useCallback(
-    async (filePath, batchPath) => {
-      if (!window.confirm("Move this file back to the inbox? It will be available for printing again.")) return;
-      try {
-        const res = await window.api.rollbackFile(filePath, batchPath);
-        if (res?.success) {
-          setAlert({ id: crypto.randomUUID(), type: "Success", title: "File rolled back", message: "The file has been moved back to the inbox." });
-          await loadData();
-        } else {
-          const err = res?.errors?.[0];
-          throw { type: err?.type || "Error", title: err?.title || "Rollback failed", message: err?.message || "Could not roll back file." };
-        }
-      } catch (err) {
-        setAlert({ id: crypto.randomUUID(), type: err?.type || "Error", title: err?.title || "Rollback failed", message: err?.message || "Could not roll back file." });
+  const handleRollbackFile = useCallback(async (filePath, batchPath) => {
+    if (!window.confirm("Move this file back to the inbox? It will be available for printing again.")) return;
+    try {
+      const res = await window.api.rollbackFile(filePath, batchPath);
+      if (res?.success) {
+        notify(
+          { type: "Success", title: "File rolled back", message: "The file has been moved back to the inbox." },
+          { stage: "rollback", code: "FILE_ROLLED_BACK", detail: { filePath, batchPath } }
+        );
+        await loadData();
+      } else {
+        const err = res?.errors?.[0];
+        throw { type: err?.type || "Error", title: err?.title || "Rollback failed", message: err?.message || "Could not roll back file." };
       }
-    },
-    [loadData, setAlert],
-  );
+    } catch (err) {
+      notify(
+        { type: err?.type || "Error", title: err?.title || "Rollback failed", message: err?.message || "Could not roll back file." },
+        { stage: "rollback", code: "FILE_ROLLBACK_FAILED" }
+      );
+    }
+  }, [loadData]);
 
-  const handleRollbackBatch = useCallback(
-    async (batchPath) => {
-      if (!window.confirm("Move all files in this batch back to the inbox? The XML will remain.")) return;
-      try {
-        const res = await window.api.rollbackBatch(batchPath);
-        if (res?.success) {
-          setAlert({ id: crypto.randomUUID(), type: "Success", title: "Batch rolled back", message: "All files have been moved back to the inbox." });
-          await loadData();
-        } else {
-          const err = res?.errors?.[0];
-          throw { type: err?.type || "Error", title: err?.title || "Rollback failed", message: err?.message || "Could not roll back batch." };
-        }
-      } catch (err) {
-        setAlert({ id: crypto.randomUUID(), type: err?.type || "Error", title: err?.title || "Rollback failed", message: err?.message || "Could not roll back batch." });
+  const handleRollbackBatch = useCallback(async (batchPath) => {
+    if (!window.confirm("Move all files in this batch back to the inbox? The XML will remain.")) return;
+    try {
+      const res = await window.api.rollbackBatch(batchPath);
+      if (res?.success) {
+        notify(
+          { type: "Success", title: "Batch rolled back", message: "All files have been moved back to the inbox." },
+          { stage: "rollback", code: "BATCH_ROLLED_BACK", detail: { batchPath } }
+        );
+        await loadData();
+      } else {
+        const err = res?.errors?.[0];
+        throw { type: err?.type || "Error", title: err?.title || "Rollback failed", message: err?.message || "Could not roll back batch." };
       }
-    },
-    [loadData, setAlert],
-  );
+    } catch (err) {
+      notify(
+        { type: err?.type || "Error", title: err?.title || "Rollback failed", message: err?.message || "Could not roll back batch." },
+        { stage: "rollback", code: "BATCH_ROLLBACK_FAILED" }
+      );
+    }
+  }, [loadData]);
 
-  const handleDeleteBatch = useCallback(
-    async (batchPath) => {
-      if (!window.confirm("Permanently delete this empty batch folder? This cannot be undone.")) return;
-      try {
-        const res = await window.api.deleteBatch(batchPath);
-        if (res?.success) {
-          setAlert({ id: crypto.randomUUID(), type: "Success", title: "Batch deleted", message: "The empty batch folder has been deleted." });
-          setDayGroups((prev) => {
-            const next = prev
-              .map((day) => ({ ...day, batches: day.batches.filter((b) => b.path !== batchPath) }))
-              .filter((day) => day.batches.length > 0);
-            return next;
-          });
-        } else {
-          const err = res?.errors?.[0];
-          throw { type: err?.type || "Error", title: err?.title || "Delete failed", message: err?.message || "Could not delete batch." };
-        }
-      } catch (err) {
-        setAlert({ id: crypto.randomUUID(), type: err?.type || "Error", title: err?.title || "Delete failed", message: err?.message || "Could not delete batch." });
+  const handleDeleteBatch = useCallback(async (batchPath) => {
+    if (!window.confirm("Permanently delete this empty batch folder? This cannot be undone.")) return;
+    try {
+      const res = await window.api.deleteBatch(batchPath);
+      if (res?.success) {
+        notify(
+          { type: "Success", title: "Batch deleted", message: "The empty batch folder has been deleted." },
+          { stage: "app", code: "BATCH_DELETED", detail: { batchPath } }
+        );
+        setDayGroups((prev) =>
+          prev
+            .map((day) => ({ ...day, batches: day.batches.filter((b) => b.path !== batchPath) }))
+            .filter((day) => day.batches.length > 0)
+        );
+      } else {
+        const err = res?.errors?.[0];
+        throw { type: err?.type || "Error", title: err?.title || "Delete failed", message: err?.message || "Could not delete batch." };
       }
-    },
-    [setAlert],
-  );
+    } catch (err) {
+      notify(
+        { type: err?.type || "Error", title: err?.title || "Delete failed", message: err?.message || "Could not delete batch." },
+        { stage: "app", code: "BATCH_DELETE_FAILED" }
+      );
+    }
+  }, []);
 
-  const handleRegenerateXml = useCallback(
-    async (batchPath) => {
-      try {
-        const res = await window.api.regenerateXml(batchPath);
-        if (res?.success) {
-          setAlert({ id: crypto.randomUUID(), type: "Success", title: "XML regenerated", message: "The batch XML has been regenerated." });
-        } else {
-          const err = res?.errors?.[0];
-          throw { type: err?.type || "Error", title: err?.title || "XML regeneration failed", message: err?.message || "Could not regenerate XML." };
-        }
-      } catch (err) {
-        setAlert({ id: crypto.randomUUID(), type: err?.type || "Error", title: err?.title || "XML regeneration failed", message: err?.message || "Could not regenerate XML." });
+  const handleRegenerateXml = useCallback(async (batchPath) => {
+    try {
+      const res = await window.api.regenerateXml(batchPath);
+      if (res?.success) {
+        notify(
+          { type: "Success", title: "XML regenerated", message: "The batch XML has been regenerated." },
+          { stage: "createXML", code: "XML_REGENERATED", detail: { batchPath } }
+        );
+      } else {
+        const err = res?.errors?.[0];
+        throw { type: err?.type || "Error", title: err?.title || "XML regeneration failed", message: err?.message || "Could not regenerate XML." };
       }
-    },
-    [setAlert],
-  );
+    } catch (err) {
+      notify(
+        { type: err?.type || "Error", title: err?.title || "XML regeneration failed", message: err?.message || "Could not regenerate XML." },
+        { stage: "createXML", code: "XML_REGEN_FAILED" }
+      );
+    }
+  }, []);
 
   const activeContextFilePath = contextMenu?.file?.path || null;
 
@@ -362,6 +373,7 @@ const BatchHistory = () => {
             </button>
           )}
         </div>
+        <div className={style.separator} />
         <div className={style.printer_filters}>
           {PRINTERS.map((p) => (
             <button

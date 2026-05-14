@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
 import style from "./StartapLoader.module.css";
+import MaakeLogo from "@/assets/image/Maake_Logo.webp";
 
 const StartupLoader = ({ onDone }) => {
   const loaderRef = useRef(null);
@@ -82,6 +83,7 @@ const StartupLoader = ({ onDone }) => {
         <div className={style.loader_track}>
           <div ref={loaderRef} className={style.loader_fill} style={{ width: `${realProgressPercent}%` }}></div>
         </div>
+        <img src={MaakeLogo} alt="Maake Logo" className={style.loader_logo} />
       </div>
     </div>
   );

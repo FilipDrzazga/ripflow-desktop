@@ -18,6 +18,7 @@ const mainWindow = () => {
     fullscreenable: false,
     frame: false,
     show: false,
+    icon: join(__dirname, "../ui/assets/image/favicon.ico"),
     webPreferences: {
       preload: join(__dirname, "preload.js"),
       contextIsolation: true,

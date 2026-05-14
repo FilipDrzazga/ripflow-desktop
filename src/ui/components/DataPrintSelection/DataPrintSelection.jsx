@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
 import { useStore } from "../../store/useStore";
+import { notify } from "../../utils/notify";
 import style from "./DataPrintSelection.module.css";
 
 gsap.registerPlugin(useGSAP);
@@ -17,7 +18,6 @@ const DataPrintSelection = () => {
   const files = useStore((state) => state.files);
   const filteredFiles = useStore((state) => state.filteredFiles);
   const selectedIds = useStore((state) => state.selectedIds);
-  const setAlert = useStore((state) => state.setAlert);
   const clearSelection = useStore((state) => state.toggleClearSelection);
   const refreshFiles = useStore((state) => state.refreshFiles);
   const contentRef = useRef(null);
@@ -73,12 +73,10 @@ const DataPrintSelection = () => {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!selectedPrinter) {
-      setAlert({
-        id: crypto.randomUUID(),
-        type: "Warning",
-        title: "No printer selected",
-        message: "Please select a printer before submitting.",
-      });
+      notify(
+        { type: "Warning", title: "No printer selected", message: "Please select a printer before submitting." },
+        { stage: "app", code: "NO_PRINTER_SELECTED" }
+      );
       return;
     }
     const getFilesToPrint = files.map((group) => group.items.filter((item) => selectedIds.has(item.id))).flat();
@@ -91,41 +89,57 @@ const DataPrintSelection = () => {
         if (!submitBatchResponse.success) {
           const firstError = submitBatchResponse.errors?.[0];
 
-          setAlert({
-            id: crypto.randomUUID(),
-            type: firstError?.type || "Error",
-            title: firstError?.title || "Batch submission failed",
-            message: firstError?.message || "An unknown error occurred.",
-          });
+          notify(
+            {
+              type: firstError?.type || "Error",
+              title: firstError?.title || "Batch submission failed",
+              message: firstError?.message || "An unknown error occurred.",
+            },
+            {
+              stage: "createBatch",
+              code: firstError?.code || "BATCH_SUBMIT_FAILED",
+              detail: submitBatchResponse.errors ? { errors: submitBatchResponse.errors } : null,
+            }
+          );
 
           if (submitBatchResponse.rollbackPerformed) {
-            setAlert({
-              id: crypto.randomUUID(),
-              type: "Warning",
-              title: "Batch rolled back",
-              message: "The batch was automatically reverted, so the source files stayed in their original folders.",
-            });
+            notify(
+              {
+                type: "Warning",
+                title: "Batch rolled back",
+                message: "The batch was automatically reverted, so the source files stayed in their original folders.",
+              },
+              { stage: "rollback", code: "AUTO_ROLLBACK" }
+            );
           }
 
           return;
         }
 
-        setAlert({
-          id: crypto.randomUUID(),
-          type: "Success",
-          title: "Batch submitted successfully",
-          message: `Batch ID: ${submitBatchResponse.batchId}`,
-        });
+        notify(
+          {
+            type: "Success",
+            title: "Batch submitted successfully",
+            message: `Batch ID: ${submitBatchResponse.batchId}`,
+          },
+          {
+            stage: "createBatch",
+            code: "BATCH_CREATED",
+            detail: { batchId: submitBatchResponse.batchId },
+          }
+        );
 
         await refreshFiles({ clearSelection: true });
         setSelectedPrinter(null);
       } catch (err) {
-        setAlert({
-          id: crypto.randomUUID(),
-          type: "Error",
-          title: err?.title || "Batch submission failed",
-          message: err?.message || "Unexpected system error.",
-        });
+        notify(
+          {
+            type: "Error",
+            title: err?.title || "Batch submission failed",
+            message: err?.message || "Unexpected system error.",
+          },
+          { stage: "createBatch", code: "BATCH_SUBMIT_EXCEPTION" }
+        );
       } finally {
         setIsSubmitting(false);
       }

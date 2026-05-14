@@ -83,6 +83,10 @@ export const useStore = create(
         alerts: state.alerts.filter((alert) => alert.id !== id),
       })),
 
+    logs: [],
+    addLog: (log) => set((state) => ({ logs: [log, ...state.logs] })),
+    clearLogs: () => set({ logs: [] }),
+
     files: [],
     filteredFiles: [],
     isRefreshingFiles: false,
@@ -197,6 +201,31 @@ export const useStore = create(
             });
           }
 
+          get().addLog({
+            id: crypto.randomUUID(),
+            timestamp: new Date().toISOString(),
+            type: "success",
+            stage: "readFolders",
+            code: "FOLDERS_LOADED",
+            message: `${successTitle}: ${successMessage}`,
+            detail: null,
+          });
+
+          const invalidItems = res.data.flatMap((g) => g.items.filter((i) => i.status === "INVALID"));
+          invalidItems.forEach((item) => {
+            get().addLog({
+              id: crypto.randomUUID(),
+              timestamp: new Date().toISOString(),
+              type: "warning",
+              stage: "readFolders",
+              code: "FILE_INVALID",
+              message: `Invalid file: ${item.name}`,
+              detail: item.errors?.length || item.warnings?.length
+                ? { errors: item.errors, warnings: item.warnings }
+                : null,
+            });
+          });
+
           return res;
         }
 
@@ -207,6 +236,15 @@ export const useStore = create(
           title: firstError?.title || errorTitle,
           message: firstError?.message || errorMessage,
         });
+        get().addLog({
+          id: crypto.randomUUID(),
+          timestamp: new Date().toISOString(),
+          type: "error",
+          stage: "readFolders",
+          code: firstError?.code || "FOLDERS_LOAD_FAILED",
+          message: `${firstError?.title || errorTitle}: ${firstError?.message || errorMessage}`,
+          detail: res.errors ? { errors: res.errors } : null,
+        });
 
         return res;
       } catch (err) {
@@ -215,6 +253,15 @@ export const useStore = create(
           type: err?.type || "Error",
           title: err?.title || errorTitle,
           message: err?.message || errorMessage,
+        });
+        get().addLog({
+          id: crypto.randomUUID(),
+          timestamp: new Date().toISOString(),
+          type: "error",
+          stage: "readFolders",
+          code: "FOLDERS_LOAD_EXCEPTION",
+          message: `${err?.title || errorTitle}: ${err?.message || errorMessage}`,
+          detail: err?.message ? { message: err.message } : null,
         });
 
         return { success: false, errors: [err] };
