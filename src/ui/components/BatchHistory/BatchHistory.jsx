@@ -21,6 +21,15 @@ import { PRINTER_COLORS } from "../../constants/printerColors";
 
 const PRINTERS = ["DGEN", "YOKO", "YUMI"];
 
+const formatRolledBackAt = (isoString) => {
+  const d = new Date(isoString);
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mm = String(d.getMinutes()).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  const mo = String(d.getMonth() + 1).padStart(2, "0");
+  return `${hh}:${mm} ${dd}/${mo}`;
+};
+
 const parseDayFromBatchPath = (batchPath) => {
   const parts = batchPath.replace(/\\/g, "/").split("/");
   return parts.length >= 2 ? parts[parts.length - 2] : null;
@@ -600,29 +609,41 @@ const BatchHistory = () => {
 
                         {showFiles && batch.files.length > 0 && (
                           <ul className={style.batch_files}>
-                            {batch.files.map((file) => (
-                              <li
-                                key={file.path}
-                                className={`${style.file_row} ${activeContextFilePath === file.path ? style.file_row_active : ""}`}
-                                onContextMenu={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  setContextMenu({ file, batch, x: e.clientX, y: e.clientY });
-                                }}
-                                ref={(el) => {
-                                  if (el) elementRefsRef.current.set(`file:${file.path}`, el);
-                                  else elementRefsRef.current.delete(`file:${file.path}`);
-                                }}
-                              >
-                                <LuFileText className={style.file_icon} />
-                                <span className={style.file_name} title={file.name}>
-                                  {file.name}
-                                </span>
-                                {file.type && file.type !== "UNKNOWN" && (
-                                  <span className={style.type_badge}>{file.type}</span>
-                                )}
-                              </li>
-                            ))}
+                            {batch.files.map((file) => {
+                              const isFileRolledBack = file.status === "rolled_back";
+                              return (
+                                <li
+                                  key={file.path}
+                                  className={`${style.file_row} ${activeContextFilePath === file.path ? style.file_row_active : ""} ${isFileRolledBack ? style.file_row_rolled_back : ""}`}
+                                  onContextMenu={
+                                    isFileRolledBack
+                                      ? undefined
+                                      : (e) => {
+                                          e.preventDefault();
+                                          e.stopPropagation();
+                                          setContextMenu({ file, batch, x: e.clientX, y: e.clientY });
+                                        }
+                                  }
+                                  ref={(el) => {
+                                    if (el) elementRefsRef.current.set(`file:${file.path}`, el);
+                                    else elementRefsRef.current.delete(`file:${file.path}`);
+                                  }}
+                                >
+                                  <LuFileText className={style.file_icon} />
+                                  <span className={style.file_name} title={file.name}>
+                                    {file.name}
+                                  </span>
+                                  {isFileRolledBack && file.rolledBackAt && (
+                                    <span className={style.file_rolled_back_label}>
+                                      Rolled back {formatRolledBackAt(file.rolledBackAt)}
+                                    </span>
+                                  )}
+                                  {!isFileRolledBack && file.type && file.type !== "UNKNOWN" && (
+                                    <span className={style.type_badge}>{file.type}</span>
+                                  )}
+                                </li>
+                              );
+                            })}
                           </ul>
                         )}
                       </div>

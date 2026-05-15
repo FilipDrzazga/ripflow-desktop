@@ -432,3 +432,15 @@
   border-radius: 7px;
   padding: 3px 8px;
 }
+
+.file_row_rolled_back {
+  opacity: 0.55;
+}
+
+.file_rolled_back_label {
+  flex-shrink: 0;
+  font-size: 11px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  font-style: italic;
+}

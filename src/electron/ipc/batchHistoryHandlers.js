@@ -29,6 +29,28 @@ export const rollbackBatchFromHistory = async (batchPath) => {
     await fs.promises.mkdir(destDir, { recursive: true });
 
     const entries = await fs.promises.readdir(validatedBatchPath, { withFileTypes: true });
+    // PO
+    const pdfNames = entries.filter((f) => f.isFile() && f.name.toLowerCase().endsWith(".pdf")).map((f) => f.name);
+
+    try {
+      const snapshotPath = path.join(validatedBatchPath, "_rollback_snapshot.json");
+      let existingFiles = [];
+      try {
+        const raw = await fs.promises.readFile(snapshotPath, "utf8");
+        const existing = JSON.parse(raw);
+        if (Array.isArray(existing.files)) existingFiles = existing.files;
+      } catch {
+        // no existing snapshot
+      }
+      const mergedFiles = [...new Set([...existingFiles, ...pdfNames])];
+      await fs.promises.writeFile(
+        snapshotPath,
+        JSON.stringify({ rolledBackAt: new Date().toISOString(), type: "batch", files: mergedFiles }, null, 2),
+        "utf8",
+      );
+    } catch {
+      // best-effort snapshot
+    }
     for (const f of entries) {
       if (!f.isFile() || !f.name.toLowerCase().endsWith(".pdf")) continue;
       const src = path.join(validatedBatchPath, f.name);
@@ -67,7 +89,24 @@ export const rollbackFileFromHistory = async (filePath, batchPath) => {
     const destDir = path.join(getStorageRootPath(), meta.group);
     await fs.promises.mkdir(destDir, { recursive: true });
 
-    const dest = path.join(destDir, path.basename(validatedFilePath));
+    const filename = path.basename(validatedFilePath);
+    const snapshotPath = path.join(validatedBatchPath, "_rollback_snapshot.json");
+    try {
+      let snapshot = { rolledBackAt: new Date().toISOString(), type: "file", files: [] };
+      try {
+        const raw = await fs.promises.readFile(snapshotPath, "utf8");
+        const existing = JSON.parse(raw);
+        if (Array.isArray(existing.files)) snapshot = existing;
+      } catch {
+        // no existing snapshot
+      }
+      if (!snapshot.files.includes(filename)) snapshot.files.push(filename);
+      snapshot.rolledBackAt = new Date().toISOString();
+      await fs.promises.writeFile(snapshotPath, JSON.stringify(snapshot, null, 2), "utf8");
+    } catch {
+      // best-effort snapshot
+    }
+    const dest = path.join(destDir, filename);
     await fs.promises.rename(validatedFilePath, dest);
 
     result.success = true;

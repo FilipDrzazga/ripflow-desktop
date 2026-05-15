@@ -31,7 +31,7 @@ export const readSingleBatch = async (batchPath, meta) => {
   const entries = await fs.promises.readdir(batchPath, { withFileTypes: true });
 
   let xmlExists = false;
-  const files = [];
+  const activeFiles = [];
 
   for (const f of entries) {
     if (!f.isFile()) continue;
@@ -43,7 +43,7 @@ export const readSingleBatch = async (batchPath, meta) => {
     if (lower.endsWith(".pdf")) {
       const filePath = path.join(batchPath, f.name);
       const parsed = parsePrintFileName(f.name, { fullPath: filePath, dir: batchPath });
-      files.push({
+      activeFiles.push({
         name: f.name,
         path: filePath,
         type: parsed?.printTypeCode || "UNKNOWN",
@@ -51,14 +51,34 @@ export const readSingleBatch = async (batchPath, meta) => {
     }
   }
 
+  const files = [...activeFiles];
+  try {
+    const raw = await fs.promises.readFile(path.join(batchPath, "_rollback_snapshot.json"), "utf8");
+    const snapshot = JSON.parse(raw);
+    const activeNames = new Set(activeFiles.map((f) => f.name));
+    for (const fname of snapshot.files || []) {
+      if (activeNames.has(fname)) continue;
+      const parsed = parsePrintFileName(fname, { fullPath: path.join(batchPath, fname), dir: batchPath });
+      files.push({
+        name: fname,
+        path: path.join(batchPath, fname),
+        type: parsed?.printTypeCode || "UNKNOWN",
+        status: "rolled_back",
+        rolledBackAt: snapshot.rolledBackAt || null,
+      });
+    }
+  } catch {
+    // no snapshot or invalid — nothing to merge
+  }
+
   return {
     name: path.basename(batchPath),
     path: batchPath,
     printer: meta.printer,
     group: meta.group,
-    fileCount: files.length,
+    fileCount: activeFiles.length,
     xmlExists,
-    status: files.length === 0 ? "rolled_back" : "active",
+    status: activeFiles.length === 0 ? "rolled_back" : "active",
     files,
   };
 };
