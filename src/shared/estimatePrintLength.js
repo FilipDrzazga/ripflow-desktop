@@ -18,7 +18,9 @@ export const estimatePrintLength = (files) => {
   for (const file of files) {
     const width = Number(file.width);
     const height = Number(file.height);
-    const quantity = Number(file.printTypeCode === "LM" ? 1 : file.qty);
+    const baseQty = Number(file.printTypeCode === "LM" ? 1 : file.qty);
+    const bothSides = file.printTypeCode === "CUSHION" && /both sides/i.test(file.variant ?? "");
+    const quantity = bothSides ? baseQty * 2 : baseQty;
     const margin = file.materialType === "Cottons" ? MARGIN_COTTON : MARGIN_POLY;
     const rollWidth = getRollWidth(file);
 
