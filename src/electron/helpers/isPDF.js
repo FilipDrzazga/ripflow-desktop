@@ -3,9 +3,10 @@ import { Buffer } from "node:buffer";
 
 export const isPDF = async (filePath) => {
   const handle = await fs.promises.open(filePath);
-  const { buffer } = await handle.read(Buffer.alloc(5), 0, 5, 0);
-  await handle.close();
-
-  const isPDFFile = buffer.toString() === "%PDF-" ? true : false;
-  return isPDFFile;
+  try {
+    const { buffer } = await handle.read(Buffer.alloc(5), 0, 5, 0);
+    return buffer.toString() === "%PDF-";
+  } finally {
+    await handle.close();
+  }
 };

@@ -370,11 +370,6 @@
   color: #047857;
 }
 
-.action_secondary:hover {
-  background-color: var(--bg-grey-light);
-  color: var(--text-primary);
-}
-
 .action_info:hover {
   background-color: #dbeafe;
   color: #1d4ed8;

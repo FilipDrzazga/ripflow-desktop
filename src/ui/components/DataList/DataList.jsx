@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { useStore } from "../../store/useStore";
+import { notify } from "../../utils/notify";
 import Badge from "../Badge/Badge";
 import ContextMenu from "../ContextMenu/ContextMenu";
 import DataDaysCounter from "../DataDaysCounter/DataDaysCounter";
@@ -13,19 +14,19 @@ const DataList = () => {
   const selectedIds = useStore((state) => state.selectedIds);
   const toggleGroupSelection = useStore((state) => state.toggleGroupSelection);
   const toggleItemSelection = useStore((state) => state.toggleItemSelection);
-  const setAlert = useStore((state) => state.setAlert);
   const [contextMenu, setContextMenu] = useState(null);
   const activeContextItemId = contextMenu?.item?.id || null;
 
-  const selectedMaterialTypes = new Set();
-
-  filteredFiles.forEach((group) => {
-    group.items.forEach((item) => {
-      if (selectedIds.has(item.id)) selectedMaterialTypes.add(item.materialType);
+  const lockMaterial = useMemo(() => {
+    const types = new Set();
+    filteredFiles.forEach((group) => {
+      group.items.forEach((item) => {
+        if (selectedIds.has(item.id)) types.add(item.materialType);
+      });
     });
-  });
+    return types.size === 1 ? [...types][0] : null;
+  }, [filteredFiles, selectedIds]);
 
-  const lockMaterial = selectedMaterialTypes.size === 1 ? [...selectedMaterialTypes][0] : null;
   const hasSelection = selectedIds.size > 0;
   const hasItems = filteredFiles.some((group) => group.items.length > 0);
 
@@ -42,11 +43,7 @@ const DataList = () => {
   const handleOpenPreview = async (item) => {
     try {
       const response = await window.api.openPreview(item.file.fullPath);
-
-      if (response?.success) {
-        return;
-      }
-
+      if (response?.success) return;
       const firstError = response?.errors?.[0];
       throw {
         type: firstError?.type || "Error",
@@ -54,23 +51,21 @@ const DataList = () => {
         message: firstError?.message || "The file could not be opened.",
       };
     } catch (error) {
-      setAlert({
-        id: crypto.randomUUID(),
-        type: error?.type || "Error",
-        title: error?.title || "Preview failed",
-        message: error?.message || "The file could not be opened.",
-      });
+      notify(
+        {
+          type: error?.type || "Error",
+          title: error?.title || "Preview failed",
+          message: error?.message || "The file could not be opened.",
+        },
+        { stage: "app", code: "OPEN_PREVIEW_FAILED" },
+      );
     }
   };
 
   const handleOpenInFolder = async (item) => {
     try {
       const response = await window.api.openInFolder(item.file.fullPath);
-
-      if (response?.success) {
-        return;
-      }
-
+      if (response?.success) return;
       const firstError = response?.errors?.[0];
       throw {
         type: firstError?.type || "Error",
@@ -78,22 +73,26 @@ const DataList = () => {
         message: firstError?.message || "The folder could not be opened.",
       };
     } catch (error) {
-      setAlert({
-        id: crypto.randomUUID(),
-        type: error?.type || "Error",
-        title: error?.title || "Open folder failed",
-        message: error?.message || "The folder could not be opened.",
-      });
+      notify(
+        {
+          type: error?.type || "Error",
+          title: error?.title || "Open folder failed",
+          message: error?.message || "The folder could not be opened.",
+        },
+        { stage: "app", code: "OPEN_FOLDER_FAILED" },
+      );
     }
   };
 
   const handleOpenInShopify = (item) => {
-    setAlert({
-      id: crypto.randomUUID(),
-      type: "Warning",
-      title: "Shopify pending",
-      message: `Shopify action for ${item.orderId || item.file.name} is not connected yet.`,
-    });
+    notify(
+      {
+        type: "Warning",
+        title: "Shopify pending",
+        message: `Shopify action for ${item.orderId || item.file.name} is not connected yet.`,
+      },
+      { stage: "app", code: "SHOPIFY_NOT_CONNECTED" },
+    );
   };
 
   const handleItemContextMenu = (e, item) => {

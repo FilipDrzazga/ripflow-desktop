@@ -3,6 +3,7 @@ import { randomUUID } from "crypto";
 import path from "path";
 import fs from "fs";
 import { estimatePrintLength } from "../../shared/estimatePrintLength.js";
+import { toIpcError } from "../helpers/ipcError.js";
 
 const STAGES = {
   INIT: "init",
@@ -24,15 +25,7 @@ const escapeXml = (value) => {
     .replaceAll("'", "&apos;");
 };
 
-const toXMLError = (error, stage) => {
-  return {
-    code: error.code || "UNKNOWN_ERROR",
-    message: error.message || "An unknown error occurred.",
-    stage: error.stage || stage || "unknown",
-    type: error.type || "Error",
-    title: error.title || "XML generation failed",
-  };
-};
+const toXMLError = (error, stage) => toIpcError(error, stage, "XML generation failed");
 
 const normalizeBatchId = (createdBatchId) => {
   if (typeof createdBatchId === "string") {
@@ -61,6 +54,12 @@ const isBlossom = (item) =>
 const getWorkflowFolderName = (printer) => {
   if (printer === "DGEN") return "AUTOMATION_WORKFLOW_COTTON";
   if (printer === "YOKO" || printer === "YUMI") return "AUTOMATION_WORKFLOW_POLY";
+  throw Object.assign(new Error(`Unrecognized printer: "${printer}". Expected DGEN, YOKO, or YUMI.`), {
+    code: "ERR_INVALID_PRINTER",
+    stage: "validate",
+    title: "Invalid printer",
+    type: "Error",
+  });
 };
 
 const buildPFJobXML = (batch, batchId) => {
@@ -68,10 +67,6 @@ const buildPFJobXML = (batch, batchId) => {
   const PRINTED_ROOT_PATH = `${ROOT_PATH}\\PRINTED`;
   const normalizedBatchId = batchId.replace(/\//g, "\\");
   const BASE_FINAL_PATH = `${PRINTED_ROOT_PATH}\\${normalizedBatchId}`;
-  console.log("=== XML PATH DEBUG ===");
-  console.log("ROOT_PATH:", ROOT_PATH);
-  console.log("batchId raw:", batchId);
-  console.log("BASE_FINAL_PATH:", BASE_FINAL_PATH);
 
   const getPrintGroupArr = batch.map((item) => item.printGroup);
   const uniquePrintGroups = [...new Set(getPrintGroupArr)];
@@ -121,6 +116,7 @@ export async function submitBatchToPrintFactory(batch, createdBatchId, batchFold
   const result = {
     success: false,
     errors: [],
+    warnings: [],
     finalXmlPath: null,
     localXmlPath: null,
     batchId: null,
@@ -227,7 +223,6 @@ export async function submitBatchToPrintFactory(batch, createdBatchId, batchFold
         } catch {
           // Ignore temp cleanup error.
         }
-        result.warnings = result.warnings || [];
         result.warnings.push(`Failed to write local XML copy to batch folder: ${localErr.message}`);
       }
     }

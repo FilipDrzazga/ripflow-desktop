@@ -3,6 +3,7 @@ import path from "path";
 import { PDFDocument } from "pdf-lib";
 import { createBatchIds } from "../helpers/createBatchIds.js";
 import { getStorageRootPath } from "../helpers/getRootPath.js";
+import { toIpcError } from "../helpers/ipcError.js";
 
 const STAGES = {
   INIT: "init",
@@ -29,15 +30,8 @@ const exists = async (targetPath) => {
   }
 };
 
-const toBatchError = (error, stage, fallbackTitle = "Batch creation failed") => {
-  return {
-    code: error.code || "UNKNOWN_ERROR",
-    message: error.message || "An unknown error occurred.",
-    stage: error.stage || stage || "unknown",
-    type: error.type || "Error",
-    title: error.title || fallbackTitle,
-  };
-};
+const toBatchError = (error, stage, fallbackTitle = "Batch creation failed") =>
+  toIpcError(error, stage, fallbackTitle);
 
 const getPrintedRootPath = () => {
   const rootPath = getStorageRootPath();
@@ -249,11 +243,6 @@ export const createBatch = async (batch) => {
     }
 
     result.success = true;
-    console.log("=== BATCH ID DEBUG ===");
-    console.log("mainFolder:", batchIds.mainFolder);
-    console.log("subFolder:", batchIds.subFolder);
-    console.log("finalBatchFolderPath:", finalBatchFolderPath);
-    console.log("batchId result:", `${batchIds.mainFolder}/${path.basename(finalBatchFolderPath)}`);
     result.batchId = `${batchIds.mainFolder}/${path.basename(finalBatchFolderPath)}`;
     result.finalBatchFolderPath = finalBatchFolderPath;
     stage = STAGES.DONE;

@@ -180,15 +180,19 @@ export function registerIpcHandlers() {
     return { success: true, settings: getSettings() };
   });
 
-  ipcMain.handle("settings:set", (_event, settings) => {
+  ipcMain.handle("settings:set", async (_event, settings) => {
     const { storagePath, xmlPath } = settings ?? {};
     if (!storagePath || !xmlPath) {
       return { success: false, error: "Both paths are required." };
     }
-    if (!fs.existsSync(storagePath)) {
+    try {
+      await fs.promises.access(storagePath);
+    } catch {
       return { success: false, error: `Storage path does not exist: ${storagePath}` };
     }
-    if (!fs.existsSync(xmlPath)) {
+    try {
+      await fs.promises.access(xmlPath);
+    } catch {
       return { success: false, error: `XML path does not exist: ${xmlPath}` };
     }
     setSettings({ storagePath, xmlPath });

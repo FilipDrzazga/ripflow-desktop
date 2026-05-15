@@ -40,9 +40,10 @@ ripflow-desktop/
 │   │   │   ├── getSettings.js         # Odczyt/zapis ustawień przez electron-store
 │   │   │   ├── getRootPath.js         # Rozwiązywanie ścieżek storage (czyta z getSettings)
 │   │   │   ├── createBatchIds.js      # Generowanie ID batcha
+│   │   │   ├── ipcError.js            # Shared helper: toIpcError(err, stage, title)
 │   │   │   ├── getFileAgeInDays.js
 │   │   │   ├── isPDF.js
-│   │   │   └── validateStoragePath.js
+│   │   │   └── validateStoragePath.js # assertStorageFilePath — walidacja ścieżek vs storage root
 │   │   └── ipc/               # Handlery IPC (komunikacja main ↔ renderer)
 │   │       ├── index.js               # Rejestracja wszystkich handlerów
 │   │       ├── readFolders.js         # Skanowanie folderów, parsowanie plików
@@ -59,17 +60,23 @@ ripflow-desktop/
 │   │   ├── index.jsx          # Mount React
 │   │   ├── store/
 │   │   │   └── useStore.jsx   # Zustand store — centralny stan aplikacji
+│   │   ├── constants/
+│   │   │   └── printerColors.js       # PRINTER_COLORS: { DGEN, YOKO, YUMI } → { bg, color }
+│   │   ├── utils/
+│   │   │   └── notify.js              # Centralny helper: alert + log entry jednocześnie
 │   │   ├── components/        # Wszystkie komponenty mają własny *.module.css
 │   │   │   ├── TitleBar/              # Custom title bar z logo i window controls
 │   │   │   ├── NavBar/                # Nawigacja boczna (Print, Batch, Logs, Settings)
 │   │   │   ├── DataList/              # Lista plików do druku z checkboxami
 │   │   │   ├── DataFilters/           # Filtry (tab, search, sort, print type)
 │   │   │   ├── DataPrintSelection/    # Wybór drukarki + przycisk Rip
-│   │   │   ├── DataOverviewSection/   # Dwie karty statystyk inbox
+│   │   │   ├── DataOverviewSection/   # Trzy karty statystyk inbox (widok "print")
 │   │   │   │   ├── ProductionOverviewCard/  # Ogólne statystyki + %Cottons/Poly
 │   │   │   │   ├── PrintMaterialBreakdownCard/ # Top grupy per materiał
 │   │   │   │   └── OthersTooltip/     # Tooltip dla "Others" w breakdown
+│   │   │   ├── LastBatchCard/         # Karta ostatniego batcha (renderowana przez DataOverviewSection)
 │   │   │   ├── BatchHistory/          # Widok historii batchy (drzewo day→batch→file)
+│   │   │   ├── SessionLogs/           # Widok logów sesji (search, type filter, expand/collapse)
 │   │   │   ├── Settings/              # Widok ustawień — wybór ścieżek storage i XML
 │   │   │   ├── StartupLoader/         # Progress bar przy ładowaniu
 │   │   │   ├── AlertsHost/            # Toast notyfikacje (stacked, auto-dismiss 3s)
@@ -120,7 +127,7 @@ App ma 4 widoki (`activeView` string):
 |-------------|----------------------------------------|----------------|
 | `"print"`   | DataOverviewSection + DataFilters + DataList | Zaimplementowany |
 | `"batch"`   | BatchHistory                           | Zaimplementowany |
-| `"logs"`    | PlaceholderView                        | Placeholder    |
+| `"logs"`    | SessionLogs                            | Zaimplementowany |
 | `"settings"`| Settings                               | Zaimplementowany |
 
 Nawigacja przez **NavBar** (lewa kolumna). Layout: `TitleBar` (top) + `NavBar` (left) + `content` (center) + `DataPrintSelection` (right, animowany).
@@ -231,8 +238,11 @@ window.api.onBatchUpdate(callback)            // realtime updates z watchera
 
 // Ustawienia
 window.api.getSettings()                      // zwraca { success, settings: { storagePath, xmlPath } }
-window.api.setSettings({ storagePath, xmlPath }) // zapisuje po walidacji fs.existsSync; zwraca { success, error? }
+window.api.setSettings({ storagePath, xmlPath }) // zapisuje po async walidacji fs.promises.access; zwraca { success, error? }
 window.api.selectFolder()                     // natywny dialog wyboru folderu; zwraca { success, canceled, path }
+
+// Dialogi
+window.api.showConfirm(message)               // natywny dialog potwierdzenia Electrona; zwraca boolean
 
 // Pliki
 window.api.openPreview(filePath)              // otwórz PDF
@@ -240,7 +250,7 @@ window.api.openInFolder(filePath)             // otwórz w Explorerze
 
 // Window controls (frameless)
 window.api.minimizeWindow()
-window.api.maximizeWindow()
+window.api.maximizeWindow()   // wyeksponowane w API, ale nie podpięte do przycisku UI — okno startuje zmaksymalizowane przez win.maximize()
 window.api.closeWindow()
 ```
 
@@ -260,7 +270,7 @@ Stan aplikacji — `subscribeWithSelector` middleware:
   sortOrder: null | "meters_desc" | "date_asc",
   printTypeFilter: null | "LM" | "FQ" | "SAMPLE" | "CUSHION" | "TEA_TOWEL",
 
-  // Dane
+  // Dane inbox
   files: [{ printGroup, items: [...], count }],  // wszystkie grupy z inbox
   filteredFiles: [],                             // po filtrach
 
@@ -270,6 +280,13 @@ Stan aplikacji — `subscribeWithSelector` middleware:
   // Status
   isRefreshingFiles: boolean,
   lastFilesRefreshAt: ISO string,
+
+  // Historia batchy
+  batchDays: [],                                 // dane z PRINTED/ (tree day→batch→files)
+  isBatchSubmitting: boolean,                    // true podczas submit batcha (używane w LastBatchCard)
+
+  // Logi sesji
+  logs: [{ id, timestamp, type, stage, code, message, detail }],
 
   // Alerty
   alerts: [{ id, type: "Success"|"Warning"|"Error", title, message }],
@@ -291,10 +308,29 @@ Stan aplikacji — `subscribeWithSelector` middleware:
 | `setAlert(alert)` | Dodaj alert |
 | `deleteAlert(id)` | Usuń alert |
 | `refreshFiles(options)` | Async load z `window.api.readFolders()` |
+| `setBatchDays(days)` | Ustaw dane historii batchy |
+| `refreshBatchDays()` | Async load z `window.api.readPrintedFolder()` |
+| `setIsBatchSubmitting(val)` | Flaga submitu (pokazuje spinner w LastBatchCard) |
+| `addLog(log)` | Dodaj wpis do logów sesji |
+| `clearLogs()` | Wyczyść wszystkie logi sesji |
 
 **Material lock:** raz zaznaczony materiał blokuje możliwość dodania plików innego typu (Cottons ↔ Polyesters).
 
+**Eksportowany helper:** `getLastBatch(batchDays)` — zwraca `{ batch, day }` dla ostatniego aktywnego batcha (lub ostatniego rolled_back jeśli brak aktywnych); używany przez `LastBatchCard`.
+
 Helper wewnętrzny: `applyFilters(files, activeTab, searchQuery, sortOrder, printTypeFilter)`.
+
+---
+
+## `notify.js` — centralny helper notyfikacji
+
+`src/ui/utils/notify.js` — używany przez `DataPrintSelection`, `BatchHistory`, `Settings`, `DataList`.
+
+```js
+notify({ type, title, message }, { stage, code, detail })
+```
+
+Jednym wywołaniem: dodaje **alert** (toast) do store ORAZ **log entry** do SessionLogs. Zawsze używaj `notify()` zamiast `setAlert()` bezpośrednio — inaczej błędy nie trafią do widoku "logs".
 
 ---
 
@@ -312,17 +348,22 @@ Algorytm:
 
 ### Szerokości rolek i marginesy (`shared/printWidths.js`):
 
-| Materiał | Szerokość rolki | Margines |
-|----------|-----------------|----------|
+| Materiał | Szerokość rolki (estymacja) | Margines |
+|----------|-----------------------------|----------|
 | COTTON   | 1420mm (główna), 1370mm, 1270mm (specjalne) | 10mm |
-| POLY     | 1550mm          | 5mm      |
+| POLY     | 1550mm                      | 5mm      |
+
+> ⚠️ **Uwaga na dwie różne szerokości dla POLY:**
+> - `LM_ROLL_POLY = 1550mm` — szerokość rolki używana do **kalkulacji długości druku** (estymacja)
+> - `LM_XML_POLY = 1420mm` — wartość wpisywana do **XML dla PrintFactory** (`<Width>`) = szerokość tkaniny
+> Te wartości są różne celowo. Nie zamieniaj ich miejscami.
 
 **Wymiary stałe produktów:**
 - SAMPLE: 220×200mm
 - FQ: 670×480mm
 - TEA_TOWEL: 700×500mm
 
-> ⚠️ UWAGA: szerokość bawełny to **1420mm** (nie 1450mm — stara dokumentacja była błędna)
+> ⚠️ UWAGA: szerokość rolki bawełny do estymacji to **1420mm** (nie 1450mm — stara dokumentacja była błędna)
 
 ---
 
@@ -345,20 +386,30 @@ Custom title bar z logo (`Maake_Logo.webp`) i przyciskami minimize/close. Wymaga
 Lewa kolumna nawigacji. Ikony: Print (`LuPrinter`), Batch (`LuLayers`), Logs (`LuScrollText`) + Settings (`LuSettings`) na dole.
 
 ### `BatchHistory`
-Najnowszy duży komponent. Wyświetla drzewo `day → batch → files`:
+Wyświetla drzewo `day → batch → files`:
 - Wczytuje z `window.api.readPrintedFolder()`
-- Real-time updates przez `startBatchWatcher()` / `onBatchUpdate()`
+- Real-time updates przez `startBatchWatcher()` / `onBatchUpdate()` (debounce 200ms)
 - Filtry: search + printer toggle (DGEN, YOKO, YUMI)
 - Akcje na batchu: Regenerate XML, Open in Explorer, Rollback batch
 - Akcje na pliku (context menu): Preview PDF, Show in Explorer, Rollback file
 - Status batcha: `active` (ma PDFs) | `rolled_back` (puste)
 - GSAP animacje na nowych itemach
+- Po rollbacku **całego batcha** watcher wysyła `"removed"` event (nie trzeba ręcznego loadData). Po rollbacku **pojedynczego pliku** watcher nie emituje eventu → loadData() wymagane.
 
 ### `DataOverviewSection`
-Container dla dwóch kart statystyk (wyświetlanych w widoku "print"):
+Container dla **trzech kart statystyk** (wyświetlanych w widoku "print"):
 - `ProductionOverviewCard` — łączna liczba plików, % Cottons/Poly, metry per materiał, last refresh
 - `PrintMaterialBreakdownCard` — top 3 grupy per materiał + collapsible "Others"
-- `OthersTooltip` — hover tooltip pokazujący pozostałe grupy
+- `LastBatchCard` — ostatni batch (plik: `src/ui/components/LastBatchCard/`, nie wewnątrz `DataOverviewSection/`)
+- `OthersTooltip` — hover tooltip pokazujący pozostałe grupy (wewnątrz `PrintMaterialBreakdownCard/`)
+
+### `SessionLogs`
+Widok logów sesji (`src/ui/components/SessionLogs/`):
+- Wyświetla wszystkie wpisy z `logs` w Zustand store
+- Filtry: search (message/code) + type filter (All/Error/Warning/Success/Info)
+- Klik na wpis → expand z JSON detailami
+- Przycisk "Clear session" czyści wszystkie logi
+- Logi są zapisywane przez akcje `addLog()` w store oraz przez `notify()` helper
 
 ### `AlertsHost`
 Toast system: max 3 widoczne, auto-dismiss po 3s, expand on hover, GSAP animations. Kolory: Error (red), Warning (yellow), Success (green).
@@ -374,10 +425,10 @@ Widok ustawień (zakładka "settings" w NavBar). Karta z dwoma polami:
 - **Storage Path (INBOX)** — lokalny folder skanowany przez `readFolders`
 - **XML Workflow Path** — ścieżka sieciowa do której trafiają pliki XML dla PrintFactory
 
-Przycisk Browse otwiera natywny dialog (`dialog:select-folder`). Save waliduje oba pola przez `fs.existsSync` po stronie main procesu przed zapisem. Wynik przez `notify()` (Success/Error toast).
+Przycisk Browse otwiera natywny dialog (`dialog:select-folder`). Save waliduje oba pola przez `fs.promises.access` (async) po stronie main procesu przed zapisem. Wynik przez `notify()` (Success/Error toast).
 
 ### `StartupLoader`
-Pełnoekranowy loader przy starcie. Odbiera `read-folders:progress` i animuje pasek postępu (GSAP, 16ms interpolacja).
+Pełnoekranowy loader przy starcie. Odbiera `read-folders:progress` i animuje pasek postępu (GSAP).
 
 ---
 
@@ -414,7 +465,6 @@ Alias `@` w UI → `./src/ui` (np. `import { useStore } from '@/store/useStore'`
 
 - Integracja z PrintFactory Cloud API
 - UI do zarządzania materiałami (widok "settings" — częściowo zaimplementowany)
-- Real-time śledzenie produkcji (widok "logs" — placeholder)
 - Multi-user synchronizacja
 - Integracja z Shopify (placeholder w ContextMenu DataList)
 
@@ -428,9 +478,13 @@ Alias `@` w UI → `./src/ui` (np. `import { useStore } from '@/store/useStore'`
 - CSS Modules — każdy komponent ma własny `*.module.css`, nie edytuj globalnie bez potrzeby
 - `estimatePrintLength.js` i `printWidths.js` są w `shared/` — używane zarówno w electron jak i w UI
 - Okno jest **frameless i startuje zmaksymalizowane** — nie zakładaj stałych wymiarów; TitleBar jest własnym komponentem React
-- Szerokość rolki bawełny: **1420mm** (nie 1450mm)
+- Szerokość rolki bawełny (estymacja): **1420mm** (nie 1450mm — stara dokumentacja była błędna)
+- `LM_XML_POLY = 1420mm` (XML dla PrintFactory) ≠ `LM_ROLL_POLY = 1550mm` (estymacja długości) — różne celowo
 - Material lock w selekcji: nie można mieszać Cottons i Polyesters w jednym batchu
 - BatchHistory ma real-time watcher — pamiętaj o `stopBatchWatcher()` przy unmount
 - Ścieżki storage są w **electron-store** (`getSettings.js`) — nigdy nie hardkoduj ich ponownie w `getRootPath.js`
-- `settings:set` waliduje ścieżki przez `fs.existsSync` — sieciowa ścieżka XML musi być dostępna w momencie zapisu
+- `settings:set` waliduje ścieżki przez `fs.promises.access` (async) — sieciowa ścieżka XML musi być dostępna w momencie zapisu
+- Wszystkie operacje na ścieżkach z batchHistoryHandlers używają `assertStorageFilePath` — upewnij się że batchPath i filePath przechodzą walidację przed jakimikolwiek operacjami na plikach
+- Zawsze używaj `notify()` zamiast `setAlert()` bezpośrednio — inaczej zdarzenia nie trafiają do SessionLogs
 - Brak testów automatycznych w projekcie
+- **Przed usunięciem jakiegokolwiek kodu — zawsze zrób grep po całym projekcie.** Raporty audytu mogą przeoczyć importy lub użycia w nieoczywistych miejscach. Lepiej poświęcić 10 sekund na grep niż usunąć coś używanego.

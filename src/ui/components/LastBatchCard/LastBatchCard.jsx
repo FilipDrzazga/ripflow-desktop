@@ -3,12 +3,7 @@ import { LuLayers, LuClock } from "react-icons/lu";
 import { useStore, getLastBatch } from "../../store/useStore";
 import { estimatePrintLength } from "../../../shared/estimatePrintLength";
 import style from "./LastBatchCard.module.css";
-
-const PRINTER_COLORS = {
-  DGEN: { bg: "#E6F1FB", color: "#0C447C" },
-  YOKO: { bg: "#EEEDFE", color: "#3C3489" },
-  YUMI: { bg: "#E1F5EE", color: "#085041" },
-};
+import { PRINTER_COLORS } from "../../constants/printerColors";
 
 const parseTimeFromName = (name) => {
   const parts = name.split("_");

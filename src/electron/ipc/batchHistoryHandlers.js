@@ -1,24 +1,26 @@
 import fs from "fs";
 import path from "path";
 import { getStorageRootPath } from "../helpers/getRootPath.js";
+import { assertStorageFilePath } from "../helpers/validateStoragePath.js";
+import { toIpcError } from "../helpers/ipcError.js";
 import { parsePrintFileName } from "../helpers/parseFileName.js";
 import { getMaterialType } from "../helpers/getMaterialType.js";
 import { submitBatchToPrintFactory } from "./createXML.js";
 import { parseBatchFolderName } from "./readPrintedFolder.js";
 
-const toError = (err, title = "Operation failed") => ({
-  code: err.code || "UNKNOWN_ERROR",
-  message: err.message || "An unknown error occurred.",
-  stage: "unknown",
-  type: "Error",
-  title,
-});
+const toError = (err, title = "Operation failed") => toIpcError(err, "unknown", title);
 
 export const rollbackBatchFromHistory = async (batchPath) => {
   const result = { success: false, errors: [], restoredFiles: [] };
 
   try {
-    const meta = parseBatchFolderName(path.basename(batchPath));
+    const validatedBatchPath = await assertStorageFilePath(batchPath, {
+      stage: "validate",
+      title: "Invalid batch path",
+      allowDirectory: true,
+    });
+
+    const meta = parseBatchFolderName(path.basename(validatedBatchPath));
     if (!meta) {
       throw Object.assign(new Error("Invalid batch folder name."), { code: "EINVAL" });
     }
@@ -26,10 +28,10 @@ export const rollbackBatchFromHistory = async (batchPath) => {
     const destDir = path.join(getStorageRootPath(), meta.group);
     await fs.promises.mkdir(destDir, { recursive: true });
 
-    const entries = await fs.promises.readdir(batchPath, { withFileTypes: true });
+    const entries = await fs.promises.readdir(validatedBatchPath, { withFileTypes: true });
     for (const f of entries) {
       if (!f.isFile() || !f.name.toLowerCase().endsWith(".pdf")) continue;
-      const src = path.join(batchPath, f.name);
+      const src = path.join(validatedBatchPath, f.name);
       const dest = path.join(destDir, f.name);
       await fs.promises.rename(src, dest);
       result.restoredFiles.push(dest);
@@ -37,7 +39,7 @@ export const rollbackBatchFromHistory = async (batchPath) => {
 
     result.success = true;
   } catch (err) {
-    result.errors = [toError(err, "Rollback failed")];
+    result.errors = [toError(err, err.title || "Rollback failed")];
   }
 
   return result;
@@ -47,7 +49,17 @@ export const rollbackFileFromHistory = async (filePath, batchPath) => {
   const result = { success: false, errors: [] };
 
   try {
-    const meta = parseBatchFolderName(path.basename(batchPath));
+    const validatedFilePath = await assertStorageFilePath(filePath, {
+      stage: "validate",
+      title: "Invalid file path",
+    });
+    const validatedBatchPath = await assertStorageFilePath(batchPath, {
+      stage: "validate",
+      title: "Invalid batch path",
+      allowDirectory: true,
+    });
+
+    const meta = parseBatchFolderName(path.basename(validatedBatchPath));
     if (!meta) {
       throw Object.assign(new Error("Invalid batch folder name."), { code: "EINVAL" });
     }
@@ -55,12 +67,12 @@ export const rollbackFileFromHistory = async (filePath, batchPath) => {
     const destDir = path.join(getStorageRootPath(), meta.group);
     await fs.promises.mkdir(destDir, { recursive: true });
 
-    const dest = path.join(destDir, path.basename(filePath));
-    await fs.promises.rename(filePath, dest);
+    const dest = path.join(destDir, path.basename(validatedFilePath));
+    await fs.promises.rename(validatedFilePath, dest);
 
     result.success = true;
   } catch (err) {
-    result.errors = [toError(err, "File rollback failed")];
+    result.errors = [toError(err, err.title || "File rollback failed")];
   }
 
   return result;
@@ -70,12 +82,18 @@ export const deleteBatchFolder = async (batchPath) => {
   const result = { success: false, errors: [] };
 
   try {
-    const meta = parseBatchFolderName(path.basename(batchPath));
+    const validatedBatchPath = await assertStorageFilePath(batchPath, {
+      stage: "validate",
+      title: "Invalid batch path",
+      allowDirectory: true,
+    });
+
+    const meta = parseBatchFolderName(path.basename(validatedBatchPath));
     if (!meta) {
       throw Object.assign(new Error("Invalid batch folder name."), { code: "EINVAL" });
     }
 
-    const entries = await fs.promises.readdir(batchPath, { withFileTypes: true });
+    const entries = await fs.promises.readdir(validatedBatchPath, { withFileTypes: true });
     const hasPdfs = entries.some((e) => e.isFile() && e.name.toLowerCase().endsWith(".pdf"));
     if (hasPdfs) {
       throw Object.assign(new Error("Batch folder still contains PDF files."), {
@@ -84,7 +102,7 @@ export const deleteBatchFolder = async (batchPath) => {
       });
     }
 
-    await fs.promises.rm(batchPath, { recursive: true, force: true });
+    await fs.promises.rm(validatedBatchPath, { recursive: true, force: true });
     result.success = true;
   } catch (err) {
     result.errors = [toError(err, err.title || "Delete batch failed")];
@@ -97,12 +115,18 @@ export const regenerateXmlForBatch = async (batchPath) => {
   const result = { success: false, errors: [] };
 
   try {
-    const meta = parseBatchFolderName(path.basename(batchPath));
+    const validatedBatchPath = await assertStorageFilePath(batchPath, {
+      stage: "validate",
+      title: "Invalid batch path",
+      allowDirectory: true,
+    });
+
+    const meta = parseBatchFolderName(path.basename(validatedBatchPath));
     if (!meta) {
       throw Object.assign(new Error("Invalid batch folder name."), { code: "EINVAL" });
     }
 
-    const entries = await fs.promises.readdir(batchPath, { withFileTypes: true });
+    const entries = await fs.promises.readdir(validatedBatchPath, { withFileTypes: true });
     const pdfs = entries.filter((f) => f.isFile() && f.name.toLowerCase().endsWith(".pdf"));
 
     if (pdfs.length === 0) {
@@ -114,8 +138,8 @@ export const regenerateXmlForBatch = async (batchPath) => {
 
     const batchItems = pdfs
       .map((pdf) => {
-        const fullPath = path.join(batchPath, pdf.name);
-        const parsed = parsePrintFileName(pdf.name, { fullPath, dir: batchPath });
+        const fullPath = path.join(validatedBatchPath, pdf.name);
+        const parsed = parsePrintFileName(pdf.name, { fullPath, dir: validatedBatchPath });
         const materialType = getMaterialType(parsed?.material);
         return {
           file: { name: pdf.name, fullPath },
@@ -134,17 +158,17 @@ export const regenerateXmlForBatch = async (batchPath) => {
       });
     }
 
-    const dayFolder = path.basename(path.dirname(batchPath));
-    const batchId = `${dayFolder}/${path.basename(batchPath)}`;
+    const dayFolder = path.basename(path.dirname(validatedBatchPath));
+    const batchId = `${dayFolder}/${path.basename(validatedBatchPath)}`;
 
-    const xmlResult = await submitBatchToPrintFactory(batchItems, batchId, batchPath);
+    const xmlResult = await submitBatchToPrintFactory(batchItems, batchId, validatedBatchPath);
     if (!xmlResult.success) {
       return { ...result, errors: xmlResult.errors };
     }
 
     result.success = true;
   } catch (err) {
-    result.errors = [toError(err, "XML regeneration failed")];
+    result.errors = [toError(err, err.title || "XML regeneration failed")];
   }
 
   return result;

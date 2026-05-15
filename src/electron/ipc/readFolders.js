@@ -76,7 +76,13 @@ export const readFolders = async ({ onProgress } = {}) => {
       const jobs = getJobsInside.map(async (job) => {
         if (!job.isFile()) return null;
         const fullPath = path.join(folderPath, job.name);
-        const fileStats = await fs.promises.stat(fullPath);
+        let fileStats;
+        try {
+          fileStats = await fs.promises.stat(fullPath);
+        } catch (err) {
+          if (err.code === "ENOENT") return null;
+          throw err;
+        }
         if (fileStats.size === 0) return null;
         const ispdf = await isPDF(fullPath);
         if (!ispdf) return null;

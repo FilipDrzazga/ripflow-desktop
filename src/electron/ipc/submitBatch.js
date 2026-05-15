@@ -1,16 +1,10 @@
 import fs from "fs";
 import { createBatch, rollbackBatch } from "./createBatch.js";
 import { submitBatchToPrintFactory } from "./createXML.js";
+import { toIpcError } from "../helpers/ipcError.js";
 
-const toSubmitBatchError = (error, stage, fallbackTitle = "Batch submission failed") => {
-  return {
-    code: error.code || "UNKNOWN_ERROR",
-    message: error.message || "An unknown error occurred.",
-    stage: error.stage || stage || "unknown",
-    type: error.type || "Error",
-    title: error.title || fallbackTitle,
-  };
-};
+const toSubmitBatchError = (error, stage, fallbackTitle = "Batch submission failed") =>
+  toIpcError(error, stage, fallbackTitle);
 
 const cleanupXmlFile = async (xmlPath) => {
   if (typeof xmlPath !== "string" || xmlPath.trim() === "") {

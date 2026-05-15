@@ -17,14 +17,9 @@ import {
 } from "react-icons/lu";
 import { HiMagnifyingGlass, HiXMark } from "react-icons/hi2";
 import style from "./BatchHistory.module.css";
+import { PRINTER_COLORS } from "../../constants/printerColors";
 
 const PRINTERS = ["DGEN", "YOKO", "YUMI"];
-
-const PRINTER_COLORS = {
-  DGEN: { bg: "#E6F1FB", color: "#0C447C" },
-  YOKO: { bg: "#EEEDFE", color: "#3C3489" },
-  YUMI: { bg: "#E1F5EE", color: "#085041" },
-};
 
 const parseDayFromBatchPath = (batchPath) => {
   const parts = batchPath.replace(/\\/g, "/").split("/");
@@ -350,7 +345,7 @@ const BatchHistory = () => {
             { type: "Success", title: "Batch rolled back", message: "All files have been moved back to the inbox." },
             { stage: "rollback", code: "BATCH_ROLLED_BACK", detail: { batchPath } },
           );
-          await loadData();
+          // Watcher fires "removed" event within 200ms — no manual loadData() needed here.
           searchInputRef.current?.focus();
         } else {
           const err = res?.errors?.[0];

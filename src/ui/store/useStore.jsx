@@ -4,21 +4,20 @@ import { estimatePrintLength } from "../../shared/estimatePrintLength";
 
 const applySort = (groups, sortOrder) => {
   if (!sortOrder) return groups;
-  const sorted = [...groups];
   if (sortOrder === "meters_desc") {
-    sorted.sort(
-      (a, b) =>
-        estimatePrintLength(b.items).fixedTotalLengthM -
-        estimatePrintLength(a.items).fixedTotalLengthM,
-    );
-  } else if (sortOrder === "date_asc") {
-    sorted.sort((a, b) => {
+    return [...groups]
+      .map((g) => ({ g, _len: estimatePrintLength(g.items).fixedTotalLengthM }))
+      .sort((a, b) => b._len - a._len)
+      .map(({ g }) => g);
+  }
+  if (sortOrder === "date_asc") {
+    return [...groups].sort((a, b) => {
       const aMin = Math.min(...a.items.map((i) => new Date(i.createdAt).getTime()));
       const bMin = Math.min(...b.items.map((i) => new Date(i.createdAt).getTime()));
       return aMin - bMin;
     });
   }
-  return sorted;
+  return groups;
 };
 
 const applyFilters = (files, activeTab, searchQuery, sortOrder, printTypeFilter) => {
@@ -125,7 +124,6 @@ export const useStore = create(
         files,
         filteredFiles: applyFilters(files, state.activeTab, state.searchQuery, state.sortOrder, state.printTypeFilter),
       })),
-    setFilteredFiles: (filteredFiles) => set({ filteredFiles }),
     selectedIds: new Set(),
     toggleItemSelection: (id) =>
       set((state) => {

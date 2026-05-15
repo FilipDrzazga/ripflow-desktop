@@ -621,9 +621,4 @@ function parsePrintFileName(fileName, options = {}) {
   return out;
 }
 
-// Helpers to parse arrays of names
-function parseMany(fileNames, options = {}) {
-  return (fileNames || []).map((n) => parsePrintFileName(n, options));
-}
-
-export { parsePrintFileName, parseMany };
+export { parsePrintFileName };

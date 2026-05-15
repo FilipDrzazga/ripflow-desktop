@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
 import { useStore } from "../../store/useStore";
@@ -7,12 +7,13 @@ import style from "./DataPrintSelection.module.css";
 
 gsap.registerPlugin(useGSAP);
 
+const PRINTERS = [
+  { name: "DGEN", value: "DGEN", materialType: "Cottons" },
+  { name: "YOKO", value: "YOKO", materialType: "Polyesters" },
+  { name: "YUMI", value: "YUMI", materialType: "Polyesters" },
+];
+
 const DataPrintSelection = () => {
-  const printers = [
-    { name: "DGEN", value: "DGEN", materialType: "Cottons" },
-    { name: "YOKO", value: "YOKO", materialType: "Polyesters" },
-    { name: "YUMI", value: "YUMI", materialType: "Polyesters" },
-  ];
   const [selectedPrinter, setSelectedPrinter] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const files = useStore((state) => state.files);
@@ -25,16 +26,16 @@ const DataPrintSelection = () => {
   const contentRef = useRef(null);
 
   const isSelectionMode = selectedIds.size > 0;
-  const selectedMaterialTypes = new Set();
-  filteredFiles.forEach((group) => {
-    group.items.forEach((item) => {
-      if (selectedIds.has(item.id)) {
-        selectedMaterialTypes.add(item.materialType);
-      }
-    });
-  });
 
-  const materialType = selectedMaterialTypes.size === 1 ? [...selectedMaterialTypes][0] : null;
+  const materialType = useMemo(() => {
+    const types = new Set();
+    filteredFiles.forEach((group) => {
+      group.items.forEach((item) => {
+        if (selectedIds.has(item.id)) types.add(item.materialType);
+      });
+    });
+    return types.size === 1 ? [...types][0] : null;
+  }, [filteredFiles, selectedIds]);
 
   useGSAP(
     () => {
@@ -165,7 +166,7 @@ const DataPrintSelection = () => {
       </div>
       <div className={style.separator}></div>
       <form className={style.selection_form} onSubmit={handleSubmit}>
-        {printers.map((printer) => (
+        {PRINTERS.map((printer) => (
           <label key={printer.value} className={style.selection_label} htmlFor={printer.value}>
             <input
               className={style.selection_input}

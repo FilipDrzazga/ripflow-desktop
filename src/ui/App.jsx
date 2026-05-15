@@ -10,17 +10,9 @@ import DataOverviewSection from "./components/DataOverviewSection/DataOverviewSe
 import AlertsHost from "./components/AlertsHost/AlertsHost";
 import NavBar from "./components/NavBar/NavBar";
 import TitleBar from "./components/TitleBar/TitleBar";
-import { LuConstruction } from "react-icons/lu";
 import BatchHistory from "./components/BatchHistory/BatchHistory";
 import SessionLogs from "./components/SessionLogs/SessionLogs";
 import Settings from "./components/Settings/Settings";
-
-const PlaceholderView = ({ title }) => (
-  <div className={styles.placeholder}>
-    <LuConstruction size={36} />
-    <span>{title} — coming soon</span>
-  </div>
-);
 
 const App = () => {
   const refreshFiles = useStore((state) => state.refreshFiles);
