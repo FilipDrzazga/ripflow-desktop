@@ -24,7 +24,7 @@
     ],
     "win": {
       "target": "nsis",
-      "icon": "src/ui/assets/image/favicon.ico"
+      "icon": "src/ui/assets/image/maake_logo_256.ico"
     },
     "nsis": {
       "oneClick": false,
