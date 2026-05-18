@@ -38,6 +38,7 @@ const DataFilters = () => {
   const setActiveTab = useStore((state) => state.setActiveTab);
   const clearSelection = useStore((state) => state.toggleClearSelection);
   const refreshFiles = useStore((state) => state.refreshFiles);
+  const loadHeldFiles = useStore((state) => state.loadHeldFiles);
   const searchQuery = useStore((state) => state.searchQuery);
   const setSearchQuery = useStore((state) => state.setSearchQuery);
   const sortOrder = useStore((state) => state.sortOrder);
@@ -74,6 +75,7 @@ const DataFilters = () => {
   };
 
   const handleRefresh = async () => {
+    await loadHeldFiles();
     await refreshFiles({ clearSelection: true });
   };
 
