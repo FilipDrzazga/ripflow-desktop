@@ -38,6 +38,9 @@ const LogEntry = ({ log }) => {
           {meta.label}
         </span>
         <span className={style.stage_pill}>{log.stage}</span>
+        {log.workstation && (
+          <span className={style.workstation_pill}>{log.workstation}</span>
+        )}
         <span className={style.message}>{log.message}</span>
         <LuChevronRight
           size={15}

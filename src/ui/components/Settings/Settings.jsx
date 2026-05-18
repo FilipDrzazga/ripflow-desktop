@@ -7,12 +7,15 @@ const Settings = () => {
   const [storagePath, setStoragePath] = useState("");
   const [xmlPath, setXmlPath] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [workstationName, setWorkstationName] = useState("");
+  const [isSavingWorkstation, setIsSavingWorkstation] = useState(false);
 
   useEffect(() => {
     window.api.getSettings().then((res) => {
       if (res.success) {
         setStoragePath(res.settings.storagePath);
         setXmlPath(res.settings.xmlPath);
+        setWorkstationName(res.settings.workstationName ?? "");
       }
     });
   }, []);
@@ -22,6 +25,20 @@ const Settings = () => {
     if (!res.canceled && res.path) {
       if (field === "storagePath") setStoragePath(res.path);
       else setXmlPath(res.path);
+    }
+  };
+
+  const handleSaveWorkstation = async () => {
+    setIsSavingWorkstation(true);
+    try {
+      const res = await window.api.setSettings({ storagePath, xmlPath, workstationName });
+      if (res.success) {
+        notify({ type: "Success", title: "Workstation saved", message: "Workstation name updated successfully." });
+      } else {
+        notify({ type: "Error", title: "Save failed", message: res.error || "Could not save workstation name." });
+      }
+    } finally {
+      setIsSavingWorkstation(false);
     }
   };
 
@@ -84,6 +101,31 @@ const Settings = () => {
           <button className={styles.save_btn} onClick={handleSave} disabled={isSaving}>
             <LuSave size={15} />
             {isSaving ? "Saving…" : "Save settings"}
+          </button>
+        </div>
+      </div>
+      <div className={styles.card}>
+        <div className={styles.card_header}>
+          <h2 className={styles.title}>Workstation</h2>
+        </div>
+        <div className={styles.card_body}>
+          <div className={styles.field}>
+            <label className={styles.label}>Workstation Name</label>
+            <div className={styles.input_row}>
+              <input
+                className={styles.input}
+                value={workstationName}
+                onChange={(e) => setWorkstationName(e.target.value)}
+                spellCheck={false}
+              />
+            </div>
+            <p className={styles.hint}>Identifies this computer in shared logs.</p>
+          </div>
+        </div>
+        <div className={styles.card_footer}>
+          <button className={styles.save_btn} onClick={handleSaveWorkstation} disabled={isSavingWorkstation}>
+            <LuSave size={15} />
+            {isSavingWorkstation ? "Saving…" : "Save settings"}
           </button>
         </div>
       </div>

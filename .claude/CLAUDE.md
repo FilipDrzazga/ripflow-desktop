@@ -24,6 +24,7 @@
 | Ikony         | React Icons 5.5.0 (Lucide `Lu*`)              |
 | PDF           | pdf-lib 1.17.1 (kopiowanie 1. strony)         |
 | Ustawienia    | electron-store (persystentne JSON w userData) |
+| Baza danych   | better-sqlite3 (logi + held files, plik w storagePath) |
 | Dev tooling   | ESLint 9, Concurrently, wait-on               |
 
 ---
@@ -39,8 +40,9 @@ ripflow-desktop/
 │   │   ├── helpers/           # Funkcje pomocnicze (pure logic)
 │   │   │   ├── parseFileName.js       # Parsowanie nazw plików (600+ linii, główna logika!)
 │   │   │   ├── getMaterialType.js     # Klasyfikacja materiału (bawełna/poliester)
-│   │   │   ├── getSettings.js         # Odczyt/zapis ustawień przez electron-store
+│   │   │   ├── getSettings.js         # Odczyt/zapis ustawień przez electron-store (storagePath, xmlPath, workstationName)
 │   │   │   ├── getRootPath.js         # Rozwiązywanie ścieżek storage (czyta z getSettings)
+│   │   │   ├── db.js                  # SQLite (better-sqlite3): logi sesji + held_files; plik ripflow.db w storagePath
 │   │   │   ├── createBatchIds.js      # Generowanie ID batcha
 │   │   │   ├── ipcError.js            # Shared helper: toIpcError(err, stage, title)
 │   │   │   ├── getFileAgeInDays.js
@@ -190,8 +192,9 @@ Nawigacja przez **NavBar** (lewa kolumna). Layout: `TitleBar` (top) + `NavBar` (
 **Domyślne wartości:**
 
 ```
-storagePath: O:\SPPrintReadyArtwork
-xmlPath:     \\192.168.0.17\Original_files\SPPrintReadyArtwork
+storagePath:      O:\SPPrintReadyArtwork
+xmlPath:          \\192.168.0.17\Original_files\SPPrintReadyArtwork
+workstationName:  os.hostname()  ← automatycznie przy pierwszym uruchomieniu
 ```
 
 **Pochodne ścieżki (wyliczane w kodzie):**
@@ -203,6 +206,51 @@ Printed:         {storagePath}\PRINTED\DD-MM-YYYY\PRINTED_HHMMSS-GROUP-PRINTER\
 ```
 
 Dane są zapisywane w `%APPDATA%\ripflow-desktop\config.json` (Electron userData).
+
+---
+
+## Baza danych SQLite (`helpers/db.js`)
+
+Persystencja logów i held files między sesjami. Plik `ripflow.db` leży w `getStorageRootPath()` (nie w userData).
+
+**Eksportowane funkcje:**
+
+| Funkcja               | Opis                                                         |
+| --------------------- | ------------------------------------------------------------ |
+| `initDb()`            | Inicjalizacja DB, CREATE TABLE, ALTER TABLE (migracja kolumn)|
+| `insertLog(log)`      | Wstawia wpis do tabeli `logs`                                |
+| `getAllLogs()`         | Zwraca wszystkie logi posortowane timestamp DESC             |
+| `clearAllLogs()`      | Usuwa wszystkie wpisy z `logs`                               |
+| `holdFile(fileId)`    | Dodaje fileId do `held_files`                                |
+| `unholdFile(fileId)`  | Usuwa fileId z `held_files`                                  |
+| `getHeldFiles()`      | Zwraca `Set<string>` z wstrzymanymi ID plików                |
+
+**Schemat tabeli `logs`:**
+
+```sql
+CREATE TABLE IF NOT EXISTS logs (
+  id TEXT PRIMARY KEY,
+  timestamp TEXT,
+  type TEXT,
+  stage TEXT,
+  code TEXT,
+  message TEXT,
+  detail TEXT,       -- JSON stringified lub null
+  workstation TEXT   -- os.hostname() stacji roboczej; NULL w starych logach
+)
+```
+
+**Schemat tabeli `held_files`:**
+
+```sql
+CREATE TABLE IF NOT EXISTS held_files (
+  file_id TEXT PRIMARY KEY
+)
+```
+
+**Migracja schematu:** `initDb()` po CREATE TABLE wykonuje `ALTER TABLE logs ADD COLUMN workstation TEXT` w try/catch — bezpieczne dla istniejących baz (błąd "column already exists" jest ignorowany).
+
+**Wołany przez:** `ipc/index.js` → `registerIpcHandlers()` wywołuje `initDb()` jako pierwsze. Wszystkie handlery `submit-batch`, `regenerate-xml`, `rollback-batch-history`, `rollback-file-history`, `delete-batch` zapisują log przez `insertLog()` z polem `workstation: getSettings().workstationName`.
 
 ---
 
@@ -242,9 +290,18 @@ window.api.stopBatchWatcher(); // zatrzymaj watcher
 window.api.onBatchUpdate(callback); // realtime updates z watchera
 
 // Ustawienia
-window.api.getSettings(); // zwraca { success, settings: { storagePath, xmlPath } }
-window.api.setSettings({ storagePath, xmlPath }); // zapisuje po async walidacji fs.promises.access; zwraca { success, error? }
+window.api.getSettings(); // zwraca { success, settings: { storagePath, xmlPath, workstationName } }
+window.api.setSettings({ storagePath, xmlPath, workstationName? }); // zapisuje po async walidacji fs.promises.access (paths only); zwraca { success, error? }
 window.api.selectFolder(); // natywny dialog wyboru folderu; zwraca { success, canceled, path }
+
+// Logi (SQLite)
+window.api.getLogs();    // zwraca { success, data: log[] } — wszystkie logi z DB
+window.api.clearLogs();  // usuwa wszystkie logi z DB
+
+// Held files (SQLite)
+window.api.getHeldFiles();       // zwraca { success, data: fileId[] }
+window.api.holdFile(fileId);     // dodaje fileId do held_files
+window.api.unholdFile(fileId);   // usuwa fileId z held_files
 
 // Dialogi
 window.api.showConfirm(message); // natywny dialog potwierdzenia Electrona; zwraca boolean
@@ -291,7 +348,10 @@ Stan aplikacji — `subscribeWithSelector` middleware:
   isBatchSubmitting: boolean,                    // true podczas submit batcha (używane w LastBatchCard)
 
   // Logi sesji
-  logs: [{ id, timestamp, type, stage, code, message, detail }],
+  logs: [{ id, timestamp, type, stage, code, message, detail, workstation }],
+
+  // Held files (pliki wstrzymane przez operatora)
+  heldIds: Set(),                                // Set z ID wstrzymanych plików
 
   // Alerty
   alerts: [{ id, type: "Success"|"Warning"|"Error", title, message }],
@@ -316,8 +376,11 @@ Stan aplikacji — `subscribeWithSelector` middleware:
 | `setBatchDays(days)`          | Ustaw dane historii batchy                             |
 | `refreshBatchDays()`          | Async load z `window.api.readPrintedFolder()`          |
 | `setIsBatchSubmitting(val)`   | Flaga submitu (pokazuje spinner w LastBatchCard)       |
-| `addLog(log)`                 | Dodaj wpis do logów sesji                              |
-| `clearLogs()`                 | Wyczyść wszystkie logi sesji                           |
+| `addLog(log)`                 | Dodaj wpis do logów sesji (tylko in-memory)            |
+| `clearLogs()`                 | Wyczyść logi in-memory + wywołaj `window.api.clearLogs()` |
+| `loadLogsFromDb()`            | Wczytaj logi z SQLite do store (przy starcie)          |
+| `loadHeldFiles()`             | Wczytaj held file IDs z SQLite do `heldIds`            |
+| `toggleHold(fileId)`          | Hold/unhold pliku — sync z SQLite i lokalnym Set       |
 
 **Material lock:** raz zaznaczony materiał blokuje możliwość dodania plików innego typu (Cottons ↔ Polyesters).
 
@@ -427,6 +490,7 @@ Widok logów sesji (`src/ui/components/SessionLogs/`):
 - Klik na wpis → expand z JSON detailami
 - Przycisk "Clear session" czyści wszystkie logi
 - Logi są zapisywane przez akcje `addLog()` w store oraz przez `notify()` helper
+- Każdy wpis wyświetla `workstation_pill` (obok `stage_pill`) gdy pole `workstation` jest niepuste
 
 ### `AlertsHost`
 
@@ -442,12 +506,21 @@ Portal-based popup z edge detection, separator support, danger items (czerwone).
 
 ### `Settings`
 
-Widok ustawień (zakładka "settings" w NavBar). Karta z dwoma polami:
+Widok ustawień (zakładka "settings" w NavBar). Dwie osobne karty z osobnymi przyciskami Save:
 
+**Karta "Storage Paths":**
 - **Storage Path (INBOX)** — lokalny folder skanowany przez `readFolders`
 - **XML Workflow Path** — ścieżka sieciowa do której trafiają pliki XML dla PrintFactory
+- Przycisk Browse otwiera natywny dialog (`dialog:select-folder`)
+- Save waliduje oba pola przez `fs.promises.access` (async) po stronie main procesu przed zapisem
 
-Przycisk Browse otwiera natywny dialog (`dialog:select-folder`). Save waliduje oba pola przez `fs.promises.access` (async) po stronie main procesu przed zapisem. Wynik przez `notify()` (Success/Error toast).
+**Karta "Workstation":**
+- **Workstation Name** — identyfikator tego komputera w logach współdzielonych
+- Domyślna wartość: `os.hostname()` (ustawiana przy pierwszym uruchomieniu przez electron-store)
+- Save wywołuje `window.api.setSettings({ storagePath, xmlPath, workstationName })` — przekazuje aktualne wartości obu ścieżek aby nie nadpisać ich nullem
+- `workstationName` nie podlega walidacji `fs.promises.access` (to nie jest ścieżka)
+
+Wynik obu kart przez `notify()` (Success/Error toast).
 
 ### `StartupLoader`
 
@@ -508,5 +581,9 @@ Alias `@` w UI → `./src/ui` (np. `import { useStore } from '@/store/useStore'`
 - `settings:set` waliduje ścieżki przez `fs.promises.access` (async) — sieciowa ścieżka XML musi być dostępna w momencie zapisu
 - Wszystkie operacje na ścieżkach z batchHistoryHandlers używają `assertStorageFilePath` — upewnij się że batchPath i filePath przechodzą walidację przed jakimikolwiek operacjami na plikach
 - Zawsze używaj `notify()` zamiast `setAlert()` bezpośrednio — inaczej zdarzenia nie trafiają do SessionLogs
+- `db.js` → plik `ripflow.db` jest w `storagePath` (nie w Electron userData) — jeśli storagePath jest niedostępny, `initDb()` może failować; aplikacja działa dalej (wszystkie funkcje db są zabezpieczone `if (!stmt) return`)
+- `workstationName` jest trzecim polem ustawień — przy wywołaniu `setSettings()` z UI zawsze przekazuj wszystkie trzy wartości (`storagePath`, `xmlPath`, `workstationName`), żeby nie nadpisać któregoś nullem
+- Pole `workstation` w tabeli `logs` może być NULL (stare logi sprzed migracji) — `SessionLogs` renderuje pill warunkowo tylko gdy wartość jest niepusta
+- `heldIds` w store to `Set<string>` — synchronizowany z SQLite przez `loadHeldFiles()` przy starcie i `toggleHold()` przy zmianie
 - Brak testów automatycznych w projekcie
 - **Przed usunięciem jakiegokolwiek kodu — zawsze zrób grep po całym projekcie.** Raporty audytu mogą przeoczyć importy lub użycia w nieoczywistych miejscach. Lepiej poświęcić 10 sekund na grep niż usunąć coś używanego.

@@ -139,6 +139,7 @@ export function registerIpcHandlers() {
           ? `Batch submitted: ${result.batchId}`
           : (result.errors?.[0]?.message || "Batch submission failed"),
         detail: result.success ? { batchId: result.batchId } : { errors: result.errors },
+        workstation: getSettings().workstationName,
       });
     } catch {}
     return result;
@@ -169,6 +170,7 @@ export function registerIpcHandlers() {
           ? "XML regenerated successfully"
           : (result.errors?.[0]?.message || "XML regeneration failed"),
         detail: result.success ? null : { errors: result.errors },
+        workstation: getSettings().workstationName,
       });
     } catch {}
     return result;
@@ -187,6 +189,7 @@ export function registerIpcHandlers() {
           ? `Batch rolled back: ${result.restoredFiles?.length || 0} files restored`
           : (result.errors?.[0]?.message || "Rollback failed"),
         detail: result.success ? { restoredFiles: result.restoredFiles } : { errors: result.errors },
+        workstation: getSettings().workstationName,
       });
     } catch {}
     return result;
@@ -205,6 +208,7 @@ export function registerIpcHandlers() {
           ? "File rolled back successfully"
           : (result.errors?.[0]?.message || "File rollback failed"),
         detail: result.success ? null : { errors: result.errors },
+        workstation: getSettings().workstationName,
       });
     } catch {}
     return result;
@@ -223,6 +227,7 @@ export function registerIpcHandlers() {
           ? "Batch deleted"
           : (result.errors?.[0]?.message || "Delete batch failed"),
         detail: result.success ? null : { errors: result.errors },
+        workstation: getSettings().workstationName,
       });
     } catch {}
     return result;
@@ -277,7 +282,7 @@ export function registerIpcHandlers() {
   });
 
   ipcMain.handle("settings:set", async (_event, settings) => {
-    const { storagePath, xmlPath } = settings ?? {};
+    const { storagePath, xmlPath, workstationName } = settings ?? {};
     if (!storagePath || !xmlPath) {
       return { success: false, error: "Both paths are required." };
     }
@@ -291,7 +296,7 @@ export function registerIpcHandlers() {
     } catch {
       return { success: false, error: `XML path does not exist: ${xmlPath}` };
     }
-    setSettings({ storagePath, xmlPath });
+    setSettings({ storagePath, xmlPath, workstationName });
     return { success: true };
   });
 

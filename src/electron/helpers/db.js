@@ -1,6 +1,6 @@
-import { app } from "electron";
 import { join } from "path";
 import Database from "better-sqlite3";
+import { getStorageRootPath } from "./getRootPath.js";
 
 let db = null;
 let stmtInsert = null;
@@ -12,7 +12,7 @@ let stmtGetHeldFiles = null;
 
 export const initDb = () => {
   try {
-    const dbPath = join(app.getPath("userData"), "ripflow.db");
+    const dbPath = join(getStorageRootPath(), "ripflow.db");
     db = new Database(dbPath);
 
     db.exec(`
@@ -23,9 +23,16 @@ export const initDb = () => {
         stage TEXT,
         code TEXT,
         message TEXT,
-        detail TEXT
+        detail TEXT,
+        workstation TEXT
       )
     `);
+
+    try {
+      db.exec("ALTER TABLE logs ADD COLUMN workstation TEXT");
+    } catch {
+      // column already exists in older databases — safe to ignore
+    }
 
     db.exec(`
       CREATE TABLE IF NOT EXISTS held_files (
@@ -34,7 +41,7 @@ export const initDb = () => {
     `);
 
     stmtInsert = db.prepare(
-      "INSERT OR IGNORE INTO logs (id, timestamp, type, stage, code, message, detail) VALUES (?, ?, ?, ?, ?, ?, ?)",
+      "INSERT OR IGNORE INTO logs (id, timestamp, type, stage, code, message, detail, workstation) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
     );
     stmtGetAll = db.prepare("SELECT * FROM logs ORDER BY timestamp DESC");
     stmtClear = db.prepare("DELETE FROM logs");
@@ -63,6 +70,7 @@ export const insertLog = (log) => {
       log.code,
       log.message,
       log.detail != null ? JSON.stringify(log.detail) : null,
+      log.workstation ?? null,
     );
   } catch {}
 };
