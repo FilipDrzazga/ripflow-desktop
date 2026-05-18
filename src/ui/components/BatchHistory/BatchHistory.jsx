@@ -531,6 +531,7 @@ const BatchHistory = () => {
                     const isBatchExpanded = expandedBatches.has(batch.path);
                     const showFiles = isBatchExpanded;
                     const isRolledBack = batch.status === "rolled_back";
+                    const rolledBackCount = batch.files.filter((f) => f.status === "rolled_back").length;
                     const printerColors = PRINTER_COLORS[batch.printer] || { bg: "#f0f0f0", color: "#555" };
 
                     return (
@@ -550,9 +551,16 @@ const BatchHistory = () => {
                           >
                             {isBatchExpanded ? <LuChevronDown size={16} /> : <LuChevronRight size={16} />}
                           </button>
-                          <span className={style.batch_name} title={batch.name}>
-                            {batch.name}
-                          </span>
+                          <div className={style.batch_name_group}>
+                            <span className={style.batch_name} title={batch.name}>
+                              {batch.name}
+                            </span>
+                            {rolledBackCount > 0 && (
+                              <span className={style.rolled_back_badge}>
+                                {rolledBackCount} rolled back
+                              </span>
+                            )}
+                          </div>
                           <span
                             className={style.printer_badge}
                             style={{ backgroundColor: printerColors.bg, color: printerColors.color }}

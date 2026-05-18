@@ -312,8 +312,16 @@
   background-color: var(--bg-grey);
 }
 
-.batch_name {
+.batch_name_group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.batch_name {
   font-size: 15px;
   font-weight: 500;
   color: var(--text-primary);
@@ -329,6 +337,15 @@
   font-weight: 600;
   padding: 4px 10px;
   border-radius: 7px;
+}
+
+.rolled_back_badge {
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 500;
+  color: #ef4444;
+  white-space: nowrap;
+  font-style: italic;
 }
 
 .file_count {
@@ -433,8 +450,10 @@
   padding: 3px 8px;
 }
 
-.file_row_rolled_back {
-  opacity: 0.55;
+.file_row_rolled_back .file_icon,
+.file_row_rolled_back .file_name,
+.file_row_rolled_back .file_rolled_back_label {
+  color: #ef4444;
 }
 
 .file_rolled_back_label {

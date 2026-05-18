@@ -215,7 +215,7 @@ const DataList = () => {
                   <li
                     key={item.id}
                     data-context-item-id={item.id}
-                    className={`${style.list_item} ${activeContextItemId === item.id ? style.list_item_active : ""}`}
+                    className={`${style.list_item} ${isHeld ? style.list_item_held : ""} ${activeContextItemId === item.id ? style.list_item_active : ""}`}
                     onContextMenu={(e) => handleItemContextMenu(e, item)}
                   >
                     <div className={style.item_info}>

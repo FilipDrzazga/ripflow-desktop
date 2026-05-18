@@ -132,6 +132,16 @@
   font-size: 13px;
   color: #ef4444;
 }
+
+.list_item_held {
+  background-color: rgba(239, 68, 68, 0.06);
+  border: 1px solid rgba(239, 68, 68, 0.18);
+}
+
+.list_item_held:hover,
+.list_item_held.list_item_active {
+  background-color: rgba(239, 68, 68, 0.11);
+}
 .item_name[data-tooltip]:hover::after {
   content: attr(data-tooltip);
   position: absolute;
