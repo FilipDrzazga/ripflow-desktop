@@ -2,6 +2,8 @@ import fs from "fs";
 import path from "path";
 import { getStorageRootPath } from "../helpers/getRootPath.js";
 import { parsePrintFileName } from "../helpers/parseFileName.js";
+import { getMaterialType } from "../helpers/getMaterialType.js";
+import { estimatePrintLength } from "../../shared/estimatePrintLength.js";
 
 const getPrintedRootPath = () => path.join(getStorageRootPath(), "PRINTED");
 
@@ -32,6 +34,7 @@ export const readSingleBatch = async (batchPath, meta) => {
 
   let xmlExists = false;
   const activeFiles = [];
+  const parsedForLength = [];
 
   for (const f of entries) {
     if (!f.isFile()) continue;
@@ -48,6 +51,9 @@ export const readSingleBatch = async (batchPath, meta) => {
         path: filePath,
         type: parsed?.printTypeCode || "UNKNOWN",
       });
+      if (parsed?.status === "READY") {
+        parsedForLength.push({ ...parsed, materialType: getMaterialType(parsed.material) });
+      }
     }
   }
 
@@ -71,12 +77,15 @@ export const readSingleBatch = async (batchPath, meta) => {
     // no snapshot or invalid — nothing to merge
   }
 
+  const { fixedTotalLengthM } = estimatePrintLength(parsedForLength);
+
   return {
     name: path.basename(batchPath),
     path: batchPath,
     printer: meta.printer,
     group: meta.group,
     fileCount: activeFiles.length,
+    printLengthM: fixedTotalLengthM,
     xmlExists,
     status: activeFiles.length === 0 ? "rolled_back" : "active",
     files,

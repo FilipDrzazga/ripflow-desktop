@@ -559,7 +559,10 @@ const BatchHistory = () => {
                           >
                             {batch.printer}
                           </span>
-                          <span className={style.file_count}>{batch.fileCount} files</span>
+                          <span className={style.file_count}>
+                            {batch.fileCount} {batch.fileCount === 1 ? "file" : "files"}
+                            {batch.printLengthM > 0 && ` · ${batch.printLengthM} m`}
+                          </span>
                           <span
                             className={style.xml_dot}
                             style={{ backgroundColor: batch.xmlExists ? "#639922" : "#E24B4A" }}
