@@ -6,14 +6,16 @@ import Badge from "../Badge/Badge";
 import ContextMenu from "../ContextMenu/ContextMenu";
 import DataDaysCounter from "../DataDaysCounter/DataDaysCounter";
 import { estimatePrintLength } from "../../../shared/estimatePrintLength";
-import { FiInbox } from "react-icons/fi";
+import { FiInbox, FiLock, FiUnlock } from "react-icons/fi";
 import style from "./DataList.module.css";
 
 const DataList = () => {
   const filteredFiles = useStore((state) => state.filteredFiles);
   const selectedIds = useStore((state) => state.selectedIds);
+  const heldIds = useStore((state) => state.heldIds);
   const toggleGroupSelection = useStore((state) => state.toggleGroupSelection);
   const toggleItemSelection = useStore((state) => state.toggleItemSelection);
+  const toggleHold = useStore((state) => state.toggleHold);
   const [contextMenu, setContextMenu] = useState(null);
   const activeContextItemId = contextMenu?.item?.id || null;
 
@@ -202,9 +204,11 @@ const DataList = () => {
               {group.items.map((item) => {
                 const isInvalid = item.status === "INVALID";
                 const isLocked = hasSelection && lockMaterial && item.materialType !== lockMaterial;
+                const isHeld = heldIds.has(item.id);
 
                 let tooltip = null;
                 if (isInvalid) tooltip = "File failed validation";
+                else if (isHeld) tooltip = "File is on hold";
                 else if (isLocked) tooltip = `Cannot mix ${lockMaterial} with ${item.materialType}`;
 
                 return (
@@ -217,7 +221,7 @@ const DataList = () => {
                     <div className={style.item_info}>
                       <label htmlFor={item.id} className={style.item_name} data-tooltip={tooltip}>
                         <input
-                          disabled={isInvalid || isLocked}
+                          disabled={isInvalid || isLocked || isHeld}
                           id={item.id}
                           type="checkbox"
                           className={style.checkbox}
@@ -225,6 +229,7 @@ const DataList = () => {
                           onChange={(e) => handleItemCheckboxChange(e, item)}
                         />
                         {item.file.name}
+                        {isHeld && <FiLock className={style.hold_icon} />}
                       </label>
                     </div>
                     <div className={style.item_badges}>
@@ -265,6 +270,27 @@ const DataList = () => {
                   await handleOpenInFolder(contextMenu.item);
                 },
               },
+              { id: "sep-hold", separator: true },
+              heldIds.has(contextMenu.item.id)
+                ? {
+                    id: "hold",
+                    label: "Unhold",
+                    icon: <FiUnlock />,
+                    danger: true,
+                    onClick: () => {
+                      closeContextMenu();
+                      toggleHold(contextMenu.item.id);
+                    },
+                  }
+                : {
+                    id: "hold",
+                    label: "Hold",
+                    icon: <FiLock />,
+                    onClick: () => {
+                      closeContextMenu();
+                      toggleHold(contextMenu.item.id);
+                    },
+                  },
               {
                 id: "shopify",
                 label: "Open in Shopify",

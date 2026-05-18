@@ -113,7 +113,20 @@ export const useStore = create(
 
     logs: [],
     addLog: (log) => set((state) => ({ logs: [log, ...state.logs] })),
-    clearLogs: () => set({ logs: [] }),
+    clearLogs: async () => {
+      set({ logs: [] });
+      try {
+        await window.api.clearLogs();
+      } catch {}
+    },
+    loadLogsFromDb: async () => {
+      try {
+        const res = await window.api.getLogs();
+        if (res?.success && Array.isArray(res.data)) {
+          set({ logs: res.data });
+        }
+      } catch {}
+    },
 
     files: [],
     filteredFiles: [],
@@ -124,6 +137,33 @@ export const useStore = create(
         files,
         filteredFiles: applyFilters(files, state.activeTab, state.searchQuery, state.sortOrder, state.printTypeFilter),
       })),
+    heldIds: new Set(),
+    loadHeldFiles: async () => {
+      try {
+        const res = await window.api.getHeldFiles();
+        if (res?.success && Array.isArray(res.data)) {
+          set({ heldIds: new Set(res.data) });
+        }
+      } catch {}
+    },
+    toggleHold: async (fileId) => {
+      const { heldIds } = get();
+      const newHeldIds = new Set(heldIds);
+      if (heldIds.has(fileId)) {
+        try {
+          await window.api.unholdFile(fileId);
+          newHeldIds.delete(fileId);
+          set({ heldIds: newHeldIds });
+        } catch {}
+      } else {
+        try {
+          await window.api.holdFile(fileId);
+          newHeldIds.add(fileId);
+          set({ heldIds: newHeldIds });
+        } catch {}
+      }
+    },
+
     selectedIds: new Set(),
     toggleItemSelection: (id) =>
       set((state) => {
@@ -137,6 +177,7 @@ export const useStore = create(
         });
 
         if (!clickedItem) return state;
+        if (state.heldIds.has(id)) return state;
 
         if (newSelectedIds.has(id)) {
           newSelectedIds.delete(id);
@@ -166,7 +207,7 @@ export const useStore = create(
       set((state) => {
         const newSelectedIds = new Set(state.selectedIds);
 
-        const validItems = groupItems.filter((item) => item.status !== "INVALID");
+        const validItems = groupItems.filter((item) => item.status !== "INVALID" && !state.heldIds.has(item.id));
 
         const selectedMaterialTypes = new Set();
         state.filteredFiles.forEach((group) => {

@@ -126,6 +126,12 @@
 .item_name:has(input:disabled) {
   cursor: not-allowed;
 }
+.hold_icon {
+  flex-shrink: 0;
+  margin-left: 8px;
+  font-size: 13px;
+  color: #ef4444;
+}
 .item_name[data-tooltip]:hover::after {
   content: attr(data-tooltip);
   position: absolute;

@@ -1,7 +1,8 @@
 {
   "name": "ripflow-desktop",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
+  "author": "Filip Drzazga",
   "type": "module",
   "main": "src/electron/main.js",
   "scripts": {
@@ -11,7 +12,8 @@
     "build": "vite build",
     "build:dist": "vite build && electron-builder",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "rebuild": "electron-rebuild -f -w better-sqlite3"
   },
   "build": {
     "appId": "com.ripflow.desktop",
@@ -33,6 +35,7 @@
   },
   "dependencies": {
     "@gsap/react": "^2.1.2",
+    "better-sqlite3": "^12.10.0",
     "electron-store": "^11.0.2",
     "pdf-lib": "^1.17.1",
     "react": "^19.2.0",
@@ -48,6 +51,7 @@
     "concurrently": "^9.2.1",
     "electron": "^40.1.0",
     "electron-builder": "^26.8.1",
+    "electron-rebuild": "^3.2.9",
     "eslint": "^9.39.1",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.24",

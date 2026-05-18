@@ -10,6 +10,7 @@ const badgeArr = [
   { type: "READY", bgColor: "#d9fbe5", textColor: "#05c95d" },
   { type: "INVALID", bgColor: "#fff7c1", textColor: "#ecb809" },
   { type: "UNKNOWN", bgColor: "#fff7c1", textColor: "#ecb809" },
+  { type: "HOLD", bgColor: "#fff3e0", textColor: "#f97316" },
 ];
 
 const Badge = ({ type, badgeText }) => {

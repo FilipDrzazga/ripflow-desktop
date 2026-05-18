@@ -10,6 +10,7 @@ import { rollbackBatchFromHistory, rollbackFileFromHistory, regenerateXmlForBatc
 import { getStorageRootPath } from "../helpers/getRootPath.js";
 import { parsePrintFileName } from "../helpers/parseFileName.js";
 import { getSettings, setSettings } from "../helpers/getSettings.js";
+import { initDb, insertLog, getAllLogs, clearAllLogs, holdFile, unholdFile, getHeldFiles } from "../helpers/db.js";
 
 const DAY_FOLDER_RE = /^\d{2}-\d{2}-\d{4}$/;
 
@@ -77,6 +78,31 @@ const processWatchEvent = async (relativePath) => {
 };
 
 export function registerIpcHandlers() {
+  initDb();
+
+  ipcMain.handle("logs:getAll", () => {
+    return { success: true, data: getAllLogs() };
+  });
+
+  ipcMain.handle("logs:clear", () => {
+    clearAllLogs();
+    return { success: true };
+  });
+
+  ipcMain.handle("hold:get", () => {
+    return { success: true, data: [...getHeldFiles()] };
+  });
+
+  ipcMain.handle("hold:set", (_event, fileId) => {
+    holdFile(fileId);
+    return { success: true };
+  });
+
+  ipcMain.handle("hold:unset", (_event, fileId) => {
+    unholdFile(fileId);
+    return { success: true };
+  });
+
   ipcMain.handle("read-folders", async (event) => {
     try {
       return await readFolders({
@@ -101,7 +127,21 @@ export function registerIpcHandlers() {
   });
 
   ipcMain.handle("submit-batch", async (_event, batch) => {
-    return submitBatch(batch);
+    const result = await submitBatch(batch);
+    try {
+      insertLog({
+        id: crypto.randomUUID(),
+        timestamp: new Date().toISOString(),
+        type: result.success ? "success" : "error",
+        stage: "submitBatch",
+        code: result.success ? "BATCH_SUBMITTED" : (result.errors?.[0]?.code || "BATCH_FAILED"),
+        message: result.success
+          ? `Batch submitted: ${result.batchId}`
+          : (result.errors?.[0]?.message || "Batch submission failed"),
+        detail: result.success ? { batchId: result.batchId } : { errors: result.errors },
+      });
+    } catch {}
+    return result;
   });
 
   ipcMain.handle("open-preview", async (_event, filePath) => {
@@ -117,19 +157,75 @@ export function registerIpcHandlers() {
   });
 
   ipcMain.handle("regenerate-xml", async (_event, batchPath) => {
-    return regenerateXmlForBatch(batchPath);
+    const result = await regenerateXmlForBatch(batchPath);
+    try {
+      insertLog({
+        id: crypto.randomUUID(),
+        timestamp: new Date().toISOString(),
+        type: result.success ? "success" : "error",
+        stage: "regenerateXml",
+        code: result.success ? "XML_REGENERATED" : (result.errors?.[0]?.code || "XML_REGEN_FAILED"),
+        message: result.success
+          ? "XML regenerated successfully"
+          : (result.errors?.[0]?.message || "XML regeneration failed"),
+        detail: result.success ? null : { errors: result.errors },
+      });
+    } catch {}
+    return result;
   });
 
   ipcMain.handle("rollback-batch-history", async (_event, batchPath) => {
-    return rollbackBatchFromHistory(batchPath);
+    const result = await rollbackBatchFromHistory(batchPath);
+    try {
+      insertLog({
+        id: crypto.randomUUID(),
+        timestamp: new Date().toISOString(),
+        type: result.success ? "success" : "error",
+        stage: "rollbackBatch",
+        code: result.success ? "BATCH_ROLLED_BACK" : (result.errors?.[0]?.code || "ROLLBACK_FAILED"),
+        message: result.success
+          ? `Batch rolled back: ${result.restoredFiles?.length || 0} files restored`
+          : (result.errors?.[0]?.message || "Rollback failed"),
+        detail: result.success ? { restoredFiles: result.restoredFiles } : { errors: result.errors },
+      });
+    } catch {}
+    return result;
   });
 
   ipcMain.handle("rollback-file-history", async (_event, filePath, batchPath) => {
-    return rollbackFileFromHistory(filePath, batchPath);
+    const result = await rollbackFileFromHistory(filePath, batchPath);
+    try {
+      insertLog({
+        id: crypto.randomUUID(),
+        timestamp: new Date().toISOString(),
+        type: result.success ? "success" : "error",
+        stage: "rollbackFile",
+        code: result.success ? "FILE_ROLLED_BACK" : (result.errors?.[0]?.code || "FILE_ROLLBACK_FAILED"),
+        message: result.success
+          ? "File rolled back successfully"
+          : (result.errors?.[0]?.message || "File rollback failed"),
+        detail: result.success ? null : { errors: result.errors },
+      });
+    } catch {}
+    return result;
   });
 
   ipcMain.handle("delete-batch", async (_event, batchPath) => {
-    return deleteBatchFolder(batchPath);
+    const result = await deleteBatchFolder(batchPath);
+    try {
+      insertLog({
+        id: crypto.randomUUID(),
+        timestamp: new Date().toISOString(),
+        type: result.success ? "success" : "error",
+        stage: "deleteBatch",
+        code: result.success ? "BATCH_DELETED" : (result.errors?.[0]?.code || "DELETE_FAILED"),
+        message: result.success
+          ? "Batch deleted"
+          : (result.errors?.[0]?.message || "Delete batch failed"),
+        detail: result.success ? null : { errors: result.errors },
+      });
+    } catch {}
+    return result;
   });
 
   ipcMain.handle("start-batch-watcher", (event) => {

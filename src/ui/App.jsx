@@ -17,11 +17,15 @@ import Settings from "./components/Settings/Settings";
 const App = () => {
   const refreshFiles = useStore((state) => state.refreshFiles);
   const refreshBatchDays = useStore((state) => state.refreshBatchDays);
+  const loadLogsFromDb = useStore((state) => state.loadLogsFromDb);
+  const loadHeldFiles = useStore((state) => state.loadHeldFiles);
   const [isLoading, setIsLoading] = useState(true);
   const [activeView, setActiveView] = useState("print");
 
   useEffect(() => {
     const fetchFolders = async () => {
+      loadLogsFromDb();
+      loadHeldFiles();
       await refreshFiles({
         successTitle: "Folders loaded",
         successMessage: "The folder data has been successfully loaded.",
@@ -29,7 +33,7 @@ const App = () => {
       refreshBatchDays();
     };
     fetchFolders();
-  }, [refreshFiles, refreshBatchDays]);
+  }, [refreshFiles, refreshBatchDays, loadLogsFromDb, loadHeldFiles]);
 
   return (
     <div className={styles.app}>
