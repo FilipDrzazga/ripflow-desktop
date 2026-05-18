@@ -53,7 +53,7 @@ const mainWindow = () => {
   // DEV: Vite
   if (!app.isPackaged) {
     win.loadURL("http://localhost:5173");
-    // win.webContents.openDevTools();
+    win.webContents.openDevTools();
   } else {
     // PROD: po buildzie Vite -> dist/index.html
     win.loadFile(join(app.getAppPath(), "dist/index.html"));

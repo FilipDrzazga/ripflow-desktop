@@ -149,6 +149,15 @@ export function registerIpcHandlers() {
     return openPreview(filePath);
   });
 
+  ipcMain.handle("file:read-buffer", async (_event, filePath) => {
+    try {
+      const buffer = await fs.promises.readFile(filePath);
+      return { success: true, data: buffer.toString("base64") };
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+  });
+
   ipcMain.handle("open-in-folder", async (_event, filePath) => {
     return openInFolder(filePath);
   });

@@ -5,8 +5,11 @@ import { notify } from "../../utils/notify";
 import Badge from "../Badge/Badge";
 import ContextMenu from "../ContextMenu/ContextMenu";
 import DataDaysCounter from "../DataDaysCounter/DataDaysCounter";
+import PdfPreviewModal from "../PdfPreviewModal/PdfPreviewModal";
+import { usePdfPreview } from "../../hooks/usePdfPreview";
 import { estimatePrintLength } from "../../../shared/estimatePrintLength";
 import { FiInbox, FiLock, FiUnlock } from "react-icons/fi";
+import { LuEye } from "react-icons/lu";
 import style from "./DataList.module.css";
 
 const DataList = () => {
@@ -18,6 +21,8 @@ const DataList = () => {
   const toggleHold = useStore((state) => state.toggleHold);
   const [contextMenu, setContextMenu] = useState(null);
   const activeContextItemId = contextMenu?.item?.id || null;
+  const { openPreview, closePreview, navigate, isOpen, isLoading, imgSrc, error, currentPath, currentIndex, fileList } =
+    usePdfPreview();
 
   const lockMaterial = useMemo(() => {
     const types = new Set();
@@ -256,10 +261,14 @@ const DataList = () => {
             options={[
               {
                 id: "preview",
-                label: "Preview image",
-                onClick: async () => {
+                label: "Quick Preview",
+                icon: <LuEye />,
+                onClick: () => {
+                  const item = contextMenu.item;
                   closeContextMenu();
-                  await handleOpenPreview(contextMenu.item);
+                  const group = filteredFiles.find((g) => g.items.some((i) => i.id === item.id));
+                  const groupItems = group ? group.items.map((i) => ({ path: i.file.fullPath, name: i.file.name })) : [{ path: item.file.fullPath, name: item.file.name }];
+                  openPreview(item.file.fullPath, groupItems);
                 },
               },
               {
@@ -303,6 +312,17 @@ const DataList = () => {
           />,
           document.body,
         )}
+      <PdfPreviewModal
+        isOpen={isOpen}
+        isLoading={isLoading}
+        imgSrc={imgSrc}
+        error={error}
+        currentPath={currentPath}
+        currentIndex={currentIndex}
+        fileList={fileList}
+        onClose={closePreview}
+        onNavigate={navigate}
+      />
     </div>
   );
 };

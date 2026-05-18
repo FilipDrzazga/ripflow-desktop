@@ -40,6 +40,10 @@ const api = Object.freeze({
     assertPath(filePath);
     return ipcRenderer.invoke("open-preview", filePath);
   },
+  readFileBuffer: (filePath) => {
+    assertPath(filePath);
+    return ipcRenderer.invoke("file:read-buffer", filePath);
+  },
   openInFolder: (filePath) => {
     assertPath(filePath);
     return ipcRenderer.invoke("open-in-folder", filePath);

@@ -3,6 +3,8 @@ import { createPortal } from "react-dom";
 import { notify } from "../../utils/notify";
 import { useStore } from "../../store/useStore";
 import ContextMenu from "../ContextMenu/ContextMenu";
+import PdfPreviewModal from "../PdfPreviewModal/PdfPreviewModal";
+import { usePdfPreview } from "../../hooks/usePdfPreview";
 import gsap from "gsap";
 import {
   LuRefreshCw,
@@ -441,6 +443,19 @@ const BatchHistory = () => {
     }
   }, []);
 
+  const {
+    openPreview,
+    closePreview,
+    navigate: navigatePreview,
+    isOpen: isPreviewOpen,
+    isLoading: isPreviewLoading,
+    imgSrc: previewImgSrc,
+    error: previewError,
+    currentPath: previewCurrentPath,
+    currentIndex: previewCurrentIndex,
+    fileList: previewFileList,
+  } = usePdfPreview();
+
   const activeContextFilePath = contextMenu?.file?.path || null;
 
   return (
@@ -677,12 +692,15 @@ const BatchHistory = () => {
             options={[
               {
                 id: "preview",
-                label: "Preview PDF",
+                label: "Quick Preview",
                 icon: <LuEye />,
-                onClick: async () => {
-                  const { file } = contextMenu;
+                onClick: () => {
+                  const { file, batch } = contextMenu;
                   setContextMenu(null);
-                  await handleOpenPreview(file.path);
+                  const batchFileList = batch.files
+                    .filter((f) => f.status !== "rolled_back")
+                    .map((f) => ({ path: f.path, name: f.name }));
+                  openPreview(file.path, batchFileList);
                 },
               },
               {
@@ -711,6 +729,17 @@ const BatchHistory = () => {
           />,
           document.body,
         )}
+      <PdfPreviewModal
+        isOpen={isPreviewOpen}
+        isLoading={isPreviewLoading}
+        imgSrc={previewImgSrc}
+        error={previewError}
+        currentPath={previewCurrentPath}
+        currentIndex={previewCurrentIndex}
+        fileList={previewFileList}
+        onClose={closePreview}
+        onNavigate={navigatePreview}
+      />
     </div>
   );
 };

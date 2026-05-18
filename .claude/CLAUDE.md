@@ -23,6 +23,7 @@
 | Animacje      | GSAP 2.1.2 + @gsap/react 2.1.2                |
 | Ikony         | React Icons 5.5.0 (Lucide `Lu*`)              |
 | PDF           | pdf-lib 1.17.1 (kopiowanie 1. strony)         |
+| PDF preview   | pdfjs-dist **v4** (renderowanie 1. strony do canvas → base64 JPEG) |
 | Ustawienia    | electron-store (persystentne JSON w userData) |
 | Baza danych   | better-sqlite3 (logi + held files, plik w storagePath) |
 | Dev tooling   | ESLint 9, Concurrently, wait-on               |
@@ -49,7 +50,7 @@ ripflow-desktop/
 │   │   │   ├── isPDF.js
 │   │   │   └── validateStoragePath.js # assertStorageFilePath — walidacja ścieżek vs storage root
 │   │   └── ipc/               # Handlery IPC (komunikacja main ↔ renderer)
-│   │       ├── index.js               # Rejestracja wszystkich handlerów
+│   │       ├── index.js               # Rejestracja wszystkich handlerów; zawiera też file:read-buffer
 │   │       ├── readFolders.js         # Skanowanie folderów, parsowanie plików
 │   │       ├── submitBatch.js         # Orkiestracja submitu batcha
 │   │       ├── createBatch.js         # Przenoszenie plików z rollbackiem (transakcja!)
@@ -64,11 +65,14 @@ ripflow-desktop/
 │   │   ├── index.jsx          # Mount React
 │   │   ├── store/
 │   │   │   └── useStore.jsx   # Zustand store — centralny stan aplikacji
+│   │   ├── hooks/
+│   │   │   └── usePdfPreview.js       # Hook: renderowanie PDF → JPEG przez pdfjs-dist, cache w Map, nawigacja
 │   │   ├── constants/
 │   │   │   └── printerColors.js       # PRINTER_COLORS: { DGEN, YOKO, YUMI } → { bg, color }
 │   │   ├── utils/
 │   │   │   └── notify.js              # Centralny helper: alert + log entry jednocześnie
 │   │   ├── components/        # Wszystkie komponenty mają własny *.module.css
+│   │   │   ├── PdfPreviewModal/       # Modal podglądu PDF (portal, blur backdrop, GSAP fade, nawigacja ←→)
 │   │   │   ├── TitleBar/              # Custom title bar z logo i window controls
 │   │   │   ├── NavBar/                # Nawigacja boczna (Print, Batch, Logs, Settings)
 │   │   │   ├── DataList/              # Lista plików do druku z checkboxami
@@ -302,6 +306,9 @@ window.api.clearLogs();  // usuwa wszystkie logi z DB
 window.api.getHeldFiles();       // zwraca { success, data: fileId[] }
 window.api.holdFile(fileId);     // dodaje fileId do held_files
 window.api.unholdFile(fileId);   // usuwa fileId z held_files
+
+// Pliki — odczyt bufora (używane przez usePdfPreview)
+window.api.readFileBuffer(filePath); // zwraca { success, data: base64string } — czyta plik przez main process
 
 // Dialogi
 window.api.showConfirm(message); // natywny dialog potwierdzenia Electrona; zwraca boolean
@@ -586,4 +593,9 @@ Alias `@` w UI → `./src/ui` (np. `import { useStore } from '@/store/useStore'`
 - Pole `workstation` w tabeli `logs` może być NULL (stare logi sprzed migracji) — `SessionLogs` renderuje pill warunkowo tylko gdy wartość jest niepusta
 - `heldIds` w store to `Set<string>` — synchronizowany z SQLite przez `loadHeldFiles()` przy starcie i `toggleHold()` przy zmianie
 - Brak testów automatycznych w projekcie
+- **pdfjs-dist musi być w wersji 4.x** — v5 używa `Map.prototype.getOrInsertComputed` niedostępnego w Chromium bundlowanym z Electron 40; nie upgraduj bez weryfikacji
+- **pdf.js w Electron:** renderer nie może ładować plików przez `file://` URI (contextIsolation blokuje dostęp). Zamiast tego `usePdfPreview` czyta plik przez IPC (`window.api.readFileBuffer`) → base64 → `Uint8Array` → `pdfjsLib.getDocument({ data })`. Nie zmieniaj tego na podejście URI.
+- `usePdfPreview` hook: module-level `Map` cache (klucz: filePath) — po pierwszym renderze kolejne otwarcia są natychmiastowe. Zwraca `{ openPreview, closePreview, navigate, isOpen, isLoading, imgSrc, error, currentPath, currentIndex, fileList }`
+- `PdfPreviewModal`: przyjmuje `fileList` (array `{ path, name }`) do nawigacji ←→ między plikami w tej samej grupie/batchu. W `BatchHistory` pomija pliki ze statusem `rolled_back` przy budowaniu listy nawigacji.
+- W `BatchHistory` hook jest destructurowany z prefixami (`isPreviewLoading`, `isPreviewOpen` itd.) żeby uniknąć konfliktu z lokalnym stanem `isLoading`.
 - **Przed usunięciem jakiegokolwiek kodu — zawsze zrób grep po całym projekcie.** Raporty audytu mogą przeoczyć importy lub użycia w nieoczywistych miejscach. Lepiej poświęcić 10 sekund na grep niż usunąć coś używanego.
