@@ -4,7 +4,7 @@ import fs from "fs";
 import { randomUUID } from "crypto";
 import { getSettings } from "../helpers/getSettings.js";
 import { getStorageRootPath } from "../helpers/getRootPath.js";
-import { parseCustomOrderCSV } from "../helpers/parseCustomOrderCSV.js";
+import { parseCustomOrderCSV, parseCSVContent } from "../helpers/parseCustomOrderCSV.js";
 import { scanCustomOrderFolder, matchFiles } from "../helpers/customOrderMatcher.js";
 import { saveOrder, getAllOrders } from "../helpers/customOrderHistory.js";
 import { LM_XML_POLY } from "../../shared/printWidths.js";
@@ -71,7 +71,7 @@ export function registerCustomOrderHandlers() {
         cachedFileNames = [];
         return { success: true, count: 0 };
       }
-      cachedFileNames = scanCustomOrderFolder(customOrderFolderPath);
+      cachedFileNames = await scanCustomOrderFolder(customOrderFolderPath);
       return { success: true, count: cachedFileNames.length };
     } catch (err) {
       return { success: false, error: err.message };
@@ -80,7 +80,29 @@ export function registerCustomOrderHandlers() {
 
   ipcMain.handle("customOrder:importCSV", async (_event, csvPath) => {
     try {
-      const parsed = parseCustomOrderCSV(csvPath);
+      const parsed = await parseCustomOrderCSV(csvPath);
+      const enriched = matchFiles(parsed, cachedFileNames);
+      const totalMeters = enriched.files.reduce((sum, f) => sum + f.metersToprint, 0);
+      const missingCount = enriched.files.filter((f) => !f.found).length;
+      return {
+        success: true,
+        data: {
+          poNumber: enriched.poNumber,
+          materialName: enriched.materialName,
+          printer: null,
+          files: enriched.files,
+          totalMeters,
+          missingCount,
+        },
+      };
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+  });
+
+  ipcMain.handle("customOrder:importCSVContent", async (_event, content) => {
+    try {
+      const parsed = parseCSVContent(content);
       const enriched = matchFiles(parsed, cachedFileNames);
       const totalMeters = enriched.files.reduce((sum, f) => sum + f.metersToprint, 0);
       const missingCount = enriched.files.filter((f) => !f.found).length;

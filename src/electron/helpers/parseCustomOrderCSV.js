@@ -1,4 +1,4 @@
-import fs from "fs";
+import fs from "fs/promises";
 
 function parseCSVRow(line) {
   const cols = [];
@@ -25,8 +25,7 @@ function parseCSVRow(line) {
   return cols;
 }
 
-export function parseCustomOrderCSV(csvPath) {
-  const content = fs.readFileSync(csvPath, "utf8");
+export function parseCSVContent(content) {
   const lines = content.split(/\r?\n/);
 
   if (lines.length < 2) {
@@ -81,4 +80,9 @@ export function parseCustomOrderCSV(csvPath) {
   }
 
   return { poNumber, materialName, files };
+}
+
+export async function parseCustomOrderCSV(csvPath) {
+  const content = await fs.readFile(csvPath, "utf8");
+  return parseCSVContent(content);
 }

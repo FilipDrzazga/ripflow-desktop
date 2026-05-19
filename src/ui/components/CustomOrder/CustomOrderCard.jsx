@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { notify } from "@/utils/notify";
-import { LuChevronRight, LuCheck, LuX, LuRefreshCw } from "react-icons/lu";
+import { LuChevronRight, LuCheck, LuX, LuRefreshCw, LuTrash2 } from "react-icons/lu";
 import { PRINTER_COLORS } from "@/constants/printerColors";
 import styles from "./CustomOrderCard.module.css";
 
 const PRINTERS = ["YOKO", "YUMI"];
 
-const CustomOrderCard = ({ group, onGenerated }) => {
+const CustomOrderCard = ({ group, onGenerated, onRemove }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [selectedPrinter, setSelectedPrinter] = useState(() => PRINTERS[Math.floor(Math.random() * PRINTERS.length)]);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -30,6 +30,7 @@ const CustomOrderCard = ({ group, onGenerated }) => {
   }
 
   const { poNumber, materialName, files = [], totalMeters = 0, missingCount = 0 } = group;
+
   const dotClass = missingCount > 0 ? styles.dot_partial : styles.dot_ready;
 
   const handleGenerate = async () => {
@@ -74,15 +75,19 @@ const CustomOrderCard = ({ group, onGenerated }) => {
           <span className={styles.poly_badge}>POLYESTERS</span>
         </div>
         <div className={styles.header_right}>
-          <span className={styles.header_pill}>PO {poNumber}</span>
-          <span className={styles.header_count}>{files.length} files</span>
-          <span className={styles.dot_sep} />
-          <span className={styles.header_count}>{totalMeters.toFixed(1)} m</span>
+          <span
+            className={styles.header_pill}
+            style={{ backgroundColor: "var(--bg-grey-light)", color: "var(--text-secondary)" }}
+          >
+            PO {poNumber}
+          </span>
+          <span className={styles.header_count}>
+            {files.length} {files.length === 1 ? "file" : "files"} · {totalMeters.toFixed(1)} m
+          </span>
           {missingCount > 0 && (
-            <>
-              <span className={styles.dot_sep} />
-              <span className={styles.header_missing}>{missingCount} missing</span>
-            </>
+            <span className={styles.header_missing}>
+              {missingCount} missing
+            </span>
           )}
         </div>
         <div className={styles.printer_toggles} onClick={(e) => e.stopPropagation()}>
@@ -105,18 +110,25 @@ const CustomOrderCard = ({ group, onGenerated }) => {
             );
           })}
         </div>
-        <button
-          type="button"
-          className={`${styles.generate_btn} ${isGenerated ? styles.btn_generated : ""}`}
-          title={isGenerated ? "XML generated" : isGenerating ? "Generating…" : "Generate XML"}
-          onClick={(e) => {
-            e.stopPropagation();
-            handleGenerate();
-          }}
-          disabled={isGenerating || isGenerated}
-        >
-          {isGenerated ? <LuCheck size={16} /> : <LuRefreshCw size={16} />}
-        </button>
+        <div className={styles.card_actions} onClick={(e) => e.stopPropagation()}>
+          <button
+            type="button"
+            className={`${styles.generate_btn} ${isGenerated ? styles.btn_generated : ""}`}
+            title={isGenerated ? "XML generated" : isGenerating ? "Generating…" : "Generate XML"}
+            onClick={handleGenerate}
+            disabled={isGenerating || isGenerated}
+          >
+            {isGenerated ? <LuCheck size={16} /> : <LuRefreshCw size={16} />}
+          </button>
+          <button
+            type="button"
+            className={styles.remove_btn}
+            title="Remove"
+            onClick={() => onRemove?.()}
+          >
+            <LuTrash2 size={16} />
+          </button>
+        </div>
         <LuChevronRight size={16} className={`${styles.chevron} ${isExpanded ? styles.chevron_open : ""}`} />
       </div>
 

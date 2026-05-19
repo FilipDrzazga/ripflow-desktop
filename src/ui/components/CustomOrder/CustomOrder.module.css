@@ -21,6 +21,18 @@
   flex-direction: column;
   min-height: 0;
   overflow: hidden;
+  border-radius: 20px;
+  box-shadow: var(--card-shadow);
+  background-color: var(--bg-white);
+}
+
+.right_topbar {
+  display: flex;
+  align-items: center;
+  height: 76px;
+  padding: 0 28px;
+  border-bottom: 1px solid var(--border-grey);
+  flex-shrink: 0;
 }
 
 .drop_zone {
@@ -79,10 +91,9 @@
 }
 
 .history_label {
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--text-secondary);
-  margin: 0 0 10px 2px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  margin: 0;
+  font-size: 20px;
+  font-weight: 500;
+  color: var(--text-primary);
+  white-space: nowrap;
 }

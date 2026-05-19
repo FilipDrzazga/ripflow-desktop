@@ -25,17 +25,22 @@ const CustomOrder = () => {
     for (const csvPath of filePaths) {
       const uid = crypto.randomUUID();
       setCsvGroups((prev) => [...prev, { uid, isParsing: true, csvPath }]);
-
-      const res = await window.api.customOrder.importCSV(csvPath);
-      if (res.success) {
-        setCsvGroups((prev) =>
-          prev.map((g) => (g.uid === uid ? { uid, isParsing: false, ...res.data } : g))
-        );
-      } else {
+      try {
+        const res = await window.api.customOrder.importCSV(csvPath);
+        if (res.success) {
+          setCsvGroups((prev) => prev.map((g) => (g.uid === uid ? { uid, isParsing: false, ...res.data } : g)));
+        } else {
+          setCsvGroups((prev) => prev.filter((g) => g.uid !== uid));
+          notify(
+            { type: "Error", title: "CSV import failed", message: res.error ?? "Could not parse CSV." },
+            { stage: "importCSV", code: "CSV_IMPORT_FAILED" },
+          );
+        }
+      } catch (err) {
         setCsvGroups((prev) => prev.filter((g) => g.uid !== uid));
         notify(
-          { type: "Error", title: "CSV import failed", message: res.error ?? "Could not parse CSV." },
-          { stage: "importCSV", code: "CSV_IMPORT_FAILED" }
+          { type: "Error", title: "CSV import failed", message: err?.message ?? "Could not parse CSV." },
+          { stage: "importCSV", code: "CSV_IMPORT_FAILED" },
         );
       }
     }
@@ -48,13 +53,33 @@ const CustomOrder = () => {
     }
   };
 
-  const handleDrop = (e) => {
+  const handleDrop = async (e) => {
     e.preventDefault();
     setIsDragging(false);
-    const paths = [...e.dataTransfer.files]
-      .filter((f) => f.name.toLowerCase().endsWith(".csv"))
-      .map((f) => f.path);
-    if (paths.length > 0) handleFilePaths(paths);
+    const csvFiles = [...e.dataTransfer.files].filter((f) => f.name.toLowerCase().endsWith(".csv"));
+    for (const file of csvFiles) {
+      const uid = crypto.randomUUID();
+      setCsvGroups((prev) => [...prev, { uid, isParsing: true, csvPath: file.name }]);
+      try {
+        const content = await file.text();
+        const res = await window.api.customOrder.importCSVContent(content);
+        if (res.success) {
+          setCsvGroups((prev) => prev.map((g) => (g.uid === uid ? { uid, isParsing: false, ...res.data } : g)));
+        } else {
+          setCsvGroups((prev) => prev.filter((g) => g.uid !== uid));
+          notify(
+            { type: "Error", title: "CSV import failed", message: res.error ?? "Could not parse CSV." },
+            { stage: "importCSV", code: "CSV_IMPORT_FAILED" },
+          );
+        }
+      } catch (err) {
+        setCsvGroups((prev) => prev.filter((g) => g.uid !== uid));
+        notify(
+          { type: "Error", title: "CSV import failed", message: err?.message ?? "Could not parse CSV." },
+          { stage: "importCSV", code: "CSV_IMPORT_FAILED" },
+        );
+      }
+    }
   };
 
   const handleDragOver = (e) => {
@@ -89,14 +114,21 @@ const CustomOrder = () => {
         {csvGroups.length > 0 && (
           <div className={styles.cards_list}>
             {csvGroups.map((group) => (
-              <CustomOrderCard key={group.uid} group={group} onGenerated={handleGenerated} />
+              <CustomOrderCard
+                key={group.uid}
+                group={group}
+                onGenerated={handleGenerated}
+                onRemove={() => setCsvGroups((prev) => prev.filter((g) => g.uid !== group.uid))}
+              />
             ))}
           </div>
         )}
       </div>
 
       <div className={styles.right_column}>
-        <h3 className={styles.history_label}>Historia importów</h3>
+        <div className={styles.right_topbar}>
+          <h2 className={styles.history_label}>Custom Order History</h2>
+        </div>
         <CustomOrderHistory history={history} />
       </div>
     </div>

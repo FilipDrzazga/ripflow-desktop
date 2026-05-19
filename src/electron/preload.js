@@ -107,6 +107,10 @@ const api = Object.freeze({
       assertPath(csvPath);
       return ipcRenderer.invoke("customOrder:importCSV", csvPath);
     },
+    importCSVContent: (content) => {
+      if (!isNonEmptyString(content)) throw new TypeError("CSV content must be a non-empty string.");
+      return ipcRenderer.invoke("customOrder:importCSVContent", content);
+    },
     generateXML: (group) => {
       if (!isPlainObject(group)) throw new TypeError("Group must be a plain object.");
       return ipcRenderer.invoke("customOrder:generateXML", group);
