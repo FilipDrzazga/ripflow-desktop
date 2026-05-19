@@ -1,9 +1,10 @@
-import { LuPrinter, LuLayers, LuScrollText, LuSettings } from "react-icons/lu";
+import { LuPrinter, LuLayers, LuScrollText, LuSettings, LuFactory } from "react-icons/lu";
 import styles from "./NavBar.module.css";
 
 const TOP_ITEMS = [
   { id: "print", label: "Print", icon: LuPrinter },
   { id: "batch", label: "Batch", icon: LuLayers },
+  { id: "customOrder", label: "Custom Orders", icon: LuFactory },
   { id: "logs", label: "Logs", icon: LuScrollText },
 ];
 

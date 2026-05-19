@@ -13,6 +13,7 @@ import TitleBar from "./components/TitleBar/TitleBar";
 import BatchHistory from "./components/BatchHistory/BatchHistory";
 import SessionLogs from "./components/SessionLogs/SessionLogs";
 import Settings from "./components/Settings/Settings";
+import CustomOrder from "./components/CustomOrder/CustomOrder";
 
 const App = () => {
   const refreshFiles = useStore((state) => state.refreshFiles);
@@ -52,6 +53,7 @@ const App = () => {
               </>
             )}
             {activeView === "batch" && <BatchHistory />}
+            {activeView === "customOrder" && <CustomOrder />}
             {activeView === "logs" && <SessionLogs />}
             {activeView === "settings" && <Settings />}
           </main>

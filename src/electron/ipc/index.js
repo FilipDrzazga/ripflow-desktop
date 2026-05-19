@@ -7,6 +7,7 @@ import { openPreview } from "./openPreview.js";
 import { openInFolder } from "./openInFolder.js";
 import { readPrintedFolder, readSingleBatch, parseBatchFolderName } from "./readPrintedFolder.js";
 import { rollbackBatchFromHistory, rollbackFileFromHistory, regenerateXmlForBatch, deleteBatchFolder } from "./batchHistoryHandlers.js";
+import { registerCustomOrderHandlers } from "./customOrderHandlers.js";
 import { getStorageRootPath } from "../helpers/getRootPath.js";
 import { parsePrintFileName } from "../helpers/parseFileName.js";
 import { getSettings, setSettings } from "../helpers/getSettings.js";
@@ -79,6 +80,7 @@ const processWatchEvent = async (relativePath) => {
 
 export function registerIpcHandlers() {
   initDb();
+  registerCustomOrderHandlers();
 
   ipcMain.handle("logs:getAll", () => {
     return { success: true, data: getAllLogs() };
@@ -291,7 +293,7 @@ export function registerIpcHandlers() {
   });
 
   ipcMain.handle("settings:set", async (_event, settings) => {
-    const { storagePath, xmlPath, workstationName } = settings ?? {};
+    const { storagePath, xmlPath, workstationName, customOrderFolderPath } = settings ?? {};
     if (!storagePath || !xmlPath) {
       return { success: false, error: "Both paths are required." };
     }
@@ -305,7 +307,14 @@ export function registerIpcHandlers() {
     } catch {
       return { success: false, error: `XML path does not exist: ${xmlPath}` };
     }
-    setSettings({ storagePath, xmlPath, workstationName });
+    if (customOrderFolderPath) {
+      try {
+        await fs.promises.access(customOrderFolderPath);
+      } catch {
+        return { success: false, error: `Custom Order folder path does not exist: ${customOrderFolderPath}` };
+      }
+    }
+    setSettings({ storagePath, xmlPath, workstationName, customOrderFolderPath });
     return { success: true };
   });
 

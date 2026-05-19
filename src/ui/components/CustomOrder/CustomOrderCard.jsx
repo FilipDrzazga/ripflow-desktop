@@ -1,0 +1,167 @@
+import { useState } from "react";
+import { notify } from "@/utils/notify";
+import { LuChevronRight, LuCheck, LuX, LuRefreshCw } from "react-icons/lu";
+import { PRINTER_COLORS } from "@/constants/printerColors";
+import styles from "./CustomOrderCard.module.css";
+
+const PRINTERS = ["YOKO", "YUMI"];
+
+const CustomOrderCard = ({ group, onGenerated }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [selectedPrinter, setSelectedPrinter] = useState(() => PRINTERS[Math.floor(Math.random() * PRINTERS.length)]);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [isGenerated, setIsGenerated] = useState(false);
+
+  if (group.isParsing) {
+    return (
+      <div className={styles.card}>
+        <div className={`${styles.card_header} ${styles.parsing}`}>
+          <span className={`${styles.status_dot} ${styles.dot_parsing}`} />
+          <div className={styles.header_meta}>
+            <span className={styles.material_name}>Importing CSV…</span>
+            <span className={styles.header_subtitle}>{group.csvPath?.replace(/.*[/\\]/, "") ?? ""}</span>
+          </div>
+        </div>
+        <div className={styles.parsing_bar}>
+          <div className={styles.parsing_bar_inner} />
+        </div>
+      </div>
+    );
+  }
+
+  const { poNumber, materialName, files = [], totalMeters = 0, missingCount = 0 } = group;
+  const dotClass = missingCount > 0 ? styles.dot_partial : styles.dot_ready;
+
+  const handleGenerate = async () => {
+    setIsGenerating(true);
+    try {
+      const res = await window.api.customOrder.generateXML({
+        poNumber,
+        materialName,
+        printer: selectedPrinter,
+        files,
+        totalMeters,
+      });
+      if (res.success) {
+        setIsGenerated(true);
+        notify(
+          { type: "Success", title: "XML generated", message: `Order ${poNumber} sent to ${selectedPrinter}.` },
+          { stage: "generateXML", code: "XML_GENERATED" },
+        );
+        onGenerated?.();
+      } else {
+        notify(
+          { type: "Error", title: "XML generation failed", message: res.error ?? "Unknown error." },
+          { stage: "generateXML", code: "XML_GENERATION_FAILED" },
+        );
+      }
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  return (
+    <div className={styles.card}>
+      <div
+        className={styles.card_header}
+        onClick={() => setIsExpanded((prev) => !prev)}
+        role="button"
+        aria-expanded={isExpanded}
+      >
+        <span className={`${styles.status_dot} ${dotClass}`} />
+        <div className={styles.name_and_badge}>
+          <span className={styles.material_name}>{materialName}</span>
+          <span className={styles.poly_badge}>POLYESTERS</span>
+        </div>
+        <div className={styles.header_right}>
+          <span className={styles.header_pill}>PO {poNumber}</span>
+          <span className={styles.header_count}>{files.length} files</span>
+          <span className={styles.dot_sep} />
+          <span className={styles.header_count}>{totalMeters.toFixed(1)} m</span>
+          {missingCount > 0 && (
+            <>
+              <span className={styles.dot_sep} />
+              <span className={styles.header_missing}>{missingCount} missing</span>
+            </>
+          )}
+        </div>
+        <div className={styles.printer_toggles} onClick={(e) => e.stopPropagation()}>
+          {PRINTERS.map((p) => {
+            const isActive = selectedPrinter === p;
+            const colors = PRINTER_COLORS[p];
+            return (
+              <button
+                key={p}
+                type="button"
+                className={`${styles.printer_toggle} ${isActive ? styles.printer_toggle_active : ""}`}
+                style={isActive ? { backgroundColor: colors.bg, color: colors.color } : {}}
+                onClick={() => {
+                  if (!isGenerating && !isGenerated) setSelectedPrinter(p);
+                }}
+                disabled={isGenerating || isGenerated}
+              >
+                {p}
+              </button>
+            );
+          })}
+        </div>
+        <button
+          type="button"
+          className={`${styles.generate_btn} ${isGenerated ? styles.btn_generated : ""}`}
+          title={isGenerated ? "XML generated" : isGenerating ? "Generating…" : "Generate XML"}
+          onClick={(e) => {
+            e.stopPropagation();
+            handleGenerate();
+          }}
+          disabled={isGenerating || isGenerated}
+        >
+          {isGenerated ? <LuCheck size={16} /> : <LuRefreshCw size={16} />}
+        </button>
+        <LuChevronRight size={16} className={`${styles.chevron} ${isExpanded ? styles.chevron_open : ""}`} />
+      </div>
+
+      {isExpanded && (
+        <div className={styles.content}>
+          <table className={styles.file_table}>
+            <tbody>
+              {files.map((file, idx) => (
+                <tr key={idx} className={styles.file_row}>
+                  <td className={`${styles.cell} ${styles.cell_icon}`}>
+                    {file.found ? (
+                      <LuCheck size={14} className={styles.icon_found} />
+                    ) : (
+                      <LuX size={14} className={styles.icon_missing} />
+                    )}
+                  </td>
+                  <td className={styles.cell}>
+                    <div className={styles.file_name_wrap}>
+                      <span className={`${styles.file_name} ${!file.found ? styles.file_name_missing : ""}`}>
+                        {file.fileName}
+                      </span>
+                      {!file.found && file.suggestion && <span className={styles.suggestion}>→ {file.suggestion}</span>}
+                    </div>
+                  </td>
+                  <td className={`${styles.cell} ${styles.cell_meters}`}>{file.metersToprint.toFixed(1)}m</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          <div className={styles.footer}>
+            {missingCount > 0 ? (
+              <span className={styles.footer_missing}>
+                {missingCount} file{missingCount !== 1 ? "s" : ""} not found on disk
+              </span>
+            ) : (
+              <span>
+                {files.length} files · {totalMeters.toFixed(1)}m total
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default CustomOrderCard;
