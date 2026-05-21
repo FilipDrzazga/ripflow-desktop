@@ -2,15 +2,55 @@ import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { useStore } from "../../store/useStore";
 import { notify } from "../../utils/notify";
-import Badge from "../Badge/Badge";
 import ContextMenu from "../ContextMenu/ContextMenu";
-import DataDaysCounter from "../DataDaysCounter/DataDaysCounter";
 import PdfPreviewModal from "../PdfPreviewModal/PdfPreviewModal";
 import { usePdfPreview } from "../../hooks/usePdfPreview";
 import { estimatePrintLength } from "../../../shared/estimatePrintLength";
 import { FiInbox, FiLock, FiUnlock } from "react-icons/fi";
-import { LuEye } from "react-icons/lu";
+import {
+  LuClock,
+  LuFile,
+  LuRuler,
+  LuScissors,
+  LuFlaskConical,
+  LuUtensils,
+  LuSofa,
+  LuLeaf,
+  LuCircleHelp,
+  LuCircleCheck,
+  LuCircleX,
+  LuTriangleAlert,
+  LuEye,
+} from "react-icons/lu";
+import { PiPolygon } from "react-icons/pi";
 import style from "./DataList.module.css";
+
+const formatFileSize = (bytes) => {
+  if (bytes == null) return null;
+  if (bytes >= 1048576) return `${(bytes / 1048576).toFixed(1)} MB`;
+  if (bytes >= 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${bytes} B`;
+};
+
+const PRINT_TYPE_MAP = {
+  LM:        { Icon: LuRuler,        color: "#185FA5", label: "LM" },
+  FQ:        { Icon: LuScissors,     color: "#534AB7", label: "FQ" },
+  SAMPLE:    { Icon: LuFlaskConical, color: "#534AB7", label: "Sample" },
+  TEA_TOWEL: { Icon: LuUtensils,     color: "#0F6E56", label: "TT" },
+  CUSHION:   { Icon: LuSofa,         color: "#993C1D", label: "Cushion" },
+};
+
+const MATERIAL_MAP = {
+  Cottons:    { Icon: LuLeaf,       color: "#3B6D11", label: "Cottons" },
+  Polyesters: { Icon: PiPolygon,    color: "#185FA5", label: "Polyesters" },
+  Unknown:    { Icon: LuCircleHelp, color: "#888780", label: "Unknown" },
+};
+
+const STATUS_MAP = {
+  READY:   { Icon: LuCircleCheck,   color: "#3B6D11" },
+  INVALID: { Icon: LuCircleX,       color: "#A32D2D" },
+  WARNING: { Icon: LuTriangleAlert, color: "#BA7517" },
+};
 
 const DataList = () => {
   const filteredFiles = useStore((state) => state.filteredFiles);
@@ -105,12 +145,7 @@ const DataList = () => {
   const handleItemContextMenu = (e, item) => {
     e.preventDefault();
     e.stopPropagation();
-
-    setContextMenu({
-      item,
-      x: e.clientX,
-      y: e.clientY,
-    });
+    setContextMenu({ item, x: e.clientX, y: e.clientY });
   };
 
   const handleBackdropContextMenu = (event) => {
@@ -127,12 +162,9 @@ const DataList = () => {
     }
 
     let nextItem = null;
-
     filteredFiles.forEach((group) => {
       group.items.forEach((item) => {
-        if (item.id === nextItemId) {
-          nextItem = item;
-        }
+        if (item.id === nextItemId) nextItem = item;
       });
     });
 
@@ -141,25 +173,16 @@ const DataList = () => {
       return;
     }
 
-    setContextMenu({
-      item: nextItem,
-      x: event.clientX,
-      y: event.clientY,
-    });
+    setContextMenu({ item: nextItem, x: event.clientX, y: event.clientY });
   };
 
   useEffect(() => {
     if (!contextMenu) return undefined;
-
     const handleEscape = (event) => {
       if (event.key === "Escape") closeContextMenu();
     };
-
     document.addEventListener("keydown", handleEscape);
-
-    return () => {
-      document.removeEventListener("keydown", handleEscape);
-    };
+    return () => document.removeEventListener("keydown", handleEscape);
   }, [contextMenu]);
 
   if (!hasItems) {
@@ -177,17 +200,15 @@ const DataList = () => {
     <div className={style.list_container}>
       {filteredFiles.map((group, groupId) => {
         const groupIds = group.items.map((item) => item.id);
-
         const groupSelectedCount = groupIds.filter((id) => selectedIds.has(id)).length;
-
         const isGroupSelected = groupIds.length > 0 && groupSelectedCount === groupIds.length;
         const isGroupIndeterminate = groupSelectedCount > 0 && !isGroupSelected;
-
         const unqGroupId = `grp-${groupId}-${group.printGroup}`;
         const groupHasSelectable =
           !hasSelection ||
           !lockMaterial ||
           group.items.some((item) => item.status !== "INVALID" && item.materialType === lockMaterial);
+
         return (
           <div key={unqGroupId} className={style.list_content}>
             <label htmlFor={unqGroupId} className={style.list_title}>
@@ -208,6 +229,7 @@ const DataList = () => {
             <ul className={style.list_items}>
               {group.items.map((item) => {
                 const isInvalid = item.status === "INVALID";
+                const isWarning = item.status === "WARNING";
                 const isLocked = hasSelection && lockMaterial && item.materialType !== lockMaterial;
                 const isHeld = heldIds.has(item.id);
 
@@ -216,11 +238,29 @@ const DataList = () => {
                 else if (isHeld) tooltip = "File is on hold";
                 else if (isLocked) tooltip = `Cannot mix ${lockMaterial} with ${item.materialType}`;
 
+                const age = item.diffDays;
+                const ageColor = age <= 1 ? "#3B6D11" : age === 2 ? "#D4860E" : age === 3 ? "#C05208" : "#A32D2D";
+                const ageLabel = age === 0 ? "New" : `${age}d`;
+
+                const printTypeDef = PRINT_TYPE_MAP[item.printTypeCode];
+                const materialDef = MATERIAL_MAP[item.materialType];
+                const statusDef = STATUS_MAP[item.status];
+
+                const rowClasses = [
+                  style.list_item,
+                  isHeld ? style.list_item_held : null,
+                  isInvalid ? style.list_item_invalid : null,
+                  isWarning ? style.list_item_warning : null,
+                  activeContextItemId === item.id ? style.list_item_active : null,
+                ]
+                  .filter(Boolean)
+                  .join(" ");
+
                 return (
                   <li
                     key={item.id}
                     data-context-item-id={item.id}
-                    className={`${style.list_item} ${isHeld ? style.list_item_held : ""} ${activeContextItemId === item.id ? style.list_item_active : ""}`}
+                    className={rowClasses}
                     onContextMenu={(e) => handleItemContextMenu(e, item)}
                   >
                     <div className={style.item_info}>
@@ -238,10 +278,37 @@ const DataList = () => {
                       </label>
                     </div>
                     <div className={style.item_badges}>
-                      <DataDaysCounter diffDays={item.diffDays} />
-                      <Badge type={item.printType} badgeText={item.printType} />
-                      <Badge type={item.materialType} badgeText={item.materialType} />
-                      <Badge type={item.status} badgeText={item.status} />
+                      <span className={`${style.tag} ${style.tag_age}`} style={{ color: ageColor }}>
+                        <LuClock style={{ fontSize: 19, color: ageColor }} />
+                        <span>{ageLabel}</span>
+                      </span>
+                      <span className={`${style.tag} ${style.tag_size}`}>
+                        {item.fileSizeBytes != null && (
+                          <>
+                            <LuFile style={{ fontSize: 19, color: "#9ca3af" }} />
+                            <span>{formatFileSize(item.fileSizeBytes)}</span>
+                          </>
+                        )}
+                      </span>
+                      <span className={`${style.tag} ${style.tag_type}`}>
+                        {printTypeDef && (
+                          <>
+                            <printTypeDef.Icon style={{ fontSize: 19, color: printTypeDef.color }} />
+                            <span>{printTypeDef.label}</span>
+                          </>
+                        )}
+                      </span>
+                      <span className={`${style.tag} ${style.tag_material}`}>
+                        {materialDef && (
+                          <>
+                            <materialDef.Icon style={{ fontSize: 19, color: materialDef.color }} />
+                            <span>{materialDef.label}</span>
+                          </>
+                        )}
+                      </span>
+                      <span className={`${style.tag} ${style.tag_status}`}>
+                        {statusDef && <statusDef.Icon style={{ fontSize: 19, color: statusDef.color }} />}
+                      </span>
                     </div>
                   </li>
                 );
@@ -267,7 +334,9 @@ const DataList = () => {
                   const item = contextMenu.item;
                   closeContextMenu();
                   const group = filteredFiles.find((g) => g.items.some((i) => i.id === item.id));
-                  const groupItems = group ? group.items.map((i) => ({ path: i.file.fullPath, name: i.file.name })) : [{ path: item.file.fullPath, name: item.file.name }];
+                  const groupItems = group
+                    ? group.items.map((i) => ({ path: i.file.fullPath, name: i.file.name }))
+                    : [{ path: item.file.fullPath, name: item.file.name }];
                   openPreview(item.file.fullPath, groupItems);
                 },
               },

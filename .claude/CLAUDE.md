@@ -88,9 +88,8 @@ ripflow-desktop/
 │   │   │   ├── Settings/              # Widok ustawień — wybór ścieżek storage i XML
 │   │   │   ├── StartupLoader/         # Progress bar przy ładowaniu
 │   │   │   ├── AlertsHost/            # Toast notyfikacje (stacked, auto-dismiss 3s)
-│   │   │   ├── Badge/                 # Kolorowe badges (print type, material, status)
-│   │   │   ├── ContextMenu/           # Portal-based popup menu
-│   │   │   └── DataDaysCounter/       # Pasek wieku pliku (NEW → X DAYS, color scale)
+│   │   │   ├── Badge/                 # Kolorowe badges — komponent istnieje, ale aktualnie nieużywany w DataList
+│   │   │   └── ContextMenu/           # Portal-based popup menu
 │   │   ├── assets/
 │   │   │   └── image/
 │   │   │       └── Maake_Logo.webp    # Logo wyświetlane w TitleBar
@@ -164,9 +163,10 @@ Nawigacja przez **NavBar** (lewa kolumna). Layout: `TitleBar` (top) + `NavBar` (
 
 ```js
 {
-  name, ext, fullPath, dir,             // metadane pliku
+  file: { name, ext, dir, fullPath },   // metadane pliku — UWAGA: zagnieżdżone pod `file`, nie na top-level
   orderId, customerName, xOfY,          // dane zamówienia
-  printTypeCode, qty, material, size,   // dane produktu
+  printTypeCode, printType,             // kod ("LM","FQ","SAMPLE","TEA_TOWEL","CUSHION") + label ("Linear Meter" itd.)
+  qty, material, size,                  // dane produktu
   width, height,                        // wymiary w mm
   status: "READY" | "INVALID",
   errors: [], warnings: []
@@ -503,9 +503,34 @@ Widok logów sesji (`src/ui/components/SessionLogs/`):
 
 Toast system: max 3 widoczne, auto-dismiss po 3s, expand on hover, GSAP animations. Kolory: Error (red), Warning (yellow), Success (green).
 
-### `DataDaysCounter`
+### `DataList`
 
-Progress bar → wiek pliku: "NEW" (zielony) → X DAYS (żółty → pomarańczowy → czerwony) z glow effect.
+Lista plików inbox z checkboxami. Każdy wiersz renderuje pięć tagów o **stałej szerokości** (wyrównanie kolumnowe):
+
+| Slot | Klasa CSS | Szerokość | Treść |
+|------|-----------|-----------|-------|
+| Wiek | `tag_age` | 54px | `LuClock` + "New" / "Xd" |
+| Rozmiar | `tag_size` | 74px | `LuFile` + "X.X MB" |
+| Typ druku | `tag_type` | 82px | ikona + skrót |
+| Materiał | `tag_material` | 100px | ikona + nazwa |
+| Status | `tag_status` | 38px | sama ikona |
+
+Każdy slot jest zawsze renderowany (pusty gdy brak danych) — gwarantuje wyrównanie między wierszami. Zawartość wyśrodkowana (`justify-content: center`).
+
+**Skale kolorów tagu wieku** (`item.diffDays`):
+- 0–1 dni → `#3B6D11` (zielony)
+- 2 dni → `#D4860E` (jasny pomarańcz)
+- 3 dni → `#C05208` (ciemniejszy pomarańcz)
+- 4+ dni → `#A32D2D` (czerwony)
+
+**Lookup tables (module-level constants):**
+- `PRINT_TYPE_MAP`: `LM → LuRuler`, `FQ → LuScissors`, `SAMPLE → LuFlaskConical`, `TEA_TOWEL → LuUtensils`, `CUSHION → LuSofa`
+- `MATERIAL_MAP`: `Cottons → LuLeaf`, `Polyesters → PiPolygon` (react-icons/pi), `Unknown → LuCircleHelp`
+- `STATUS_MAP`: `READY → LuCircleCheck`, `INVALID → LuCircleX`, `WARNING → LuTriangleAlert`
+
+**Warianty wiersza:** `list_item_invalid` (czerwony border + muted filename), `list_item_warning` (amber border), `list_item_held` (czerwone tło).
+
+**Dane z `item`:** `item.diffDays`, `item.fileSizeBytes`, `item.printTypeCode`, `item.materialType`, `item.status`, `item.file.name`, `item.file.fullPath`.
 
 ### `ContextMenu`
 
@@ -599,3 +624,6 @@ Alias `@` w UI → `./src/ui` (np. `import { useStore } from '@/store/useStore'`
 - `PdfPreviewModal`: przyjmuje `fileList` (array `{ path, name }`) do nawigacji ←→ między plikami w tej samej grupie/batchu. W `BatchHistory` pomija pliki ze statusem `rolled_back` przy budowaniu listy nawigacji.
 - W `BatchHistory` hook jest destructurowany z prefixami (`isPreviewLoading`, `isPreviewOpen` itd.) żeby uniknąć konfliktu z lokalnym stanem `isLoading`.
 - **Przed usunięciem jakiegokolwiek kodu — zawsze zrób grep po całym projekcie.** Raporty audytu mogą przeoczyć importy lub użycia w nieoczywistych miejscach. Lepiej poświęcić 10 sekund na grep niż usunąć coś używanego.
+- `DataDaysCounter` komponent został usunięty — wiek pliku renderowany jest inline w `DataList` jako tag z ikoną `LuClock`; nie odtwarzaj `DataDaysCounter`.
+- `Badge` komponent istnieje w katalogu, ale **nie jest używany** w `DataList` — print type, materiał i status renderowane są jako inline tagi z ikonami Lu* / PiPolygon.
+- `parseFileName` zwraca dane pliku zagnieżdżone pod `file: { name, ext, dir, fullPath }` — dostęp przez `item.file.name`, nie `item.name`.

@@ -26,7 +26,7 @@ async function renderFirstPageToJpeg(filePath) {
   const pdf = await pdfjsLib.getDocument({ data }).promise;
   const page = await pdf.getPage(1);
 
-  const viewport = page.getViewport({ scale: 1.5 });
+  const viewport = page.getViewport({ scale: 1.0 });
   const canvas = document.createElement("canvas");
   canvas.width = viewport.width;
   canvas.height = viewport.height;

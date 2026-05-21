@@ -221,23 +221,6 @@ const BatchHistory = () => {
     });
   };
 
-  // When search is active, auto-expand all days and batches so results are
-  // immediately visible. useEffect (not useLayoutEffect) is intentional: sync
-  // DOM mutations from useLayoutEffect can prevent focus from returning to the
-  // search input after Electron's native confirm dialogs.
-  useEffect(() => {
-    if (!searchQuery.trim()) return;
-    setExpandedDays((prev) => {
-      const next = new Set(prev);
-      dayGroups.forEach((d) => next.add(d.date));
-      return next;
-    });
-    setExpandedBatches((prev) => {
-      const next = new Set(prev);
-      dayGroups.forEach((d) => d.batches.forEach((b) => next.add(b.path)));
-      return next;
-    });
-  }, [searchQuery, dayGroups]);
 
   const filteredDayGroups = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();

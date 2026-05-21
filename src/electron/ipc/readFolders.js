@@ -97,6 +97,7 @@ export const readFolders = async ({ onProgress } = {}) => {
           materialType: getMaterialType(meta.material),
           createdAt: fileStats.birthtime,
           diffDays: getFileAgeInDays(fileStats),
+          fileSizeBytes: fileStats.size,
           ...meta,
         };
       });

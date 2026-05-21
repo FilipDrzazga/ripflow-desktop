@@ -78,6 +78,15 @@
   height: 50px;
   padding: 0 8px;
   border-radius: 14px;
+  border: 1px solid transparent;
+}
+
+.list_item_invalid {
+  border-color: #A32D2D;
+}
+
+.list_item_warning {
+  border-color: #BA7517;
 }
 
 .list_item:hover,
@@ -89,16 +98,15 @@
   justify-content: flex-start;
   align-items: center;
   gap: 10px;
-  width: 70%;
+  flex: 1;
+  min-width: 0;
   height: 100%;
 }
 .item_badges {
   display: flex;
   align-items: center;
-  justify-content: flex-start;
-  width: 30%;
+  flex-shrink: 0;
   height: 100%;
-  /* background-color: purple; */
 }
 .item_name {
   display: flex;
@@ -110,6 +118,28 @@
   font-weight: 400;
   color: var(--text-primary);
   cursor: default;
+}
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 0 8px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.tag_age      { width: 62px; }
+.tag_size     { width: 84px; }
+.tag_type     { width: 92px; }
+.tag_material { width: 114px; }
+.tag_status   { width: 38px; }
+
+.list_item_invalid .item_name {
+  color: var(--text-secondary);
 }
 
 .checkbox {
