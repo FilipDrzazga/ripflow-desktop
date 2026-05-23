@@ -1,7 +1,13 @@
 export const createBatchIds = (batchInfo) => {
   const getPrintGroupArr = batchInfo.map((item) => item.printGroup);
   const uniquePrintGroups = [...new Set(getPrintGroupArr)];
-  const printGroup = uniquePrintGroups.length === 1 ? uniquePrintGroups[0] : "SAMPLES";
+  const GROUP_NAME_OVERRIDES = {
+    "Neraki Waterproof Canvas FR (Water Repellant)": "Neraki",
+  };
+
+  const printGroup = uniquePrintGroups.length === 1
+    ? (GROUP_NAME_OVERRIDES[uniquePrintGroups[0]] ?? uniquePrintGroups[0])
+    : "SAMPLES";
 
   const now = new Date();
   const day = String(now.getDate()).padStart(2, "0");

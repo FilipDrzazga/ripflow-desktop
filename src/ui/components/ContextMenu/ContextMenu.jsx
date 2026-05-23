@@ -1,5 +1,6 @@
-import { useLayoutEffect, useRef } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { FiEye, FiFolder, FiShoppingBag, FiX } from "react-icons/fi";
+import { HiChevronRight } from "react-icons/hi2";
 import style from "./ContextMenu.module.css";
 
 const EDGE_OFFSET = 12;
@@ -14,6 +15,17 @@ const resolveIcon = (option) => {
 
 const ContextMenu = ({ id, anchorX, anchorY, options, onClose, onBackdropContextMenu }) => {
   const menuRef = useRef(null);
+  const [activeSubmenu, setActiveSubmenu] = useState(null);
+  const hideTimerRef = useRef(null);
+
+  const showSubmenu = (id) => {
+    clearTimeout(hideTimerRef.current);
+    setActiveSubmenu(id);
+  };
+
+  const scheduleHideSubmenu = () => {
+    hideTimerRef.current = setTimeout(() => setActiveSubmenu(null), 150);
+  };
 
   useLayoutEffect(() => {
     const menu = menuRef.current;
@@ -69,6 +81,48 @@ const ContextMenu = ({ id, anchorX, anchorY, options, onClose, onBackdropContext
         {options.map((option) => {
           if (option.separator) {
             return <div key={option.id} className={style.menu_divider} aria-hidden="true" />;
+          }
+
+          if (option.children) {
+            return (
+              <div
+                key={option.id}
+                className={style.menu_item_wrapper}
+                onMouseEnter={() => showSubmenu(option.id)}
+                onMouseLeave={scheduleHideSubmenu}
+              >
+                <button
+                  type="button"
+                  className={`${style.menu_item} ${style.hasSubmenu} ${option.danger ? style.menu_item_danger : ""}`}
+                  role="menuitem"
+                  aria-haspopup="true"
+                  aria-expanded={activeSubmenu === option.id}
+                >
+                  <span className={style.menu_item_icon}>{resolveIcon(option)}</span>
+                  {option.label}
+                  <span className={style.arrow}><HiChevronRight /></span>
+                </button>
+                {activeSubmenu === option.id && (
+                  <div className={style.submenu} role="menu" onMouseEnter={() => showSubmenu(option.id)}>
+                    {option.children.map((child) => (
+                      <button
+                        key={child.id}
+                        type="button"
+                        className={`${style.menu_item} ${child.danger ? style.menu_item_danger : ""}`}
+                        onClick={() => {
+                          onClose();
+                          child.onClick();
+                        }}
+                        role="menuitem"
+                      >
+                        {child.icon && <span className={style.menu_item_icon}>{child.icon}</span>}
+                        {child.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
           }
 
           return (

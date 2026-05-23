@@ -1,0 +1,147 @@
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 3100;
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.modal {
+  position: fixed;
+  z-index: 3101;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: var(--bg-white);
+  border-radius: 20px;
+  padding: 28px;
+  min-width: 360px;
+  max-width: 480px;
+  box-shadow: var(--card-shadow);
+}
+
+.title {
+  margin: 0 0 4px;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.subtitle {
+  margin: 0 0 16px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.label {
+  margin: 0 0 12px;
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+.reasons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.reason_pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 16px;
+  border-radius: 10px;
+  border: 1px solid var(--border-grey);
+  background: var(--bg-white);
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  box-shadow: var(--card-shadow);
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.reason_pill:not(.reason_pill_active):hover {
+  background-color: var(--bg-grey-light);
+}
+
+.reason_pill_active {
+  background-color: var(--bg-black);
+  color: var(--text-white);
+  border-color: var(--border-black);
+}
+
+.other_input {
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--border-grey);
+  background: var(--bg-white);
+  color: var(--text-primary);
+  font-size: 14px;
+  outline: none;
+  margin-bottom: 16px;
+  box-shadow: var(--card-shadow);
+  transition: border-color 0.2s ease;
+}
+
+.other_input:focus {
+  border-color: var(--border-black);
+}
+
+.other_input::placeholder {
+  color: var(--text-secondary);
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.cancel_btn {
+  padding: 9px 20px;
+  border-radius: 10px;
+  border: 1px solid var(--border-grey);
+  background: var(--bg-white);
+  color: var(--text-secondary);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  box-shadow: var(--card-shadow);
+  transition: background-color 0.15s ease;
+}
+
+.cancel_btn:hover {
+  background-color: var(--bg-grey-light);
+}
+
+.confirm_btn {
+  padding: 9px 20px;
+  border-radius: 10px;
+  border: none;
+  background: #ffe7e5;
+  color: #e63641;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    opacity 0.15s ease;
+}
+
+.confirm_btn:hover:not(:disabled) {
+  background: #f9d2d8;
+}
+
+.confirm_btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}

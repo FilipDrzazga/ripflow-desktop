@@ -25,7 +25,7 @@
 | PDF           | pdf-lib 1.17.1 (kopiowanie 1. strony)         |
 | PDF preview   | pdfjs-dist **v4** (renderowanie 1. strony do canvas → base64 JPEG) |
 | Ustawienia    | electron-store (persystentne JSON w userData) |
-| Baza danych   | better-sqlite3 (logi + held files, plik w storagePath) |
+| Baza danych   | better-sqlite3 (logi + held files + rollback reasons, plik w storagePath) |
 | Dev tooling   | ESLint 9, Concurrently, wait-on               |
 
 ---
@@ -68,7 +68,8 @@ ripflow-desktop/
 │   │   ├── hooks/
 │   │   │   └── usePdfPreview.js       # Hook: renderowanie PDF → JPEG przez pdfjs-dist, cache w Map, nawigacja
 │   │   ├── constants/
-│   │   │   └── printerColors.js       # PRINTER_COLORS: { DGEN, YOKO, YUMI } → { bg, color }
+│   │   │   ├── printerColors.js       # PRINTER_COLORS: { DGEN, YOKO, YUMI } → { bg, color }
+│   │   │   └── rollbackReasons.js     # ROLLBACK_REASONS: tablica 11 powodów z ikonami Lucide
 │   │   ├── utils/
 │   │   │   └── notify.js              # Centralny helper: alert + log entry jednocześnie
 │   │   ├── components/        # Wszystkie komponenty mają własny *.module.css
@@ -84,6 +85,7 @@ ripflow-desktop/
 │   │   │   │   └── OthersTooltip/     # Tooltip dla "Others" w breakdown
 │   │   │   ├── LastBatchCard/         # Karta ostatniego batcha (renderowana przez DataOverviewSection)
 │   │   │   ├── BatchHistory/          # Widok historii batchy (drzewo day→batch→file)
+│   │   │   ├── RollbackModal/         # Modal wyboru powodu rollbacku całego batcha
 │   │   │   ├── SessionLogs/           # Widok logów sesji (search, type filter, expand/collapse)
 │   │   │   ├── Settings/              # Widok ustawień — wybór ścieżek storage i XML
 │   │   │   ├── StartupLoader/         # Progress bar przy ładowaniu
@@ -228,6 +230,9 @@ Persystencja logów i held files między sesjami. Plik `ripflow.db` leży w `get
 | `holdFile(fileId)`    | Dodaje fileId do `held_files`                                |
 | `unholdFile(fileId)`  | Usuwa fileId z `held_files`                                  |
 | `getHeldFiles()`      | Zwraca `Set<string>` z wstrzymanymi ID plików                |
+| `insertRollbackReason({ id, fileId, batchPath, reasonCode, reasonLabel, workstation })` | Wstawia powód rollbacku |
+| `getRollbackReasonsByBatch(batchPath)` | Zwraca tablicę powodów dla danego batcha         |
+| `getRollbackReasonsByFile(fileId)`     | Zwraca jeden rekord lub null dla danego pliku    |
 
 **Schemat tabeli `logs`:**
 
@@ -249,6 +254,20 @@ CREATE TABLE IF NOT EXISTS logs (
 ```sql
 CREATE TABLE IF NOT EXISTS held_files (
   file_id TEXT PRIMARY KEY
+)
+```
+
+**Schemat tabeli `rollback_reasons`:**
+
+```sql
+CREATE TABLE IF NOT EXISTS rollback_reasons (
+  id TEXT PRIMARY KEY,
+  file_id TEXT,        -- NULL = powód dla całego batcha; filename-bez-ext = powód dla konkretnego pliku
+  batch_path TEXT,
+  reason_code TEXT,
+  reason_label TEXT,
+  workstation TEXT,
+  timestamp TEXT
 )
 ```
 
@@ -286,12 +305,16 @@ window.api.submitBatch(batch); // wyślij batch do druku
 // Historia batchy
 window.api.readPrintedFolder(); // odczyt PRINTED/ (batch history)
 window.api.regenerateXml(batchPath); // regeneracja XML dla batcha
-window.api.rollbackBatch(batchPath); // przenieś pliki z batcha z powrotem do inbox
-window.api.rollbackFile(filePath, batchPath); // przywróć pojedynczy plik
+window.api.rollbackBatch({ batchPath, reason }); // przenieś pliki z batcha z powrotem do inbox; reason: { code, label }
+window.api.rollbackFile({ filePath, batchPath, reason }); // przywróć pojedynczy plik; reason: { code, label }
 window.api.deleteBatch(batchPath); // usuń pusty batch (bez PDFs)
 window.api.startBatchWatcher(); // filesystem watcher na PRINTED/
 window.api.stopBatchWatcher(); // zatrzymaj watcher
 window.api.onBatchUpdate(callback); // realtime updates z watchera
+
+// Powody rollbacku (SQLite)
+window.api.getRollbackReasonsByBatch(batchPath); // zwraca { success, data: reason[] }
+window.api.getRollbackReasonsByFile(fileId);      // zwraca { success, data: reason | null }
 
 // Ustawienia
 window.api.getSettings(); // zwraca { success, settings: { storagePath, xmlPath, workstationName } }
@@ -397,6 +420,30 @@ Helper wewnętrzny: `applyFilters(files, activeTab, searchQuery, sortOrder, prin
 
 ---
 
+## `rollbackReasons.js` — stałe powodów rollbacku
+
+`src/ui/constants/rollbackReasons.js` — używane przez `BatchHistory` i `RollbackModal`.
+
+```js
+export const ROLLBACK_REASONS = [
+  { code: "MISSING_JOB",    label: "Missing job",     icon: LuFileX },
+  { code: "PRINTER_LINES",  label: "Printer lines",   icon: LuPrinter },
+  { code: "WRONG_SIZE",     label: "Wrong size",      icon: LuRuler },
+  { code: "WRONG_MATERIAL", label: "Wrong material",  icon: LuLayers },
+  { code: "FABRIC_FAULT",   label: "Fabric Fault",    icon: LuZap },
+  { code: "PRESSING_FAULT", label: "Pressing Fault",  icon: LuThermometer },
+  { code: "FABRIC_CREASE",  label: "Fabric Crease",   icon: LuWaves },
+  { code: "GHOSTING",       label: "Ghosting",        icon: LuGhost },
+  { code: "LINT_MARK",      label: "Lint Mark",       icon: LuSparkles },
+  { code: "WRONG_COLOURS",  label: "Wrong Colours",   icon: LuPalette },
+  { code: "OTHER",          label: "Other...",        icon: LuEllipsis },
+];
+```
+
+`code: "OTHER"` ma specjalne zachowanie — zamiast od razu wywołać rollback, otwiera inline modal z polem tekstowym do wpisania własnego opisu.
+
+---
+
 ## `notify.js` — centralny helper notyfikacji
 
 `src/ui/utils/notify.js` — używany przez `DataPrintSelection`, `BatchHistory`, `Settings`, `DataList`.
@@ -479,6 +526,14 @@ Wyświetla drzewo `day → batch → files`:
 - GSAP animacje na nowych itemach
 - Po rollbacku **całego batcha** watcher wysyła `"removed"` event (nie trzeba ręcznego loadData). Po rollbacku **pojedynczego pliku** watcher nie emituje eventu → loadData() wymagane.
 
+**Rollback z powodem:**
+- Rollback batcha → otwiera `<RollbackModal>` (wybór z 11 powodów); po potwierdzeniu wywołuje `window.api.rollbackBatch({ batchPath, reason })`
+- Rollback pliku → context menu z submenu (11 powodów); wybór "Other..." → inline portal modal z polem tekstowym ("Describe the issue:")
+- Powód jest zapisywany w tabeli `rollback_reasons` w SQLite
+- `loadData` pobiera `getRollbackReasonsByBatch` dla każdego `rolled_back` batcha przy starcie oraz po "removed" evencie watchera
+- Badge z powodem (`reason_badge` — pomarańczowy styl) wyświetlany przy plikach ze statusem `rolled_back`
+- Lookup powodu: najpierw szuka po `file_id === fileId` (powód pliku), fallback na `file_id === null` (powód batcha)
+
 ### `DataOverviewSection`
 
 Container dla **trzech kart statystyk** (wyświetlanych w widoku "print"):
@@ -532,9 +587,28 @@ Każdy slot jest zawsze renderowany (pusty gdy brak danych) — gwarantuje wyró
 
 **Dane z `item`:** `item.diffDays`, `item.fileSizeBytes`, `item.printTypeCode`, `item.materialType`, `item.status`, `item.file.name`, `item.file.fullPath`.
 
+### `RollbackModal`
+
+Modal wyboru powodu rollbacku całego batcha (`src/ui/components/RollbackModal/`):
+
+- Renderowany przez `createPortal` do `document.body`
+- Props: `{ batchName, onConfirm, onCancel }`
+- Pokazuje nazwę batcha jako subtitle
+- Kafelki (pills) z 11 powodami z ikonami — kliknięty pill zmienia styl (czarne tło, hover tylko na nie-wybranych)
+- Gdy wybrano "Other..." → pojawia się pole tekstowe `autoFocus`
+- Przycisk "Rollback" zablokowany do momentu wyboru powodu (+ niepusty tekst gdy OTHER)
+- Styl przycisku confirm: jasno-czerwony (`background: #ffe7e5; color: #e63641`)
+- Enter potwierdza (gdy enabled), Escape anuluje
+
 ### `ContextMenu`
 
 Portal-based popup z edge detection, separator support, danger items (czerwone). Zamyka się na click, ESC, backdrop.
+
+**Submenu:** opcja z polem `children` renderuje się z strzałką `HiChevronRight` (react-icons/hi2) i otwiera submenu przy hover:
+- Hover delay 150ms (timer `hideTimerRef`) — zapobiega migotaniu przy szybkim przesuwaniu myszy
+- Submenu pozycjonowane `left: calc(100% + 8px)` (przylega do prawej krawędzi głównego menu)
+- `min-width: 200px` + `white-space: nowrap` na itemach — każdy reason w jednej linii
+- Child `onClick`: najpierw `onClose()`, potem `child.onClick()` — ważne dla Electron timing
 
 ### `Settings`
 
@@ -627,3 +701,8 @@ Alias `@` w UI → `./src/ui` (np. `import { useStore } from '@/store/useStore'`
 - `DataDaysCounter` komponent został usunięty — wiek pliku renderowany jest inline w `DataList` jako tag z ikoną `LuClock`; nie odtwarzaj `DataDaysCounter`.
 - `Badge` komponent istnieje w katalogu, ale **nie jest używany** w `DataList` — print type, materiał i status renderowane są jako inline tagi z ikonami Lu* / PiPolygon.
 - `parseFileName` zwraca dane pliku zagnieżdżone pod `file: { name, ext, dir, fullPath }` — dostęp przez `item.file.name`, nie `item.name`.
+- **Rollback z powodem:** `rollbackBatch` i `rollbackFile` przyjmują teraz obiekty `{ batchPath, reason }` / `{ filePath, batchPath, reason }` — nie stare sygnatury pozycyjne. Zmiana jest we wszystkich warstwach: preload → ipc/index → batchHistoryHandlers.
+- `rollback_reasons` tabela w SQLite: `file_id = null` oznacza powód dla całego batcha; `file_id = filename-bez-ext` oznacza powód dla konkretnego pliku.
+- `window.prompt` nie działa w Electron z `contextIsolation: true` — zwraca `null` natychmiast. Dlatego "Other" reason używa inline portal modal z `useState` zamiast `window.prompt`.
+- `ContextMenu` submenu: child `onClick` musi wywołać `onClose()` PRZED `child.onClick()` — Electron ma problemy z kolejnością gdy modal otwiera się zaraz po zamknięciu menu.
+- `HiChevronRight` z `react-icons/hi2` — ta sama rodzina co `HiChevronDown`/`HiChevronUp` używane w DataFilters "Sort by". Utrzymuj spójność ikon nawigacji z tej rodziny.

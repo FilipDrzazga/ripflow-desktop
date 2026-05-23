@@ -4,7 +4,9 @@ import { notify } from "../../utils/notify";
 import { useStore } from "../../store/useStore";
 import ContextMenu from "../ContextMenu/ContextMenu";
 import PdfPreviewModal from "../PdfPreviewModal/PdfPreviewModal";
+import RollbackModal from "../RollbackModal/RollbackModal";
 import { usePdfPreview } from "../../hooks/usePdfPreview";
+import { ROLLBACK_REASONS } from "../../constants/rollbackReasons";
 import gsap from "gsap";
 import {
   LuRefreshCw,
@@ -46,6 +48,9 @@ const BatchHistory = () => {
   const [expandedDays, setExpandedDays] = useState(new Set());
   const [expandedBatches, setExpandedBatches] = useState(new Set());
   const [contextMenu, setContextMenu] = useState(null);
+  const [rollbackModal, setRollbackModal] = useState(null);
+  const [otherReasonTarget, setOtherReasonTarget] = useState(null);
+  const [otherReasonText, setOtherReasonText] = useState("");
 
   const pendingAnimationsRef = useRef(new Set());
   const elementRefsRef = useRef(new Map());
@@ -57,9 +62,21 @@ const BatchHistory = () => {
     try {
       const res = await window.api.readPrintedFolder();
       if (res.success) {
-        setDayGroups(res.data);
+        const daysWithReasons = await Promise.all(
+          res.data.map(async (day) => ({
+            ...day,
+            batches: await Promise.all(
+              day.batches.map(async (batch) => {
+                if (batch.status !== "rolled_back") return batch;
+                const reasonsRes = await window.api.getRollbackReasonsByBatch(batch.path);
+                return { ...batch, rollbackReasons: reasonsRes?.data ?? [] };
+              }),
+            ),
+          })),
+        );
+        setDayGroups(daysWithReasons);
         if (isInitialLoadRef.current) {
-          const todayGroup = res.data.find((d) => d.label === "Today");
+          const todayGroup = daysWithReasons.find((d) => d.label === "Today");
           if (todayGroup) {
             setExpandedDays(new Set([todayGroup.date]));
           }
@@ -90,7 +107,7 @@ const BatchHistory = () => {
     }
   }, []);
 
-  const handleBatchUpdate = useCallback((payload) => {
+  const handleBatchUpdate = useCallback(async (payload) => {
     const { type, batch, batchPath, file } = payload;
 
     if (type === "new-batch") {
@@ -155,11 +172,16 @@ const BatchHistory = () => {
         })),
       );
     } else if (type === "removed") {
+      let rollbackReasons = [];
+      try {
+        const reasonsRes = await window.api.getRollbackReasonsByBatch(batchPath);
+        rollbackReasons = reasonsRes?.data ?? [];
+      } catch {}
       setDayGroups((prev) =>
         prev.map((day) => ({
           ...day,
           batches: day.batches.map((b) =>
-            b.path === batchPath ? { ...b, status: "rolled_back", fileCount: 0, files: [] } : b,
+            b.path === batchPath ? { ...b, status: "rolled_back", fileCount: 0, files: [], rollbackReasons } : b,
           ),
           totalFiles: day.batches.reduce((s, b) => s + (b.path === batchPath ? 0 : b.fileCount), 0),
         })),
@@ -296,10 +318,9 @@ const BatchHistory = () => {
   }, []);
 
   const handleRollbackFile = useCallback(
-    async (filePath, batchPath) => {
-      if (!(await window.api.showConfirm("Move this file back to the inbox? It will be available for printing again."))) return;
+    async (filePath, batchPath, reason) => {
       try {
-        const res = await window.api.rollbackFile(filePath, batchPath);
+        const res = await window.api.rollbackFile({ filePath, batchPath, reason });
         if (res?.success) {
           notify(
             { type: "Success", title: "File rolled back", message: "The file has been moved back to the inbox." },
@@ -329,11 +350,13 @@ const BatchHistory = () => {
     [loadData],
   );
 
-  const handleRollbackBatch = useCallback(
-    async (batchPath) => {
-      if (!(await window.api.showConfirm("Move all files in this batch back to the inbox? The XML will remain."))) return;
+  const handleConfirmRollbackBatch = useCallback(
+    async (reason) => {
+      if (!rollbackModal) return;
+      const { batchPath } = rollbackModal;
+      setRollbackModal(null);
       try {
-        const res = await window.api.rollbackBatch(batchPath);
+        const res = await window.api.rollbackBatch({ batchPath, reason });
         if (res?.success) {
           notify(
             { type: "Success", title: "Batch rolled back", message: "All files have been moved back to the inbox." },
@@ -360,7 +383,7 @@ const BatchHistory = () => {
         );
       }
     },
-    [loadData],
+    [rollbackModal],
   );
 
   const handleDeleteBatch = useCallback(async (batchPath) => {
@@ -597,7 +620,7 @@ const BatchHistory = () => {
                                   type="button"
                                   className={`${style.action_btn} ${style.action_danger}`}
                                   title="Rollback batch"
-                                  onClick={() => handleRollbackBatch(batch.path)}
+                                  onClick={() => setRollbackModal({ batchName: batch.name, batchPath: batch.path })}
                                 >
                                   <LuCornerUpLeft size={16} />
                                 </button>
@@ -620,6 +643,11 @@ const BatchHistory = () => {
                           <ul className={style.batch_files}>
                             {batch.files.map((file) => {
                               const isFileRolledBack = file.status === "rolled_back";
+                              const fileId = file.name.replace(/\.[^.]+$/, "");
+                              const rollbackReason = isFileRolledBack
+                                ? (batch.rollbackReasons?.find((r) => r.file_id === fileId) ??
+                                   batch.rollbackReasons?.find((r) => r.file_id === null))
+                                : null;
                               return (
                                 <li
                                   key={file.path}
@@ -646,6 +674,9 @@ const BatchHistory = () => {
                                     <span className={style.file_rolled_back_label}>
                                       Rolled back {formatRolledBackAt(file.rolledBackAt)}
                                     </span>
+                                  )}
+                                  {rollbackReason && (
+                                    <span className={style.reason_badge}>{rollbackReason.reason_label}</span>
                                   )}
                                   {!isFileRolledBack && file.type && file.type !== "UNKNOWN" && (
                                     <span className={style.type_badge}>{file.type}</span>
@@ -702,11 +733,23 @@ const BatchHistory = () => {
                 label: "Rollback this file",
                 icon: <LuCornerUpLeft />,
                 danger: true,
-                onClick: async () => {
-                  const { file, batch } = contextMenu;
-                  setContextMenu(null);
-                  await handleRollbackFile(file.path, batch.path);
-                },
+                children: ROLLBACK_REASONS.map((reason) => {
+                  const Icon = reason.icon;
+                  return {
+                  id: `rollback-${reason.code}`,
+                  label: reason.label,
+                  icon: Icon ? <Icon size={14} /> : null,
+                  onClick: async () => {
+                    const { file, batch } = contextMenu;
+                    if (reason.code === "OTHER") {
+                      setOtherReasonText("");
+                      setOtherReasonTarget({ file, batch });
+                      return;
+                    }
+                    await handleRollbackFile(file.path, batch.path, reason);
+                  },
+                  };
+                }),
               },
             ]}
           />,
@@ -723,6 +766,63 @@ const BatchHistory = () => {
         onClose={closePreview}
         onNavigate={navigatePreview}
       />
+      {rollbackModal && (
+        <RollbackModal
+          batchName={rollbackModal.batchName}
+          onConfirm={handleConfirmRollbackBatch}
+          onCancel={() => setRollbackModal(null)}
+        />
+      )}
+      {otherReasonTarget &&
+        createPortal(
+          <>
+            <div
+              className={style.other_reason_backdrop}
+              onClick={() => setOtherReasonTarget(null)}
+            />
+            <div className={style.other_reason_modal}>
+              <p className={style.other_reason_title}>Describe the issue:</p>
+              <input
+                className={style.other_reason_input}
+                type="text"
+                placeholder="Enter reason..."
+                value={otherReasonText}
+                onChange={(e) => setOtherReasonText(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Escape") setOtherReasonTarget(null);
+                  if (e.key === "Enter" && otherReasonText.trim()) {
+                    const { file, batch } = otherReasonTarget;
+                    setOtherReasonTarget(null);
+                    handleRollbackFile(file.path, batch.path, { code: "OTHER", label: otherReasonText.trim() });
+                  }
+                }}
+                autoFocus
+              />
+              <div className={style.other_reason_actions}>
+                <button
+                  type="button"
+                  className={style.other_reason_cancel}
+                  onClick={() => setOtherReasonTarget(null)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className={style.other_reason_confirm}
+                  disabled={!otherReasonText.trim()}
+                  onClick={() => {
+                    const { file, batch } = otherReasonTarget;
+                    setOtherReasonTarget(null);
+                    handleRollbackFile(file.path, batch.path, { code: "OTHER", label: otherReasonText.trim() });
+                  }}
+                >
+                  Rollback
+                </button>
+              </div>
+            </div>
+          </>,
+          document.body,
+        )}
     </div>
   );
 };

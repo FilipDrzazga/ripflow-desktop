@@ -53,14 +53,17 @@ const api = Object.freeze({
     assertPath(batchPath);
     return ipcRenderer.invoke("regenerate-xml", batchPath);
   },
-  rollbackBatch: (batchPath) => {
-    assertPath(batchPath);
-    return ipcRenderer.invoke("rollback-batch-history", batchPath);
+  rollbackBatch: (payload) => {
+    if (!isPlainObject(payload) || !isNonEmptyString(payload.batchPath)) {
+      throw new TypeError("rollbackBatch requires { batchPath: string }");
+    }
+    return ipcRenderer.invoke("rollback-batch-history", payload);
   },
-  rollbackFile: (filePath, batchPath) => {
-    assertPath(filePath);
-    assertPath(batchPath);
-    return ipcRenderer.invoke("rollback-file-history", filePath, batchPath);
+  rollbackFile: (payload) => {
+    if (!isPlainObject(payload) || !isNonEmptyString(payload.filePath) || !isNonEmptyString(payload.batchPath)) {
+      throw new TypeError("rollbackFile requires { filePath: string, batchPath: string }");
+    }
+    return ipcRenderer.invoke("rollback-file-history", payload);
   },
   deleteBatch: (batchPath) => {
     assertPath(batchPath);
@@ -95,6 +98,14 @@ const api = Object.freeze({
   unholdFile: (fileId) => {
     assertPath(fileId);
     return ipcRenderer.invoke("hold:unset", fileId);
+  },
+  getRollbackReasonsByBatch: (batchPath) => {
+    assertPath(batchPath);
+    return ipcRenderer.invoke("get-rollback-reasons-batch", batchPath);
+  },
+  getRollbackReasonsByFile: (fileId) => {
+    assertPath(fileId);
+    return ipcRenderer.invoke("get-rollback-reasons-file", fileId);
   },
   selectFolder: () => ipcRenderer.invoke("dialog:select-folder"),
   minimizeWindow: () => ipcRenderer.send("window:minimize"),

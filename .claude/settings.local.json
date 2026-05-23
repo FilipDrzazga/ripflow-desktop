@@ -7,7 +7,11 @@
       "Bash(npm run *)",
       "Bash(npx eslint *)",
       "Bash(node *)",
-      "Bash(npx vite *)"
+      "Bash(npx vite *)",
+      "Bash(del tmp_pathcheck.js)",
+      "Bash(del C:\\\\ripflow-desktop\\\\tmp_sim.js)",
+      "Bash(del tmp_compare.js)",
+      "Bash(Remove-Item *)"
     ]
   }
 }

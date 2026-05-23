@@ -9,6 +9,9 @@ let stmtClear = null;
 let stmtHoldFile = null;
 let stmtUnholdFile = null;
 let stmtGetHeldFiles = null;
+let stmtInsertRollbackReason = null;
+let stmtGetRollbackReasonsByBatch = null;
+let stmtGetRollbackReasonsByFile = null;
 
 export const initDb = () => {
   try {
@@ -40,6 +43,18 @@ export const initDb = () => {
       )
     `);
 
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS rollback_reasons (
+        id           TEXT PRIMARY KEY,
+        file_id      TEXT,
+        batch_path   TEXT,
+        reason_code  TEXT,
+        reason_label TEXT,
+        timestamp    TEXT,
+        workstation  TEXT
+      )
+    `);
+
     stmtInsert = db.prepare(
       "INSERT OR IGNORE INTO logs (id, timestamp, type, stage, code, message, detail, workstation) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
     );
@@ -48,6 +63,15 @@ export const initDb = () => {
     stmtHoldFile = db.prepare("INSERT OR IGNORE INTO held_files (file_id) VALUES (?)");
     stmtUnholdFile = db.prepare("DELETE FROM held_files WHERE file_id = ?");
     stmtGetHeldFiles = db.prepare("SELECT file_id FROM held_files");
+    stmtInsertRollbackReason = db.prepare(
+      "INSERT OR REPLACE INTO rollback_reasons (id, file_id, batch_path, reason_code, reason_label, timestamp, workstation) VALUES (?, ?, ?, ?, ?, ?, ?)",
+    );
+    stmtGetRollbackReasonsByBatch = db.prepare(
+      "SELECT * FROM rollback_reasons WHERE batch_path = ? ORDER BY timestamp DESC",
+    );
+    stmtGetRollbackReasonsByFile = db.prepare(
+      "SELECT * FROM rollback_reasons WHERE file_id = ? ORDER BY timestamp DESC LIMIT 1",
+    );
   } catch {
     db = null;
     stmtInsert = null;
@@ -56,6 +80,9 @@ export const initDb = () => {
     stmtHoldFile = null;
     stmtUnholdFile = null;
     stmtGetHeldFiles = null;
+    stmtInsertRollbackReason = null;
+    stmtGetRollbackReasonsByBatch = null;
+    stmtGetRollbackReasonsByFile = null;
   }
 };
 
@@ -114,5 +141,38 @@ export const getHeldFiles = () => {
     return new Set(stmtGetHeldFiles.all().map((r) => r.file_id));
   } catch {
     return new Set();
+  }
+};
+
+export const insertRollbackReason = ({ id, fileId, batchPath, reasonCode, reasonLabel, workstation }) => {
+  if (!stmtInsertRollbackReason) return;
+  try {
+    stmtInsertRollbackReason.run(
+      id,
+      fileId ?? null,
+      batchPath,
+      reasonCode,
+      reasonLabel,
+      new Date().toISOString(),
+      workstation ?? null,
+    );
+  } catch {}
+};
+
+export const getRollbackReasonsByBatch = (batchPath) => {
+  if (!stmtGetRollbackReasonsByBatch) return [];
+  try {
+    return stmtGetRollbackReasonsByBatch.all(batchPath);
+  } catch {
+    return [];
+  }
+};
+
+export const getRollbackReasonsByFile = (fileId) => {
+  if (!stmtGetRollbackReasonsByFile) return null;
+  try {
+    return stmtGetRollbackReasonsByFile.get(fileId) ?? null;
+  } catch {
+    return null;
   }
 };

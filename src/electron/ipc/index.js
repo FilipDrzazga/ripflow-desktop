@@ -10,7 +10,7 @@ import { rollbackBatchFromHistory, rollbackFileFromHistory, regenerateXmlForBatc
 import { getStorageRootPath } from "../helpers/getRootPath.js";
 import { parsePrintFileName } from "../helpers/parseFileName.js";
 import { getSettings, setSettings } from "../helpers/getSettings.js";
-import { initDb, insertLog, getAllLogs, clearAllLogs, holdFile, unholdFile, getHeldFiles } from "../helpers/db.js";
+import { initDb, insertLog, getAllLogs, clearAllLogs, holdFile, unholdFile, getHeldFiles, getRollbackReasonsByBatch, getRollbackReasonsByFile } from "../helpers/db.js";
 
 const DAY_FOLDER_RE = /^\d{2}-\d{2}-\d{4}$/;
 
@@ -185,8 +185,8 @@ export function registerIpcHandlers() {
     return result;
   });
 
-  ipcMain.handle("rollback-batch-history", async (_event, batchPath) => {
-    const result = await rollbackBatchFromHistory(batchPath);
+  ipcMain.handle("rollback-batch-history", async (_event, payload) => {
+    const result = await rollbackBatchFromHistory(payload);
     try {
       insertLog({
         id: crypto.randomUUID(),
@@ -204,8 +204,8 @@ export function registerIpcHandlers() {
     return result;
   });
 
-  ipcMain.handle("rollback-file-history", async (_event, filePath, batchPath) => {
-    const result = await rollbackFileFromHistory(filePath, batchPath);
+  ipcMain.handle("rollback-file-history", async (_event, payload) => {
+    const result = await rollbackFileFromHistory(payload);
     try {
       insertLog({
         id: crypto.randomUUID(),
@@ -221,6 +221,14 @@ export function registerIpcHandlers() {
       });
     } catch {}
     return result;
+  });
+
+  ipcMain.handle("get-rollback-reasons-batch", (_event, batchPath) => {
+    return { success: true, data: getRollbackReasonsByBatch(batchPath) };
+  });
+
+  ipcMain.handle("get-rollback-reasons-file", (_event, fileId) => {
+    return { success: true, data: getRollbackReasonsByFile(fileId) };
   });
 
   ipcMain.handle("delete-batch", async (_event, batchPath) => {

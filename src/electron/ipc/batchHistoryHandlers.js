@@ -7,10 +7,12 @@ import { parsePrintFileName } from "../helpers/parseFileName.js";
 import { getMaterialType } from "../helpers/getMaterialType.js";
 import { submitBatchToPrintFactory } from "./createXML.js";
 import { parseBatchFolderName } from "./readPrintedFolder.js";
+import { insertRollbackReason } from "../helpers/db.js";
+import { getSettings } from "../helpers/getSettings.js";
 
 const toError = (err, title = "Operation failed") => toIpcError(err, "unknown", title);
 
-export const rollbackBatchFromHistory = async (batchPath) => {
+export const rollbackBatchFromHistory = async ({ batchPath, reason } = {}) => {
   const result = { success: false, errors: [], restoredFiles: [] };
 
   try {
@@ -60,6 +62,17 @@ export const rollbackBatchFromHistory = async (batchPath) => {
     }
 
     result.success = true;
+
+    if (reason) {
+      insertRollbackReason({
+        id: crypto.randomUUID(),
+        fileId: null,
+        batchPath: validatedBatchPath,
+        reasonCode: reason.code,
+        reasonLabel: reason.label,
+        workstation: getSettings().workstationName,
+      });
+    }
   } catch (err) {
     result.errors = [toError(err, err.title || "Rollback failed")];
   }
@@ -67,7 +80,7 @@ export const rollbackBatchFromHistory = async (batchPath) => {
   return result;
 };
 
-export const rollbackFileFromHistory = async (filePath, batchPath) => {
+export const rollbackFileFromHistory = async ({ filePath, batchPath, reason } = {}) => {
   const result = { success: false, errors: [] };
 
   try {
@@ -110,6 +123,18 @@ export const rollbackFileFromHistory = async (filePath, batchPath) => {
     await fs.promises.rename(validatedFilePath, dest);
 
     result.success = true;
+
+    if (reason) {
+      const fileId = path.basename(validatedFilePath, path.extname(validatedFilePath));
+      insertRollbackReason({
+        id: crypto.randomUUID(),
+        fileId,
+        batchPath: validatedBatchPath,
+        reasonCode: reason.code,
+        reasonLabel: reason.label,
+        workstation: getSettings().workstationName,
+      });
+    }
   } catch (err) {
     result.errors = [toError(err, err.title || "File rollback failed")];
   }
