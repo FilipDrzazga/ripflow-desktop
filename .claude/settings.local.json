@@ -11,7 +11,8 @@
       "Bash(del tmp_pathcheck.js)",
       "Bash(del C:\\\\ripflow-desktop\\\\tmp_sim.js)",
       "Bash(del tmp_compare.js)",
-      "Bash(Remove-Item *)"
+      "Bash(Remove-Item *)",
+      "Bash(wmic logicaldisk *)"
     ]
   }
 }
