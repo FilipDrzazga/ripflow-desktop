@@ -77,14 +77,34 @@ export const rollbackBatchFromHistory = async ({ batchPath, reason } = {}) => {
     result.success = true;
 
     if (reason) {
-      insertRollbackReason({
-        id: crypto.randomUUID(),
-        fileId: null,
-        batchPath: validatedBatchPath,
-        reasonCode: reason.code,
-        reasonLabel: reason.label,
-        workstation: getSettings().workstationName,
-      });
+      const workstation = getSettings().workstationName;
+      if (pdfNames.length > 0) {
+        for (const name of pdfNames) {
+          const parsed = parsePrintFileName(name);
+          const fabric = parsed?.material ?? null;
+          insertRollbackReason({
+            id: crypto.randomUUID(),
+            fileId: null,
+            batchPath: validatedBatchPath,
+            reasonCode: reason.code,
+            reasonLabel: reason.label,
+            workstation,
+            orderId: parsed?.orderId ?? null,
+            customer: parsed?.customerName ?? null,
+            fabric,
+            process: fabric ? getMaterialType(fabric) : null,
+          });
+        }
+      } else {
+        insertRollbackReason({
+          id: crypto.randomUUID(),
+          fileId: null,
+          batchPath: validatedBatchPath,
+          reasonCode: reason.code,
+          reasonLabel: reason.label,
+          workstation,
+        });
+      }
     }
   } catch (err) {
     result.errors = [toError(err, err.title || "Rollback failed")];
@@ -140,6 +160,8 @@ export const rollbackFileFromHistory = async ({ filePath, batchPath, reason } = 
 
     if (reason) {
       const fileId = path.basename(validatedFilePath, path.extname(validatedFilePath));
+      const parsed = parsePrintFileName(path.basename(validatedFilePath));
+      const fabric = parsed?.material ?? null;
       insertRollbackReason({
         id: crypto.randomUUID(),
         fileId,
@@ -147,6 +169,10 @@ export const rollbackFileFromHistory = async ({ filePath, batchPath, reason } = 
         reasonCode: reason.code,
         reasonLabel: reason.label,
         workstation: getSettings().workstationName,
+        orderId: parsed?.orderId ?? null,
+        customer: parsed?.customerName ?? null,
+        fabric,
+        process: fabric ? getMaterialType(fabric) : null,
       });
     }
   } catch (err) {

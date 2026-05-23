@@ -2,735 +2,226 @@
 
 # RipFlow Desktop — Project Context for Claude
 
-## Czym jest ten projekt
+## Overview
+**RipFlow Desktop** — Electron + React app automating print workflow for PrintFactory machines.
+**Platform:** Windows only (network paths, backslashes) | **Users:** production operators | **Code comments:** English
 
-**RipFlow Desktop** to aplikacja desktopowa (Electron + React) automatyzująca workflow druku w środowisku produkcyjnym. Eliminuje ręczną pracę operatorów przy przygotowaniu plików do druku na maszynach PrintFactory.
+## Stack
+| Layer | Tech |
+|---|---|
+| Shell | Electron 40.1.0 — frameless window, starts maximized |
+| Frontend | React 19.2.0 + Vite 7.2.4 (port 5173 strictPort, alias `@` → `./src/ui`) |
+| State | Zustand 5.0.11 (subscribeWithSelector) |
+| Styling | CSS Modules + global.css (`--navbar-width: 104px`) |
+| Animations | GSAP 2.1.2 + @gsap/react |
+| Icons | React Icons 5.5.0 (Lucide `Lu*`, hi2 `Hi*`, fi `Fi*`, pi `Pi*`) |
+| PDF copy | pdf-lib 1.17.1 (page 1 only) |
+| PDF preview | pdfjs-dist **v4 only** — v5 breaks in Electron 40 Chromium |
+| Settings | electron-store → `%APPDATA%\ripflow-desktop\config.json` |
+| DB | better-sqlite3 → `ripflow.db` in **storagePath** (NOT userData) |
 
-**Użytkownicy:** operatorzy produkcji (nie deweloperzy)
-**Platforma:** Windows (ścieżki sieciowe, backslashe)
-**Język komentarzy w kodzie:** angielski
-
----
-
-## Stack technologiczny
-
-| Warstwa       | Technologia                                   |
-| ------------- | --------------------------------------------- |
-| Desktop shell | Electron 40.1.0                               |
-| Frontend      | React 19.2.0 + Vite 7.2.4                     |
-| Routing/state | Zustand 5.0.11 (subscribeWithSelector)        |
-| Styling       | CSS Modules + `global.css`                    |
-| Animacje      | GSAP 2.1.2 + @gsap/react 2.1.2                |
-| Ikony         | React Icons 5.5.0 (Lucide `Lu*`)              |
-| PDF           | pdf-lib 1.17.1 (kopiowanie 1. strony)         |
-| PDF preview   | pdfjs-dist **v4** (renderowanie 1. strony do canvas → base64 JPEG) |
-| Ustawienia    | electron-store (persystentne JSON w userData) |
-| Baza danych   | better-sqlite3 (logi + held files + rollback reasons, plik w storagePath) |
-| Dev tooling   | ESLint 9, Concurrently, wait-on               |
-
----
-
-## Struktura katalogów
-
+## Key Files
 ```
-ripflow-desktop/
-├── src/
-│   ├── electron/              # Proces główny Electrona (Node.js)
-│   │   ├── main.js            # Entry point Electrona, frameless window, startuje zmaksymalizowana
-│   │   ├── preload.js         # Bezpieczny most IPC → window.api
-│   │   ├── helpers/           # Funkcje pomocnicze (pure logic)
-│   │   │   ├── parseFileName.js       # Parsowanie nazw plików (600+ linii, główna logika!)
-│   │   │   ├── getMaterialType.js     # Klasyfikacja materiału (bawełna/poliester)
-│   │   │   ├── getSettings.js         # Odczyt/zapis ustawień przez electron-store (storagePath, xmlPath, workstationName)
-│   │   │   ├── getRootPath.js         # Rozwiązywanie ścieżek storage (czyta z getSettings)
-│   │   │   ├── db.js                  # SQLite (better-sqlite3): logi sesji + held_files; plik ripflow.db w storagePath
-│   │   │   ├── createBatchIds.js      # Generowanie ID batcha
-│   │   │   ├── ipcError.js            # Shared helper: toIpcError(err, stage, title)
-│   │   │   ├── getFileAgeInDays.js
-│   │   │   ├── isPDF.js
-│   │   │   └── validateStoragePath.js # assertStorageFilePath — walidacja ścieżek vs storage root
-│   │   └── ipc/               # Handlery IPC (komunikacja main ↔ renderer)
-│   │       ├── index.js               # Rejestracja wszystkich handlerów; zawiera też file:read-buffer
-│   │       ├── readFolders.js         # Skanowanie folderów, parsowanie plików
-│   │       ├── submitBatch.js         # Orkiestracja submitu batcha
-│   │       ├── createBatch.js         # Przenoszenie plików z rollbackiem (transakcja!)
-│   │       ├── createXML.js           # Generowanie XML dla PrintFactory
-│   │       ├── readPrintedFolder.js   # Odczyt historii batchy z PRINTED/
-│   │       ├── batchHistoryHandlers.js # rollback, regenerateXML, deleteBatch
-│   │       ├── openPreview.js
-│   │       └── openInFolder.js
-│   │
-│   ├── ui/                    # Frontend React
-│   │   ├── App.jsx            # Root komponent, routing widoków, layout
-│   │   ├── index.jsx          # Mount React
-│   │   ├── store/
-│   │   │   └── useStore.jsx   # Zustand store — centralny stan aplikacji
-│   │   ├── hooks/
-│   │   │   └── usePdfPreview.js       # Hook: renderowanie PDF → JPEG przez pdfjs-dist, cache w Map, nawigacja
-│   │   ├── constants/
-│   │   │   ├── printerColors.js       # PRINTER_COLORS: { DGEN, YOKO, YUMI } → { bg, color }
-│   │   │   └── rollbackReasons.js     # ROLLBACK_REASONS: tablica 11 powodów z ikonami Lucide
-│   │   ├── utils/
-│   │   │   └── notify.js              # Centralny helper: alert + log entry jednocześnie
-│   │   ├── components/        # Wszystkie komponenty mają własny *.module.css
-│   │   │   ├── PdfPreviewModal/       # Modal podglądu PDF (portal, blur backdrop, GSAP fade, nawigacja ←→)
-│   │   │   ├── TitleBar/              # Custom title bar z logo i window controls
-│   │   │   ├── NavBar/                # Nawigacja boczna (Print, Batch, Logs, Settings)
-│   │   │   ├── DataList/              # Lista plików do druku z checkboxami
-│   │   │   ├── DataFilters/           # Filtry (tab, search, sort, print type)
-│   │   │   ├── DataPrintSelection/    # Wybór drukarki + przycisk Rip
-│   │   │   ├── DataOverviewSection/   # Trzy karty statystyk inbox (widok "print")
-│   │   │   │   ├── ProductionOverviewCard/  # Ogólne statystyki + %Cottons/Poly
-│   │   │   │   ├── PrintMaterialBreakdownCard/ # Top grupy per materiał
-│   │   │   │   └── OthersTooltip/     # Tooltip dla "Others" w breakdown
-│   │   │   ├── LastBatchCard/         # Karta ostatniego batcha (renderowana przez DataOverviewSection)
-│   │   │   ├── BatchHistory/          # Widok historii batchy (drzewo day→batch→file)
-│   │   │   ├── RollbackModal/         # Modal wyboru powodu rollbacku całego batcha
-│   │   │   ├── SessionLogs/           # Widok logów sesji (search, type filter, expand/collapse)
-│   │   │   ├── Settings/              # Widok ustawień — wybór ścieżek storage i XML
-│   │   │   ├── StartupLoader/         # Progress bar przy ładowaniu
-│   │   │   ├── AlertsHost/            # Toast notyfikacje (stacked, auto-dismiss 3s)
-│   │   │   ├── Badge/                 # Kolorowe badges — komponent istnieje, ale aktualnie nieużywany w DataList
-│   │   │   └── ContextMenu/           # Portal-based popup menu
-│   │   ├── assets/
-│   │   │   └── image/
-│   │   │       └── Maake_Logo.webp    # Logo wyświetlane w TitleBar
-│   │   └── styles/
-│   │       └── global.css             # CSS reset, zmienne, typografia
-│   │
-│   └── shared/
-│       ├── estimatePrintLength.js  # Kalkulacja długości druku (używana w obu procesach)
-│       └── printWidths.js          # Stałe wymiarów produktów i szerokości rolek
-│
-├── .claude/
-│   └── CLAUDE.md              # Ten plik
-├── changelog.md
-├── README.md
-├── index.html
-├── package.json
-├── vite.config.js             # alias @ → ./src/ui, port 5173 (fixed, strictPort)
-└── eslint.config.js           # osobne reguły dla ui/ i electron/
+src/electron/
+  main.js                  # Frameless window, starts maximized, DEV:5173 PROD:dist/index.html
+  preload.js               # IPC bridge → window.api
+  helpers/
+    parseFileName.js       # CORE LOGIC 600+ lines — change with extreme care
+    getMaterialType.js     # material → "Cottons" | "Polyesters" | "Unknown"
+    getSettings.js         # electron-store: storagePath, xmlPath, workstationName
+    getRootPath.js         # Derives all paths from getSettings() — no hardcoded values
+    db.js                  # SQLite: logs, held_files, rollback_reasons; all fns guarded if(!stmt)
+    createBatchIds.js      # GROUP_NAME_OVERRIDES + GROUP_NAME_OVERRIDES_REVERSE (both exported)
+    ipcError.js            # toIpcError(err, stage, title)
+    validateStoragePath.js # assertStorageFilePath — validate batchPath/filePath before file ops
+  ipc/
+    index.js               # Registers all handlers; calls initDb() first
+    createBatch.js         # Atomic file move with rollback — TRANSACTION
+    batchHistoryHandlers.js # rollback, regenerateXML, deleteBatch; uses resolveOriginalGroup()
+    readPrintedFolder.js   # Reads PRINTED/ tree
+
+src/ui/
+  store/useStore.jsx       # Zustand store — central app state
+  hooks/usePdfPreview.js   # PDF → JPEG via pdfjs; module-level Map cache by filePath
+  utils/notify.js          # ALWAYS use instead of setAlert() — adds toast + SessionLogs entry
+  constants/
+    printerColors.js       # PRINTER_COLORS: { DGEN, YOKO, YUMI } → { bg, color }
+    rollbackReasons.js     # ROLLBACK_REASONS: 11 reasons; OTHER has special text-input behavior
+  components/
+    Analytics/             # NEW (untracked) — rollback analytics (Details/, Summary/, hooks/)
+    BatchHistory/          # day→batch→file tree, real-time watcher, rollback with reasons
+    DataList/              # Inbox file list; own usePdfPreview instance; 5 fixed-width tag slots
+    ContextMenu/           # Portal popup; supports submenu (children field) with hover delay 150ms
+    RollbackModal/         # Portal modal; 11 reason pills; OTHER → text input; Enter/Esc keys
+
+src/shared/
+  estimatePrintLength.js   # Used in both electron and UI
+  printWidths.js           # Roll widths + fixed product dimensions
 ```
 
----
-
-## Główny przepływ pracy (Workflow)
-
+## Workflow
 ```
-INBOX → PARSING FILES NAME → DISPLAY UI → SELECTING JOBS/PRINTER → CREATING BATCH/XML → CREATING FOLDERS → TAKING XML FILE BY WORKFLOW PRINTFACTORY → PRINT
+INBOX → PARSE FILENAME → UI → SELECT FILES+PRINTER → CREATE BATCH+XML → PRINTFACTORY → PRINT
 ```
+1. Scan `storagePath` (default `O:\SPPrintReadyArtwork`)
+2. Parse PDF filenames → extract metadata (product type, material, qty, dimensions)
+3. Operator selects files + printer → submit
+4. Atomically move files (temp → rename) with rollback on failure
+5. Generate XML for PrintFactory to network `xmlPath`
 
-1. Aplikacja skanuje folder ustawiony w electron-store (domyślnie `O:\SPPrintReadyArtwork`)
-2. Parsuje nazwy plików PDF → wyciąga metadane (typ produktu, materiał, ilość, wymiary)
-3. Operator wybiera pliki + drukarkę → submit batcha
-4. Aplikacja przenosi pliki atomicznie (temp dir → rename) z rollbackiem przy błędzie
-5. Generuje XML dla PrintFactory do folderu workflow na ścieżce sieciowej
+## Views (`activeView` in App.jsx)
+| View | Components |
+|---|---|
+| `"print"` | DataOverviewSection + DataFilters + DataList |
+| `"batch"` | BatchHistory |
+| `"logs"` | SessionLogs |
+| `"settings"` | Settings |
 
----
+## File Types (`parseFileName.js`)
+- **LM** — Linear Meter | **FQ** — Fat Quarter | **SAMPLE** — Sample Print
+- **CUSHION** — Custom Square Cushion | **TEA_TOWEL** — Custom Tea Towel
 
-## Routing / Widoki (App.jsx)
+Tokenize by `_`, detect CUSHION/TEA_TOWEL by keyword, others by XWD hex token.
 
-App ma 4 widoki (`activeView` string):
-
-| Widok        | Komponent                                    | Status           |
-| ------------ | -------------------------------------------- | ---------------- |
-| `"print"`    | DataOverviewSection + DataFilters + DataList | Zaimplementowany |
-| `"batch"`    | BatchHistory                                 | Zaimplementowany |
-| `"logs"`     | SessionLogs                                  | Zaimplementowany |
-| `"settings"` | Settings                                     | Zaimplementowany |
-
-Nawigacja przez **NavBar** (lewa kolumna). Layout: `TitleBar` (top) + `NavBar` (left) + `content` (center) + `DataPrintSelection` (right, animowany).
-
----
-
-## Typy produktów i formaty nazw plików
-
-`parseFileName.js` to najważniejszy i najbardziej złożony plik w projekcie (600+ linii).
-
-### Obsługiwane typy:
-
-- **LM** — Linear Meter (`ON####_name_#of#_material_qty(x)_type_XWD...._FF`)
-- **FQ** — Fat Quarter (`ON312041_Hannah_Cryer_1of1_Organic Blossom Muslin Gauze_1x_Fat Quarter - 65 x 48 cm_XWD4888..._FF`)
-- **SAMPLE** — Próbka (`ON311934_Andrea_Harrison_2of7_Velvet_1x_Sample Print - 20 x 20 cm_XWD52550..._FF`)
-- **CUSHION** — Poduszka (`ON311945_Mariama_Janneh_21of22_Custom Square Cushion_material_ 45 x 45 cm _ Print both sides_1_FF_2327`)
-- **TEA_TOWEL** — Ściereczka (`ON####_name_#of#_Custom Tea Towel_material_variant_qty_FF_internalId`)
-
-### Parsowanie (mechanizm):
-
-- Tokenizacja: split po `_`, merge tokenów z `(` prefixem
-- Detekcja rodzaju: CUSHION (keyword), TEA_TOWEL (keyword), XWD_BASED (hex token), UNKNOWN
-- Parsery: `parseCushion()`, `parseTeaTowel()`, `parseXwdBased()`
-
-### Zwracany obiekt:
-
+**Return shape — CRITICAL (`file` is nested):**
 ```js
 {
-  file: { name, ext, dir, fullPath },   // metadane pliku — UWAGA: zagnieżdżone pod `file`, nie na top-level
-  orderId, customerName, xOfY,          // dane zamówienia
-  printTypeCode, printType,             // kod ("LM","FQ","SAMPLE","TEA_TOWEL","CUSHION") + label ("Linear Meter" itd.)
-  qty, material, size,                  // dane produktu
-  width, height,                        // wymiary w mm
+  file: { name, ext, dir, fullPath },  // access as item.file.name, NOT item.name
+  orderId, customerName, xOfY,
+  printTypeCode, printType,
+  qty, material, size, width, height,
   status: "READY" | "INVALID",
   errors: [], warnings: []
 }
 ```
 
----
-
-## Klasyfikacja materiałów (`getMaterialType.js`)
-
-- `COTTON_MATERIALS`: ~34 materiałów (Cotton Slub, Panama, Organic Leve Cotton, itp.)
-- `POLY_MATERIALS`: ~100+ materiałów (różne poliestrowe)
-- `getMaterialType(material)` → `"Cottons"` | `"Polyesters"` | `"Unknown"`
-
-| Typ materiału | Drukarka                           |
-| ------------- | ---------------------------------- |
-| Cottons       | **DGEN**                           |
-| Polyesters    | **YOKO** lub **YUMI**              |
-| Unknown       | plik oznaczony jako problematyczny |
-
----
-
-## Ścieżki storage (`getRootPath.js` + `getSettings.js`)
-
-Ścieżki są **persystowane przez electron-store** (`src/electron/helpers/getSettings.js`) i edytowalne przez użytkownika w widoku Settings. `getRootPath.js` czyta je z `getSettings()` — brak hardkodowanych stałych.
-
-**Domyślne wartości:**
-
+## Storage Paths
+Never hardcode — always read from `getSettings()` via `getRootPath.js`.
 ```
-storagePath:      O:\SPPrintReadyArtwork
-xmlPath:          \\192.168.0.17\Original_files\SPPrintReadyArtwork
-workstationName:  os.hostname()  ← automatycznie przy pierwszym uruchomieniu
+storagePath:     O:\SPPrintReadyArtwork       (default)
+xmlPath:         \\192.168.0.17\Original_files\SPPrintReadyArtwork
+workstationName: os.hostname()               (set on first run)
+
+Derived paths:
+  {storagePath}\AUTOMATION_WORKFLOW_COTTON\  ← DGEN
+  {storagePath}\AUTOMATION_WORKFLOW_POLY\    ← YOKO/YUMI
+  {storagePath}\PRINTED\DD-MM-YYYY\PRINTED_HHMMSS-GROUP-PRINTER\
 ```
 
-**Pochodne ścieżki (wyliczane w kodzie):**
+## SQLite (`helpers/db.js`)
+Tables: `logs`, `held_files`, `rollback_reasons`
+- `rollback_reasons.file_id = null` → whole batch reason; `= filename-without-ext` → single file
+- `logs.workstation` can be NULL in old records — render conditionally
+- Schema migration: `ALTER TABLE logs ADD COLUMN workstation TEXT` in try/catch (idempotent)
 
-```
-Workflow Cotton: {storagePath}\AUTOMATION_WORKFLOW_COTTON   ← dla DGEN
-Workflow Poly:   {storagePath}\AUTOMATION_WORKFLOW_POLY     ← dla YOKO/YUMI
-Printed:         {storagePath}\PRINTED\DD-MM-YYYY\PRINTED_HHMMSS-GROUP-PRINTER\
-```
+Functions: `initDb`, `insertLog`, `getAllLogs`, `clearAllLogs`, `holdFile`, `unholdFile`, `getHeldFiles`, `insertRollbackReason`, `getRollbackReasonsByBatch`, `getRollbackReasonsByFile`
 
-Dane są zapisywane w `%APPDATA%\ripflow-desktop\config.json` (Electron userData).
+## Atomic File Move (`createBatch.js`)
+VALIDATE → LOCK (`.lock` file) → DESTINATION_STRUCTURE → COPY (pdf-lib p.1) → VERIFY → COMMIT (rename + write `_batch_info.json { originalGroup }`) → DELETE_SOURCE → ROLLBACK on fail
 
----
+`_batch_info.json`: stores full inbox folder name (`originalGroup`). Used by `batchHistoryHandlers` to find correct rollback target. Without it, falls back to GROUP_NAME_OVERRIDES_REVERSE.
 
-## Baza danych SQLite (`helpers/db.js`)
-
-Persystencja logów i held files między sesjami. Plik `ripflow.db` leży w `getStorageRootPath()` (nie w userData).
-
-**Eksportowane funkcje:**
-
-| Funkcja               | Opis                                                         |
-| --------------------- | ------------------------------------------------------------ |
-| `initDb()`            | Inicjalizacja DB, CREATE TABLE, ALTER TABLE (migracja kolumn)|
-| `insertLog(log)`      | Wstawia wpis do tabeli `logs`                                |
-| `getAllLogs()`         | Zwraca wszystkie logi posortowane timestamp DESC             |
-| `clearAllLogs()`      | Usuwa wszystkie wpisy z `logs`                               |
-| `holdFile(fileId)`    | Dodaje fileId do `held_files`                                |
-| `unholdFile(fileId)`  | Usuwa fileId z `held_files`                                  |
-| `getHeldFiles()`      | Zwraca `Set<string>` z wstrzymanymi ID plików                |
-| `insertRollbackReason({ id, fileId, batchPath, reasonCode, reasonLabel, workstation })` | Wstawia powód rollbacku |
-| `getRollbackReasonsByBatch(batchPath)` | Zwraca tablicę powodów dla danego batcha         |
-| `getRollbackReasonsByFile(fileId)`     | Zwraca jeden rekord lub null dla danego pliku    |
-
-**Schemat tabeli `logs`:**
-
-```sql
-CREATE TABLE IF NOT EXISTS logs (
-  id TEXT PRIMARY KEY,
-  timestamp TEXT,
-  type TEXT,
-  stage TEXT,
-  code TEXT,
-  message TEXT,
-  detail TEXT,       -- JSON stringified lub null
-  workstation TEXT   -- os.hostname() stacji roboczej; NULL w starych logach
-)
-```
-
-**Schemat tabeli `held_files`:**
-
-```sql
-CREATE TABLE IF NOT EXISTS held_files (
-  file_id TEXT PRIMARY KEY
-)
-```
-
-**Schemat tabeli `rollback_reasons`:**
-
-```sql
-CREATE TABLE IF NOT EXISTS rollback_reasons (
-  id TEXT PRIMARY KEY,
-  file_id TEXT,        -- NULL = powód dla całego batcha; filename-bez-ext = powód dla konkretnego pliku
-  batch_path TEXT,
-  reason_code TEXT,
-  reason_label TEXT,
-  workstation TEXT,
-  timestamp TEXT
-)
-```
-
-**Migracja schematu:** `initDb()` po CREATE TABLE wykonuje `ALTER TABLE logs ADD COLUMN workstation TEXT` w try/catch — bezpieczne dla istniejących baz (błąd "column already exists" jest ignorowany).
-
-**Wołany przez:** `ipc/index.js` → `registerIpcHandlers()` wywołuje `initDb()` jako pierwsze. Wszystkie handlery `submit-batch`, `regenerate-xml`, `rollback-batch-history`, `rollback-file-history`, `delete-batch` zapisują log przez `insertLog()` z polem `workstation: getSettings().workstationName`.
-
----
-
-## Transakcyjne przenoszenie plików (`createBatch.js`)
-
-Przenoszenie plików jest **atomiczne z rollbackiem**:
-
-1. **VALIDATE** — walidacja wejścia
-2. **LOCK** — plik `.lock` w folderze źródła (blokada równoległych operacji)
-3. **DESTINATION_STRUCTURE** — stworzenie katalogu `PRINTED/DD-MM-YYYY/PRINTED_HHMMSS-GROUP-PRINTER`
-4. **COPY** — kopiowanie pliku (tylko 1. strona z PDF via pdf-lib) do katalogu tymczasowego
-5. **VERIFY** — weryfikacja rozmiaru skopiowanego pliku
-6. **COMMIT** — atomic rename z tmp na ostateczną lokalizację; po commicie zapisuje `_batch_info.json` z `{ originalGroup }` (best-effort — błąd nie zatrzymuje operacji)
-7. **DELETE_SOURCE** — usunięcie z inbox
-8. **ROLLBACK** (na fail) — przywrócenie wszystkiego + czyszczenie temp
-
-**`_batch_info.json`** — plik metadanych zapisywany w folderze batcha przy tworzeniu. Zawiera `originalGroup` = pełna nazwa folderu inbox (np. `"Neraki Waterproof Canvas FR (Water Repellant)"`). Używany przez `batchHistoryHandlers.js` podczas rollbacku do ustalenia właściwego folderu docelowego. Bez tego pliku rollback tworzyłby nowy folder o skróconej nazwie z `GROUP_NAME_OVERRIDES`.
-
----
-
-## IPC API (wszystkie metody `window.api`)
-
-Zdefiniowane w `preload.js`:
-
+## IPC API (`window.api`)
 ```js
 // Inbox
-window.api.readFolders(); // skanuj foldery
-window.api.onReadFoldersProgress(callback); // progress { label, percent }
-window.api.submitBatch(batch); // wyślij batch do druku
+readFolders() / onReadFoldersProgress(cb) / submitBatch(batch)
 
-// Historia batchy
-window.api.readPrintedFolder(); // odczyt PRINTED/ (batch history)
-window.api.regenerateXml(batchPath); // regeneracja XML dla batcha
-window.api.rollbackBatch({ batchPath, reason }); // przenieś pliki z batcha z powrotem do inbox; reason: { code, label }
-window.api.rollbackFile({ filePath, batchPath, reason }); // przywróć pojedynczy plik; reason: { code, label }
-window.api.deleteBatch(batchPath); // usuń pusty batch (bez PDFs)
-window.api.startBatchWatcher(); // filesystem watcher na PRINTED/
-window.api.stopBatchWatcher(); // zatrzymaj watcher
-window.api.onBatchUpdate(callback); // realtime updates z watchera
+// Batch history
+readPrintedFolder()
+regenerateXml(batchPath)
+rollbackBatch({ batchPath, reason: { code, label } })          // object arg, NOT positional
+rollbackFile({ filePath, batchPath, reason: { code, label } }) // object arg, NOT positional
+deleteBatch(batchPath)
+startBatchWatcher() / stopBatchWatcher() / onBatchUpdate(cb)
 
-// Powody rollbacku (SQLite)
-window.api.getRollbackReasonsByBatch(batchPath); // zwraca { success, data: reason[] }
-window.api.getRollbackReasonsByFile(fileId);      // zwraca { success, data: reason | null }
+// Rollback reasons
+getRollbackReasonsByBatch(batchPath)  // → { success, data: reason[] }
+getRollbackReasonsByFile(fileId)      // → { success, data: reason | null }
 
-// Ustawienia
-window.api.getSettings(); // zwraca { success, settings: { storagePath, xmlPath, workstationName } }
-window.api.setSettings({ storagePath, xmlPath, workstationName? }); // zapisuje po async walidacji fs.promises.access (paths only); zwraca { success, error? }
-window.api.selectFolder(); // natywny dialog wyboru folderu; zwraca { success, canceled, path }
+// Settings — ALWAYS pass all 3 fields to avoid null overwrite
+getSettings()  // → { success, settings: { storagePath, xmlPath, workstationName } }
+setSettings({ storagePath, xmlPath, workstationName })  // validates paths via fs.promises.access
+selectFolder() // → { success, canceled, path }
 
-// Logi (SQLite)
-window.api.getLogs();    // zwraca { success, data: log[] } — wszystkie logi z DB
-window.api.clearLogs();  // usuwa wszystkie logi z DB
+// Logs / Held files
+getLogs() / clearLogs()
+getHeldFiles() / holdFile(fileId) / unholdFile(fileId)
 
-// Held files (SQLite)
-window.api.getHeldFiles();       // zwraca { success, data: fileId[] }
-window.api.holdFile(fileId);     // dodaje fileId do held_files
-window.api.unholdFile(fileId);   // usuwa fileId z held_files
+// Files — use IPC, NOT file:// URI (blocked by contextIsolation)
+readFileBuffer(filePath)  // → { success, data: base64string }
+openPreview(filePath) / openInFolder(filePath)
+showConfirm(message)      // → boolean (native Electron dialog)
 
-// Pliki — odczyt bufora (używane przez usePdfPreview)
-window.api.readFileBuffer(filePath); // zwraca { success, data: base64string } — czyta plik przez main process
-
-// Dialogi
-window.api.showConfirm(message); // natywny dialog potwierdzenia Electrona; zwraca boolean
-
-// Pliki
-window.api.openPreview(filePath); // otwórz PDF
-window.api.openInFolder(filePath); // otwórz w Explorerze
-
-// Window controls (frameless)
-window.api.minimizeWindow();
-window.api.maximizeWindow(); // wyeksponowane w API, ale nie podpięte do przycisku UI — okno startuje zmaksymalizowane przez win.maximize()
-window.api.closeWindow();
+// Window (frameless)
+minimizeWindow() / closeWindow()
 ```
-
-IPC events main→renderer: `read-folders:progress` → `{ label, percent }`, `batch-update` → dane z watchera
-
----
 
 ## Zustand Store (`useStore.jsx`)
-
-Stan aplikacji — `subscribeWithSelector` middleware:
-
 ```js
 {
-  // Filtrowanie
-  activeTab: "All" | "Cottons" | "Polyesters",
-  searchQuery: "",                               // szuka po orderId/customer/material
-  sortOrder: null | "meters_desc" | "date_asc",
-  printTypeFilter: null | "LM" | "FQ" | "SAMPLE" | "CUSHION" | "TEA_TOWEL",
-
-  // Dane inbox
-  files: [{ printGroup, items: [...], count }],  // wszystkie grupy z inbox
-  filteredFiles: [],                             // po filtrach
-
-  // Selekcja
-  selectedIds: Set(),                            // Set z ID wybranych plików
-
-  // Status
-  isRefreshingFiles: boolean,
-  lastFilesRefreshAt: ISO string,
-
-  // Historia batchy
-  batchDays: [],                                 // dane z PRINTED/ (tree day→batch→files)
-  isBatchSubmitting: boolean,                    // true podczas submit batcha (używane w LastBatchCard)
-
-  // Logi sesji
+  activeTab, searchQuery, sortOrder, printTypeFilter,
+  files, filteredFiles,         // inbox groups
+  selectedIds: Set(),           // material lock: cannot mix Cottons + Polyesters
+  isRefreshingFiles, lastFilesRefreshAt,
+  batchDays, isBatchSubmitting,
   logs: [{ id, timestamp, type, stage, code, message, detail, workstation }],
-
-  // Held files (pliki wstrzymane przez operatora)
-  heldIds: Set(),                                // Set z ID wstrzymanych plików
-
-  // Alerty
-  alerts: [{ id, type: "Success"|"Warning"|"Error", title, message }],
+  heldIds: Set(),               // synced with SQLite via loadHeldFiles() + toggleHold()
+  alerts: [{ id, type, title, message }],
 }
 ```
-
-### Akcje:
-
-| Akcja                         | Opis                                                   |
-| ----------------------------- | ------------------------------------------------------ |
-| `setActiveTab(tab)`           | Zmiana zakładki materiału + re-filtrowanie             |
-| `setSearchQuery(query)`       | Szukanie, re-filtrowanie                               |
-| `setSortOrder(order)`         | `"meters_desc"` / `"date_asc"` / null                  |
-| `setPrintTypeFilter(type)`    | Filtr po typie produktu                                |
-| `setFiles(files)`             | Ustaw pliki + trigger re-filtrowania                   |
-| `toggleItemSelection(id)`     | Toggle z material lock (nie można mieszać Cotton/Poly) |
-| `toggleGroupSelection(items)` | Toggle całej grupy                                     |
-| `toggleClearSelection()`      | Wyczyść selekcję                                       |
-| `setAlert(alert)`             | Dodaj alert                                            |
-| `deleteAlert(id)`             | Usuń alert                                             |
-| `refreshFiles(options)`       | Async load z `window.api.readFolders()`                |
-| `setBatchDays(days)`          | Ustaw dane historii batchy                             |
-| `refreshBatchDays()`          | Async load z `window.api.readPrintedFolder()`          |
-| `setIsBatchSubmitting(val)`   | Flaga submitu (pokazuje spinner w LastBatchCard)       |
-| `addLog(log)`                 | Dodaj wpis do logów sesji (tylko in-memory)            |
-| `clearLogs()`                 | Wyczyść logi in-memory + wywołaj `window.api.clearLogs()` |
-| `loadLogsFromDb()`            | Wczytaj logi z SQLite do store (przy starcie)          |
-| `loadHeldFiles()`             | Wczytaj held file IDs z SQLite do `heldIds`            |
-| `toggleHold(fileId)`          | Hold/unhold pliku — sync z SQLite i lokalnym Set       |
-
-**Material lock:** raz zaznaczony materiał blokuje możliwość dodania plików innego typu (Cottons ↔ Polyesters).
-
-**Eksportowany helper:** `getLastBatch(batchDays)` — zwraca `{ batch, day }` dla ostatniego aktywnego batcha (lub ostatniego rolled_back jeśli brak aktywnych); używany przez `LastBatchCard`.
-
-Helper wewnętrzny: `applyFilters(files, activeTab, searchQuery, sortOrder, printTypeFilter)`.
-
----
-
-## `rollbackReasons.js` — stałe powodów rollbacku
-
-`src/ui/constants/rollbackReasons.js` — używane przez `BatchHistory` i `RollbackModal`.
-
-```js
-export const ROLLBACK_REASONS = [
-  { code: "MISSING_JOB",    label: "Missing job",     icon: LuFileX },
-  { code: "PRINTER_LINES",  label: "Printer lines",   icon: LuPrinter },
-  { code: "WRONG_SIZE",     label: "Wrong size",      icon: LuRuler },
-  { code: "WRONG_MATERIAL", label: "Wrong material",  icon: LuLayers },
-  { code: "FABRIC_FAULT",   label: "Fabric Fault",    icon: LuZap },
-  { code: "PRESSING_FAULT", label: "Pressing Fault",  icon: LuThermometer },
-  { code: "FABRIC_CREASE",  label: "Fabric Crease",   icon: LuWaves },
-  { code: "GHOSTING",       label: "Ghosting",        icon: LuGhost },
-  { code: "LINT_MARK",      label: "Lint Mark",       icon: LuSparkles },
-  { code: "WRONG_COLOURS",  label: "Wrong Colours",   icon: LuPalette },
-  { code: "OTHER",          label: "Other...",        icon: LuEllipsis },
-];
-```
-
-`code: "OTHER"` ma specjalne zachowanie — zamiast od razu wywołać rollback, otwiera inline modal z polem tekstowym do wpisania własnego opisu.
-
----
-
-## `notify.js` — centralny helper notyfikacji
-
-`src/ui/utils/notify.js` — używany przez `DataPrintSelection`, `BatchHistory`, `Settings`, `DataList`.
-
-```js
-notify({ type, title, message }, { stage, code, detail });
-```
-
-Jednym wywołaniem: dodaje **alert** (toast) do store ORAZ **log entry** do SessionLogs. Zawsze używaj `notify()` zamiast `setAlert()` bezpośrednio — inaczej błędy nie trafią do widoku "logs".
-
----
-
-## Kalkulacja długości druku (`shared/estimatePrintLength.js`)
-
-Funkcje:
-
-- `estimatePrintLength(files)` → `{ totalLengthMm, totalLengthM, fixedTotalLengthM, rowsCount }`
-- `estimateMaterialLengthByGroups(groups, materialType)` — dla danego materiału
-
-Algorytm:
-
-1. Grupuje pliki po `width` (szerokość produktu)
-2. Sortuje po `height` DESC w każdej grupie
-3. Układa produkty w rzędy (nie przekraczając szerokości rolki)
-4. Sumuje wysokości rzędów
-
-### Szerokości rolek i marginesy (`shared/printWidths.js`):
-
-| Materiał | Szerokość rolki (estymacja)                 | Margines |
-| -------- | ------------------------------------------- | -------- |
-| COTTON   | 1420mm (główna), 1370mm, 1270mm (specjalne) | 10mm     |
-| POLY     | 1550mm                                      | 5mm      |
-
-> ⚠️ **Uwaga na dwie różne szerokości dla POLY:**
->
-> - `LM_ROLL_POLY = 1550mm` — szerokość rolki używana do **kalkulacji długości druku** (estymacja)
-> - `LM_XML_POLY = 1420mm` — wartość wpisywana do **XML dla PrintFactory** (`<Width>`) = szerokość tkaniny
->   Te wartości są różne celowo. Nie zamieniaj ich miejscami.
-
-**Wymiary stałe produktów:**
-
-- SAMPLE: 220×200mm
-- FQ: 670×480mm
-- TEA_TOWEL: 700×500mm
-
-> ⚠️ UWAGA: szerokość rolki bawełny do estymacji to **1420mm** (nie 1450mm — stara dokumentacja była błędna)
-
----
-
-## Konfiguracja okna Electron (`main.js`)
-
-- **Frameless window** (brak natywnego title bar — własny `TitleBar` komponent)
-- **Startuje zmaksymalizowana** (`win.maximize()`)
-- DEV: `http://localhost:5173`, PROD: `dist/index.html`
-- Context isolation + preload
-- IPC: `window:minimize`, `window:maximize`, `window:close`
-
----
-
-## Komponenty UI — szczegóły kluczowych
-
-### `TitleBar`
-
-Custom title bar z logo (`Maake_Logo.webp`) i przyciskami minimize/close. Wymagany bo okno jest frameless.
-
-### `NavBar`
-
-Lewa kolumna nawigacji. Ikony: Print (`LuPrinter`), Batch (`LuLayers`), Logs (`LuScrollText`) + Settings (`LuSettings`) na dole.
-
-### `BatchHistory`
-
-Wyświetla drzewo `day → batch → files`:
-
-- Wczytuje z `window.api.readPrintedFolder()`
-- Real-time updates przez `startBatchWatcher()` / `onBatchUpdate()` (debounce 200ms)
-- Filtry: search + printer toggle (DGEN, YOKO, YUMI)
-- Kliknięcie w **dowolne miejsce wiersza batcha** (`batch_row` div) rozwija/zwija drzewo plików; przyciski akcji mają `e.stopPropagation()` żeby nie trigger-owały toggle
-- Akcje na batchu: Regenerate XML, Open in Explorer, Rollback batch
-- Akcje na pliku (context menu): Preview PDF, Show in Explorer, Rollback file
-- Status batcha: `active` (ma PDFs) | `rolled_back` (puste)
-- GSAP animacje na nowych itemach
-- Po rollbacku **całego batcha** watcher wysyła `"removed"` event (nie trzeba ręcznego loadData). Po rollbacku **pojedynczego pliku** watcher nie emituje eventu → loadData() wymagane.
-
-**Rollback z powodem:**
-- Rollback batcha → otwiera `<RollbackModal>` (wybór z 11 powodów); po potwierdzeniu wywołuje `window.api.rollbackBatch({ batchPath, reason })`
-- Rollback pliku → context menu z submenu (11 powodów); wybór "Other..." → inline portal modal z polem tekstowym ("Describe the issue:")
-- Powód jest zapisywany w tabeli `rollback_reasons` w SQLite
-- `loadData` pobiera `getRollbackReasonsByBatch` dla: (a) batchy ze statusem `rolled_back` ORAZ (b) batchy ze statusem `active` które mają choć jeden plik z `status === "rolled_back"` — bez tego pkt (b) badge nigdy nie pojawiał się przy file rollbacku w aktywnym batchu
-- Badge z powodem (`reason_badge` — pomarańczowy styl) wyświetlany w dwóch miejscach:
-  - **Wiersz batcha** (`batch_name_group`): `batchLevelReason` = rekord z `file_id === null` z `batch.rollbackReasons`; pokazuje powód rollbacku całego batcha
-  - **Wiersz pliku**: rekord z `file_id === fileId` (powód konkretnego pliku), fallback na `file_id === null` (powód batcha)
-- Lookup powodu dla pliku: najpierw szuka po `file_id === fileId`, fallback na `file_id === null`
-
-**Optimistic updates po rollbacku (natychmiastowy badge bez czekania na watcher):**
-- `handleConfirmRollbackBatch`: po `res?.success` natychmiast wywołuje `setDayGroups` — ustawia `status: "rolled_back"`, `fileCount: 0`, `files: []`, `rollbackReasons: [{ file_id: null, ... }]`; watcher `"removed"` event może nadal przyjść później (idempotentnie)
-- `handleRollbackFile`: po `res?.success` natychmiast wywołuje `setDayGroups` — ustawia plik jako `rolled_back` z `rolledBackAt`, dodaje reason do `batch.rollbackReasons`; następnie wywołuje `loadData()` dla pełnej synchronizacji
-
-**Watcher `"new-batch"` a utrata `rollbackReasons`:**
-- Windows `fs.watch` odpala `"new-batch"` gdy folder batcha się zmienia (np. zapis `_rollback_snapshot.json`) — `readSingleBatch` nie fetchuje `rollbackReasons`, więc bez zabezpieczenia nowy obiekt batcha kasuje optimistic update
-- Fix: w handlerze `"new-batch"` przy nadpisaniu istniejącego batcha: `{ ...batch, rollbackReasons: batch.rollbackReasons ?? b.rollbackReasons }` — zachowuje reasons z poprzedniego stanu jeśli nowe dane ich nie mają
-
-### `DataOverviewSection`
-
-Container dla **trzech kart statystyk** (wyświetlanych w widoku "print"):
-
-- `ProductionOverviewCard` — łączna liczba plików, % Cottons/Poly, metry per materiał, last refresh
-- `PrintMaterialBreakdownCard` — top 3 grupy per materiał + collapsible "Others"
-- `LastBatchCard` — ostatni batch (plik: `src/ui/components/LastBatchCard/`, nie wewnątrz `DataOverviewSection/`)
-- `OthersTooltip` — hover tooltip pokazujący pozostałe grupy (wewnątrz `PrintMaterialBreakdownCard/`)
-
-### `SessionLogs`
-
-Widok logów sesji (`src/ui/components/SessionLogs/`):
-
-- Wyświetla wszystkie wpisy z `logs` w Zustand store
-- Filtry: search (message/code) + type filter (All/Error/Warning/Success/Info)
-- Klik na wpis → expand z JSON detailami
-- Przycisk "Clear session" czyści wszystkie logi
-- Logi są zapisywane przez akcje `addLog()` w store oraz przez `notify()` helper
-- Każdy wpis wyświetla `workstation_pill` (obok `stage_pill`) gdy pole `workstation` jest niepuste
-
-### `AlertsHost`
-
-Toast system: max 3 widoczne, auto-dismiss po 3s, expand on hover, GSAP animations. Kolory: Error (red), Warning (yellow), Success (green).
-
-### `DataList`
-
-Lista plików inbox z checkboxami. Każdy wiersz renderuje pięć tagów o **stałej szerokości** (wyrównanie kolumnowe):
-
-| Slot | Klasa CSS | Szerokość | Treść |
-|------|-----------|-----------|-------|
-| Wiek | `tag_age` | 54px | `LuClock` + "New" / "Xd" |
-| Rozmiar | `tag_size` | 74px | `LuFile` + "X.X MB" |
-| Typ druku | `tag_type` | 82px | ikona + skrót |
-| Materiał | `tag_material` | 100px | ikona + nazwa |
-| Status | `tag_status` | 38px | sama ikona |
-
-Każdy slot jest zawsze renderowany (pusty gdy brak danych) — gwarantuje wyrównanie między wierszami. Zawartość wyśrodkowana (`justify-content: center`).
-
-**Skale kolorów tagu wieku** (`item.diffDays`):
-- 0–1 dni → `#3B6D11` (zielony)
-- 2 dni → `#D4860E` (jasny pomarańcz)
-- 3 dni → `#C05208` (ciemniejszy pomarańcz)
-- 4+ dni → `#A32D2D` (czerwony)
-
-**Lookup tables (module-level constants):**
-- `PRINT_TYPE_MAP`: `LM → LuRuler`, `FQ → LuScissors`, `SAMPLE → LuFlaskConical`, `TEA_TOWEL → LuUtensils`, `CUSHION → LuSofa`
-- `MATERIAL_MAP`: `Cottons → LuLeaf`, `Polyesters → PiPolygon` (react-icons/pi), `Unknown → LuCircleHelp`
-- `STATUS_MAP`: `READY → LuCircleCheck`, `INVALID → LuCircleX`, `WARNING → LuTriangleAlert`
-
-**Warianty wiersza:** `list_item_invalid` (czerwony border + muted filename), `list_item_warning` (amber border), `list_item_held` (czerwone tło).
-
-**Held item w wierszu:** plik na hold renderuje ikonę `FiLock` (react-icons/fi) inline obok nazwy pliku; checkbox jest wyłączony; tooltip `data-tooltip="File is on hold"` na labelu.
-
-**Context menu (prawy klik):** opcje — "Quick Preview" (otwiera `PdfPreviewModal` z nawigacją po całej grupie), "Open in Folder", separator, "Hold"/"Unhold" (toggle), "Open in Shopify" (placeholder). `DataList` ma własną instancję `usePdfPreview` + `PdfPreviewModal` — oddzielną od BatchHistory.
-
-**`onBackdropContextMenu`:** `DataList` przekazuje `handleBackdropContextMenu` do `ContextMenu` — prawy klik na backdrop podczas otwartego menu wykrywa element pod spodem i przełącza menu na inny item bez zamykania i otwierania ponownie.
-
-**Dane z `item`:** `item.diffDays`, `item.fileSizeBytes`, `item.printTypeCode`, `item.materialType`, `item.status`, `item.file.name`, `item.file.fullPath`.
-
-### `RollbackModal`
-
-Modal wyboru powodu rollbacku całego batcha (`src/ui/components/RollbackModal/`):
-
-- Renderowany przez `createPortal` do `document.body`
-- Props: `{ batchName, onConfirm, onCancel }`
-- Pokazuje nazwę batcha jako subtitle
-- Kafelki (pills) z 11 powodami z ikonami — kliknięty pill zmienia styl (czarne tło, hover tylko na nie-wybranych)
-- Gdy wybrano "Other..." → pojawia się pole tekstowe `autoFocus`
-- Przycisk "Rollback" zablokowany do momentu wyboru powodu (+ niepusty tekst gdy OTHER)
-- Styl przycisku confirm: jasno-czerwony (`background: #ffe7e5; color: #e63641`)
-- Enter potwierdza (gdy enabled), Escape anuluje
-
-### `ContextMenu`
-
-Portal-based popup z edge detection, separator support, danger items (czerwone). Zamyka się na click, ESC, backdrop.
-
-**Props:** `{ id, anchorX, anchorY, options, onClose, onBackdropContextMenu? }` — `onBackdropContextMenu` jest opcjonalne; używane przez `DataList` do przełączania menu na inny item bez zamknięcia.
-
-**Submenu:** opcja z polem `children` renderuje się z strzałką `HiChevronRight` (react-icons/hi2) i otwiera submenu przy hover:
-- Hover delay 150ms (timer `hideTimerRef`) — zapobiega migotaniu przy szybkim przesuwaniu myszy
-- Submenu pozycjonowane `left: calc(100% + 8px)` (przylega do prawej krawędzi głównego menu)
-- Edge detection przez `useLayoutEffect` — submenu przesuwa się w górę lub w lewo gdy wychodzi poza ekran
-- `min-width: 200px` + `white-space: nowrap` na itemach — każdy reason w jednej linii
-- Child `onClick`: najpierw `onClose()`, potem `child.onClick()` — ważne dla Electron timing
-
-### `Settings`
-
-Widok ustawień (zakładka "settings" w NavBar). Dwie osobne karty z osobnymi przyciskami Save:
-
-**Karta "Storage Paths":**
-- **Storage Path (INBOX)** — lokalny folder skanowany przez `readFolders`
-- **XML Workflow Path** — ścieżka sieciowa do której trafiają pliki XML dla PrintFactory
-- Przycisk Browse otwiera natywny dialog (`dialog:select-folder`)
-- Save waliduje oba pola przez `fs.promises.access` (async) po stronie main procesu przed zapisem
-
-**Karta "Workstation":**
-- **Workstation Name** — identyfikator tego komputera w logach współdzielonych
-- Domyślna wartość: `os.hostname()` (ustawiana przy pierwszym uruchomieniu przez electron-store)
-- Save wywołuje `window.api.setSettings({ storagePath, xmlPath, workstationName })` — przekazuje aktualne wartości obu ścieżek aby nie nadpisać ich nullem
-- `workstationName` nie podlega walidacji `fs.promises.access` (to nie jest ścieżka)
-
-Wynik obu kart przez `notify()` (Success/Error toast).
-
-### `StartupLoader`
-
-Pełnoekranowy loader przy starcie. Odbiera `read-folders:progress` i animuje pasek postępu (GSAP).
-
----
-
-## CSS
-
-**Zmienne globalne (`global.css`):**
-
-```css
---navbar-width: 104px /* Kolory: white, grey (#f1f1f1, #f7f7f7), black (#303030) */
-  /* Tekst: primary (#303030), secondary (#616161) */ /* Border: grey (#e5e7eb), black (#303030) */;
-```
-
-Każdy komponent ma własny `*.module.css` — nie edytuj globalnie bez potrzeby.
-
----
-
-## Konfiguracja deweloperska
-
+Key: `getLastBatch(batchDays)` exported helper. `applyFilters()` internal helper.
+
+**DataFilters:** call `loadHeldFiles()` BEFORE `refreshFiles()` — order is critical.
+
+## Print Widths (`shared/printWidths.js`)
+- Cotton roll (estimation): **1420mm** — NOT 1450mm (old docs wrong); margin 10mm
+- `LM_ROLL_POLY = 1550mm` (estimation) ≠ `LM_XML_POLY = 1420mm` (XML `<Width>` field) — intentionally different, do not swap
+- Fixed dims: SAMPLE 220×200mm, FQ 670×480mm, TEA_TOWEL 700×500mm
+
+## BatchHistory — Key Behaviors
+- Call `stopBatchWatcher()` on unmount
+- Click anywhere on batch row to expand/collapse; action buttons use `e.stopPropagation()`
+- Whole batch rollback: watcher sends `"removed"` → no manual reload needed
+- Single file rollback: watcher does NOT fire → call `loadData()` manually
+- `loadData` must fetch rollback reasons for: (a) `rolled_back` batches AND (b) `active` batches with any `file.status === "rolled_back"` — skipping (b) breaks file-level badges
+- Optimistic updates: set state immediately after `res?.success`, watcher syncs after
+- `"new-batch"` watcher event: preserve existing reasons: `rollbackReasons: batch.rollbackReasons ?? b.rollbackReasons` — Windows `fs.watch` can fire mid-optimistic-update
+- Reason badge lookup: `file_id === fileId` first, fallback to `file_id === null` (batch-level)
+- Hook destructured with prefixes (`isPreviewLoading`, `isPreviewOpen`) to avoid conflict with local `isLoading`
+
+## Rollback Reasons
+11 codes: `MISSING_JOB`, `PRINTER_LINES`, `WRONG_SIZE`, `WRONG_MATERIAL`, `FABRIC_FAULT`, `PRESSING_FAULT`, `FABRIC_CREASE`, `GHOSTING`, `LINT_MARK`, `WRONG_COLOURS`, `OTHER`
+- `OTHER` → inline portal modal with text input (`window.prompt` returns null in Electron contextIsolation)
+- ContextMenu submenu child `onClick`: call `onClose()` BEFORE `child.onClick()` — Electron timing
+
+## GROUP_NAME_OVERRIDES (`createBatchIds.js`)
+Maps long group names → short folder names. `resolveOriginalGroup(batchPath, shortGroup)`:
+1. Read `_batch_info.json` from batch folder
+2. Fallback: `GROUP_NAME_OVERRIDES_REVERSE[shortGroup]`
+3. Last fallback: `shortGroup` unchanged
+
+## usePdfPreview Hook
+- Module-level Map cache (key: filePath) — instant on repeat opens
+- Returns: `{ openPreview, closePreview, navigate, isOpen, isLoading, imgSrc, error, currentPath, currentIndex, fileList }`
+- `PdfPreviewModal` accepts `fileList: [{ path, name }]`; in BatchHistory skip `rolled_back` files
+- `DataList` has its own instance — does not share cache/state with BatchHistory instance
+
+## Dev Commands
 ```bash
-npm run dev       # Vite (port 5173, strictPort) + Electron równolegle (concurrently + wait-on)
-npm run build     # Vite build → dist/
-npm run lint      # ESLint (flat config v9)
-npm run preview   # Vite preview
+npm run dev    # Vite + Electron concurrently (wait-on)
+npm run build  # Vite → dist/
+npm run lint   # ESLint flat config v9 — separate rules for ui/ and electron/
 ```
 
-ESLint: **osobne konfiguracje** dla `src/ui/` (React hooks/refresh rules) i `src/electron/` (Node.js globals). Reguła: brak unused vars z wzorcem `^[A-Z_]`.
-
-Alias `@` w UI → `./src/ui` (np. `import { useStore } from '@/store/useStore'`).
-
----
-
-## Co jest jeszcze planowane (z README)
-
-- Integracja z PrintFactory Cloud API
-- UI do zarządzania materiałami (widok "settings" — częściowo zaimplementowany)
-- Multi-user synchronizacja
-- Integracja z Shopify (placeholder w ContextMenu DataList)
-
----
-
-## Ważne rzeczy do zapamiętania
-
-- Projekt działa **tylko na Windows** (ścieżki sieciowe, Electron shell)
-- `parseFileName.js` to serce aplikacji — zmiana wymaga dużej ostrożności
-- Przenoszenie plików ma rollback — zawsze testuj ścieżki błędów przy modyfikacji `createBatch.js`
-- CSS Modules — każdy komponent ma własny `*.module.css`, nie edytuj globalnie bez potrzeby
-- `estimatePrintLength.js` i `printWidths.js` są w `shared/` — używane zarówno w electron jak i w UI
-- Okno jest **frameless i startuje zmaksymalizowane** — nie zakładaj stałych wymiarów; TitleBar jest własnym komponentem React
-- Szerokość rolki bawełny (estymacja): **1420mm** (nie 1450mm — stara dokumentacja była błędna)
-- `LM_XML_POLY = 1420mm` (XML dla PrintFactory) ≠ `LM_ROLL_POLY = 1550mm` (estymacja długości) — różne celowo
-- Material lock w selekcji: nie można mieszać Cottons i Polyesters w jednym batchu
-- BatchHistory ma real-time watcher — pamiętaj o `stopBatchWatcher()` przy unmount
-- Ścieżki storage są w **electron-store** (`getSettings.js`) — nigdy nie hardkoduj ich ponownie w `getRootPath.js`
-- `settings:set` waliduje ścieżki przez `fs.promises.access` (async) — sieciowa ścieżka XML musi być dostępna w momencie zapisu
-- Wszystkie operacje na ścieżkach z batchHistoryHandlers używają `assertStorageFilePath` — upewnij się że batchPath i filePath przechodzą walidację przed jakimikolwiek operacjami na plikach
-- Zawsze używaj `notify()` zamiast `setAlert()` bezpośrednio — inaczej zdarzenia nie trafiają do SessionLogs
-- `db.js` → plik `ripflow.db` jest w `storagePath` (nie w Electron userData) — jeśli storagePath jest niedostępny, `initDb()` może failować; aplikacja działa dalej (wszystkie funkcje db są zabezpieczone `if (!stmt) return`)
-- `workstationName` jest trzecim polem ustawień — przy wywołaniu `setSettings()` z UI zawsze przekazuj wszystkie trzy wartości (`storagePath`, `xmlPath`, `workstationName`), żeby nie nadpisać któregoś nullem
-- Pole `workstation` w tabeli `logs` może być NULL (stare logi sprzed migracji) — `SessionLogs` renderuje pill warunkowo tylko gdy wartość jest niepusta
-- `heldIds` w store to `Set<string>` — synchronizowany z SQLite przez `loadHeldFiles()` przy starcie i `toggleHold()` przy zmianie
-- Brak testów automatycznych w projekcie
-- **pdfjs-dist musi być w wersji 4.x** — v5 używa `Map.prototype.getOrInsertComputed` niedostępnego w Chromium bundlowanym z Electron 40; nie upgraduj bez weryfikacji
-- **pdf.js w Electron:** renderer nie może ładować plików przez `file://` URI (contextIsolation blokuje dostęp). Zamiast tego `usePdfPreview` czyta plik przez IPC (`window.api.readFileBuffer`) → base64 → `Uint8Array` → `pdfjsLib.getDocument({ data })`. Nie zmieniaj tego na podejście URI.
-- `usePdfPreview` hook: module-level `Map` cache (klucz: filePath) — po pierwszym renderze kolejne otwarcia są natychmiastowe. Zwraca `{ openPreview, closePreview, navigate, isOpen, isLoading, imgSrc, error, currentPath, currentIndex, fileList }`
-- `PdfPreviewModal`: przyjmuje `fileList` (array `{ path, name }`) do nawigacji ←→ między plikami w tej samej grupie/batchu. W `BatchHistory` pomija pliki ze statusem `rolled_back` przy budowaniu listy nawigacji.
-- W `BatchHistory` hook jest destructurowany z prefixami (`isPreviewLoading`, `isPreviewOpen` itd.) żeby uniknąć konfliktu z lokalnym stanem `isLoading`.
-- **Przed usunięciem jakiegokolwiek kodu — zawsze zrób grep po całym projekcie.** Raporty audytu mogą przeoczyć importy lub użycia w nieoczywistych miejscach. Lepiej poświęcić 10 sekund na grep niż usunąć coś używanego.
-- `DataDaysCounter` komponent został usunięty — wiek pliku renderowany jest inline w `DataList` jako tag z ikoną `LuClock`; nie odtwarzaj `DataDaysCounter`.
-- `Badge` komponent istnieje w katalogu, ale **nie jest używany** w `DataList` — print type, materiał i status renderowane są jako inline tagi z ikonami Lu* / PiPolygon.
-- `parseFileName` zwraca dane pliku zagnieżdżone pod `file: { name, ext, dir, fullPath }` — dostęp przez `item.file.name`, nie `item.name`.
-- **Rollback z powodem:** `rollbackBatch` i `rollbackFile` przyjmują teraz obiekty `{ batchPath, reason }` / `{ filePath, batchPath, reason }` — nie stare sygnatury pozycyjne. Zmiana jest we wszystkich warstwach: preload → ipc/index → batchHistoryHandlers.
-- `rollback_reasons` tabela w SQLite: `file_id = null` oznacza powód dla całego batcha; `file_id = filename-bez-ext` oznacza powód dla konkretnego pliku.
-- `window.prompt` nie działa w Electron z `contextIsolation: true` — zwraca `null` natychmiast. Dlatego "Other" reason używa inline portal modal z `useState` zamiast `window.prompt`.
-- `ContextMenu` submenu: child `onClick` musi wywołać `onClose()` PRZED `child.onClick()` — Electron ma problemy z kolejnością gdy modal otwiera się zaraz po zamknięciu menu.
-- `HiChevronRight` z `react-icons/hi2` — ta sama rodzina co `HiChevronDown`/`HiChevronUp` używane w DataFilters "Sort by". Utrzymuj spójność ikon nawigacji z tej rodziny.
-- `DataFilters` — przycisk "Refresh list" wywołuje `loadHeldFiles()` **przed** `refreshFiles()`, żeby `heldIds` były aktualne zanim pliki trafią do store. Nie zmieniaj kolejności.
-- `DataList` ma własną instancję `usePdfPreview` — nie współdzieli cache ani stanu z instancją w `BatchHistory`. Obie mogą być otwarte jednocześnie (różne komponenty), choć w praktyce tylko jeden widok jest aktywny.
-- `batchLevelReason` w `BatchHistory` — zmienna obliczana wewnątrz `.map()` batchy; nie wyciągaj jej do zewnętrznego stanu — jest pochodna `batch.rollbackReasons` i `isRolledBack`.
-- Nigdy nie nadpisuj `rollbackReasons` w handlerze `"new-batch"` jeśli nowy obiekt batcha ich nie zawiera — Windows `fs.watch` może strzelić `"new-batch"` w środku optimistic update i skasować badge. Zawsze: `rollbackReasons: batch.rollbackReasons ?? b.rollbackReasons`.
-- `loadData` musi fetchować reasons nie tylko dla `rolled_back` batchy ale też dla `active` batchy z plikami `status === "rolled_back"` — inaczej badge przy file rollbacku w aktywnym batchu nigdy się nie pojawi.
-- **`GROUP_NAME_OVERRIDES` w `createBatchIds.js`** — mapa skrótów nazw grup dla folderów batchy (np. `"Neraki Waterproof Canvas FR (Water Repellant)" → "Neraki"`). Oba obiekty (`GROUP_NAME_OVERRIDES` i `GROUP_NAME_OVERRIDES_REVERSE`) są eksportowane. `batchHistoryHandlers.js` używa `resolveOriginalGroup(batchPath, shortGroup)` który: (1) próbuje odczytać `_batch_info.json` z folderu batcha, (2) fallback na `GROUP_NAME_OVERRIDES_REVERSE[shortGroup]`, (3) ostatni fallback: `shortGroup` bez zmian. Dzięki temu rollback trafia do właściwego folderu inbox nawet gdy nazwa batcha była skrócona.
+## Critical Rules
+1. **Always grep before deleting** — audit reports miss non-obvious imports
+2. `parseFileName` returns `file: { name, ext, dir, fullPath }` — use `item.file.name`, not `item.name`
+3. `rollbackBatch`/`rollbackFile` take object `{ ..., reason }` — not positional args
+4. `setSettings()`: always pass all 3 fields (`storagePath`, `xmlPath`, `workstationName`)
+5. Use `notify()` not `setAlert()` — only `notify()` writes to SessionLogs
+6. `ripflow.db` lives in `storagePath` — fails if network unavailable; app continues (all db fns guarded)
+7. pdfjs-dist **must stay v4** — v5 incompatible with Electron 40 Chromium
+8. Load PDF via IPC `readFileBuffer` → base64 → Uint8Array → `pdfjsLib.getDocument({ data })` — NOT `file://`
+9. `Badge` component exists but is **unused** in DataList (inline icon tags used instead)
+10. `DataDaysCounter` was removed — age rendered inline in DataList; do not recreate
+11. No automated tests in project

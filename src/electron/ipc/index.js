@@ -10,7 +10,7 @@ import { rollbackBatchFromHistory, rollbackFileFromHistory, regenerateXmlForBatc
 import { getStorageRootPath } from "../helpers/getRootPath.js";
 import { parsePrintFileName } from "../helpers/parseFileName.js";
 import { getSettings, setSettings } from "../helpers/getSettings.js";
-import { initDb, insertLog, getAllLogs, clearAllLogs, holdFile, unholdFile, getHeldFiles, getRollbackReasonsByBatch, getRollbackReasonsByFile, getRollbackStats } from "../helpers/db.js";
+import { initDb, insertLog, getAllLogs, clearAllLogs, holdFile, unholdFile, getHeldFiles, getRollbackReasonsByBatch, getRollbackReasonsByFile, getRollbackStats, getRollbackDetails } from "../helpers/db.js";
 
 const DAY_FOLDER_RE = /^\d{2}-\d{2}-\d{4}$/;
 
@@ -225,6 +225,10 @@ export function registerIpcHandlers() {
 
   ipcMain.handle("get-rollback-stats", (_event, since) => {
     return { success: true, data: getRollbackStats(since ?? null) };
+  });
+
+  ipcMain.handle("get-rollback-details", (_event, since) => {
+    return { success: true, data: getRollbackDetails(since ?? null) };
   });
 
   ipcMain.handle("get-rollback-reasons-batch", (_event, batchPath) => {

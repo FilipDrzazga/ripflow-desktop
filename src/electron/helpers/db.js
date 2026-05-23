@@ -13,6 +13,8 @@ let stmtInsertRollbackReason = null;
 let stmtGetRollbackReasonsByBatch = null;
 let stmtGetRollbackReasonsByFile = null;
 
+const PRINTER_RE = /-(DGEN|YOKO|YUMI)$/i;
+
 export const initDb = () => {
   try {
     const dbPath = join(getStorageRootPath(), "ripflow.db");
@@ -43,6 +45,8 @@ export const initDb = () => {
       )
     `);
 
+    db.exec(`DROP TABLE IF EXISTS rollback_reasons`);
+
     db.exec(`
       CREATE TABLE IF NOT EXISTS rollback_reasons (
         id           TEXT PRIMARY KEY,
@@ -50,8 +54,12 @@ export const initDb = () => {
         batch_path   TEXT,
         reason_code  TEXT,
         reason_label TEXT,
+        workstation  TEXT,
         timestamp    TEXT,
-        workstation  TEXT
+        order_id     TEXT,
+        customer     TEXT,
+        fabric       TEXT,
+        process      TEXT
       )
     `);
 
@@ -64,7 +72,7 @@ export const initDb = () => {
     stmtUnholdFile = db.prepare("DELETE FROM held_files WHERE file_id = ?");
     stmtGetHeldFiles = db.prepare("SELECT file_id FROM held_files");
     stmtInsertRollbackReason = db.prepare(
-      "INSERT OR REPLACE INTO rollback_reasons (id, file_id, batch_path, reason_code, reason_label, timestamp, workstation) VALUES (?, ?, ?, ?, ?, ?, ?)",
+      "INSERT OR REPLACE INTO rollback_reasons (id, file_id, batch_path, reason_code, reason_label, timestamp, workstation, order_id, customer, fabric, process) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
     );
     stmtGetRollbackReasonsByBatch = db.prepare(
       "SELECT * FROM rollback_reasons WHERE batch_path = ? ORDER BY timestamp DESC",
@@ -144,7 +152,18 @@ export const getHeldFiles = () => {
   }
 };
 
-export const insertRollbackReason = ({ id, fileId, batchPath, reasonCode, reasonLabel, workstation }) => {
+export const insertRollbackReason = ({
+  id,
+  fileId,
+  batchPath,
+  reasonCode,
+  reasonLabel,
+  workstation,
+  orderId,
+  customer,
+  fabric,
+  process,
+}) => {
   if (!stmtInsertRollbackReason) return;
   try {
     stmtInsertRollbackReason.run(
@@ -155,6 +174,10 @@ export const insertRollbackReason = ({ id, fileId, batchPath, reasonCode, reason
       reasonLabel,
       new Date().toISOString(),
       workstation ?? null,
+      orderId ?? null,
+      customer ?? null,
+      fabric ?? null,
+      process ?? null,
     );
   } catch {}
 };
@@ -177,10 +200,8 @@ export const getRollbackReasonsByFile = (fileId) => {
   }
 };
 
-const PRINTER_RE = /-(DGEN|YOKO|YUMI)$/i;
-
 export const getRollbackStats = (since) => {
-  if (!db) return { total: 0, byReason: [], byPrinter: [], byWorkstation: [] };
+  if (!db) return { total: 0, byReason: [], byPrinter: [], byWorkstation: [], byProcess: [] };
   try {
     const rows = since
       ? db.prepare("SELECT * FROM rollback_reasons WHERE timestamp >= ?").all(since)
@@ -189,6 +210,7 @@ export const getRollbackStats = (since) => {
     const reasonMap = new Map();
     const printerMap = new Map();
     const wsMap = new Map();
+    const processMap = new Map();
 
     for (const row of rows) {
       const rk = row.reason_code;
@@ -204,6 +226,9 @@ export const getRollbackStats = (since) => {
 
       const ws = row.workstation || "Unknown";
       wsMap.set(ws, (wsMap.get(ws) || 0) + 1);
+
+      const proc = row.process || "Unknown";
+      processMap.set(proc, (processMap.get(proc) || 0) + 1);
     }
 
     return {
@@ -215,8 +240,29 @@ export const getRollbackStats = (since) => {
       byWorkstation: [...wsMap.entries()]
         .map(([workstation, count]) => ({ workstation, count }))
         .sort((a, b) => b.count - a.count),
+      byProcess: [...processMap.entries()]
+        .map(([process, count]) => ({ process, count }))
+        .sort((a, b) => b.count - a.count),
     };
   } catch {
-    return { total: 0, byReason: [], byPrinter: [], byWorkstation: [] };
+    return { total: 0, byReason: [], byPrinter: [], byWorkstation: [], byProcess: [] };
+  }
+};
+
+export const getRollbackDetails = (since) => {
+  if (!db) return [];
+  try {
+    const rows = since
+      ? db.prepare("SELECT * FROM rollback_reasons WHERE timestamp >= ? ORDER BY timestamp DESC").all(since)
+      : db.prepare("SELECT * FROM rollback_reasons ORDER BY timestamp DESC").all();
+
+    return rows.map((row) => {
+      const batchFolder = row.batch_path ? row.batch_path.split(/[/\\]/).pop() : "";
+      const printerMatch = batchFolder.match(PRINTER_RE);
+      const printer = printerMatch ? printerMatch[1].toUpperCase() : null;
+      return { ...row, printer };
+    });
+  } catch {
+    return [];
   }
 };

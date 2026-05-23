@@ -1,0 +1,204 @@
+.grid {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  grid-template-rows: 1fr 1fr 1fr 1fr;
+  gap: 12px;
+  opacity: 1;
+  transition: opacity 0.2s ease;
+}
+
+.loading {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.total_card {
+  grid-column: 1;
+  grid-row: 1;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 4px;
+}
+
+.process_card {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+.printer_card {
+  grid-column: 1;
+  grid-row: 3;
+}
+
+.workstation_card {
+  grid-column: 1;
+  grid-row: 4;
+}
+
+.reasons_card {
+  grid-column: 2;
+  grid-row: 1 / 5;
+  overflow: hidden;
+}
+
+/* === CARD BASE === */
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 18px;
+  background: var(--bg-white);
+  border-radius: 20px;
+  box-shadow: var(--card-shadow);
+  overflow: hidden;
+  min-height: 0;
+}
+
+.card_title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  flex-shrink: 0;
+}
+
+/* === TOTAL CARD === */
+.total_number {
+  font-size: 52px;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1;
+}
+
+.total_sub {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+/* === SHARED LIST === */
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+}
+
+.list_row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* === PROCESS LABEL === */
+.process_label {
+  flex-shrink: 0;
+  width: 82px;
+  font-size: 12px;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* === PRINTER BADGE === */
+.printer_badge {
+  flex-shrink: 0;
+  width: 52px;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 6px;
+  border-radius: 6px;
+  letter-spacing: 0.04em;
+}
+
+/* === WORKSTATION NAME === */
+.ws_name {
+  flex-shrink: 0;
+  width: 100px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* === TOP REASONS === */
+.rank {
+  flex-shrink: 0;
+  width: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.rank svg {
+  width: 15px;
+  height: 15px;
+}
+
+.reason_label {
+  flex-shrink: 0;
+  width: 140px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* === PROGRESS BAR === */
+.bar_track {
+  flex: 1;
+  height: 6px;
+  background: var(--bg-grey);
+  border-radius: 999px;
+  overflow: hidden;
+  min-width: 0;
+}
+
+.bar_fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.3s ease;
+}
+
+/* === COUNTERS === */
+.count {
+  flex-shrink: 0;
+  width: 28px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+  text-align: right;
+}
+
+.pct {
+  flex-shrink: 0;
+  width: 36px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  text-align: right;
+}
+
+/* === EMPTY STATE === */
+.no_data {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--text-secondary);
+  opacity: 0.6;
+}
