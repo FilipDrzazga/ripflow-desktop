@@ -59,6 +59,7 @@ const DataList = () => {
   const toggleGroupSelection = useStore((state) => state.toggleGroupSelection);
   const toggleItemSelection = useStore((state) => state.toggleItemSelection);
   const toggleHold = useStore((state) => state.toggleHold);
+  const holdSelectedFiles = useStore((state) => state.holdSelectedFiles);
   const [contextMenu, setContextMenu] = useState(null);
   const activeContextItemId = contextMenu?.item?.id || null;
   const { openPreview, closePreview, navigate, isOpen, isLoading, imgSrc, error, currentPath, currentIndex, fileList } =
@@ -349,26 +350,46 @@ const DataList = () => {
                 },
               },
               { id: "sep-hold", separator: true },
-              heldIds.has(contextMenu.item.id)
-                ? {
+              (() => {
+                const item = contextMenu.item;
+                const isItemHeld = heldIds.has(item.id);
+                const isItemSelected = selectedIds.has(item.id);
+                const bulkCount = [...selectedIds].filter((id) => !heldIds.has(id)).length;
+                const showBulkHold = !isItemHeld && isItemSelected && bulkCount > 1;
+
+                if (isItemHeld) {
+                  return {
                     id: "hold",
                     label: "Unhold",
                     icon: <FiUnlock />,
                     danger: true,
                     onClick: () => {
                       closeContextMenu();
-                      toggleHold(contextMenu.item.id);
+                      toggleHold(item.id);
                     },
-                  }
-                : {
+                  };
+                }
+                if (showBulkHold) {
+                  return {
                     id: "hold",
-                    label: "Hold",
+                    label: `Hold ${bulkCount} selected`,
                     icon: <FiLock />,
                     onClick: () => {
                       closeContextMenu();
-                      toggleHold(contextMenu.item.id);
+                      holdSelectedFiles();
                     },
+                  };
+                }
+                return {
+                  id: "hold",
+                  label: "Hold",
+                  icon: <FiLock />,
+                  onClick: () => {
+                    closeContextMenu();
+                    toggleHold(item.id);
                   },
+                };
+              })(),
               {
                 id: "shopify",
                 label: "Open in Shopify",

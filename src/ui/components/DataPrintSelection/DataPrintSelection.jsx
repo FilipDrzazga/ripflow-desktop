@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
 import { useStore } from "../../store/useStore";
@@ -36,6 +36,14 @@ const DataPrintSelection = () => {
     });
     return types.size === 1 ? [...types][0] : null;
   }, [filteredFiles, selectedIds]);
+
+  useEffect(() => {
+    if (materialType === "Cottons") {
+      setSelectedPrinter("DGEN");
+    } else {
+      setSelectedPrinter(null);
+    }
+  }, [materialType]);
 
   useGSAP(
     () => {

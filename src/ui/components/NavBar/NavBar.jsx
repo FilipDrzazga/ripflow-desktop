@@ -1,10 +1,10 @@
-import { LuPrinter, LuLayers, LuScrollText, LuSettings } from "react-icons/lu";
+import { LuPrinter, LuLayers, LuScrollText, LuSettings, LuChartBar } from "react-icons/lu";
 import styles from "./NavBar.module.css";
 
 const TOP_ITEMS = [
   { id: "print", label: "Print", icon: LuPrinter },
   { id: "batch", label: "Batch", icon: LuLayers },
-  { id: "logs", label: "Logs", icon: LuScrollText },
+  { id: "analytics", label: "Analytics", icon: LuChartBar },
 ];
 
 const NavBar = ({ activeView, onViewChange }) => {
@@ -23,6 +23,13 @@ const NavBar = ({ activeView, onViewChange }) => {
         ))}
       </div>
       <div className={styles.nav_bottom}>
+        <button
+          className={`${styles.nav_item} ${activeView === "logs" ? styles.active : ""}`}
+          onClick={() => onViewChange("logs")}
+        >
+          <LuScrollText className={styles.nav_icon} />
+          <span className={styles.nav_label}>Logs</span>
+        </button>
         <button
           className={`${styles.nav_item} ${activeView === "settings" ? styles.active : ""}`}
           onClick={() => onViewChange("settings")}

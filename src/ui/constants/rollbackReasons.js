@@ -10,6 +10,7 @@ import {
   LuSparkles,
   LuPalette,
   LuEllipsis,
+  LuBot,
 } from "react-icons/lu";
 
 export const ROLLBACK_REASONS = [
@@ -23,5 +24,6 @@ export const ROLLBACK_REASONS = [
   { code: "GHOSTING",       label: "Ghosting",        icon: LuGhost },
   { code: "LINT_MARK",      label: "Lint Mark",       icon: LuSparkles },
   { code: "WRONG_COLOURS",  label: "Wrong Colours",   icon: LuPalette },
-  { code: "OTHER",          label: "Other...",        icon: LuEllipsis },
+  { code: "AUTOMATION_FAULT", label: "Automation Fault", icon: LuBot },
+  { code: "OTHER",            label: "Other...",         icon: LuEllipsis },
 ];

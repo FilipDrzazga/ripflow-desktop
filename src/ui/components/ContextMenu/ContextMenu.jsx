@@ -15,6 +15,7 @@ const resolveIcon = (option) => {
 
 const ContextMenu = ({ id, anchorX, anchorY, options, onClose, onBackdropContextMenu }) => {
   const menuRef = useRef(null);
+  const submenuRef = useRef(null);
   const [activeSubmenu, setActiveSubmenu] = useState(null);
   const hideTimerRef = useRef(null);
 
@@ -26,6 +27,27 @@ const ContextMenu = ({ id, anchorX, anchorY, options, onClose, onBackdropContext
   const scheduleHideSubmenu = () => {
     hideTimerRef.current = setTimeout(() => setActiveSubmenu(null), 150);
   };
+
+  useLayoutEffect(() => {
+    const submenu = submenuRef.current;
+    if (!submenu || !activeSubmenu) return;
+
+    submenu.style.top = "";
+    submenu.style.left = "";
+
+    const rect = submenu.getBoundingClientRect();
+    const { innerWidth, innerHeight } = window;
+
+    const bottomOverflow = rect.bottom - (innerHeight - EDGE_OFFSET);
+    if (bottomOverflow > 0) {
+      const maxShift = Math.max(0, rect.top - EDGE_OFFSET);
+      submenu.style.top = `-${Math.min(bottomOverflow, maxShift)}px`;
+    }
+
+    if (rect.right > innerWidth - EDGE_OFFSET) {
+      submenu.style.left = `-${submenu.offsetWidth + 8}px`;
+    }
+  }, [activeSubmenu]);
 
   useLayoutEffect(() => {
     const menu = menuRef.current;
@@ -103,7 +125,7 @@ const ContextMenu = ({ id, anchorX, anchorY, options, onClose, onBackdropContext
                   <span className={style.arrow}><HiChevronRight /></span>
                 </button>
                 {activeSubmenu === option.id && (
-                  <div className={style.submenu} role="menu" onMouseEnter={() => showSubmenu(option.id)}>
+                  <div ref={submenuRef} className={style.submenu} role="menu" onMouseEnter={() => showSubmenu(option.id)}>
                     {option.children.map((child) => (
                       <button
                         key={child.id}

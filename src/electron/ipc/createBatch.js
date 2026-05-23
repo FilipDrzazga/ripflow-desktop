@@ -235,6 +235,16 @@ export const createBatch = async (batch) => {
     await fs.promises.rename(tempBatchFolderPath, finalBatchFolderPath);
     committed = true;
 
+    try {
+      await fs.promises.writeFile(
+        path.join(finalBatchFolderPath, "_batch_info.json"),
+        JSON.stringify({ originalGroup: path.basename(sourceEntries[0].sourceDir) }, null, 2),
+        "utf8",
+      );
+    } catch {
+      // best-effort metadata
+    }
+
     stage = STAGES.DELETE_SOURCE;
     for (const copied of copiedFiles) {
       await fs.promises.unlink(copied.sourcePath);

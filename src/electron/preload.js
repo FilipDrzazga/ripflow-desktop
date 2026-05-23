@@ -99,6 +99,7 @@ const api = Object.freeze({
     assertPath(fileId);
     return ipcRenderer.invoke("hold:unset", fileId);
   },
+  getRollbackStats: (since) => ipcRenderer.invoke("get-rollback-stats", since ?? null),
   getRollbackReasonsByBatch: (batchPath) => {
     assertPath(batchPath);
     return ipcRenderer.invoke("get-rollback-reasons-batch", batchPath);

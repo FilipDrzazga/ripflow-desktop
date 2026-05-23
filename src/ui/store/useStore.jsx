@@ -237,6 +237,16 @@ export const useStore = create(
       }),
 
     toggleClearSelection: () => set(() => ({ selectedIds: new Set() })),
+
+    holdSelectedFiles: async () => {
+      const { selectedIds, heldIds } = get();
+      const toHold = [...selectedIds].filter((id) => !heldIds.has(id));
+      if (toHold.length === 0) return;
+      for (const fileId of toHold) {
+        await get().toggleHold(fileId);
+      }
+      set({ selectedIds: new Set() });
+    },
     refreshFiles: async ({
       successTitle = "Folders reloaded",
       successMessage = "The folder data has been refreshed.",

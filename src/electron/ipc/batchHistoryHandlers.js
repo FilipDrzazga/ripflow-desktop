@@ -9,8 +9,20 @@ import { submitBatchToPrintFactory } from "./createXML.js";
 import { parseBatchFolderName } from "./readPrintedFolder.js";
 import { insertRollbackReason } from "../helpers/db.js";
 import { getSettings } from "../helpers/getSettings.js";
+import { GROUP_NAME_OVERRIDES_REVERSE } from "../helpers/createBatchIds.js";
 
 const toError = (err, title = "Operation failed") => toIpcError(err, "unknown", title);
+
+const resolveOriginalGroup = async (batchPath, shortGroup) => {
+  try {
+    const raw = await fs.promises.readFile(path.join(batchPath, "_batch_info.json"), "utf8");
+    const info = JSON.parse(raw);
+    if (info.originalGroup) return info.originalGroup;
+  } catch {
+    // no metadata file
+  }
+  return GROUP_NAME_OVERRIDES_REVERSE[shortGroup] ?? shortGroup;
+};
 
 export const rollbackBatchFromHistory = async ({ batchPath, reason } = {}) => {
   const result = { success: false, errors: [], restoredFiles: [] };
@@ -27,7 +39,8 @@ export const rollbackBatchFromHistory = async ({ batchPath, reason } = {}) => {
       throw Object.assign(new Error("Invalid batch folder name."), { code: "EINVAL" });
     }
 
-    const destDir = path.join(getStorageRootPath(), meta.group);
+    const originalGroup = await resolveOriginalGroup(validatedBatchPath, meta.group);
+    const destDir = path.join(getStorageRootPath(), originalGroup);
     await fs.promises.mkdir(destDir, { recursive: true });
 
     const entries = await fs.promises.readdir(validatedBatchPath, { withFileTypes: true });
@@ -99,7 +112,8 @@ export const rollbackFileFromHistory = async ({ filePath, batchPath, reason } = 
       throw Object.assign(new Error("Invalid batch folder name."), { code: "EINVAL" });
     }
 
-    const destDir = path.join(getStorageRootPath(), meta.group);
+    const originalGroup = await resolveOriginalGroup(validatedBatchPath, meta.group);
+    const destDir = path.join(getStorageRootPath(), originalGroup);
     await fs.promises.mkdir(destDir, { recursive: true });
 
     const filename = path.basename(validatedFilePath);

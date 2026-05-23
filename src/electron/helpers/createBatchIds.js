@@ -1,9 +1,14 @@
+export const GROUP_NAME_OVERRIDES = {
+  "Neraki Waterproof Canvas FR (Water Repellant)": "Neraki",
+};
+
+export const GROUP_NAME_OVERRIDES_REVERSE = Object.fromEntries(
+  Object.entries(GROUP_NAME_OVERRIDES).map(([k, v]) => [v, k]),
+);
+
 export const createBatchIds = (batchInfo) => {
   const getPrintGroupArr = batchInfo.map((item) => item.printGroup);
   const uniquePrintGroups = [...new Set(getPrintGroupArr)];
-  const GROUP_NAME_OVERRIDES = {
-    "Neraki Waterproof Canvas FR (Water Repellant)": "Neraki",
-  };
 
   const printGroup = uniquePrintGroups.length === 1
     ? (GROUP_NAME_OVERRIDES[uniquePrintGroups[0]] ?? uniquePrintGroups[0])

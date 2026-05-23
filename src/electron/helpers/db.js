@@ -176,3 +176,47 @@ export const getRollbackReasonsByFile = (fileId) => {
     return null;
   }
 };
+
+const PRINTER_RE = /-(DGEN|YOKO|YUMI)$/i;
+
+export const getRollbackStats = (since) => {
+  if (!db) return { total: 0, byReason: [], byPrinter: [], byWorkstation: [] };
+  try {
+    const rows = since
+      ? db.prepare("SELECT * FROM rollback_reasons WHERE timestamp >= ?").all(since)
+      : db.prepare("SELECT * FROM rollback_reasons").all();
+
+    const reasonMap = new Map();
+    const printerMap = new Map();
+    const wsMap = new Map();
+
+    for (const row of rows) {
+      const rk = row.reason_code;
+      if (!reasonMap.has(rk)) {
+        reasonMap.set(rk, { reason_code: rk, reason_label: row.reason_label, count: 0 });
+      }
+      reasonMap.get(rk).count++;
+
+      const batchFolder = row.batch_path ? row.batch_path.split(/[/\\]/).pop() : "";
+      const printerMatch = batchFolder.match(PRINTER_RE);
+      const printer = printerMatch ? printerMatch[1].toUpperCase() : "UNKNOWN";
+      printerMap.set(printer, (printerMap.get(printer) || 0) + 1);
+
+      const ws = row.workstation || "Unknown";
+      wsMap.set(ws, (wsMap.get(ws) || 0) + 1);
+    }
+
+    return {
+      total: rows.length,
+      byReason: [...reasonMap.values()].sort((a, b) => b.count - a.count),
+      byPrinter: [...printerMap.entries()]
+        .map(([printer, count]) => ({ printer, count }))
+        .sort((a, b) => b.count - a.count),
+      byWorkstation: [...wsMap.entries()]
+        .map(([workstation, count]) => ({ workstation, count }))
+        .sort((a, b) => b.count - a.count),
+    };
+  } catch {
+    return { total: 0, byReason: [], byPrinter: [], byWorkstation: [] };
+  }
+};

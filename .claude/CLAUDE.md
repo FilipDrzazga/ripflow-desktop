@@ -286,9 +286,11 @@ Przenoszenie plików jest **atomiczne z rollbackiem**:
 3. **DESTINATION_STRUCTURE** — stworzenie katalogu `PRINTED/DD-MM-YYYY/PRINTED_HHMMSS-GROUP-PRINTER`
 4. **COPY** — kopiowanie pliku (tylko 1. strona z PDF via pdf-lib) do katalogu tymczasowego
 5. **VERIFY** — weryfikacja rozmiaru skopiowanego pliku
-6. **COMMIT** — atomic rename z tmp na ostateczną lokalizację
+6. **COMMIT** — atomic rename z tmp na ostateczną lokalizację; po commicie zapisuje `_batch_info.json` z `{ originalGroup }` (best-effort — błąd nie zatrzymuje operacji)
 7. **DELETE_SOURCE** — usunięcie z inbox
 8. **ROLLBACK** (na fail) — przywrócenie wszystkiego + czyszczenie temp
+
+**`_batch_info.json`** — plik metadanych zapisywany w folderze batcha przy tworzeniu. Zawiera `originalGroup` = pełna nazwa folderu inbox (np. `"Neraki Waterproof Canvas FR (Water Repellant)"`). Używany przez `batchHistoryHandlers.js` podczas rollbacku do ustalenia właściwego folderu docelowego. Bez tego pliku rollback tworzyłby nowy folder o skróconej nazwie z `GROUP_NAME_OVERRIDES`.
 
 ---
 
@@ -520,6 +522,7 @@ Wyświetla drzewo `day → batch → files`:
 - Wczytuje z `window.api.readPrintedFolder()`
 - Real-time updates przez `startBatchWatcher()` / `onBatchUpdate()` (debounce 200ms)
 - Filtry: search + printer toggle (DGEN, YOKO, YUMI)
+- Kliknięcie w **dowolne miejsce wiersza batcha** (`batch_row` div) rozwija/zwija drzewo plików; przyciski akcji mają `e.stopPropagation()` żeby nie trigger-owały toggle
 - Akcje na batchu: Regenerate XML, Open in Explorer, Rollback batch
 - Akcje na pliku (context menu): Preview PDF, Show in Explorer, Rollback file
 - Status batcha: `active` (ma PDFs) | `rolled_back` (puste)
@@ -530,9 +533,19 @@ Wyświetla drzewo `day → batch → files`:
 - Rollback batcha → otwiera `<RollbackModal>` (wybór z 11 powodów); po potwierdzeniu wywołuje `window.api.rollbackBatch({ batchPath, reason })`
 - Rollback pliku → context menu z submenu (11 powodów); wybór "Other..." → inline portal modal z polem tekstowym ("Describe the issue:")
 - Powód jest zapisywany w tabeli `rollback_reasons` w SQLite
-- `loadData` pobiera `getRollbackReasonsByBatch` dla każdego `rolled_back` batcha przy starcie oraz po "removed" evencie watchera
-- Badge z powodem (`reason_badge` — pomarańczowy styl) wyświetlany przy plikach ze statusem `rolled_back`
-- Lookup powodu: najpierw szuka po `file_id === fileId` (powód pliku), fallback na `file_id === null` (powód batcha)
+- `loadData` pobiera `getRollbackReasonsByBatch` dla: (a) batchy ze statusem `rolled_back` ORAZ (b) batchy ze statusem `active` które mają choć jeden plik z `status === "rolled_back"` — bez tego pkt (b) badge nigdy nie pojawiał się przy file rollbacku w aktywnym batchu
+- Badge z powodem (`reason_badge` — pomarańczowy styl) wyświetlany w dwóch miejscach:
+  - **Wiersz batcha** (`batch_name_group`): `batchLevelReason` = rekord z `file_id === null` z `batch.rollbackReasons`; pokazuje powód rollbacku całego batcha
+  - **Wiersz pliku**: rekord z `file_id === fileId` (powód konkretnego pliku), fallback na `file_id === null` (powód batcha)
+- Lookup powodu dla pliku: najpierw szuka po `file_id === fileId`, fallback na `file_id === null`
+
+**Optimistic updates po rollbacku (natychmiastowy badge bez czekania na watcher):**
+- `handleConfirmRollbackBatch`: po `res?.success` natychmiast wywołuje `setDayGroups` — ustawia `status: "rolled_back"`, `fileCount: 0`, `files: []`, `rollbackReasons: [{ file_id: null, ... }]`; watcher `"removed"` event może nadal przyjść później (idempotentnie)
+- `handleRollbackFile`: po `res?.success` natychmiast wywołuje `setDayGroups` — ustawia plik jako `rolled_back` z `rolledBackAt`, dodaje reason do `batch.rollbackReasons`; następnie wywołuje `loadData()` dla pełnej synchronizacji
+
+**Watcher `"new-batch"` a utrata `rollbackReasons`:**
+- Windows `fs.watch` odpala `"new-batch"` gdy folder batcha się zmienia (np. zapis `_rollback_snapshot.json`) — `readSingleBatch` nie fetchuje `rollbackReasons`, więc bez zabezpieczenia nowy obiekt batcha kasuje optimistic update
+- Fix: w handlerze `"new-batch"` przy nadpisaniu istniejącego batcha: `{ ...batch, rollbackReasons: batch.rollbackReasons ?? b.rollbackReasons }` — zachowuje reasons z poprzedniego stanu jeśli nowe dane ich nie mają
 
 ### `DataOverviewSection`
 
@@ -585,6 +598,12 @@ Każdy slot jest zawsze renderowany (pusty gdy brak danych) — gwarantuje wyró
 
 **Warianty wiersza:** `list_item_invalid` (czerwony border + muted filename), `list_item_warning` (amber border), `list_item_held` (czerwone tło).
 
+**Held item w wierszu:** plik na hold renderuje ikonę `FiLock` (react-icons/fi) inline obok nazwy pliku; checkbox jest wyłączony; tooltip `data-tooltip="File is on hold"` na labelu.
+
+**Context menu (prawy klik):** opcje — "Quick Preview" (otwiera `PdfPreviewModal` z nawigacją po całej grupie), "Open in Folder", separator, "Hold"/"Unhold" (toggle), "Open in Shopify" (placeholder). `DataList` ma własną instancję `usePdfPreview` + `PdfPreviewModal` — oddzielną od BatchHistory.
+
+**`onBackdropContextMenu`:** `DataList` przekazuje `handleBackdropContextMenu` do `ContextMenu` — prawy klik na backdrop podczas otwartego menu wykrywa element pod spodem i przełącza menu na inny item bez zamykania i otwierania ponownie.
+
 **Dane z `item`:** `item.diffDays`, `item.fileSizeBytes`, `item.printTypeCode`, `item.materialType`, `item.status`, `item.file.name`, `item.file.fullPath`.
 
 ### `RollbackModal`
@@ -604,9 +623,12 @@ Modal wyboru powodu rollbacku całego batcha (`src/ui/components/RollbackModal/`
 
 Portal-based popup z edge detection, separator support, danger items (czerwone). Zamyka się na click, ESC, backdrop.
 
+**Props:** `{ id, anchorX, anchorY, options, onClose, onBackdropContextMenu? }` — `onBackdropContextMenu` jest opcjonalne; używane przez `DataList` do przełączania menu na inny item bez zamknięcia.
+
 **Submenu:** opcja z polem `children` renderuje się z strzałką `HiChevronRight` (react-icons/hi2) i otwiera submenu przy hover:
 - Hover delay 150ms (timer `hideTimerRef`) — zapobiega migotaniu przy szybkim przesuwaniu myszy
 - Submenu pozycjonowane `left: calc(100% + 8px)` (przylega do prawej krawędzi głównego menu)
+- Edge detection przez `useLayoutEffect` — submenu przesuwa się w górę lub w lewo gdy wychodzi poza ekran
 - `min-width: 200px` + `white-space: nowrap` na itemach — każdy reason w jednej linii
 - Child `onClick`: najpierw `onClose()`, potem `child.onClick()` — ważne dla Electron timing
 
@@ -706,3 +728,9 @@ Alias `@` w UI → `./src/ui` (np. `import { useStore } from '@/store/useStore'`
 - `window.prompt` nie działa w Electron z `contextIsolation: true` — zwraca `null` natychmiast. Dlatego "Other" reason używa inline portal modal z `useState` zamiast `window.prompt`.
 - `ContextMenu` submenu: child `onClick` musi wywołać `onClose()` PRZED `child.onClick()` — Electron ma problemy z kolejnością gdy modal otwiera się zaraz po zamknięciu menu.
 - `HiChevronRight` z `react-icons/hi2` — ta sama rodzina co `HiChevronDown`/`HiChevronUp` używane w DataFilters "Sort by". Utrzymuj spójność ikon nawigacji z tej rodziny.
+- `DataFilters` — przycisk "Refresh list" wywołuje `loadHeldFiles()` **przed** `refreshFiles()`, żeby `heldIds` były aktualne zanim pliki trafią do store. Nie zmieniaj kolejności.
+- `DataList` ma własną instancję `usePdfPreview` — nie współdzieli cache ani stanu z instancją w `BatchHistory`. Obie mogą być otwarte jednocześnie (różne komponenty), choć w praktyce tylko jeden widok jest aktywny.
+- `batchLevelReason` w `BatchHistory` — zmienna obliczana wewnątrz `.map()` batchy; nie wyciągaj jej do zewnętrznego stanu — jest pochodna `batch.rollbackReasons` i `isRolledBack`.
+- Nigdy nie nadpisuj `rollbackReasons` w handlerze `"new-batch"` jeśli nowy obiekt batcha ich nie zawiera — Windows `fs.watch` może strzelić `"new-batch"` w środku optimistic update i skasować badge. Zawsze: `rollbackReasons: batch.rollbackReasons ?? b.rollbackReasons`.
+- `loadData` musi fetchować reasons nie tylko dla `rolled_back` batchy ale też dla `active` batchy z plikami `status === "rolled_back"` — inaczej badge przy file rollbacku w aktywnym batchu nigdy się nie pojawi.
+- **`GROUP_NAME_OVERRIDES` w `createBatchIds.js`** — mapa skrótów nazw grup dla folderów batchy (np. `"Neraki Waterproof Canvas FR (Water Repellant)" → "Neraki"`). Oba obiekty (`GROUP_NAME_OVERRIDES` i `GROUP_NAME_OVERRIDES_REVERSE`) są eksportowane. `batchHistoryHandlers.js` używa `resolveOriginalGroup(batchPath, shortGroup)` który: (1) próbuje odczytać `_batch_info.json` z folderu batcha, (2) fallback na `GROUP_NAME_OVERRIDES_REVERSE[shortGroup]`, (3) ostatni fallback: `shortGroup` bez zmian. Dzięki temu rollback trafia do właściwego folderu inbox nawet gdy nazwa batcha była skrócona.
