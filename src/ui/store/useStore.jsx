@@ -297,7 +297,7 @@ export const useStore = create(
               type: "warning",
               stage: "readFolders",
               code: "FILE_INVALID",
-              message: `Invalid file: ${item.name}`,
+              message: `Invalid file: ${item.file?.name ?? item.name}`,
               detail: item.errors?.length || item.warnings?.length
                 ? { errors: item.errors, warnings: item.warnings }
                 : null,

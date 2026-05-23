@@ -1,11 +1,13 @@
 import { join } from "path";
 import Database from "better-sqlite3";
 import { getStorageRootPath } from "./getRootPath.js";
+import { getSettings } from "./getSettings.js";
 
 let db = null;
 let stmtInsert = null;
 let stmtGetAll = null;
 let stmtClear = null;
+let stmtClearByWorkstation = null;
 let stmtHoldFile = null;
 let stmtUnholdFile = null;
 let stmtGetHeldFiles = null;
@@ -39,13 +41,35 @@ export const initDb = () => {
       // column already exists in older databases — safe to ignore
     }
 
-    db.exec(`
-      CREATE TABLE IF NOT EXISTS held_files (
-        file_id TEXT PRIMARY KEY
-      )
-    `);
-
-    db.exec(`DROP TABLE IF EXISTS rollback_reasons`);
+    // Migrate held_files: add workstation column if missing (per-PC holds)
+    let heldFilesNeedsMigration = false;
+    try {
+      db.prepare("SELECT workstation FROM held_files LIMIT 0").all();
+    } catch {
+      heldFilesNeedsMigration = true;
+    }
+    if (heldFilesNeedsMigration) {
+      const ws = getSettings().workstationName ?? "";
+      const oldRows = (() => { try { return db.prepare("SELECT file_id FROM held_files").all(); } catch { return []; } })();
+      db.exec("DROP TABLE IF EXISTS held_files");
+      db.exec(`
+        CREATE TABLE held_files (
+          file_id     TEXT NOT NULL,
+          workstation TEXT NOT NULL DEFAULT '',
+          PRIMARY KEY (file_id, workstation)
+        )
+      `);
+      const migrateStmt = db.prepare("INSERT OR IGNORE INTO held_files (file_id, workstation) VALUES (?, ?)");
+      for (const row of oldRows) migrateStmt.run(row.file_id, ws);
+    } else {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS held_files (
+          file_id     TEXT NOT NULL,
+          workstation TEXT NOT NULL DEFAULT '',
+          PRIMARY KEY (file_id, workstation)
+        )
+      `);
+    }
 
     db.exec(`
       CREATE TABLE IF NOT EXISTS rollback_reasons (
@@ -68,9 +92,10 @@ export const initDb = () => {
     );
     stmtGetAll = db.prepare("SELECT * FROM logs ORDER BY timestamp DESC");
     stmtClear = db.prepare("DELETE FROM logs");
-    stmtHoldFile = db.prepare("INSERT OR IGNORE INTO held_files (file_id) VALUES (?)");
-    stmtUnholdFile = db.prepare("DELETE FROM held_files WHERE file_id = ?");
-    stmtGetHeldFiles = db.prepare("SELECT file_id FROM held_files");
+    stmtClearByWorkstation = db.prepare("DELETE FROM logs WHERE workstation = ?");
+    stmtHoldFile = db.prepare("INSERT OR IGNORE INTO held_files (file_id, workstation) VALUES (?, ?)");
+    stmtUnholdFile = db.prepare("DELETE FROM held_files WHERE file_id = ? AND workstation = ?");
+    stmtGetHeldFiles = db.prepare("SELECT file_id FROM held_files WHERE workstation = ?");
     stmtInsertRollbackReason = db.prepare(
       "INSERT OR REPLACE INTO rollback_reasons (id, file_id, batch_path, reason_code, reason_label, timestamp, workstation, order_id, customer, fabric, process) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
     );
@@ -85,6 +110,7 @@ export const initDb = () => {
     stmtInsert = null;
     stmtGetAll = null;
     stmtClear = null;
+    stmtClearByWorkstation = null;
     stmtHoldFile = null;
     stmtUnholdFile = null;
     stmtGetHeldFiles = null;
@@ -122,31 +148,34 @@ export const getAllLogs = () => {
   }
 };
 
-export const clearAllLogs = () => {
-  if (!stmtClear) return;
-  try {
-    stmtClear.run();
-  } catch {}
+export const clearAllLogs = (workstation) => {
+  if (workstation) {
+    if (!stmtClearByWorkstation) return;
+    try { stmtClearByWorkstation.run(workstation); } catch {}
+  } else {
+    if (!stmtClear) return;
+    try { stmtClear.run(); } catch {}
+  }
 };
 
-export const holdFile = (fileId) => {
+export const holdFile = (fileId, workstation = "") => {
   if (!stmtHoldFile) return;
   try {
-    stmtHoldFile.run(fileId);
+    stmtHoldFile.run(fileId, workstation);
   } catch {}
 };
 
-export const unholdFile = (fileId) => {
+export const unholdFile = (fileId, workstation = "") => {
   if (!stmtUnholdFile) return;
   try {
-    stmtUnholdFile.run(fileId);
+    stmtUnholdFile.run(fileId, workstation);
   } catch {}
 };
 
-export const getHeldFiles = () => {
+export const getHeldFiles = (workstation = "") => {
   if (!stmtGetHeldFiles) return new Set();
   try {
-    return new Set(stmtGetHeldFiles.all().map((r) => r.file_id));
+    return new Set(stmtGetHeldFiles.all(workstation).map((r) => r.file_id));
   } catch {
     return new Set();
   }

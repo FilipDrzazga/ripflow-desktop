@@ -85,21 +85,21 @@ export function registerIpcHandlers() {
   });
 
   ipcMain.handle("logs:clear", () => {
-    clearAllLogs();
+    clearAllLogs(getSettings().workstationName ?? "");
     return { success: true };
   });
 
   ipcMain.handle("hold:get", () => {
-    return { success: true, data: [...getHeldFiles()] };
+    return { success: true, data: [...getHeldFiles(getSettings().workstationName ?? "")] };
   });
 
   ipcMain.handle("hold:set", (_event, fileId) => {
-    holdFile(fileId);
+    holdFile(fileId, getSettings().workstationName ?? "");
     return { success: true };
   });
 
   ipcMain.handle("hold:unset", (_event, fileId) => {
-    unholdFile(fileId);
+    unholdFile(fileId, getSettings().workstationName ?? "");
     return { success: true };
   });
 
