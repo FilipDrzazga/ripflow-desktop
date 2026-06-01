@@ -105,6 +105,35 @@
   color: var(--text-white);
 }
 
+/* === CLEAR BUTTON === */
+.clear_btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: var(--bg-white);
+  border: 1px solid var(--border-grey);
+  box-shadow: var(--card-shadow);
+  color: var(--text-secondary);
+  flex-shrink: 0;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.clear_btn:hover:not(:disabled) {
+  background: #fee2e2;
+  color: #dc2626;
+  border-color: #fca5a5;
+}
+
+.clear_btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 /* === REFRESH BUTTON === */
 .refresh_btn {
   display: flex;

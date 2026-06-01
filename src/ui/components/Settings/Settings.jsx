@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { getSettings, setSettings, selectFolder } from "../../services/settingsService";
 import { notify } from "@/utils/notify";
 import { LuFolderOpen, LuSave } from "react-icons/lu";
 import styles from "./Settings.module.css";
@@ -11,7 +12,7 @@ const Settings = () => {
   const [isSavingWorkstation, setIsSavingWorkstation] = useState(false);
 
   useEffect(() => {
-    window.api.getSettings().then((res) => {
+    getSettings().then((res) => {
       if (res.success) {
         setStoragePath(res.settings.storagePath);
         setXmlPath(res.settings.xmlPath);
@@ -21,7 +22,7 @@ const Settings = () => {
   }, []);
 
   const handleBrowse = async (field) => {
-    const res = await window.api.selectFolder();
+    const res = await selectFolder();
     if (!res.canceled && res.path) {
       if (field === "storagePath") setStoragePath(res.path);
       else setXmlPath(res.path);
@@ -31,7 +32,7 @@ const Settings = () => {
   const handleSaveWorkstation = async () => {
     setIsSavingWorkstation(true);
     try {
-      const res = await window.api.setSettings({ storagePath, xmlPath, workstationName });
+      const res = await setSettings({ storagePath, xmlPath, workstationName });
       if (res.success) {
         notify({ type: "Success", title: "Workstation saved", message: "Workstation name updated successfully." });
       } else {
@@ -45,7 +46,7 @@ const Settings = () => {
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      const res = await window.api.setSettings({ storagePath, xmlPath });
+      const res = await setSettings({ storagePath, xmlPath });
       if (res.success) {
         notify({ type: "Success", title: "Settings saved", message: "Storage paths updated successfully." });
       } else {

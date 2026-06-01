@@ -6,6 +6,8 @@ import ContextMenu from "../ContextMenu/ContextMenu";
 import PdfPreviewModal from "../PdfPreviewModal/PdfPreviewModal";
 import { usePdfPreview } from "../../hooks/usePdfPreview";
 import { estimatePrintLength } from "../../../shared/estimatePrintLength";
+import { FILE_STATUS } from "../../../shared/constants";
+import { openPreview as openPreviewApi, openInFolder as openInFolderApi } from "../../services/fileService";
 import { FiInbox, FiLock, FiUnlock } from "react-icons/fi";
 import {
   LuClock,
@@ -90,7 +92,7 @@ const DataList = () => {
 
   const handleOpenPreview = async (item) => {
     try {
-      const response = await window.api.openPreview(item.file.fullPath);
+      const response = await openPreviewApi(item.file.fullPath);
       if (response?.success) return;
       const firstError = response?.errors?.[0];
       throw {
@@ -112,7 +114,7 @@ const DataList = () => {
 
   const handleOpenInFolder = async (item) => {
     try {
-      const response = await window.api.openInFolder(item.file.fullPath);
+      const response = await openInFolderApi(item.file.fullPath);
       if (response?.success) return;
       const firstError = response?.errors?.[0];
       throw {
@@ -208,7 +210,7 @@ const DataList = () => {
         const groupHasSelectable =
           !hasSelection ||
           !lockMaterial ||
-          group.items.some((item) => item.status !== "INVALID" && item.materialType === lockMaterial);
+          group.items.some((item) => item.status !== FILE_STATUS.INVALID && item.materialType === lockMaterial);
 
         return (
           <div key={unqGroupId} className={style.list_content}>
@@ -229,8 +231,8 @@ const DataList = () => {
             </label>
             <ul className={style.list_items}>
               {group.items.map((item) => {
-                const isInvalid = item.status === "INVALID";
-                const isWarning = item.status === "WARNING";
+                const isInvalid = item.status === FILE_STATUS.INVALID;
+                const isWarning = item.status === FILE_STATUS.WARNING;
                 const isLocked = hasSelection && lockMaterial && item.materialType !== lockMaterial;
                 const isHeld = heldIds.has(item.id);
 

@@ -1,6 +1,10 @@
 import { create } from "zustand";
 import { subscribeWithSelector } from "zustand/middleware";
 import { estimatePrintLength } from "../../shared/estimatePrintLength";
+import { BATCH_STATUS, FILE_STATUS } from "../../shared/constants";
+import { readFolders } from "../services/fileService";
+import { readPrintedFolder } from "../services/batchService";
+import { getLogs, clearLogs as clearLogsApi, getHeldFiles, holdFile as holdFileApi, unholdFile as unholdFileApi } from "../services/systemService";
 
 const applySort = (groups, sortOrder) => {
   if (!sortOrder) return groups;
@@ -50,7 +54,7 @@ export const getLastBatch = (batchDays) => {
     // readdir returns PRINTED_HHMMSS-... folders alphabetically → oldest-first,
     // so iterate in reverse to find the newest active batch
     for (let i = day.batches.length - 1; i >= 0; i--) {
-      if (day.batches[i].status === "active") return { batch: day.batches[i], day };
+      if (day.batches[i].status === BATCH_STATUS.ACTIVE) return { batch: day.batches[i], day };
     }
     // All rolled back — still show the newest one
     return { batch: day.batches[day.batches.length - 1], day };
@@ -104,11 +108,9 @@ export const useStore = create(
     setBatchDays: (days) => set({ batchDays: days }),
     refreshBatchDays: async () => {
       try {
-        const res = await window.api.readPrintedFolder();
+        const res = await readPrintedFolder();
         if (res.success) set({ batchDays: res.data });
-      } catch (e) {
-        void e;
-      }
+      } catch (err) { console.error("[store] refreshBatchDays failed:", err); }
     },
 
     logs: [],
@@ -116,16 +118,16 @@ export const useStore = create(
     clearLogs: async () => {
       set({ logs: [] });
       try {
-        await window.api.clearLogs();
-      } catch {}
+        await clearLogsApi();
+      } catch (err) { console.error("[store] clearLogs failed:", err); }
     },
     loadLogsFromDb: async () => {
       try {
-        const res = await window.api.getLogs();
+        const res = await getLogs();
         if (res?.success && Array.isArray(res.data)) {
           set({ logs: res.data });
         }
-      } catch {}
+      } catch (err) { console.error("[store] loadLogsFromDb failed:", err); }
     },
 
     files: [],
@@ -140,27 +142,27 @@ export const useStore = create(
     heldIds: new Set(),
     loadHeldFiles: async () => {
       try {
-        const res = await window.api.getHeldFiles();
+        const res = await getHeldFiles();
         if (res?.success && Array.isArray(res.data)) {
           set({ heldIds: new Set(res.data) });
         }
-      } catch {}
+      } catch (err) { console.error("[store] loadHeldFiles failed:", err); }
     },
     toggleHold: async (fileId) => {
       const { heldIds } = get();
       const newHeldIds = new Set(heldIds);
       if (heldIds.has(fileId)) {
         try {
-          await window.api.unholdFile(fileId);
+          await unholdFileApi(fileId);
           newHeldIds.delete(fileId);
           set({ heldIds: newHeldIds });
-        } catch {}
+        } catch (err) { console.error("[store] unholdFile failed:", err); }
       } else {
         try {
-          await window.api.holdFile(fileId);
+          await holdFileApi(fileId);
           newHeldIds.add(fileId);
           set({ heldIds: newHeldIds });
-        } catch {}
+        } catch (err) { console.error("[store] holdFile failed:", err); }
       }
     },
 
@@ -207,7 +209,7 @@ export const useStore = create(
       set((state) => {
         const newSelectedIds = new Set(state.selectedIds);
 
-        const validItems = groupItems.filter((item) => item.status !== "INVALID" && !state.heldIds.has(item.id));
+        const validItems = groupItems.filter((item) => item.status !== FILE_STATUS.INVALID && !state.heldIds.has(item.id));
 
         const selectedMaterialTypes = new Set();
         state.filteredFiles.forEach((group) => {
@@ -260,7 +262,7 @@ export const useStore = create(
       set({ isRefreshingFiles: true });
 
       try {
-        const res = await window.api.readFolders();
+        const res = await readFolders();
 
         if (res.success) {
           set((state) => ({
@@ -289,7 +291,7 @@ export const useStore = create(
             detail: null,
           });
 
-          const invalidItems = res.data.flatMap((g) => g.items.filter((i) => i.status === "INVALID"));
+          const invalidItems = res.data.flatMap((g) => g.items.filter((i) => i.status === FILE_STATUS.INVALID));
           invalidItems.forEach((item) => {
             get().addLog({
               id: crypto.randomUUID(),

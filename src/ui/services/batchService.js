@@ -1,0 +1,9 @@
+export const readPrintedFolder = () => window.api.readPrintedFolder();
+export const getRollbackReasonsByBatch = (batchPath) => window.api.getRollbackReasonsByBatch(batchPath);
+export const startBatchWatcher = () => window.api.startBatchWatcher();
+export const stopBatchWatcher = () => window.api.stopBatchWatcher();
+export const onBatchUpdate = (cb) => window.api.onBatchUpdate(cb);
+export const rollbackFile = (args) => window.api.rollbackFile(args);
+export const rollbackBatch = (args) => window.api.rollbackBatch(args);
+export const deleteBatch = (batchPath) => window.api.deleteBatch(batchPath);
+export const regenerateXml = (batchPath) => window.api.regenerateXml(batchPath);

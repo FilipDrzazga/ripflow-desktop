@@ -12,7 +12,12 @@
       "Bash(del C:\\\\ripflow-desktop\\\\tmp_sim.js)",
       "Bash(del tmp_compare.js)",
       "Bash(Remove-Item *)",
-      "Bash(wmic logicaldisk *)"
+      "Bash(wmic logicaldisk *)",
+      "Bash(Select-String -Pattern \"build|nsis|installer\" -Context 2)",
+      "PowerShell(Get-PSDrive C | Select-Object Used, Free | ForEach-Object { [PSCustomObject]@{ UsedGB = [math]::Round\\($_.Used/1GB, 2\\); FreeGB = [math]::Round\\($_.Free/1GB, 2\\) } })",
+      "PowerShell(Get-ChildItem \"C:\\\\ripflow-desktop\\\\dist\\\\win-unpacked\" -ErrorAction SilentlyContinue | Measure-Object -Property Length -Sum | ForEach-Object { [math]::Round\\($_.Sum/1MB, 0\\) })",
+      "PowerShell(Get-Content *)",
+      "PowerShell(net use *)"
     ]
   }
 }

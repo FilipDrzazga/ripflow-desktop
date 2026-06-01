@@ -4,6 +4,7 @@ import { getStorageRootPath } from "../helpers/getRootPath.js";
 import { parsePrintFileName } from "../helpers/parseFileName.js";
 import { getMaterialType } from "../helpers/getMaterialType.js";
 import { estimatePrintLength } from "../../shared/estimatePrintLength.js";
+import { BATCH_STATUS, FILE_STATUS } from "../../shared/constants.js";
 
 const getPrintedRootPath = () => path.join(getStorageRootPath(), "PRINTED");
 
@@ -51,7 +52,7 @@ export const readSingleBatch = async (batchPath, meta) => {
         path: filePath,
         type: parsed?.printTypeCode || "UNKNOWN",
       });
-      if (parsed?.status === "READY") {
+      if (parsed?.status === FILE_STATUS.READY) {
         parsedForLength.push({ ...parsed, materialType: getMaterialType(parsed.material) });
       }
     }
@@ -69,7 +70,7 @@ export const readSingleBatch = async (batchPath, meta) => {
         name: fname,
         path: path.join(batchPath, fname),
         type: parsed?.printTypeCode || "UNKNOWN",
-        status: "rolled_back",
+        status: FILE_STATUS.ROLLED_BACK,
         rolledBackAt: snapshot.rolledBackAt || null,
       });
     }
@@ -87,7 +88,7 @@ export const readSingleBatch = async (batchPath, meta) => {
     fileCount: activeFiles.length,
     printLengthM: fixedTotalLengthM,
     xmlExists,
-    status: activeFiles.length === 0 ? "rolled_back" : "active",
+    status: activeFiles.length === 0 ? BATCH_STATUS.ROLLED_BACK : BATCH_STATUS.ACTIVE,
     files,
   };
 };

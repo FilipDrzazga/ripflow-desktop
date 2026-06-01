@@ -8,9 +8,10 @@ import { openInFolder } from "./openInFolder.js";
 import { readPrintedFolder, readSingleBatch, parseBatchFolderName } from "./readPrintedFolder.js";
 import { rollbackBatchFromHistory, rollbackFileFromHistory, regenerateXmlForBatch, deleteBatchFolder } from "./batchHistoryHandlers.js";
 import { getStorageRootPath } from "../helpers/getRootPath.js";
+import { assertStorageFilePath } from "../helpers/validateStoragePath.js";
 import { parsePrintFileName } from "../helpers/parseFileName.js";
 import { getSettings, setSettings } from "../helpers/getSettings.js";
-import { initDb, insertLog, getAllLogs, clearAllLogs, holdFile, unholdFile, getHeldFiles, getRollbackReasonsByBatch, getRollbackReasonsByFile, getRollbackStats, getRollbackDetails } from "../helpers/db.js";
+import { initDb, insertLog, getAllLogs, clearAllLogs, holdFile, unholdFile, getHeldFiles, getRollbackReasonsByBatch, getRollbackReasonsByFile, getRollbackStats, getRollbackDetails, clearAllRollbackReasons } from "../helpers/db.js";
 
 const DAY_FOLDER_RE = /^\d{2}-\d{2}-\d{4}$/;
 
@@ -46,8 +47,16 @@ const processWatchEvent = async (relativePath) => {
   }
 
   if (rest.length === 0) {
-    const batchData = await readSingleBatch(batchPath, meta);
-    watcherSender.send("batch:update", { type: "new-batch", batch: batchData });
+    try {
+      const batchData = await readSingleBatch(batchPath, meta);
+      watcherSender.send("batch:update", { type: "new-batch", batch: batchData });
+    } catch (err) {
+      if (err.code === "ENOENT") {
+        watcherSender.send("batch:update", { type: "removed", batchPath });
+      } else {
+        console.error("[watcher] readSingleBatch failed:", err);
+      }
+    }
     return;
   }
 
@@ -141,7 +150,7 @@ export function registerIpcHandlers() {
         detail: result.success ? { batchId: result.batchId } : { errors: result.errors },
         workstation: getSettings().workstationName,
       });
-    } catch {}
+    } catch (err) { console.error("[ipc] insertLog failed (submit-batch):", err); }
     return result;
   });
 
@@ -151,7 +160,8 @@ export function registerIpcHandlers() {
 
   ipcMain.handle("file:read-buffer", async (_event, filePath) => {
     try {
-      const buffer = await fs.promises.readFile(filePath);
+      const validatedPath = await assertStorageFilePath(filePath, { stage: "file:read-buffer", title: "Invalid file path" });
+      const buffer = await fs.promises.readFile(validatedPath);
       return { success: true, data: buffer.toString("base64") };
     } catch (err) {
       return { success: false, error: err.message };
@@ -181,7 +191,7 @@ export function registerIpcHandlers() {
         detail: result.success ? null : { errors: result.errors },
         workstation: getSettings().workstationName,
       });
-    } catch {}
+    } catch (err) { console.error("[ipc] insertLog failed (regenerate-xml):", err); }
     return result;
   });
 
@@ -200,7 +210,7 @@ export function registerIpcHandlers() {
         detail: result.success ? { restoredFiles: result.restoredFiles } : { errors: result.errors },
         workstation: getSettings().workstationName,
       });
-    } catch {}
+    } catch (err) { console.error("[ipc] insertLog failed (rollback-batch):", err); }
     return result;
   });
 
@@ -219,7 +229,7 @@ export function registerIpcHandlers() {
         detail: result.success ? null : { errors: result.errors },
         workstation: getSettings().workstationName,
       });
-    } catch {}
+    } catch (err) { console.error("[ipc] insertLog failed (rollback-file):", err); }
     return result;
   });
 
@@ -229,6 +239,11 @@ export function registerIpcHandlers() {
 
   ipcMain.handle("get-rollback-details", (_event, since) => {
     return { success: true, data: getRollbackDetails(since ?? null) };
+  });
+
+  ipcMain.handle("rollback-reasons:clear", () => {
+    clearAllRollbackReasons();
+    return { success: true };
   });
 
   ipcMain.handle("get-rollback-reasons-batch", (_event, batchPath) => {
@@ -254,7 +269,7 @@ export function registerIpcHandlers() {
         detail: result.success ? null : { errors: result.errors },
         workstation: getSettings().workstationName,
       });
-    } catch {}
+    } catch (err) { console.error("[ipc] insertLog failed (delete-batch):", err); }
     return result;
   });
 

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { getRollbackStats, getRollbackDetails } from "../../../services/analyticsService";
 
 const computeSince = (period) => {
   if (period === "all") return null;
@@ -20,8 +21,8 @@ export function useAnalyticsData(period) {
     try {
       const since = computeSince(period);
       const [statsRes, detailsRes] = await Promise.all([
-        window.api.getRollbackStats(since),
-        window.api.getRollbackDetails(since),
+        getRollbackStats(since),
+        getRollbackDetails(since),
       ]);
       setStats(statsRes?.success ? statsRes.data : EMPTY_STATS);
       setDetails(detailsRes?.success ? detailsRes.data : []);

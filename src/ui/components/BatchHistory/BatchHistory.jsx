@@ -7,32 +7,27 @@ import PdfPreviewModal from "../PdfPreviewModal/PdfPreviewModal";
 import RollbackModal from "../RollbackModal/RollbackModal";
 import { usePdfPreview } from "../../hooks/usePdfPreview";
 import { ROLLBACK_REASONS } from "../../constants/rollbackReasons";
+import BatchRow from "./BatchRow";
 import gsap from "gsap";
-import {
-  LuRefreshCw,
-  LuFolderOpen,
-  LuEye,
-  LuCornerUpLeft,
-  LuChevronRight,
-  LuChevronDown,
-  LuFileText,
-  LuTrash2,
-  LuChevronsDownUp,
-} from "react-icons/lu";
+import { LuRefreshCw, LuEye, LuCornerUpLeft, LuFolderOpen, LuChevronsDownUp, LuChevronDown, LuChevronRight } from "react-icons/lu";
 import { HiMagnifyingGlass, HiXMark } from "react-icons/hi2";
 import style from "./BatchHistory.module.css";
-import { PRINTER_COLORS } from "../../constants/printerColors";
+import { BATCH_STATUS, FILE_STATUS, PRINTER } from "../../../shared/constants";
+import {
+  readPrintedFolder,
+  getRollbackReasonsByBatch,
+  startBatchWatcher,
+  stopBatchWatcher,
+  onBatchUpdate,
+  rollbackFile as rollbackFileApi,
+  rollbackBatch as rollbackBatchApi,
+  deleteBatch as deleteBatchApi,
+  regenerateXml as regenerateXmlApi,
+} from "../../services/batchService";
+import { openPreview as openPreviewApi, openInFolder as openInFolderApi } from "../../services/fileService";
+import { showConfirm } from "../../services/systemService";
 
-const PRINTERS = ["DGEN", "YOKO", "YUMI"];
-
-const formatRolledBackAt = (isoString) => {
-  const d = new Date(isoString);
-  const hh = String(d.getHours()).padStart(2, "0");
-  const mm = String(d.getMinutes()).padStart(2, "0");
-  const dd = String(d.getDate()).padStart(2, "0");
-  const mo = String(d.getMonth() + 1).padStart(2, "0");
-  return `${hh}:${mm} ${dd}/${mo}`;
-};
+const PRINTERS = Object.values(PRINTER);
 
 const parseDayFromBatchPath = (batchPath) => {
   const parts = batchPath.replace(/\\/g, "/").split("/");
@@ -60,7 +55,7 @@ const BatchHistory = () => {
   const loadData = useCallback(async () => {
     setIsLoading(true);
     try {
-      const res = await window.api.readPrintedFolder();
+      const res = await readPrintedFolder();
       if (res.success) {
         const daysWithReasons = await Promise.all(
           res.data.map(async (day) => ({
@@ -68,9 +63,9 @@ const BatchHistory = () => {
             batches: await Promise.all(
               day.batches.map(async (batch) => {
                 const needsReasons =
-                  batch.status === "rolled_back" || batch.files?.some((f) => f.status === "rolled_back");
+                  batch.status === BATCH_STATUS.ROLLED_BACK || batch.files?.some((f) => f.status === FILE_STATUS.ROLLED_BACK);
                 if (!needsReasons) return batch;
-                const reasonsRes = await window.api.getRollbackReasonsByBatch(batch.path);
+                const reasonsRes = await getRollbackReasonsByBatch(batch.path);
                 return { ...batch, rollbackReasons: reasonsRes?.data ?? [] };
               }),
             ),
@@ -167,7 +162,7 @@ const BatchHistory = () => {
             if (b.path !== batchPath) return b;
             if (b.files.some((f) => f.path === file.path)) return b;
             const newFiles = [...b.files, file];
-            return { ...b, files: newFiles, fileCount: newFiles.length, status: "active" };
+            return { ...b, files: newFiles, fileCount: newFiles.length, status: BATCH_STATUS.ACTIVE };
           }),
           totalFiles: day.batches.reduce((s, b) => {
             if (b.path !== batchPath) return s + b.fileCount;
@@ -179,14 +174,14 @@ const BatchHistory = () => {
     } else if (type === "removed") {
       let rollbackReasons = [];
       try {
-        const reasonsRes = await window.api.getRollbackReasonsByBatch(batchPath);
+        const reasonsRes = await getRollbackReasonsByBatch(batchPath);
         rollbackReasons = reasonsRes?.data ?? [];
-      } catch {}
+      } catch (err) { console.error("[BatchHistory] getRollbackReasonsByBatch failed:", err); }
       setDayGroups((prev) =>
         prev.map((day) => ({
           ...day,
           batches: day.batches.map((b) =>
-            b.path === batchPath ? { ...b, status: "rolled_back", fileCount: 0, files: [], rollbackReasons } : b,
+            b.path === batchPath ? { ...b, status: BATCH_STATUS.ROLLED_BACK, fileCount: 0, files: [], rollbackReasons } : b,
           ),
           totalFiles: day.batches.reduce((s, b) => s + (b.path === batchPath ? 0 : b.fileCount), 0),
         })),
@@ -196,10 +191,10 @@ const BatchHistory = () => {
 
   useEffect(() => {
     loadData();
-    window.api.startBatchWatcher();
-    const cleanup = window.api.onBatchUpdate(handleBatchUpdate);
+    startBatchWatcher();
+    const cleanup = onBatchUpdate(handleBatchUpdate);
     return () => {
-      window.api.stopBatchWatcher();
+      stopBatchWatcher();
       cleanup();
     };
   }, [loadData, handleBatchUpdate]);
@@ -278,7 +273,7 @@ const BatchHistory = () => {
 
   const handleOpenPreview = useCallback(async (filePath) => {
     try {
-      const res = await window.api.openPreview(filePath);
+      const res = await openPreviewApi(filePath);
       if (!res?.success) {
         const err = res?.errors?.[0];
         throw {
@@ -301,7 +296,7 @@ const BatchHistory = () => {
 
   const handleOpenInFolder = useCallback(async (filePath) => {
     try {
-      const res = await window.api.openInFolder(filePath);
+      const res = await openInFolderApi(filePath);
       if (!res?.success) {
         const err = res?.errors?.[0];
         throw {
@@ -325,7 +320,7 @@ const BatchHistory = () => {
   const handleRollbackFile = useCallback(
     async (filePath, batchPath, reason) => {
       try {
-        const res = await window.api.rollbackFile({ filePath, batchPath, reason });
+        const res = await rollbackFileApi({ filePath, batchPath, reason });
         if (res?.success) {
           notify(
             { type: "Success", title: "File rolled back", message: "The file has been moved back to the inbox." },
@@ -342,7 +337,7 @@ const BatchHistory = () => {
                   ...b,
                   files: b.files.map((f) =>
                     f.path === filePath
-                      ? { ...f, status: "rolled_back", rolledBackAt: new Date().toISOString() }
+                      ? { ...f, status: FILE_STATUS.ROLLED_BACK, rolledBackAt: new Date().toISOString() }
                       : f,
                   ),
                   rollbackReasons: [
@@ -383,7 +378,7 @@ const BatchHistory = () => {
       const { batchPath } = rollbackModal;
       setRollbackModal(null);
       try {
-        const res = await window.api.rollbackBatch({ batchPath, reason });
+        const res = await rollbackBatchApi({ batchPath, reason });
         if (res?.success) {
           notify(
             { type: "Success", title: "Batch rolled back", message: "All files have been moved back to the inbox." },
@@ -396,7 +391,7 @@ const BatchHistory = () => {
                 if (b.path !== batchPath) return b;
                 return {
                   ...b,
-                  status: "rolled_back",
+                  status: BATCH_STATUS.ROLLED_BACK,
                   fileCount: 0,
                   files: [],
                   rollbackReasons: [{ file_id: null, reason_code: reason.code, reason_label: reason.label }],
@@ -429,9 +424,9 @@ const BatchHistory = () => {
   );
 
   const handleDeleteBatch = useCallback(async (batchPath) => {
-    if (!(await window.api.showConfirm("Permanently delete this empty batch folder? This cannot be undone."))) return;
+    if (!(await showConfirm("Permanently delete this empty batch folder? This cannot be undone."))) return;
     try {
-      const res = await window.api.deleteBatch(batchPath);
+      const res = await deleteBatchApi(batchPath);
       if (res?.success) {
         notify(
           { type: "Success", title: "Batch deleted", message: "The empty batch folder has been deleted." },
@@ -465,7 +460,7 @@ const BatchHistory = () => {
 
   const handleRegenerateXml = useCallback(async (batchPath) => {
     try {
-      const res = await window.api.regenerateXml(batchPath);
+      const res = await regenerateXmlApi(batchPath);
       if (res?.success) {
         notify(
           { type: "Success", title: "XML regenerated", message: "The batch XML has been regenerated." },
@@ -590,149 +585,21 @@ const BatchHistory = () => {
 
               {isDayExpanded && (
                 <div className={style.day_batches}>
-                  {day.batches.map((batch) => {
-                    const isBatchExpanded = expandedBatches.has(batch.path);
-                    const showFiles = isBatchExpanded;
-                    const isRolledBack = batch.status === "rolled_back";
-                    const rolledBackCount = batch.files.filter((f) => f.status === "rolled_back").length;
-                    const printerColors = PRINTER_COLORS[batch.printer] || { bg: "#f0f0f0", color: "#555" };
-                    const batchLevelReason = isRolledBack
-                      ? (batch.rollbackReasons?.find((r) => r.file_id === null) ?? null)
-                      : null;
-
-                    return (
-                      <div
-                        key={batch.path}
-                        className={`${style.batch_group} ${isRolledBack ? style.batch_rolled_back : ""}`}
-                        ref={(el) => {
-                          if (el) elementRefsRef.current.set(`batch:${batch.path}`, el);
-                          else elementRefsRef.current.delete(`batch:${batch.path}`);
-                        }}
-                      >
-                        <div className={style.batch_row} onClick={() => toggleBatch(batch.path)}>
-                          <div className={style.batch_expand_btn}>
-                            {isBatchExpanded ? <LuChevronDown size={16} /> : <LuChevronRight size={16} />}
-                          </div>
-                          <div className={style.batch_name_group}>
-                            <span className={style.batch_name} title={batch.name}>
-                              {batch.name}
-                            </span>
-                            {rolledBackCount > 0 && (
-                              <span className={style.rolled_back_badge}>
-                                {rolledBackCount} rolled back
-                              </span>
-                            )}
-                            {batchLevelReason && (
-                              <span className={style.reason_badge}>{batchLevelReason.reason_label}</span>
-                            )}
-                          </div>
-                          <span
-                            className={style.printer_badge}
-                            style={{ backgroundColor: printerColors.bg, color: printerColors.color }}
-                          >
-                            {batch.printer}
-                          </span>
-                          <span className={style.file_count}>
-                            {batch.fileCount} {batch.fileCount === 1 ? "file" : "files"}
-                            {batch.printLengthM > 0 && ` · ${batch.printLengthM} m`}
-                          </span>
-                          <span
-                            className={style.xml_dot}
-                            style={{ backgroundColor: batch.xmlExists ? "#639922" : "#E24B4A" }}
-                            title={batch.xmlExists ? "XML exists" : "XML missing"}
-                          />
-                          <div className={style.batch_actions}>
-                            {!isRolledBack && (
-                              <>
-                                <button
-                                  type="button"
-                                  className={`${style.action_btn} ${style.action_success}`}
-                                  title="Regenerate XML"
-                                  onClick={(e) => { e.stopPropagation(); handleRegenerateXml(batch.path); }}
-                                >
-                                  <LuRefreshCw size={16} />
-                                </button>
-                                <button
-                                  type="button"
-                                  className={`${style.action_btn} ${style.action_info}`}
-                                  title="Open in Explorer"
-                                  onClick={(e) => { e.stopPropagation(); handleOpenInFolder(batch.path); }}
-                                >
-                                  <LuFolderOpen size={16} />
-                                </button>
-                                <button
-                                  type="button"
-                                  className={`${style.action_btn} ${style.action_danger}`}
-                                  title="Rollback batch"
-                                  onClick={(e) => { e.stopPropagation(); setRollbackModal({ batchName: batch.name, batchPath: batch.path }); }}
-                                >
-                                  <LuCornerUpLeft size={16} />
-                                </button>
-                              </>
-                            )}
-                            {isRolledBack && (
-                              <button
-                                type="button"
-                                className={`${style.action_btn} ${style.action_danger}`}
-                                title="Delete empty batch folder"
-                                onClick={(e) => { e.stopPropagation(); handleDeleteBatch(batch.path); }}
-                              >
-                                <LuTrash2 size={16} />
-                              </button>
-                            )}
-                          </div>
-                        </div>
-
-                        {showFiles && batch.files.length > 0 && (
-                          <ul className={style.batch_files}>
-                            {batch.files.map((file) => {
-                              const isFileRolledBack = file.status === "rolled_back";
-                              const fileId = file.name.replace(/\.[^.]+$/, "");
-                              const rollbackReason = isFileRolledBack
-                                ? (batch.rollbackReasons?.find((r) => r.file_id === fileId) ??
-                                   batch.rollbackReasons?.find((r) => r.file_id === null))
-                                : null;
-                              return (
-                                <li
-                                  key={file.path}
-                                  className={`${style.file_row} ${activeContextFilePath === file.path ? style.file_row_active : ""} ${isFileRolledBack ? style.file_row_rolled_back : ""}`}
-                                  onContextMenu={
-                                    isFileRolledBack
-                                      ? undefined
-                                      : (e) => {
-                                          e.preventDefault();
-                                          e.stopPropagation();
-                                          setContextMenu({ file, batch, x: e.clientX, y: e.clientY });
-                                        }
-                                  }
-                                  ref={(el) => {
-                                    if (el) elementRefsRef.current.set(`file:${file.path}`, el);
-                                    else elementRefsRef.current.delete(`file:${file.path}`);
-                                  }}
-                                >
-                                  <LuFileText className={style.file_icon} />
-                                  <span className={style.file_name} title={file.name}>
-                                    {file.name}
-                                  </span>
-                                  {isFileRolledBack && file.rolledBackAt && (
-                                    <span className={style.file_rolled_back_label}>
-                                      Rolled back {formatRolledBackAt(file.rolledBackAt)}
-                                    </span>
-                                  )}
-                                  {rollbackReason && (
-                                    <span className={style.reason_badge}>{rollbackReason.reason_label}</span>
-                                  )}
-                                  {!isFileRolledBack && file.type && file.type !== "UNKNOWN" && (
-                                    <span className={style.type_badge}>{file.type}</span>
-                                  )}
-                                </li>
-                              );
-                            })}
-                          </ul>
-                        )}
-                      </div>
-                    );
-                  })}
+                  {day.batches.map((batch) => (
+                    <BatchRow
+                      key={batch.path}
+                      batch={batch}
+                      isBatchExpanded={expandedBatches.has(batch.path)}
+                      onToggle={toggleBatch}
+                      onRegenerateXml={handleRegenerateXml}
+                      onOpenInFolder={handleOpenInFolder}
+                      onSetRollbackModal={setRollbackModal}
+                      onDeleteBatch={handleDeleteBatch}
+                      onContextMenu={(file, batch, x, y) => setContextMenu({ file, batch, x, y })}
+                      elementRefsRef={elementRefsRef}
+                      activeContextFilePath={activeContextFilePath}
+                    />
+                  ))}
                 </div>
               )}
             </div>
@@ -756,7 +623,7 @@ const BatchHistory = () => {
                   const { file, batch } = contextMenu;
                   setContextMenu(null);
                   const batchFileList = batch.files
-                    .filter((f) => f.status !== "rolled_back")
+                    .filter((f) => f.status !== FILE_STATUS.ROLLED_BACK)
                     .map((f) => ({ path: f.path, name: f.name }));
                   openPreview(file.path, batchFileList);
                 },

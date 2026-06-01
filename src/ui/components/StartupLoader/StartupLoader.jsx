@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { onReadFoldersProgress } from "../../services/fileService";
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
 import style from "./StartapLoader.module.css";
@@ -24,7 +25,7 @@ const StartupLoader = ({ onDone }) => {
   useEffect(() => {
     let unsubscribe;
     const listenProgress = () => {
-      unsubscribe = window.api.onReadFoldersProgress((payload) => {
+      unsubscribe = onReadFoldersProgress((payload) => {
         setProgressLabel(payload.label);
         setRealProgressPercent(payload.percent);
       });

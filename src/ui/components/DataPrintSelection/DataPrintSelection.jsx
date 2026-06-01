@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { submitBatch } from "../../services/fileService";
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
 import { useStore } from "../../store/useStore";
@@ -96,7 +97,7 @@ const DataPrintSelection = () => {
       setIsSubmitting(true);
       setIsBatchSubmitting(true);
       try {
-        const submitBatchResponse = await window.api.submitBatch(print);
+        const submitBatchResponse = await submitBatch(print);
 
         if (!submitBatchResponse.success) {
           const firstError = submitBatchResponse.errors?.[0];

@@ -14,6 +14,7 @@ import BatchHistory from "./components/BatchHistory/BatchHistory";
 import SessionLogs from "./components/SessionLogs/SessionLogs";
 import Settings from "./components/Settings/Settings";
 import Analytics from "./components/Analytics/Analytics";
+import ErrorBoundary from "./components/ErrorBoundary/ErrorBoundary";
 
 const App = () => {
   const refreshFiles = useStore((state) => state.refreshFiles);
@@ -26,7 +27,7 @@ const App = () => {
   useEffect(() => {
     const fetchFolders = async () => {
       loadLogsFromDb();
-      loadHeldFiles();
+      await loadHeldFiles();
       await refreshFiles({
         successTitle: "Folders loaded",
         successMessage: "The folder data has been successfully loaded.",
@@ -49,11 +50,21 @@ const App = () => {
               <>
                 <DataOverviewSection />
                 <DataFilters />
-                <DataList />
+                <ErrorBoundary>
+                  <DataList />
+                </ErrorBoundary>
               </>
             )}
-            {activeView === "batch" && <BatchHistory />}
-            {activeView === "analytics" && <Analytics />}
+            {activeView === "batch" && (
+              <ErrorBoundary>
+                <BatchHistory />
+              </ErrorBoundary>
+            )}
+            {activeView === "analytics" && (
+              <ErrorBoundary>
+                <Analytics />
+              </ErrorBoundary>
+            )}
             {activeView === "logs" && <SessionLogs />}
             {activeView === "settings" && <Settings />}
           </main>

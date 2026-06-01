@@ -31,12 +31,15 @@ src/electron/
     getSettings.js         # electron-store: storagePath, xmlPath, workstationName
     getRootPath.js         # Derives all paths from getSettings() — no hardcoded values
     db.js                  # SQLite: logs, held_files, rollback_reasons; all fns guarded if(!stmt)
+                           # DB errors log via console.error — silent catches removed
     createBatchIds.js      # GROUP_NAME_OVERRIDES + GROUP_NAME_OVERRIDES_REVERSE (both exported)
     ipcError.js            # toIpcError(err, stage, title)
     validateStoragePath.js # assertStorageFilePath — validate batchPath/filePath before file ops
+    getFileAgeInDays.js    # uses Math.floor (not ceil) — 1h-old file = 0 days, not 1
   ipc/
     index.js               # Registers all handlers; calls initDb() first
-    createBatch.js         # Atomic file move with rollback — TRANSACTION
+                           # file:read-buffer uses assertStorageFilePath — no path traversal
+    createBatch.js         # Atomic file move; stale lock timeout = 60s (not 5min)
     batchHistoryHandlers.js # rollback, regenerateXML, deleteBatch; uses resolveOriginalGroup()
     readPrintedFolder.js   # Reads PRINTED/ tree
 
@@ -44,19 +47,31 @@ src/ui/
   store/useStore.jsx       # Zustand store — central app state
   hooks/usePdfPreview.js   # PDF → JPEG via pdfjs; module-level Map cache by filePath
   utils/notify.js          # ALWAYS use instead of setAlert() — adds toast + SessionLogs entry
+  services/                # IPC abstraction layer — ALWAYS import from here, NOT window.api directly
+    batchService.js        # readPrintedFolder, rollback*, watcher, deleteBatch, regenerateXml
+    fileService.js         # readFolders, submitBatch, openPreview, openInFolder, readFileBuffer
+    settingsService.js     # getSettings, setSettings, selectFolder
+    analyticsService.js    # getRollbackStats, getRollbackDetails, clearRollbackReasons
+    systemService.js       # getLogs, clearLogs, hold*, minimizeWindow, closeWindow, showConfirm
   constants/
     printerColors.js       # PRINTER_COLORS: { DGEN, YOKO, YUMI } → { bg, color }
     rollbackReasons.js     # ROLLBACK_REASONS: 11 reasons; OTHER has special text-input behavior
   components/
-    Analytics/             # NEW (untracked) — rollback analytics (Details/, Summary/, hooks/)
+    Analytics/             # rollback analytics (Details/, Summary/, hooks/)
     BatchHistory/          # day→batch→file tree, real-time watcher, rollback with reasons
+      BatchHistory.jsx     # state, handlers, filter logic, day-level rendering (~620 lines)
+      BatchRow.jsx         # batch header row + action buttons + file list
+      FileRow.jsx          # single file row with badges and context menu
     DataList/              # Inbox file list; own usePdfPreview instance; 5 fixed-width tag slots
     ContextMenu/           # Portal popup; supports submenu (children field) with hover delay 150ms
     RollbackModal/         # Portal modal; 11 reason pills; OTHER → text input; Enter/Esc keys
+    ErrorBoundary/         # Class component — wraps DataList, BatchHistory, Analytics in App.jsx
 
 src/shared/
-  estimatePrintLength.js   # Used in both electron and UI
-  printWidths.js           # Roll widths + fixed product dimensions
+  estimatePrintLength.js        # Used in both electron and UI
+  estimatePrintLength.test.js   # Vitest unit tests — 15 tests
+  printWidths.js                # Roll widths + fixed product dimensions
+  constants.js                  # BATCH_STATUS, FILE_STATUS, PRINTER — use instead of string literals
 ```
 
 ## Workflow
@@ -72,8 +87,9 @@ INBOX → PARSE FILENAME → UI → SELECT FILES+PRINTER → CREATE BATCH+XML �
 ## Views (`activeView` in App.jsx)
 | View | Components |
 |---|---|
-| `"print"` | DataOverviewSection + DataFilters + DataList |
-| `"batch"` | BatchHistory |
+| `"print"` | DataOverviewSection + DataFilters + DataList (wrapped in ErrorBoundary) |
+| `"batch"` | BatchHistory (wrapped in ErrorBoundary) |
+| `"analytics"` | Analytics (wrapped in ErrorBoundary) |
 | `"logs"` | SessionLogs |
 | `"settings"` | Settings |
 
@@ -188,6 +204,8 @@ Key: `getLastBatch(batchDays)` exported helper. `applyFilters()` internal helper
 - `"new-batch"` watcher event: preserve existing reasons: `rollbackReasons: batch.rollbackReasons ?? b.rollbackReasons` — Windows `fs.watch` can fire mid-optimistic-update
 - Reason badge lookup: `file_id === fileId` first, fallback to `file_id === null` (batch-level)
 - Hook destructured with prefixes (`isPreviewLoading`, `isPreviewOpen`) to avoid conflict with local `isLoading`
+- **Component split**: day-level rendering in `BatchHistory.jsx`; batch header+actions in `BatchRow.jsx`; file row in `FileRow.jsx` — both sub-components import `BatchHistory.module.css` directly
+- Watcher race condition handled: `readSingleBatch` wrapped in try/catch; `ENOENT` → sends `"removed"` event
 
 ## Rollback Reasons
 11 codes: `MISSING_JOB`, `PRINTER_LINES`, `WRONG_SIZE`, `WRONG_MATERIAL`, `FABRIC_FAULT`, `PRESSING_FAULT`, `FABRIC_CREASE`, `GHOSTING`, `LINT_MARK`, `WRONG_COLOURS`, `OTHER`
@@ -208,9 +226,11 @@ Maps long group names → short folder names. `resolveOriginalGroup(batchPath, s
 
 ## Dev Commands
 ```bash
-npm run dev    # Vite + Electron concurrently (wait-on)
-npm run build  # Vite → dist/
-npm run lint   # ESLint flat config v9 — separate rules for ui/ and electron/
+npm run dev        # Vite + Electron concurrently (wait-on)
+npm run build      # Vite → dist/
+npm run lint       # ESLint flat config v9 — separate rules for ui/ and electron/
+npm run test       # Vitest — runs src/**/*.test.js (node environment)
+npm run test:watch # Vitest watch mode
 ```
 
 ## Critical Rules
@@ -224,4 +244,7 @@ npm run lint   # ESLint flat config v9 — separate rules for ui/ and electron/
 8. Load PDF via IPC `readFileBuffer` → base64 → Uint8Array → `pdfjsLib.getDocument({ data })` — NOT `file://`
 9. `Badge` component exists but is **unused** in DataList (inline icon tags used instead)
 10. `DataDaysCounter` was removed — age rendered inline in DataList; do not recreate
-11. No automated tests in project
+11. **Never call `window.api` directly in components** — always import from `src/ui/services/`
+12. **Use `BATCH_STATUS`, `FILE_STATUS`, `PRINTER` from `src/shared/constants.js`** — never compare against raw strings like `"rolled_back"` or `"active"`
+13. **All file IPC handlers** use `assertStorageFilePath` — prevents path traversal outside storagePath
+14. Vitest tests exist in `src/shared/` — run `npm run test` before shipping changes to `estimatePrintLength.js`

@@ -155,10 +155,10 @@ export const createBatch = async (batch) => {
     for (const sourceFolderPath of [...new Set(sourceEntries.map((entry) => entry.sourceDir))]) {
       const lockPath = path.join(sourceFolderPath, ".lock");
 
-      // Remove stale lock left by a previous crash (older than 5 minutes)
+      // Remove stale lock left by a previous crash (older than 60 seconds)
       try {
         const lockStat = await fs.promises.stat(lockPath);
-        if (Date.now() - lockStat.mtimeMs > 5 * 60 * 1000) {
+        if (Date.now() - lockStat.mtimeMs > 60 * 1000) {
           await fs.promises.unlink(lockPath);
         }
       } catch {} // no lock file — proceed normally

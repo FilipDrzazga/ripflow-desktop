@@ -1,5 +1,7 @@
 import { useState } from "react";
-import { LuChartBar, LuRefreshCw } from "react-icons/lu";
+import { showConfirm } from "../../services/systemService";
+import { clearRollbackReasons } from "../../services/analyticsService";
+import { LuChartBar, LuRefreshCw, LuTrash2 } from "react-icons/lu";
 import { useAnalyticsData } from "./hooks/useAnalyticsData";
 import Summary from "./Summary/Summary";
 import Details from "./Details/Details";
@@ -19,7 +21,17 @@ const TABS = [
 const Analytics = () => {
   const [period, setPeriod] = useState("30d");
   const [activeTab, setActiveTab] = useState("summary");
+  const [isClearing, setIsClearing] = useState(false);
   const { stats, details, isLoading, refresh } = useAnalyticsData(period);
+
+  const handleClearHistory = async () => {
+    const confirmed = await showConfirm("Clear all rollback history? This cannot be undone.");
+    if (!confirmed) return;
+    setIsClearing(true);
+    await clearRollbackReasons();
+    setIsClearing(false);
+    refresh();
+  };
 
   return (
     <div className={style.analytics}>
@@ -49,6 +61,9 @@ const Analytics = () => {
             </button>
           ))}
         </div>
+        <button className={style.clear_btn} onClick={handleClearHistory} disabled={isLoading || isClearing} title="Clear all rollback history">
+          <LuTrash2 size={14} />
+        </button>
         <button className={style.refresh_btn} onClick={refresh} disabled={isLoading} title="Refresh">
           <LuRefreshCw size={14} className={isLoading ? style.spinning : ""} />
         </button>

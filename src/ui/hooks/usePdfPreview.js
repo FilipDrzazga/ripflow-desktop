@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef } from "react";
+import { readFileBuffer } from "../services/fileService";
 import * as pdfjsLib from "pdfjs-dist";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
@@ -10,7 +11,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
 const previewCache = new Map();
 
 async function readFileAsUint8Array(filePath) {
-  const result = await window.api.readFileBuffer(filePath);
+  const result = await readFileBuffer(filePath);
   if (!result.success) throw new Error(result.error || "Failed to read file");
   // Decode base64 → Uint8Array
   const binary = atob(result.data);

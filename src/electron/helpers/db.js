@@ -14,6 +14,7 @@ let stmtGetHeldFiles = null;
 let stmtInsertRollbackReason = null;
 let stmtGetRollbackReasonsByBatch = null;
 let stmtGetRollbackReasonsByFile = null;
+let stmtClearRollbackReasons = null;
 
 const PRINTER_RE = /-(DGEN|YOKO|YUMI)$/i;
 
@@ -105,7 +106,9 @@ export const initDb = () => {
     stmtGetRollbackReasonsByFile = db.prepare(
       "SELECT * FROM rollback_reasons WHERE file_id = ? ORDER BY timestamp DESC LIMIT 1",
     );
-  } catch {
+    stmtClearRollbackReasons = db.prepare("DELETE FROM rollback_reasons");
+  } catch (err) {
+    console.error("[db] initDb failed:", err);
     db = null;
     stmtInsert = null;
     stmtGetAll = null;
@@ -117,6 +120,7 @@ export const initDb = () => {
     stmtInsertRollbackReason = null;
     stmtGetRollbackReasonsByBatch = null;
     stmtGetRollbackReasonsByFile = null;
+    stmtClearRollbackReasons = null;
   }
 };
 
@@ -133,7 +137,9 @@ export const insertLog = (log) => {
       log.detail != null ? JSON.stringify(log.detail) : null,
       log.workstation ?? null,
     );
-  } catch {}
+  } catch (err) {
+    console.error("[db] insertLog failed:", err);
+  }
 };
 
 export const getAllLogs = () => {
@@ -143,7 +149,8 @@ export const getAllLogs = () => {
       ...row,
       detail: row.detail ? JSON.parse(row.detail) : null,
     }));
-  } catch {
+  } catch (err) {
+    console.error("[db] getAllLogs failed:", err);
     return [];
   }
 };
@@ -151,10 +158,10 @@ export const getAllLogs = () => {
 export const clearAllLogs = (workstation) => {
   if (workstation) {
     if (!stmtClearByWorkstation) return;
-    try { stmtClearByWorkstation.run(workstation); } catch {}
+    try { stmtClearByWorkstation.run(workstation); } catch (err) { console.error("[db] clearAllLogs (by workstation) failed:", err); }
   } else {
     if (!stmtClear) return;
-    try { stmtClear.run(); } catch {}
+    try { stmtClear.run(); } catch (err) { console.error("[db] clearAllLogs failed:", err); }
   }
 };
 
@@ -162,21 +169,26 @@ export const holdFile = (fileId, workstation = "") => {
   if (!stmtHoldFile) return;
   try {
     stmtHoldFile.run(fileId, workstation);
-  } catch {}
+  } catch (err) {
+    console.error("[db] holdFile failed:", err);
+  }
 };
 
 export const unholdFile = (fileId, workstation = "") => {
   if (!stmtUnholdFile) return;
   try {
     stmtUnholdFile.run(fileId, workstation);
-  } catch {}
+  } catch (err) {
+    console.error("[db] unholdFile failed:", err);
+  }
 };
 
 export const getHeldFiles = (workstation = "") => {
   if (!stmtGetHeldFiles) return new Set();
   try {
     return new Set(stmtGetHeldFiles.all(workstation).map((r) => r.file_id));
-  } catch {
+  } catch (err) {
+    console.error("[db] getHeldFiles failed:", err);
     return new Set();
   }
 };
@@ -208,23 +220,32 @@ export const insertRollbackReason = ({
       fabric ?? null,
       process ?? null,
     );
-  } catch {}
+  } catch (err) {
+    console.error("[db] insertRollbackReason failed:", err);
+  }
 };
 
 export const getRollbackReasonsByBatch = (batchPath) => {
   if (!stmtGetRollbackReasonsByBatch) return [];
   try {
     return stmtGetRollbackReasonsByBatch.all(batchPath);
-  } catch {
+  } catch (err) {
+    console.error("[db] getRollbackReasonsByBatch failed:", err);
     return [];
   }
+};
+
+export const clearAllRollbackReasons = () => {
+  if (!stmtClearRollbackReasons) return;
+  try { stmtClearRollbackReasons.run(); } catch (err) { console.error("[db] clearAllRollbackReasons failed:", err); }
 };
 
 export const getRollbackReasonsByFile = (fileId) => {
   if (!stmtGetRollbackReasonsByFile) return null;
   try {
     return stmtGetRollbackReasonsByFile.get(fileId) ?? null;
-  } catch {
+  } catch (err) {
+    console.error("[db] getRollbackReasonsByFile failed:", err);
     return null;
   }
 };
@@ -273,7 +294,8 @@ export const getRollbackStats = (since) => {
         .map(([process, count]) => ({ process, count }))
         .sort((a, b) => b.count - a.count),
     };
-  } catch {
+  } catch (err) {
+    console.error("[db] getRollbackStats failed:", err);
     return { total: 0, byReason: [], byPrinter: [], byWorkstation: [], byProcess: [] };
   }
 };
@@ -291,7 +313,8 @@ export const getRollbackDetails = (since) => {
       const printer = printerMatch ? printerMatch[1].toUpperCase() : null;
       return { ...row, printer };
     });
-  } catch {
+  } catch (err) {
+    console.error("[db] getRollbackDetails failed:", err);
     return [];
   }
 };
