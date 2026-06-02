@@ -77,14 +77,24 @@ export const rollbackBatchFromHistory = async ({ batchPath, reason } = {}) => {
     result.success = true;
 
     if (reason) {
-      insertRollbackReason({
-        id: crypto.randomUUID(),
-        fileId: null,
-        batchPath: validatedBatchPath,
-        reasonCode: reason.code,
-        reasonLabel: reason.label,
-        workstation: getSettings().workstationName,
-      });
+      const workstation = getSettings().workstationName;
+      for (const name of pdfNames) {
+        const fileId = path.basename(name, path.extname(name));
+        const parsed = parsePrintFileName(name);
+        const fabric = parsed?.material ?? null;
+        insertRollbackReason({
+          id: crypto.randomUUID(),
+          fileId,
+          batchPath: validatedBatchPath,
+          reasonCode: reason.code,
+          reasonLabel: reason.label,
+          workstation,
+          orderId: parsed?.orderId ?? null,
+          customer: parsed?.customerName ?? null,
+          fabric,
+          process: fabric ? getMaterialType(fabric) : null,
+        });
+      }
     }
   } catch (err) {
     result.errors = [toError(err, err.title || "Rollback failed")];

@@ -1,10 +1,11 @@
 .grid {
-  flex: 1;
-  min-height: 0;
-  display: grid;
-  grid-template-columns: 220px 1fr;
-  grid-template-rows: 1fr 1fr 1fr 1fr;
+  width: 360px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
   gap: 12px;
+  min-height: 0;
+  overflow: hidden;
   opacity: 1;
   transition: opacity 0.2s ease;
 }
@@ -15,32 +16,28 @@
 }
 
 .total_card {
-  grid-column: 1;
-  grid-row: 1;
   align-items: center;
   justify-content: center;
   text-align: center;
   gap: 4px;
+  flex-shrink: 0;
 }
 
 .process_card {
-  grid-column: 1;
-  grid-row: 2;
+  flex-shrink: 0;
 }
 
 .printer_card {
-  grid-column: 1;
-  grid-row: 3;
+  flex-shrink: 0;
 }
 
 .workstation_card {
-  grid-column: 1;
-  grid-row: 4;
+  flex-shrink: 0;
 }
 
 .reasons_card {
-  grid-column: 2;
-  grid-row: 1 / 5;
+  flex: 1;
+  min-height: 0;
   overflow: hidden;
 }
 
@@ -68,7 +65,7 @@
 
 /* === TOTAL CARD === */
 .total_number {
-  font-size: 52px;
+  font-size: 44px;
   font-weight: 700;
   color: var(--text-primary);
   line-height: 1;
@@ -123,7 +120,7 @@
 /* === WORKSTATION NAME === */
 .ws_name {
   flex-shrink: 0;
-  width: 100px;
+  width: 80px;
   font-size: 12px;
   font-weight: 600;
   color: var(--text-primary);
@@ -151,8 +148,8 @@
 
 .reason_label {
   flex-shrink: 0;
-  width: 140px;
-  font-size: 13px;
+  width: 110px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--text-primary);
   overflow: hidden;

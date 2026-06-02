@@ -15,7 +15,7 @@
 .topbar {
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: 8px;
   height: 76px;
   padding: 0 28px;
   border-bottom: 1px solid var(--border-grey);
@@ -107,43 +107,47 @@
   background-color: var(--border-grey);
   align-self: center;
   flex-shrink: 0;
+  margin: 0 4px;
 }
 
 .type_filters {
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: 4px;
 }
 
 .filter_btn {
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: 8px 24px;
+  padding: 8px 16px;
   border-radius: 10px;
   background-color: var(--bg-white);
-  border: 1px solid var(--bg-grey-light);
-  color: var(--text-primary);
+  border: 1px solid var(--border-grey);
+  color: var(--text-secondary);
   box-shadow: var(--card-shadow);
   font-size: 14px;
   font-weight: 600;
   transition:
-    background-color 0.2s ease,
-    border-color 0.2s ease,
-    color 0.2s ease,
-    opacity 0.2s ease;
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
 }
 
-.filter_btn:active {
-  background-color: var(--bg-black);
-  color: var(--text-white);
-  border-color: var(--border-black);
+.filter_btn:hover {
+  background-color: var(--bg-grey);
+  color: var(--text-primary);
 }
 
 .filter_btn_active {
   background-color: var(--bg-black);
   color: var(--text-white);
   border-color: var(--border-black);
+}
+
+.filter_btn_active:hover {
+  background-color: var(--bg-black);
+  color: var(--text-white);
 }
 
 /* ===== CLEAR BUTTON ===== */
@@ -153,11 +157,11 @@
   align-items: center;
   gap: 6px;
   margin-left: auto;
-  padding: 8px 24px;
+  padding: 8px 16px;
   min-width: 140px;
   border-radius: 10px;
   background-color: var(--bg-white);
-  border: 1px solid var(--bg-grey-light);
+  border: 1px solid var(--border-grey);
   color: var(--text-secondary);
   box-shadow: var(--card-shadow);
   font-size: 14px;

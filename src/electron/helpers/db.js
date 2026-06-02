@@ -88,6 +88,12 @@ export const initDb = () => {
       )
     `);
 
+    try {
+      db.exec("DELETE FROM rollback_reasons WHERE process IS NULL OR process = ''");
+    } catch (err) {
+      console.error("[db] cleanup rollback_reasons without process failed:", err);
+    }
+
     stmtInsert = db.prepare(
       "INSERT OR IGNORE INTO logs (id, timestamp, type, stage, code, message, detail, workstation) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
     );

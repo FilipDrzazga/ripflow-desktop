@@ -4,12 +4,6 @@ import style from "./Summary.module.css";
 
 const REASON_ICON_MAP = Object.fromEntries(ROLLBACK_REASONS.map((r) => [r.code, r.icon]));
 
-const PROCESS_COLORS = {
-  Cottons: { bar: PRINTER_COLORS.DGEN.color, bg: PRINTER_COLORS.DGEN.bg, text: PRINTER_COLORS.DGEN.color },
-  Polyesters: { bar: PRINTER_COLORS.YOKO.color, bg: PRINTER_COLORS.YOKO.bg, text: PRINTER_COLORS.YOKO.color },
-  Unknown: { bar: "#9ca3af", bg: "#f3f4f6", text: "#6b7280" },
-};
-
 const NO_DATA = "No data for this period";
 
 const getReasonLabel = (code, label) => (code === "OTHER" ? "Other..." : label);
@@ -38,16 +32,15 @@ const Summary = ({ stats, isLoading }) => {
         ) : (
           <div className={style.list}>
             {byProcess.map(({ process, count }) => {
-              const colors = PROCESS_COLORS[process] || PROCESS_COLORS.Unknown;
               return (
                 <div key={process} className={style.list_row}>
-                  <span className={style.process_label} style={{ color: colors.text }}>
+                  <span className={style.process_label}>
                     {process}
                   </span>
                   <div className={style.bar_track}>
                     <div
                       className={style.bar_fill}
-                      style={{ width: `${(count / maxProcess) * 100}%`, background: colors.bar }}
+                      style={{ width: `${(count / maxProcess) * 100}%`, background: "var(--bg-black)" }}
                     />
                   </div>
                   <span className={style.count}>{count}</span>
@@ -78,7 +71,7 @@ const Summary = ({ stats, isLoading }) => {
                   <div className={style.bar_track}>
                     <div
                       className={style.bar_fill}
-                      style={{ width: `${(count / maxPrinter) * 100}%`, background: colors.color }}
+                      style={{ width: `${(count / maxPrinter) * 100}%`, background: "var(--bg-black)" }}
                     />
                   </div>
                   <span className={style.count}>{count}</span>

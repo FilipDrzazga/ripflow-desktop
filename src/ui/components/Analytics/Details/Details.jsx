@@ -1,11 +1,17 @@
 import { useMemo, useState } from "react";
 import { PRINTER_COLORS } from "@/constants/printerColors";
 import { ROLLBACK_REASONS } from "@/constants/rollbackReasons";
-import { LuDownload, LuLayoutGrid, LuList } from "react-icons/lu";
+import { LuDownload, LuRefreshCw, LuTrash2 } from "react-icons/lu";
+import Summary from "../Summary/Summary";
 import style from "./Details.module.css";
 
 const PROCESS_OPTIONS = ["All", "Cottons", "Polyesters"];
 const PRINTER_OPTIONS = ["All", "DGEN", "YOKO", "YUMI"];
+const PERIODS = [
+  { id: "7d", label: "7 days" },
+  { id: "30d", label: "30 days" },
+  { id: "all", label: "All time" },
+];
 
 const PROCESS_BADGE = {
   Cottons: { bg: PRINTER_COLORS.DGEN.bg, color: PRINTER_COLORS.DGEN.color },
@@ -65,12 +71,11 @@ const PrinterBadge = ({ printer }) => {
   );
 };
 
-const Details = ({ details, isLoading }) => {
+const Details = ({ details, stats, isLoading, period, onPeriodChange, onClear, onRefresh, isClearing }) => {
   const [processFilter, setProcessFilter] = useState("All");
   const [printerFilter, setPrinterFilter] = useState("All");
   const [reasonFilter, setReasonFilter] = useState("All");
-  const [splitByDay, setSplitByDay] = useState(false);
-  const [viewMode, setViewMode] = useState("list");
+  const [splitByDay, setSplitByDay] = useState(true);
 
   const uniqueReasons = useMemo(() => {
     const seen = new Set();
@@ -123,138 +128,134 @@ const Details = ({ details, isLoading }) => {
 
   return (
     <div className={`${style.details} ${isLoading ? style.loading : ""}`}>
-      {/* Filters bar */}
-      <div className={style.filters}>
-        <div className={style.filter_group}>
-          {PROCESS_OPTIONS.map((p) => (
-            <button
-              key={p}
-              className={`${style.filter_btn} ${processFilter === p ? style.filter_btn_active : ""}`}
-              onClick={() => setProcessFilter(p)}
+      <div className={style.body}>
+        <Summary stats={stats} isLoading={isLoading} />
+
+        <div className={style.right_panel}>
+          {/* Filters bar */}
+          <div className={style.filters}>
+            <div className={style.filter_group}>
+              {PROCESS_OPTIONS.map((p) => (
+                <button
+                  key={p}
+                  className={`${style.filter_btn} ${processFilter === p ? style.filter_btn_active : ""}`}
+                  onClick={() => setProcessFilter(p)}
+                >
+                  {p}
+                </button>
+              ))}
+            </div>
+
+            <div className={style.separator} />
+
+            <div className={style.filter_group}>
+              {PRINTER_OPTIONS.map((p) => (
+                <button
+                  key={p}
+                  className={`${style.filter_btn} ${printerFilter === p ? style.filter_btn_active : ""}`}
+                  onClick={() => setPrinterFilter(p)}
+                >
+                  {p}
+                </button>
+              ))}
+            </div>
+
+            <div className={style.separator} />
+
+            <select
+              className={style.reason_select}
+              value={reasonFilter}
+              onChange={(e) => setReasonFilter(e.target.value)}
             >
-              {p}
+              {uniqueReasons.map(({ code, label }) => (
+                <option key={code} value={code}>
+                  {label}
+                </option>
+              ))}
+            </select>
+
+            <div className={style.separator} />
+
+            <label className={style.toggle_label}>
+              <input
+                type="checkbox"
+                className={style.toggle_checkbox}
+                checked={splitByDay}
+                onChange={(e) => setSplitByDay(e.target.checked)}
+              />
+              Split by day
+            </label>
+
+            <div className={style.spacer} />
+
+            <div className={style.period_group}>
+              {PERIODS.map(({ id, label }) => (
+                <button
+                  key={id}
+                  className={`${style.period_btn} ${period === id ? style.period_btn_active : ""}`}
+                  onClick={() => onPeriodChange(id)}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            <div className={style.end_separator} />
+
+            <button className={style.export_btn} onClick={handleExportCsv} disabled={isEmpty}>
+              <LuDownload size={14} />
+              Export CSV
             </button>
-          ))}
-        </div>
-
-        <div className={style.separator} />
-
-        <div className={style.filter_group}>
-          {PRINTER_OPTIONS.map((p) => (
-            <button
-              key={p}
-              className={`${style.filter_btn} ${printerFilter === p ? style.filter_btn_active : ""}`}
-              onClick={() => setPrinterFilter(p)}
-            >
-              {p}
+            <button className={style.icon_btn} onClick={onClear} disabled={isLoading || isClearing} title="Clear all rollback history">
+              <LuTrash2 size={15} />
             </button>
-          ))}
-        </div>
-
-        <div className={style.separator} />
-
-        <select
-          className={style.reason_select}
-          value={reasonFilter}
-          onChange={(e) => setReasonFilter(e.target.value)}
-        >
-          {uniqueReasons.map(({ code, label }) => (
-            <option key={code} value={code}>
-              {label}
-            </option>
-          ))}
-        </select>
-
-        <div className={style.separator} />
-
-        <label className={style.toggle_label}>
-          <input
-            type="checkbox"
-            className={style.toggle_checkbox}
-            checked={splitByDay}
-            onChange={(e) => setSplitByDay(e.target.checked)}
-          />
-          Split by day
-        </label>
-
-        <div className={style.view_toggle}>
-          <button
-            className={`${style.view_btn} ${viewMode === "list" ? style.view_btn_active : ""}`}
-            onClick={() => setViewMode("list")}
-            title="List view"
-          >
-            <LuList size={15} />
-          </button>
-          <button
-            className={`${style.view_btn} ${viewMode === "grid" ? style.view_btn_active : ""}`}
-            onClick={() => setViewMode("grid")}
-            title="Grid view"
-          >
-            <LuLayoutGrid size={15} />
-          </button>
-        </div>
-
-        <button className={style.export_btn} onClick={handleExportCsv} disabled={isEmpty}>
-          <LuDownload size={14} />
-          Export CSV
-        </button>
-      </div>
-
-      {/* Content */}
-      <div className={style.content}>
-        {isEmpty ? (
-          <div className={style.empty_state}>No rollbacks found for selected filters</div>
-        ) : viewMode === "list" ? (
-          <div className={style.table_wrapper}>
-            <table className={style.table}>
-              <thead>
-                <tr>
-                  <th>Date</th>
-                  <th>Order ID</th>
-                  <th>Customer</th>
-                  <th>Fabric</th>
-                  <th>Process</th>
-                  <th>Printer</th>
-                  <th>Reason</th>
-                  <th>Workstation</th>
-                </tr>
-              </thead>
-              <tbody>
-                {splitByDay && dayGroups
-                  ? dayGroups.map(([key, rows]) => (
-                      <>
-                        <tr key={`day-${key}`} className={style.day_separator}>
-                          <td colSpan={8}>
-                            <span className={style.day_label}>
-                              {formatDateKey(rows[0]?.timestamp)} — {rows.length} entries
-                            </span>
-                          </td>
-                        </tr>
-                        {rows.map((row) => (
-                          <TableRow key={row.id} row={row} />
-                        ))}
-                      </>
-                    ))
-                  : filtered.map((row) => <TableRow key={row.id} row={row} />)}
-              </tbody>
-            </table>
+            <button className={`${style.icon_btn} ${isLoading ? style.icon_btn_active : ""}`} onClick={onRefresh} disabled={isLoading} title="Refresh">
+              <LuRefreshCw size={15} className={isLoading ? style.spinning : ""} />
+            </button>
           </div>
-        ) : (
-          <div className={style.card_grid}>
-            {splitByDay && dayGroups
-              ? dayGroups.map(([key, rows]) => (
-                  <div key={`day-${key}`} className={style.day_section}>
-                    <div className={style.day_header}>
-                      {formatDateKey(rows[0]?.timestamp)} — {rows.length} entries
-                    </div>
-                    {rows.map((row) => (
-                      <GridCard key={row.id} row={row} />
-                    ))}
-                  </div>
-                ))
-              : filtered.map((row) => <GridCard key={row.id} row={row} />)}
+
+          {/* Table */}
+          <div className={style.content}>
+          {isEmpty ? (
+            <div className={style.empty_state}>No rollbacks found for selected filters</div>
+          ) : (
+            <div className={style.table_wrapper}>
+              <table className={style.table}>
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Order ID</th>
+                    <th>Customer</th>
+                    <th>Fabric</th>
+                    <th>Process</th>
+                    <th>Printer</th>
+                    <th>Reason</th>
+                    <th>Workstation</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {splitByDay && dayGroups
+                    ? dayGroups.map(([key, rows]) => (
+                        <>
+                          <tr key={`day-${key}`} className={style.day_separator}>
+                            <td colSpan={8}>
+                              <span className={style.day_label}>
+                                {formatDateKey(rows[0]?.timestamp)} — {rows.length} entries
+                              </span>
+                            </td>
+                          </tr>
+                          {rows.map((row) => (
+                            <TableRow key={row.id} row={row} />
+                          ))}
+                        </>
+                      ))
+                    : filtered.map((row) => <TableRow key={row.id} row={row} />)}
+                </tbody>
+              </table>
+            </div>
+          )}
           </div>
-        )}
+        </div>
       </div>
     </div>
   );
@@ -275,34 +276,6 @@ const TableRow = ({ row }) => (
     <td className={style.td_reason}>{getDisplayReason(row.reason_code, row.reason_label)}</td>
     <td className={style.td_ws}>{row.workstation || "—"}</td>
   </tr>
-);
-
-const GridCard = ({ row }) => (
-  <div className={style.grid_card}>
-    <div className={style.grid_card_reason}>
-      {getDisplayReason(row.reason_code, row.reason_label)}
-    </div>
-    <div className={style.grid_card_row}>
-      <span className={style.grid_card_key}>Order</span>
-      <span className={style.grid_card_value}>{row.order_id || "—"}</span>
-    </div>
-    <div className={style.grid_card_row}>
-      <span className={style.grid_card_key}>Customer</span>
-      <span className={style.grid_card_value}>{row.customer || "—"}</span>
-    </div>
-    <div className={style.grid_card_row}>
-      <span className={style.grid_card_key}>Fabric</span>
-      <span className={style.grid_card_value}>{row.fabric || "—"}</span>
-    </div>
-    <div className={style.grid_card_badges}>
-      <ProcessBadge process={row.process} />
-      <PrinterBadge printer={row.printer} />
-    </div>
-    <div className={style.grid_card_footer}>
-      <span className={style.grid_card_date}>{formatDate(row.timestamp)}</span>
-      {row.workstation && <span className={style.grid_card_ws}>{row.workstation}</span>}
-    </div>
-  </div>
 );
 
 export default Details;

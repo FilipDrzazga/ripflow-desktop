@@ -15,7 +15,7 @@
 .topbar {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 8px;
   height: 76px;
   padding: 0 28px;
   border-bottom: 1px solid var(--border-grey);
@@ -97,12 +97,13 @@
   background-color: var(--border-grey);
   align-self: center;
   flex-shrink: 0;
+  margin: 0 4px;
 }
 
 .printer_filters {
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: 4px;
   flex-shrink: 0;
 }
 
@@ -111,19 +112,24 @@
   justify-content: center;
   align-items: center;
   gap: 5px;
-  padding: 8px 24px;
+  padding: 8px 16px;
   border-radius: 10px;
   background-color: var(--bg-white);
-  border: 1px solid var(--bg-grey-light);
-  color: var(--text-primary);
+  border: 1px solid var(--border-grey);
+  color: var(--text-secondary);
   box-shadow: var(--card-shadow);
   font-size: 14px;
   font-weight: 600;
   white-space: nowrap;
   transition:
-    background-color 0.2s ease,
-    border-color 0.2s ease,
-    color 0.2s ease;
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.printer_btn:hover {
+  background-color: var(--bg-grey);
+  color: var(--text-primary);
 }
 
 .printer_btn_active {
@@ -132,25 +138,30 @@
   border: 1px solid var(--border-black);
 }
 
+.printer_btn_active:hover {
+  background-color: var(--bg-black);
+  color: var(--text-white);
+}
+
 .collapse_btn {
   display: flex;
   justify-content: center;
   align-items: center;
-  width: 38px;
-  height: 38px;
+  width: 40px;
+  height: 40px;
   border-radius: 10px;
   background-color: var(--bg-white);
-  border: 1px solid var(--bg-grey-light);
+  border: 1px solid var(--border-grey);
   color: var(--text-secondary);
   box-shadow: var(--card-shadow);
   flex-shrink: 0;
   transition:
-    background-color 0.2s ease,
-    color 0.2s ease;
+    background-color 0.15s ease,
+    color 0.15s ease;
 }
 
 .collapse_btn:hover {
-  background-color: var(--bg-grey-light);
+  background-color: var(--bg-grey);
   color: var(--text-primary);
 }
 
@@ -159,31 +170,39 @@
   justify-content: center;
   align-items: center;
   gap: 5px;
-  padding: 8px 24px;
+  padding: 8px 16px;
   min-width: 140px;
   border-radius: 10px;
   background-color: var(--bg-white);
-  border: 1px solid var(--bg-grey-light);
-  color: var(--text-primary);
+  border: 1px solid var(--border-grey);
+  color: var(--text-secondary);
   box-shadow: var(--card-shadow);
   font-size: 14px;
   font-weight: 600;
   margin-left: auto;
   transition:
-    background-color 0.2s ease,
-    border-color 0.2s ease,
-    color 0.2s ease,
-    opacity 0.2s ease;
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.refresh_btn:hover:not(:disabled) {
+  background-color: var(--bg-grey);
+  color: var(--text-primary);
 }
 
 .refresh_btn:disabled {
-  color: var(--text-secondary);
+  opacity: 0.4;
   cursor: not-allowed;
 }
 
 @keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .spinning_icon {
@@ -196,6 +215,22 @@
   flex: 1;
   overflow-y: auto;
   padding: 8px 8px 40px;
+}
+
+.loading_state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+}
+
+.loading_spinner {
+  width: 28px;
+  height: 28px;
+  border: 3px solid var(--border-grey);
+  border-top-color: var(--text-secondary);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
 }
 
 .empty_state {

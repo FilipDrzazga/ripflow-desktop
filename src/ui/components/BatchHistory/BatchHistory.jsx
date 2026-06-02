@@ -559,6 +559,12 @@ const BatchHistory = () => {
       </div>
 
       <div className={style.tree}>
+        {isLoading && dayGroups.length === 0 && (
+          <div className={style.loading_state}>
+            <div className={style.loading_spinner} />
+          </div>
+        )}
+
         {filteredDayGroups.length === 0 && !isLoading && (
           <div className={style.empty_state}>
             <span className={style.empty_state_text}>

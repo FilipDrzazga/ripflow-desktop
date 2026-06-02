@@ -20,7 +20,7 @@ const BatchRow = ({
   const rolledBackCount = batch.files.filter((f) => f.status === FILE_STATUS.ROLLED_BACK).length;
   const printerColors = PRINTER_COLORS[batch.printer] || { bg: "#f0f0f0", color: "#555" };
   const batchLevelReason = isRolledBack
-    ? (batch.rollbackReasons?.find((r) => r.file_id === null) ?? null)
+    ? (batch.rollbackReasons?.find((r) => r.file_id === null) ?? batch.rollbackReasons?.[0] ?? null)
     : null;
 
   return (
