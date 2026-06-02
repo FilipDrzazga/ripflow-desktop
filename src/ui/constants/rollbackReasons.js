@@ -11,13 +11,15 @@ import {
   LuPalette,
   LuEllipsis,
   LuBot,
+  LuRefreshCw,
+  LuImageOff,
 } from "react-icons/lu";
 
 export const ROLLBACK_REASONS = [
   { code: "MISSING_JOB",    label: "Missing job",     icon: LuFileX },
   { code: "PRINTER_LINES",  label: "Printer lines",   icon: LuPrinter },
   { code: "WRONG_SIZE",     label: "Wrong size",      icon: LuRuler },
-  { code: "WRONG_MATERIAL", label: "Wrong material",  icon: LuLayers },
+  { code: "WRONG_MATERIAL", label: "Wrong Fabric",    icon: LuLayers },
   { code: "FABRIC_FAULT",   label: "Fabric Fault",    icon: LuZap },
   { code: "PRESSING_FAULT", label: "Pressing Fault",  icon: LuThermometer },
   { code: "FABRIC_CREASE",  label: "Fabric Crease",   icon: LuWaves },
@@ -25,5 +27,7 @@ export const ROLLBACK_REASONS = [
   { code: "LINT_MARK",      label: "Lint Mark",       icon: LuSparkles },
   { code: "WRONG_COLOURS",  label: "Wrong Colours",   icon: LuPalette },
   { code: "AUTOMATION_FAULT", label: "Automation Fault", icon: LuBot },
+  { code: "RERUN",            label: "Re-run",           icon: LuRefreshCw },
+  { code: "ARTWORK_ISSUE",    label: "Artwork Issue",    icon: LuImageOff },
   { code: "OTHER",            label: "Other...",         icon: LuEllipsis },
 ];

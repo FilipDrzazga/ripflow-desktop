@@ -24,7 +24,7 @@ import {
   deleteBatch as deleteBatchApi,
   regenerateXml as regenerateXmlApi,
 } from "../../services/batchService";
-import { openPreview as openPreviewApi, openInFolder as openInFolderApi } from "../../services/fileService";
+import { openPreview as openPreviewApi, openInFolder as openInFolderApi, openInShopify as openInShopifyApi } from "../../services/fileService";
 import { showConfirm } from "../../services/systemService";
 
 const PRINTERS = Object.values(PRINTER);
@@ -313,6 +313,29 @@ const BatchHistory = () => {
           message: err?.message || "Could not open folder.",
         },
         { stage: "app", code: "OPEN_FOLDER_FAILED" },
+      );
+    }
+  }, []);
+
+  const handleOpenInShopify = useCallback(async (file) => {
+    const orderId = file.orderId ?? file.name.match(/ON\d+/i)?.[0]?.toUpperCase() ?? null;
+    if (!orderId) {
+      notify(
+        { type: "Warning", title: "No order number", message: "No order number for this file." },
+        { stage: "app", code: "SHOPIFY_NO_ORDER_ID" },
+      );
+      return;
+    }
+    const res = await openInShopifyApi(orderId);
+    if (!res?.success) {
+      const err = res?.errors?.[0];
+      notify(
+        {
+          type: err?.type || "Error",
+          title: err?.title || "Open in Shopify failed",
+          message: err?.message || "Could not open Shopify order.",
+        },
+        { stage: "app", code: "OPEN_SHOPIFY_FAILED" },
       );
     }
   }, []);
@@ -636,12 +659,21 @@ const BatchHistory = () => {
               },
               {
                 id: "folder",
-                label: "Show in Explorer",
+                label: "Open in Folder",
                 icon: <LuFolderOpen />,
                 onClick: async () => {
                   const { file } = contextMenu;
                   setContextMenu(null);
                   await handleOpenInFolder(file.path);
+                },
+              },
+              {
+                id: "shopify",
+                label: "Open in Shopify",
+                onClick: async () => {
+                  const { file } = contextMenu;
+                  setContextMenu(null);
+                  await handleOpenInShopify(file);
                 },
               },
               { id: "sep-1", separator: true },

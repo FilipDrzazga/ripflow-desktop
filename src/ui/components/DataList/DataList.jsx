@@ -7,7 +7,8 @@ import PdfPreviewModal from "../PdfPreviewModal/PdfPreviewModal";
 import { usePdfPreview } from "../../hooks/usePdfPreview";
 import { estimatePrintLength } from "../../../shared/estimatePrintLength";
 import { FILE_STATUS } from "../../../shared/constants";
-import { openPreview as openPreviewApi, openInFolder as openInFolderApi } from "../../services/fileService";
+import { ROLLBACK_REASONS } from "../../constants/rollbackReasons";
+import { openPreview as openPreviewApi, openInFolder as openInFolderApi, openInShopify as openInShopifyApi } from "../../services/fileService";
 import { FiInbox, FiLock, FiUnlock } from "react-icons/fi";
 import {
   LuClock,
@@ -58,11 +59,15 @@ const DataList = () => {
   const filteredFiles = useStore((state) => state.filteredFiles);
   const selectedIds = useStore((state) => state.selectedIds);
   const heldIds = useStore((state) => state.heldIds);
+  const heldReasons = useStore((state) => state.heldReasons);
+  const rollbackReasons = useStore((state) => state.rollbackReasons);
   const toggleGroupSelection = useStore((state) => state.toggleGroupSelection);
   const toggleItemSelection = useStore((state) => state.toggleItemSelection);
   const toggleHold = useStore((state) => state.toggleHold);
   const holdSelectedFiles = useStore((state) => state.holdSelectedFiles);
   const [contextMenu, setContextMenu] = useState(null);
+  const [holdModal, setHoldModal] = useState(null);
+  const [holdReason, setHoldReason] = useState("");
   const activeContextItemId = contextMenu?.item?.id || null;
   const { openPreview, closePreview, navigate, isOpen, isLoading, imgSrc, error, currentPath, currentIndex, fileList } =
     usePdfPreview();
@@ -134,15 +139,27 @@ const DataList = () => {
     }
   };
 
-  const handleOpenInShopify = (item) => {
-    notify(
-      {
-        type: "Warning",
-        title: "Shopify pending",
-        message: `Shopify action for ${item.orderId || item.file.name} is not connected yet.`,
-      },
-      { stage: "app", code: "SHOPIFY_NOT_CONNECTED" },
-    );
+  const handleOpenInShopify = async (item) => {
+    const orderId = item.orderId ?? item.file?.name?.match(/ON\d+/i)?.[0]?.toUpperCase() ?? null;
+    if (!orderId) {
+      notify(
+        { type: "Warning", title: "No order number", message: "No order number for this file." },
+        { stage: "app", code: "SHOPIFY_NO_ORDER_ID" },
+      );
+      return;
+    }
+    const res = await openInShopifyApi(orderId);
+    if (!res?.success) {
+      const err = res?.errors?.[0];
+      notify(
+        {
+          type: err?.type || "Error",
+          title: err?.title || "Open in Shopify failed",
+          message: err?.message || "Could not open Shopify order.",
+        },
+        { stage: "app", code: "OPEN_SHOPIFY_FAILED" },
+      );
+    }
   };
 
   const handleItemContextMenu = (e, item) => {
@@ -235,10 +252,14 @@ const DataList = () => {
                 const isWarning = item.status === FILE_STATUS.WARNING;
                 const isLocked = hasSelection && lockMaterial && item.materialType !== lockMaterial;
                 const isHeld = heldIds.has(item.id);
+                const rollbackReason = rollbackReasons.get(item.file.name.replace(/\.[^.]+$/, "")) ?? null;
 
                 let tooltip = null;
                 if (isInvalid) tooltip = "File failed validation";
-                else if (isHeld) tooltip = "File is on hold";
+                else if (isHeld) {
+                  const detail = heldReasons.get(item.id);
+                  tooltip = detail ? `On hold · ${detail}` : "File is on hold";
+                }
                 else if (isLocked) tooltip = `Cannot mix ${lockMaterial} with ${item.materialType}`;
 
                 const age = item.diffDays;
@@ -276,7 +297,17 @@ const DataList = () => {
                           checked={selectedIds.has(item.id)}
                           onChange={(e) => handleItemCheckboxChange(e, item)}
                         />
-                        {item.file.name}
+                        <span className={style.file_name_text}>{item.file.name}</span>
+                        {rollbackReason && (() => {
+                          const def = ROLLBACK_REASONS.find((r) => r.code === rollbackReason.reasonCode);
+                          const ReasonIcon = def?.icon;
+                          return (
+                            <span className={style.rollback_badge}>
+                              {ReasonIcon && <ReasonIcon className={style.rollback_badge_icon} />}
+                              {rollbackReason.reasonLabel}
+                            </span>
+                          );
+                        })()}
                         {isHeld && <FiLock className={style.hold_icon} />}
                       </label>
                     </div>
@@ -351,6 +382,14 @@ const DataList = () => {
                   await handleOpenInFolder(contextMenu.item);
                 },
               },
+              {
+                id: "shopify",
+                label: "Open in Shopify",
+                onClick: () => {
+                  closeContextMenu();
+                  handleOpenInShopify(contextMenu.item);
+                },
+              },
               { id: "sep-hold", separator: true },
               (() => {
                 const item = contextMenu.item;
@@ -378,7 +417,8 @@ const DataList = () => {
                     icon: <FiLock />,
                     onClick: () => {
                       closeContextMenu();
-                      holdSelectedFiles();
+                      setHoldReason("");
+                      setHoldModal({ bulk: true, count: bulkCount });
                     },
                   };
                 }
@@ -388,18 +428,11 @@ const DataList = () => {
                   icon: <FiLock />,
                   onClick: () => {
                     closeContextMenu();
-                    toggleHold(item.id);
+                    setHoldReason("");
+                    setHoldModal({ item });
                   },
                 };
               })(),
-              {
-                id: "shopify",
-                label: "Open in Shopify",
-                onClick: () => {
-                  closeContextMenu();
-                  handleOpenInShopify(contextMenu.item);
-                },
-              },
             ]}
           />,
           document.body,
@@ -415,6 +448,53 @@ const DataList = () => {
         onClose={closePreview}
         onNavigate={navigate}
       />
+      {holdModal &&
+        createPortal(
+          <>
+            <div className={style.hold_backdrop} onClick={() => setHoldModal(null)} />
+            <div className={style.hold_modal}>
+              <p className={style.hold_modal_title}>Hold file</p>
+              <p className={style.hold_modal_filename}>
+                {holdModal.bulk ? `${holdModal.count} selected files` : holdModal.item.file.name}
+              </p>
+              <input
+                className={style.hold_modal_input}
+                type="text"
+                placeholder="Reason (optional)..."
+                value={holdReason}
+                autoFocus
+                onChange={(e) => setHoldReason(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Escape") setHoldModal(null);
+                  if (e.key === "Enter") {
+                    const reason = holdReason.trim();
+                    if (holdModal.bulk) holdSelectedFiles(reason);
+                    else toggleHold(holdModal.item.id, reason);
+                    setHoldModal(null);
+                  }
+                }}
+              />
+              <div className={style.hold_modal_actions}>
+                <button type="button" className={style.hold_modal_cancel} onClick={() => setHoldModal(null)}>
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className={style.hold_modal_confirm}
+                  onClick={() => {
+                    const reason = holdReason.trim();
+                    if (holdModal.bulk) holdSelectedFiles(reason);
+                    else toggleHold(holdModal.item.id, reason);
+                    setHoldModal(null);
+                  }}
+                >
+                  Hold file
+                </button>
+              </div>
+            </div>
+          </>,
+          document.body,
+        )}
     </div>
   );
 };

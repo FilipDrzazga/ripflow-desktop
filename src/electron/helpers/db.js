@@ -57,6 +57,7 @@ export const initDb = () => {
         CREATE TABLE held_files (
           file_id     TEXT NOT NULL,
           workstation TEXT NOT NULL DEFAULT '',
+          reason      TEXT,
           PRIMARY KEY (file_id, workstation)
         )
       `);
@@ -67,9 +68,15 @@ export const initDb = () => {
         CREATE TABLE IF NOT EXISTS held_files (
           file_id     TEXT NOT NULL,
           workstation TEXT NOT NULL DEFAULT '',
+          reason      TEXT,
           PRIMARY KEY (file_id, workstation)
         )
       `);
+      try {
+        db.prepare("SELECT reason FROM held_files LIMIT 0").all();
+      } catch {
+        db.exec("ALTER TABLE held_files ADD COLUMN reason TEXT");
+      }
     }
 
     db.exec(`
@@ -100,9 +107,9 @@ export const initDb = () => {
     stmtGetAll = db.prepare("SELECT * FROM logs ORDER BY timestamp DESC");
     stmtClear = db.prepare("DELETE FROM logs");
     stmtClearByWorkstation = db.prepare("DELETE FROM logs WHERE workstation = ?");
-    stmtHoldFile = db.prepare("INSERT OR IGNORE INTO held_files (file_id, workstation) VALUES (?, ?)");
-    stmtUnholdFile = db.prepare("DELETE FROM held_files WHERE file_id = ? AND workstation = ?");
-    stmtGetHeldFiles = db.prepare("SELECT file_id FROM held_files WHERE workstation = ?");
+    stmtHoldFile = db.prepare("INSERT OR REPLACE INTO held_files (file_id, workstation, reason) VALUES (?, ?, ?)");
+    stmtUnholdFile = db.prepare("DELETE FROM held_files WHERE file_id = ?");
+    stmtGetHeldFiles = db.prepare("SELECT file_id, workstation, reason FROM held_files");
     stmtInsertRollbackReason = db.prepare(
       "INSERT OR REPLACE INTO rollback_reasons (id, file_id, batch_path, reason_code, reason_label, timestamp, workstation, order_id, customer, fabric, process) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
     );
@@ -171,31 +178,31 @@ export const clearAllLogs = (workstation) => {
   }
 };
 
-export const holdFile = (fileId, workstation = "") => {
+export const holdFile = (fileId, workstation = "", reason = "") => {
   if (!stmtHoldFile) return;
   try {
-    stmtHoldFile.run(fileId, workstation);
+    stmtHoldFile.run(fileId, workstation, reason || null);
   } catch (err) {
     console.error("[db] holdFile failed:", err);
   }
 };
 
-export const unholdFile = (fileId, workstation = "") => {
+export const unholdFile = (fileId) => {
   if (!stmtUnholdFile) return;
   try {
-    stmtUnholdFile.run(fileId, workstation);
+    stmtUnholdFile.run(fileId);
   } catch (err) {
     console.error("[db] unholdFile failed:", err);
   }
 };
 
-export const getHeldFiles = (workstation = "") => {
-  if (!stmtGetHeldFiles) return new Set();
+export const getHeldFiles = () => {
+  if (!stmtGetHeldFiles) return [];
   try {
-    return new Set(stmtGetHeldFiles.all(workstation).map((r) => r.file_id));
+    return stmtGetHeldFiles.all();
   } catch (err) {
     console.error("[db] getHeldFiles failed:", err);
-    return new Set();
+    return [];
   }
 };
 
@@ -303,6 +310,24 @@ export const getRollbackStats = (since) => {
   } catch (err) {
     console.error("[db] getRollbackStats failed:", err);
     return { total: 0, byReason: [], byPrinter: [], byWorkstation: [], byProcess: [] };
+  }
+};
+
+export const getLatestRollbackReasonsForFileIds = (fileIds) => {
+  if (!db || !fileIds.length) return [];
+  try {
+    const placeholders = fileIds.map(() => "?").join(",");
+    return db
+      .prepare(
+        `SELECT file_id, reason_code, reason_label, MAX(timestamp) AS timestamp
+         FROM rollback_reasons
+         WHERE file_id IN (${placeholders})
+         GROUP BY file_id`,
+      )
+      .all(...fileIds);
+  } catch (err) {
+    console.error("[db] getLatestRollbackReasonsForFileIds failed:", err);
+    return [];
   }
 };
 

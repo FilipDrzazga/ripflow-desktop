@@ -1,7 +1,7 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { PRINTER_COLORS } from "@/constants/printerColors";
 import { ROLLBACK_REASONS } from "@/constants/rollbackReasons";
-import { LuDownload, LuRefreshCw, LuTrash2 } from "react-icons/lu";
+import { LuDownload, LuRefreshCw, LuTrash2, LuChevronDown, LuChevronUp, LuFilter } from "react-icons/lu";
 import Summary from "../Summary/Summary";
 import style from "./Details.module.css";
 
@@ -75,7 +75,18 @@ const Details = ({ details, stats, isLoading, period, onPeriodChange, onClear, o
   const [processFilter, setProcessFilter] = useState("All");
   const [printerFilter, setPrinterFilter] = useState("All");
   const [reasonFilter, setReasonFilter] = useState("All");
+  const [reasonOpen, setReasonOpen] = useState(false);
   const [splitByDay, setSplitByDay] = useState(true);
+  const reasonRef = useRef(null);
+
+  useEffect(() => {
+    if (!reasonOpen) return;
+    const handleClick = (e) => {
+      if (!reasonRef.current?.contains(e.target)) setReasonOpen(false);
+    };
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [reasonOpen]);
 
   const uniqueReasons = useMemo(() => {
     const seen = new Set();
@@ -83,7 +94,10 @@ const Details = ({ details, stats, isLoading, period, onPeriodChange, onClear, o
     for (const row of details) {
       if (!seen.has(row.reason_code)) {
         seen.add(row.reason_code);
-        out.push({ code: row.reason_code, label: getDisplayReason(row.reason_code, row.reason_label) });
+        const label = row.reason_code === "OTHER"
+          ? "Other"
+          : (REASON_LABELS[row.reason_code] || row.reason_label || row.reason_code);
+        out.push({ code: row.reason_code, label });
       }
     }
     return out;
@@ -162,17 +176,38 @@ const Details = ({ details, stats, isLoading, period, onPeriodChange, onClear, o
 
             <div className={style.separator} />
 
-            <select
-              className={style.reason_select}
-              value={reasonFilter}
-              onChange={(e) => setReasonFilter(e.target.value)}
-            >
-              {uniqueReasons.map(({ code, label }) => (
-                <option key={code} value={code}>
-                  {label}
-                </option>
-              ))}
-            </select>
+            <div className={style.reason_wrapper} ref={reasonRef}>
+              <button
+                type="button"
+                className={`${style.reason_btn} ${reasonFilter !== "All" ? style.reason_btn_active : ""}`}
+                onClick={() => setReasonOpen((v) => !v)}
+              >
+                <span className={style.reason_btn_label}>
+                  <LuFilter size={14} />
+                  {uniqueReasons.find((r) => r.code === reasonFilter)?.label ?? "All reasons"}
+                </span>
+                <span className={style.reason_chevron}>
+                  {reasonOpen ? <LuChevronUp size={13} /> : <LuChevronDown size={13} />}
+                </span>
+              </button>
+              {reasonOpen && (
+                <div className={style.reason_dropdown}>
+                  {uniqueReasons.map(({ code, label }) => (
+                    <button
+                      key={code}
+                      type="button"
+                      className={`${style.reason_option} ${reasonFilter === code ? style.reason_option_active : ""}`}
+                      onClick={() => {
+                        setReasonFilter(code);
+                        setReasonOpen(false);
+                      }}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
 
             <div className={style.separator} />
 

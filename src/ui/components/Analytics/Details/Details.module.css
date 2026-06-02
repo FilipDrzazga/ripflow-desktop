@@ -67,22 +67,104 @@
   margin: 0 4px;
 }
 
-.reason_select {
-  height: 40px;
-  padding: 0 12px;
-  border-radius: 10px;
-  border: 1px solid var(--border-grey);
-  background: var(--bg-white);
-  box-shadow: var(--card-shadow);
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text-primary);
-  cursor: pointer;
-  outline: none;
+.reason_wrapper {
+  position: relative;
 }
 
-.reason_select:focus {
+.reason_btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 8px 12px;
+  min-width: 160px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: var(--bg-white);
+  border: 1px solid var(--border-grey);
+  box-shadow: var(--card-shadow);
+  white-space: nowrap;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.reason_btn:hover {
+  background: var(--bg-grey);
+  color: var(--text-primary);
+}
+
+.reason_btn_active {
+  background: var(--bg-black);
+  color: var(--text-white);
   border-color: var(--border-black);
+}
+
+.reason_btn_active:hover {
+  background: var(--bg-black);
+  color: var(--text-white);
+}
+
+.reason_btn_label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.reason_chevron {
+  display: flex;
+  align-items: center;
+  padding-left: 8px;
+  margin-left: 4px;
+  border-left: 1px solid var(--bg-grey-light);
+}
+
+.reason_btn_active .reason_chevron {
+  border-left-color: rgba(255, 255, 255, 0.3);
+}
+
+.reason_dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 100;
+  min-width: 100%;
+  padding: 6px;
+  border: 1px solid rgba(34, 51, 84, 0.08);
+  border-radius: 14px;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+  box-shadow: 0 20px 40px rgba(27, 39, 94, 0.14);
+}
+
+.reason_option {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 9px 10px;
+  border-radius: 10px;
+  background: none;
+  border: none;
+  text-align: left;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    background-color 0.16s ease,
+    color 0.16s ease;
+}
+
+.reason_option:hover {
+  background-color: var(--bg-grey-light);
+}
+
+.reason_option_active {
+  font-weight: 700;
+  color: var(--text-black);
 }
 
 .toggle_label {

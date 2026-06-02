@@ -208,7 +208,8 @@ Key: `getLastBatch(batchDays)` exported helper. `applyFilters()` internal helper
 - Watcher race condition handled: `readSingleBatch` wrapped in try/catch; `ENOENT` → sends `"removed"` event
 
 ## Rollback Reasons
-11 codes: `MISSING_JOB`, `PRINTER_LINES`, `WRONG_SIZE`, `WRONG_MATERIAL`, `FABRIC_FAULT`, `PRESSING_FAULT`, `FABRIC_CREASE`, `GHOSTING`, `LINT_MARK`, `WRONG_COLOURS`, `OTHER`
+13 codes: `MISSING_JOB`, `PRINTER_LINES`, `WRONG_SIZE`, `WRONG_MATERIAL`, `FABRIC_FAULT`, `PRESSING_FAULT`, `FABRIC_CREASE`, `GHOSTING`, `LINT_MARK`, `WRONG_COLOURS`, `AUTOMATION_FAULT`, `RERUN`, `ARTWORK_ISSUE`, `OTHER`
+- `WRONG_MATERIAL` displays as "Wrong Fabric" (label changed; code kept for DB backwards-compat)
 - `OTHER` → inline portal modal with text input (`window.prompt` returns null in Electron contextIsolation)
 - ContextMenu submenu child `onClick`: call `onClose()` BEFORE `child.onClick()` — Electron timing
 

@@ -156,6 +156,34 @@
 .item_name:has(input:disabled) {
   cursor: not-allowed;
 }
+.file_name_text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.rollback_badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  margin-left: 8px;
+  padding: 2px 7px 2px 5px;
+  border-radius: 6px;
+  background: rgba(186, 117, 23, 0.1);
+  border: 1px solid rgba(186, 117, 23, 0.25);
+  color: #BA7517;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.rollback_badge_icon {
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
 .hold_icon {
   flex-shrink: 0;
   margin-left: 8px;
@@ -198,6 +226,109 @@
   border-style: solid;
   border-color: var(--bg-black) transparent transparent transparent;
 }
+
+/* ===== HOLD MODAL ===== */
+
+.hold_backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 3100;
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.hold_modal {
+  position: fixed;
+  z-index: 3101;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: var(--bg-white);
+  border-radius: 20px;
+  padding: 24px 28px 20px;
+  min-width: 340px;
+  box-shadow: var(--card-shadow);
+}
+
+.hold_modal_title {
+  margin: 0 0 6px;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.hold_modal_filename {
+  margin: 0 0 16px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  max-width: 340px;
+}
+
+.hold_modal_input {
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--border-grey);
+  background: var(--bg-white);
+  color: var(--text-primary);
+  font-size: 14px;
+  outline: none;
+  margin-bottom: 14px;
+  box-shadow: var(--card-shadow);
+  transition: border-color 0.2s ease;
+}
+
+.hold_modal_input:focus {
+  border-color: var(--border-black);
+}
+
+.hold_modal_input::placeholder {
+  color: var(--text-secondary);
+}
+
+.hold_modal_actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.hold_modal_cancel {
+  padding: 8px 16px;
+  border-radius: 10px;
+  border: 1px solid var(--border-grey);
+  background: var(--bg-white);
+  color: var(--text-secondary);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: var(--card-shadow);
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.hold_modal_cancel:hover {
+  background-color: var(--bg-grey);
+  color: var(--text-primary);
+}
+
+.hold_modal_confirm {
+  padding: 8px 16px;
+  border-radius: 10px;
+  border: none;
+  background: var(--bg-black);
+  color: var(--text-white);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.hold_modal_confirm:hover {
+  opacity: 0.85;
+}
+
+/* ===== EMPTY STATE ===== */
 
 .empty_state {
   display: flex;

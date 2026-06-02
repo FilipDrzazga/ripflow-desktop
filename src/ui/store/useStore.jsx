@@ -5,6 +5,7 @@ import { BATCH_STATUS, FILE_STATUS } from "../../shared/constants";
 import { readFolders } from "../services/fileService";
 import { readPrintedFolder } from "../services/batchService";
 import { getLogs, clearLogs as clearLogsApi, getHeldFiles, holdFile as holdFileApi, unholdFile as unholdFileApi } from "../services/systemService";
+import { getRollbackReasonsForFiles as getRollbackReasonsForFilesApi } from "../services/analyticsService";
 
 const applySort = (groups, sortOrder) => {
   if (!sortOrder) return groups;
@@ -140,28 +141,57 @@ export const useStore = create(
         filteredFiles: applyFilters(files, state.activeTab, state.searchQuery, state.sortOrder, state.printTypeFilter),
       })),
     heldIds: new Set(),
+    heldReasons: new Map(),
+    rollbackReasons: new Map(),
+    loadRollbackReasonsForInbox: async (fileIds) => {
+      if (!fileIds.length) { set({ rollbackReasons: new Map() }); return; }
+      try {
+        const res = await getRollbackReasonsForFilesApi(fileIds);
+        if (res?.success && Array.isArray(res.data)) {
+          const map = new Map();
+          for (const row of res.data) map.set(row.file_id, { reasonCode: row.reason_code, reasonLabel: row.reason_label });
+          set({ rollbackReasons: map });
+        }
+      } catch (err) { console.error("[store] loadRollbackReasonsForInbox failed:", err); }
+    },
     loadHeldFiles: async () => {
       try {
         const res = await getHeldFiles();
         if (res?.success && Array.isArray(res.data)) {
-          set({ heldIds: new Set(res.data) });
+          const grouped = new Map();
+          for (const r of res.data) {
+            if (!grouped.has(r.file_id)) grouped.set(r.file_id, []);
+            grouped.get(r.file_id).push({ workstation: r.workstation, reason: r.reason });
+          }
+          const heldIds = new Set(grouped.keys());
+          const heldReasons = new Map();
+          for (const [fileId, holders] of grouped) {
+            const label = holders
+              .map(({ workstation, reason }) => (reason ? `${workstation}: ${reason}` : workstation))
+              .join(", ");
+            heldReasons.set(fileId, label);
+          }
+          set({ heldIds, heldReasons });
         }
       } catch (err) { console.error("[store] loadHeldFiles failed:", err); }
     },
-    toggleHold: async (fileId) => {
-      const { heldIds } = get();
+    toggleHold: async (fileId, reason = "") => {
+      const { heldIds, heldReasons } = get();
       const newHeldIds = new Set(heldIds);
+      const newHeldReasons = new Map(heldReasons);
       if (heldIds.has(fileId)) {
         try {
           await unholdFileApi(fileId);
           newHeldIds.delete(fileId);
-          set({ heldIds: newHeldIds });
+          newHeldReasons.delete(fileId);
+          set({ heldIds: newHeldIds, heldReasons: newHeldReasons });
         } catch (err) { console.error("[store] unholdFile failed:", err); }
       } else {
         try {
-          await holdFileApi(fileId);
+          await holdFileApi(fileId, reason);
           newHeldIds.add(fileId);
-          set({ heldIds: newHeldIds });
+          set({ heldIds: newHeldIds, heldReasons: newHeldReasons });
+          await get().loadHeldFiles();
         } catch (err) { console.error("[store] holdFile failed:", err); }
       }
     },
@@ -240,12 +270,12 @@ export const useStore = create(
 
     toggleClearSelection: () => set(() => ({ selectedIds: new Set() })),
 
-    holdSelectedFiles: async () => {
+    holdSelectedFiles: async (reason = "") => {
       const { selectedIds, heldIds } = get();
       const toHold = [...selectedIds].filter((id) => !heldIds.has(id));
       if (toHold.length === 0) return;
       for (const fileId of toHold) {
-        await get().toggleHold(fileId);
+        await get().toggleHold(fileId, reason);
       }
       set({ selectedIds: new Set() });
     },
@@ -290,6 +320,9 @@ export const useStore = create(
             message: `${successTitle}: ${successMessage}`,
             detail: null,
           });
+
+          const allFileIds = res.data.flatMap((g) => g.items.map((i) => i.file.name.replace(/\.[^.]+$/, "")));
+          await get().loadRollbackReasonsForInbox(allFileIds);
 
           const invalidItems = res.data.flatMap((g) => g.items.filter((i) => i.status === FILE_STATUS.INVALID));
           invalidItems.forEach((item) => {

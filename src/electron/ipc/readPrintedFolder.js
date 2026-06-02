@@ -51,6 +51,7 @@ export const readSingleBatch = async (batchPath, meta) => {
         name: f.name,
         path: filePath,
         type: parsed?.printTypeCode || "UNKNOWN",
+        orderId: parsed?.orderId || null,
       });
       if (parsed?.status === FILE_STATUS.READY) {
         parsedForLength.push({ ...parsed, materialType: getMaterialType(parsed.material) });
@@ -70,6 +71,7 @@ export const readSingleBatch = async (batchPath, meta) => {
         name: fname,
         path: path.join(batchPath, fname),
         type: parsed?.printTypeCode || "UNKNOWN",
+        orderId: parsed?.orderId || null,
         status: FILE_STATUS.ROLLED_BACK,
         rolledBackAt: snapshot.rolledBackAt || null,
       });

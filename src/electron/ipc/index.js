@@ -5,13 +5,14 @@ import { readFolders } from "./readFolders.js";
 import { submitBatch } from "./submitBatch.js";
 import { openPreview } from "./openPreview.js";
 import { openInFolder } from "./openInFolder.js";
+import { openInShopify } from "./openInShopify.js";
 import { readPrintedFolder, readSingleBatch, parseBatchFolderName } from "./readPrintedFolder.js";
 import { rollbackBatchFromHistory, rollbackFileFromHistory, regenerateXmlForBatch, deleteBatchFolder } from "./batchHistoryHandlers.js";
 import { getStorageRootPath } from "../helpers/getRootPath.js";
 import { assertStorageFilePath } from "../helpers/validateStoragePath.js";
 import { parsePrintFileName } from "../helpers/parseFileName.js";
 import { getSettings, setSettings } from "../helpers/getSettings.js";
-import { initDb, insertLog, getAllLogs, clearAllLogs, holdFile, unholdFile, getHeldFiles, getRollbackReasonsByBatch, getRollbackReasonsByFile, getRollbackStats, getRollbackDetails, clearAllRollbackReasons } from "../helpers/db.js";
+import { initDb, insertLog, getAllLogs, clearAllLogs, holdFile, unholdFile, getHeldFiles, getRollbackReasonsByBatch, getRollbackReasonsByFile, getRollbackStats, getRollbackDetails, clearAllRollbackReasons, getLatestRollbackReasonsForFileIds } from "../helpers/db.js";
 
 const DAY_FOLDER_RE = /^\d{2}-\d{2}-\d{4}$/;
 
@@ -99,16 +100,16 @@ export function registerIpcHandlers() {
   });
 
   ipcMain.handle("hold:get", () => {
-    return { success: true, data: [...getHeldFiles(getSettings().workstationName ?? "")] };
+    return { success: true, data: getHeldFiles() };
   });
 
-  ipcMain.handle("hold:set", (_event, fileId) => {
-    holdFile(fileId, getSettings().workstationName ?? "");
+  ipcMain.handle("hold:set", (_event, fileId, reason) => {
+    holdFile(fileId, getSettings().workstationName ?? "", reason ?? "");
     return { success: true };
   });
 
   ipcMain.handle("hold:unset", (_event, fileId) => {
-    unholdFile(fileId, getSettings().workstationName ?? "");
+    unholdFile(fileId);
     return { success: true };
   });
 
@@ -170,6 +171,10 @@ export function registerIpcHandlers() {
 
   ipcMain.handle("open-in-folder", async (_event, filePath) => {
     return openInFolder(filePath);
+  });
+
+  ipcMain.handle("open-in-shopify", async (_event, orderName) => {
+    return openInShopify(orderName);
   });
 
   ipcMain.handle("read-printed-folder", async () => {
@@ -252,6 +257,11 @@ export function registerIpcHandlers() {
 
   ipcMain.handle("get-rollback-reasons-file", (_event, fileId) => {
     return { success: true, data: getRollbackReasonsByFile(fileId) };
+  });
+
+  ipcMain.handle("get-rollback-reasons-files", (_event, fileIds) => {
+    if (!Array.isArray(fileIds)) return { success: true, data: [] };
+    return { success: true, data: getLatestRollbackReasonsForFileIds(fileIds) };
   });
 
   ipcMain.handle("delete-batch", async (_event, batchPath) => {

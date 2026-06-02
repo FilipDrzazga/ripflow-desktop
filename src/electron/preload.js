@@ -48,6 +48,10 @@ const api = Object.freeze({
     assertPath(filePath);
     return ipcRenderer.invoke("open-in-folder", filePath);
   },
+  openInShopify: (orderName) => {
+    if (!isNonEmptyString(orderName)) throw new TypeError("Order name must be a non-empty string.");
+    return ipcRenderer.invoke("open-in-shopify", orderName);
+  },
   readPrintedFolder: () => ipcRenderer.invoke("read-printed-folder"),
   regenerateXml: (batchPath) => {
     assertPath(batchPath);
@@ -91,9 +95,9 @@ const api = Object.freeze({
   getLogs: () => ipcRenderer.invoke("logs:getAll"),
   clearLogs: () => ipcRenderer.invoke("logs:clear"),
   getHeldFiles: () => ipcRenderer.invoke("hold:get"),
-  holdFile: (fileId) => {
+  holdFile: (fileId, reason) => {
     assertPath(fileId);
-    return ipcRenderer.invoke("hold:set", fileId);
+    return ipcRenderer.invoke("hold:set", fileId, reason ?? "");
   },
   unholdFile: (fileId) => {
     assertPath(fileId);
@@ -109,6 +113,10 @@ const api = Object.freeze({
   getRollbackReasonsByFile: (fileId) => {
     assertPath(fileId);
     return ipcRenderer.invoke("get-rollback-reasons-file", fileId);
+  },
+  getRollbackReasonsForFiles: (fileIds) => {
+    if (!Array.isArray(fileIds)) throw new TypeError("fileIds must be an array.");
+    return ipcRenderer.invoke("get-rollback-reasons-files", fileIds);
   },
   selectFolder: () => ipcRenderer.invoke("dialog:select-folder"),
   minimizeWindow: () => ipcRenderer.send("window:minimize"),

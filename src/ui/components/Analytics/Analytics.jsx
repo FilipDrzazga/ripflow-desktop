@@ -7,7 +7,7 @@ import Details from "./Details/Details";
 import style from "./Analytics.module.css";
 
 const Analytics = () => {
-  const [period, setPeriod] = useState("30d");
+  const [period, setPeriod] = useState("7d");
   const [isClearing, setIsClearing] = useState(false);
   const { stats, details, isLoading, refresh } = useAnalyticsData(period);
 
