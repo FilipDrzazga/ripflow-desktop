@@ -52,6 +52,8 @@ const App = () => {
               </>
             )}
             {activeView === "batch" && <BatchHistory />}
+            {activeView === "custom_order" && null}
+            {activeView === "analytics" && null}
             {activeView === "logs" && <SessionLogs />}
             {activeView === "settings" && <Settings />}
           </main>
