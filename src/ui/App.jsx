@@ -15,6 +15,7 @@ import SessionLogs from "./components/SessionLogs/SessionLogs";
 import Settings from "./components/Settings/Settings";
 import Analytics from "./components/Analytics/Analytics";
 import ErrorBoundary from "./components/ErrorBoundary/ErrorBoundary";
+import CustomOrder from "./components/CustomOrder/CustomOrder";
 
 const App = () => {
   const refreshFiles = useStore((state) => state.refreshFiles);
@@ -65,6 +66,7 @@ const App = () => {
                 <Analytics />
               </ErrorBoundary>
             )}
+            {activeView === "customOrder" && <CustomOrder />}
             {activeView === "logs" && <SessionLogs />}
             {activeView === "settings" && <Settings />}
           </main>

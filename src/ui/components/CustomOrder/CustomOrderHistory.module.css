@@ -1,0 +1,191 @@
+.container {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 20px 16px 40px;
+}
+
+.empty {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 50%;
+  height: 10%;
+  border: 2px dashed var(--border-grey);
+  border-radius: 16px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  text-align: center;
+  margin: auto;
+}
+
+/* ── Item card ───────────────────────────────────────── */
+
+.item {
+  background-color: var(--bg-white);
+  border-radius: 12px;
+  box-shadow: var(--card-shadow);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  overflow: hidden;
+  border: 1px solid var(--border-grey);
+}
+
+.item_header {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px;
+  cursor: pointer;
+  position: relative;
+  transition: background-color 0.12s ease;
+  user-select: none;
+}
+
+.item_header:hover {
+  background-color: var(--bg-grey-light);
+}
+
+.item_top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-right: 22px;
+}
+
+.item_bottom {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+/* ── Chevron ─────────────────────────────────────────── */
+
+.chevron {
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-secondary);
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+
+.chevron_open {
+  transform: translateY(-50%) rotate(90deg);
+}
+
+/* ── Meta text ───────────────────────────────────────── */
+
+.po_number {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+
+.material_name {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.status_badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 99px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.status_badge.complete {
+  background-color: #d9fbe5;
+  color: #05c95d;
+}
+
+.status_badge.partial {
+  background-color: #fef3c7;
+  color: #d97706;
+}
+
+.printer_badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+
+/* ── Files list ──────────────────────────────────────── */
+
+.files_list {
+  border-top: 1px solid var(--border-grey);
+  display: flex;
+  flex-direction: column;
+}
+
+.file_row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 40px;
+  padding: 0 14px;
+  border-bottom: 1px solid var(--border-grey);
+  transition: background-color 0.1s ease;
+}
+
+.file_row:last-child {
+  border-bottom: none;
+}
+
+.file_row:hover {
+  background-color: var(--bg-grey-light);
+}
+
+.icon_found {
+  color: #05c95d;
+  flex-shrink: 0;
+  display: flex;
+}
+
+.icon_missing {
+  color: #ef4444;
+  flex-shrink: 0;
+  display: flex;
+}
+
+.file_name {
+  flex: 1;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.file_name_missing {
+  color: #ef4444;
+}
+
+.file_meters {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  flex-shrink: 0;
+}

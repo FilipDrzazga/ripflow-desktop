@@ -1,10 +1,11 @@
-import { LuPrinter, LuLayers, LuScrollText, LuSettings, LuChartBar } from "react-icons/lu";
+import { LuPrinter, LuLayers, LuScrollText, LuSettings, LuChartBar, LuFactory } from "react-icons/lu";
 import styles from "./NavBar.module.css";
 
 const TOP_ITEMS = [
   { id: "print", label: "Print", icon: LuPrinter },
   { id: "batch", label: "Batch", icon: LuLayers },
   { id: "analytics", label: "Analytics", icon: LuChartBar },
+  { id: "customOrder", label: "Custom Orders", icon: LuFactory },
 ];
 
 const NavBar = ({ activeView, onViewChange }) => {
