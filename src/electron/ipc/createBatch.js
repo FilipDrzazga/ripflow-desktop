@@ -196,9 +196,14 @@ export const createBatch = async (batch) => {
       suffix += 1;
     }
 
+    // Create the date subfolder first so temp and final share the same parent —
+    // fs.rename across different directories fails with EPERM on Windows network shares (SMB).
+    const finalParentDir = path.dirname(finalBatchFolderPath);
+    await fs.promises.mkdir(finalParentDir, { recursive: true });
+
     tempBatchFolderPath = path.join(
-      PRINTED_ROOT_PATH,
-      `.tmp-${batchIds.mainFolder}-${batchIds.subFolder}-${process.pid}-${Date.now()}`,
+      finalParentDir,
+      `.tmp-${batchIds.subFolder}-${process.pid}-${Date.now()}`,
     );
 
     await fs.promises.mkdir(tempBatchFolderPath, { recursive: true });
@@ -239,7 +244,6 @@ export const createBatch = async (batch) => {
     }
 
     stage = STAGES.COMMIT;
-    await fs.promises.mkdir(path.dirname(finalBatchFolderPath), { recursive: true });
     await fs.promises.rename(tempBatchFolderPath, finalBatchFolderPath);
     committed = true;
 

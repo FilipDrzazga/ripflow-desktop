@@ -7,7 +7,7 @@ const computeSince = (period) => {
   return new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
 };
 
-const EMPTY_STATS = { total: 0, byReason: [], byPrinter: [], byWorkstation: [], byProcess: [] };
+const EMPTY_STATS = { total: 0, byReason: [], byPrinter: [], byProcess: [], byFabric: [] };
 
 export function useAnalyticsData(period) {
   const [stats, setStats] = useState(EMPTY_STATS);

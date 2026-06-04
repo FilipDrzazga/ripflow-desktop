@@ -13,11 +13,6 @@ import { FiInbox, FiLock, FiUnlock } from "react-icons/fi";
 import {
   LuClock,
   LuFile,
-  LuRuler,
-  LuScissors,
-  LuFlaskConical,
-  LuUtensils,
-  LuSofa,
   LuLeaf,
   LuCircleHelp,
   LuCircleCheck,
@@ -26,6 +21,7 @@ import {
   LuEye,
 } from "react-icons/lu";
 import { PiPolygon } from "react-icons/pi";
+import { PRINT_TYPE_MAP } from "@/constants/printTypeMap";
 import style from "./DataList.module.css";
 
 const formatFileSize = (bytes) => {
@@ -33,14 +29,6 @@ const formatFileSize = (bytes) => {
   if (bytes >= 1048576) return `${(bytes / 1048576).toFixed(1)} MB`;
   if (bytes >= 1024) return `${Math.round(bytes / 1024)} KB`;
   return `${bytes} B`;
-};
-
-const PRINT_TYPE_MAP = {
-  LM:        { Icon: LuRuler,        color: "#185FA5", label: "LM" },
-  FQ:        { Icon: LuScissors,     color: "#534AB7", label: "FQ" },
-  SAMPLE:    { Icon: LuFlaskConical, color: "#534AB7", label: "Sample" },
-  TEA_TOWEL: { Icon: LuUtensils,     color: "#0F6E56", label: "TT" },
-  CUSHION:   { Icon: LuSofa,         color: "#993C1D", label: "Cushion" },
 };
 
 const MATERIAL_MAP = {

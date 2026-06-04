@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { PRINTER_COLORS } from "@/constants/printerColors";
+import { PRINT_TYPE_MAP } from "@/constants/printTypeMap";
 import { useStore } from "@/store/useStore";
 import { LuDownload, LuRefreshCw, LuTrash2, LuChevronDown, LuChevronUp, LuFilter } from "react-icons/lu";
 import Summary from "../Summary/Summary";
@@ -65,6 +66,17 @@ const PrinterBadge = ({ printer }) => {
   );
 };
 
+const TypeBadge = ({ printType }) => {
+  const def = PRINT_TYPE_MAP[printType];
+  if (!def) return <span className={style.badge_neutral}>—</span>;
+  return (
+    <span className={style.type_badge}>
+      <def.Icon style={{ fontSize: 14, color: def.color }} />
+      <span style={{ color: def.color }}>{def.label}</span>
+    </span>
+  );
+};
+
 const Details = ({ details, stats, isLoading, period, onPeriodChange, onClear, onRefresh, isClearing }) => {
   const reasonDefinitions = useStore((s) => s.reasonDefinitions);
   const reasonLabels = useMemo(
@@ -116,7 +128,7 @@ const Details = ({ details, stats, isLoading, period, onPeriodChange, onClear, o
   }, [details, processFilter, printerFilter, reasonFilter]);
 
   const handleExportCsv = () => {
-    const header = ["Date", "OrderID", "Customer", "Fabric", "Process", "Printer", "Reason", "Workstation"];
+    const header = ["Date", "OrderID", "Customer", "Fabric", "Process", "Printer", "Reason", "Type", "Meters"];
     const rows = filtered.map((row) => [
       formatDate(row.timestamp),
       row.order_id ?? "",
@@ -125,7 +137,8 @@ const Details = ({ details, stats, isLoading, period, onPeriodChange, onClear, o
       row.process ?? "",
       row.printer ?? "",
       getDisplayReason(row.reason_code, row.reason_label),
-      row.workstation ?? "",
+      row.print_type ?? "",
+      row.meters != null ? row.meters.toFixed(2) : "",
     ]);
     const csv = [header, ...rows]
       .map((r) => r.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(","))
@@ -268,7 +281,8 @@ const Details = ({ details, stats, isLoading, period, onPeriodChange, onClear, o
                     <th>Process</th>
                     <th>Printer</th>
                     <th>Reason</th>
-                    <th>Workstation</th>
+                    <th>Type</th>
+                    <th>Meters</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -276,7 +290,7 @@ const Details = ({ details, stats, isLoading, period, onPeriodChange, onClear, o
                     ? dayGroups.map(([key, rows]) => (
                         <>
                           <tr key={`day-${key}`} className={style.day_separator}>
-                            <td colSpan={8}>
+                            <td colSpan={9}>
                               <span className={style.day_label}>
                                 {formatDateKey(rows[0]?.timestamp)} — {rows.length} entries
                               </span>
@@ -312,7 +326,8 @@ const TableRow = ({ row, getDisplayReason }) => (
       <PrinterBadge printer={row.printer} />
     </td>
     <td className={style.td_reason}>{getDisplayReason(row.reason_code, row.reason_label)}</td>
-    <td className={style.td_ws}>{row.workstation || "—"}</td>
+    <td><TypeBadge printType={row.print_type} /></td>
+    <td className={style.td_meters}>{row.meters != null ? `${row.meters.toFixed(2)} m` : "—"}</td>
   </tr>
 );
 

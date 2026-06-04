@@ -87,6 +87,7 @@ const buildPFJobXML = (batch, batchId) => {
       <NestingGroup>${escapeXml(id)}</NestingGroup>
       <LogisticGroup>${escapeXml(logisticGroup)}</LogisticGroup>
       <PhysicalGroup>${escapeXml(printGroup)}_${escapeXml(estimated.fixedTotalLengthM)}m</PhysicalGroup>
+      <DocumentCount>${batch.length}</DocumentCount>
       <Documents>
           ${batch
             .map((item) => {

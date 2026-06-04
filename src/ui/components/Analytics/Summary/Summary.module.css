@@ -31,7 +31,7 @@
   flex-shrink: 0;
 }
 
-.workstation_card {
+.fabric_card {
   flex-shrink: 0;
 }
 
@@ -117,15 +117,25 @@
   letter-spacing: 0.04em;
 }
 
-/* === WORKSTATION NAME === */
-.ws_name {
+/* === FABRIC NAME === */
+.fabric_name {
   flex-shrink: 0;
-  width: 80px;
+  width: 110px;
   font-size: 12px;
   font-weight: 600;
   color: var(--text-primary);
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.meters_value {
+  flex-shrink: 0;
+  width: 54px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-primary);
+  text-align: right;
   white-space: nowrap;
 }
 

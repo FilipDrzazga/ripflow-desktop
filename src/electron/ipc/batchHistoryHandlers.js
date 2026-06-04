@@ -10,6 +10,8 @@ import { parseBatchFolderName } from "./readPrintedFolder.js";
 import { insertRollbackReason } from "../helpers/db.js";
 import { getSettings } from "../helpers/getSettings.js";
 import { GROUP_NAME_OVERRIDES_REVERSE } from "../helpers/createBatchIds.js";
+import { getCachedFabrics, getCachedGlobals } from "../helpers/fabricCache.js";
+import { estimatePrintLength } from "../../shared/estimatePrintLength.js";
 
 const toError = (err, title = "Operation failed") => toIpcError(err, "unknown", title);
 
@@ -78,8 +80,18 @@ export const rollbackBatchFromHistory = async ({ batchPath, reason } = {}) => {
 
     if (reason) {
       const workstation = getSettings().workstationName;
-      const firstParsed = pdfNames.length > 0 ? parsePrintFileName(pdfNames[0]) : null;
+      const parsedFiles = pdfNames
+        .map((name) => {
+          const p = parsePrintFileName(name);
+          if (!p) return null;
+          return { ...p, materialType: p.material ? getMaterialType(p.material) : "Unknown" };
+        })
+        .filter(Boolean);
+      const firstParsed = parsedFiles[0] ?? null;
       const fabric = firstParsed?.material ?? null;
+      const metersResult = parsedFiles.length > 0
+        ? estimatePrintLength(parsedFiles, { globals: getCachedGlobals(), fabrics: getCachedFabrics() })
+        : null;
       insertRollbackReason({
         id: crypto.randomUUID(),
         fileId: null,
@@ -91,6 +103,8 @@ export const rollbackBatchFromHistory = async ({ batchPath, reason } = {}) => {
         customer: null,
         fabric,
         process: fabric ? getMaterialType(fabric) : null,
+        printType: null,
+        meters: metersResult?.fixedTotalLengthM ?? null,
       });
     }
   } catch (err) {
@@ -149,6 +163,13 @@ export const rollbackFileFromHistory = async ({ filePath, batchPath, reason } = 
       const fileId = path.basename(validatedFilePath, path.extname(validatedFilePath));
       const parsed = parsePrintFileName(path.basename(validatedFilePath));
       const fabric = parsed?.material ?? null;
+      const materialType = fabric ? getMaterialType(fabric) : "Unknown";
+      const metersResult = parsed
+        ? estimatePrintLength(
+            [{ ...parsed, materialType }],
+            { globals: getCachedGlobals(), fabrics: getCachedFabrics() },
+          )
+        : null;
       insertRollbackReason({
         id: crypto.randomUUID(),
         fileId,
@@ -160,6 +181,8 @@ export const rollbackFileFromHistory = async ({ filePath, batchPath, reason } = 
         customer: parsed?.customerName ?? null,
         fabric,
         process: fabric ? getMaterialType(fabric) : null,
+        printType: parsed?.printTypeCode ?? null,
+        meters: metersResult?.fixedTotalLengthM ?? null,
       });
     }
   } catch (err) {

@@ -112,9 +112,14 @@ export const initDb = () => {
         order_id     TEXT,
         customer     TEXT,
         fabric       TEXT,
-        process      TEXT
+        process      TEXT,
+        print_type   TEXT,
+        meters       REAL
       )
     `);
+
+    try { db.exec("ALTER TABLE rollback_reasons ADD COLUMN print_type TEXT"); } catch { /* already exists */ }
+    try { db.exec("ALTER TABLE rollback_reasons ADD COLUMN meters REAL"); } catch { /* already exists */ }
 
     const needsProcessCleanup = (() => {
       try { return db.prepare("SELECT 1 FROM rollback_reasons WHERE process IS NULL OR process = '' LIMIT 1").get() != null; } catch { return false; }
@@ -141,7 +146,7 @@ export const initDb = () => {
     db.exec("CREATE INDEX IF NOT EXISTS idx_logs_timestamp ON logs(timestamp DESC)");
 
     stmtInsertRollbackReason = db.prepare(
-      "INSERT OR REPLACE INTO rollback_reasons (id, file_id, batch_path, reason_code, reason_label, timestamp, workstation, order_id, customer, fabric, process) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+      "INSERT OR REPLACE INTO rollback_reasons (id, file_id, batch_path, reason_code, reason_label, timestamp, workstation, order_id, customer, fabric, process, print_type, meters) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
     );
     stmtGetRollbackReasonsByBatch = db.prepare(
       "SELECT * FROM rollback_reasons WHERE batch_path = ? ORDER BY timestamp DESC",
@@ -304,6 +309,8 @@ export const insertRollbackReason = ({
   customer,
   fabric,
   process,
+  printType,
+  meters,
 }) => {
   if (!stmtInsertRollbackReason) return;
   try {
@@ -319,6 +326,8 @@ export const insertRollbackReason = ({
       customer ?? null,
       fabric ?? null,
       process ?? null,
+      printType ?? null,
+      meters ?? null,
     );
   } catch (err) {
     console.error("[db] insertRollbackReason failed:", err);
@@ -351,7 +360,7 @@ export const getRollbackReasonsByFile = (fileId) => {
 };
 
 export const getRollbackStats = (since) => {
-  if (!db) return { total: 0, byReason: [], byPrinter: [], byWorkstation: [], byProcess: [] };
+  if (!db) return { total: 0, byReason: [], byPrinter: [], byProcess: [], byFabric: [] };
   try {
     const rows = since
       ? db.prepare("SELECT * FROM rollback_reasons WHERE timestamp >= ?").all(since)
@@ -359,8 +368,8 @@ export const getRollbackStats = (since) => {
 
     const reasonMap = new Map();
     const printerMap = new Map();
-    const wsMap = new Map();
     const processMap = new Map();
+    const fabricMetersMap = new Map();
 
     for (const row of rows) {
       const rk = row.reason_code;
@@ -374,11 +383,12 @@ export const getRollbackStats = (since) => {
       const printer = printerMatch ? printerMatch[1].toUpperCase() : "UNKNOWN";
       printerMap.set(printer, (printerMap.get(printer) || 0) + 1);
 
-      const ws = row.workstation || "Unknown";
-      wsMap.set(ws, (wsMap.get(ws) || 0) + 1);
-
       const proc = row.process || "Unknown";
       processMap.set(proc, (processMap.get(proc) || 0) + 1);
+
+      if (row.fabric && row.meters != null) {
+        fabricMetersMap.set(row.fabric, (fabricMetersMap.get(row.fabric) || 0) + row.meters);
+      }
     }
 
     return {
@@ -387,16 +397,16 @@ export const getRollbackStats = (since) => {
       byPrinter: [...printerMap.entries()]
         .map(([printer, count]) => ({ printer, count }))
         .sort((a, b) => b.count - a.count),
-      byWorkstation: [...wsMap.entries()]
-        .map(([workstation, count]) => ({ workstation, count }))
-        .sort((a, b) => b.count - a.count),
       byProcess: [...processMap.entries()]
         .map(([process, count]) => ({ process, count }))
         .sort((a, b) => b.count - a.count),
+      byFabric: [...fabricMetersMap.entries()]
+        .map(([fabric, meters]) => ({ fabric, meters: Number(meters.toFixed(2)) }))
+        .sort((a, b) => b.meters - a.meters),
     };
   } catch (err) {
     console.error("[db] getRollbackStats failed:", err);
-    return { total: 0, byReason: [], byPrinter: [], byWorkstation: [], byProcess: [] };
+    return { total: 0, byReason: [], byPrinter: [], byProcess: [], byFabric: [] };
   }
 };
 

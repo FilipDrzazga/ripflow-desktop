@@ -14,11 +14,11 @@ const Summary = ({ stats, isLoading }) => {
     () => Object.fromEntries(reasonDefinitions.map((r) => [r.code, resolveIcon(r.iconName)])),
     [reasonDefinitions],
   );
-  const { total, byReason, byPrinter, byWorkstation, byProcess } = stats;
+  const { total, byReason, byPrinter, byProcess, byFabric } = stats;
   const maxReason = byReason[0]?.count || 1;
   const maxPrinter = byPrinter[0]?.count || 1;
-  const maxWorkstation = byWorkstation[0]?.count || 1;
   const maxProcess = byProcess[0]?.count || 1;
+  const maxFabricMeters = byFabric[0]?.meters || 1;
 
   return (
     <div className={`${style.grid} ${isLoading ? style.loading : ""}`}>
@@ -87,23 +87,23 @@ const Summary = ({ stats, isLoading }) => {
         )}
       </div>
 
-      {/* By workstation */}
-      <div className={`${style.card} ${style.workstation_card}`}>
-        <span className={style.card_title}>By workstation</span>
-        {byWorkstation.length === 0 ? (
+      {/* Top fabric */}
+      <div className={`${style.card} ${style.fabric_card}`}>
+        <span className={style.card_title}>Top Fabric</span>
+        {byFabric.length === 0 ? (
           <span className={style.no_data}>{NO_DATA}</span>
         ) : (
           <div className={style.list}>
-            {byWorkstation.map(({ workstation, count }) => (
-              <div key={workstation} className={style.list_row}>
-                <span className={style.ws_name}>{workstation}</span>
+            {byFabric.map(({ fabric, meters }) => (
+              <div key={fabric} className={style.list_row}>
+                <span className={style.fabric_name}>{fabric}</span>
                 <div className={style.bar_track}>
                   <div
                     className={style.bar_fill}
-                    style={{ width: `${(count / maxWorkstation) * 100}%`, background: "var(--bg-black)" }}
+                    style={{ width: `${(meters / maxFabricMeters) * 100}%`, background: "var(--bg-black)" }}
                   />
                 </div>
-                <span className={style.count}>{count}</span>
+                <span className={style.meters_value}>{meters.toFixed(2)} m</span>
               </div>
             ))}
           </div>
