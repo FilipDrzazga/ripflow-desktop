@@ -1,16 +1,19 @@
 import { useState } from "react";
 import { notify } from "@/utils/notify";
-import { LuChevronRight, LuCheck, LuX, LuRefreshCw, LuTrash2 } from "react-icons/lu";
+import { LuChevronRight, LuCheck, LuX, LuPlay, LuTrash2, LuScanLine } from "react-icons/lu";
 import { PRINTER_COLORS } from "@/constants/printerColors";
 import styles from "./CustomOrderCard.module.css";
+import { generateCustomOrderXML } from "../../services/customOrderService";
+import { PRINTER } from "../../../shared/constants";
 
-const PRINTERS = ["YOKO", "YUMI"];
+const PRINTERS = [PRINTER.YOKO, PRINTER.YUMI];
 
-const CustomOrderCard = ({ group, onGenerated, onRemove }) => {
+const CustomOrderCard = ({ group, onGenerated, onRefresh, onRemove }) => {
   const [isExpanded, setIsExpanded] = useState(false);
-  const [selectedPrinter, setSelectedPrinter] = useState(() => PRINTERS[Math.floor(Math.random() * PRINTERS.length)]);
+  const [selectedPrinter, setSelectedPrinter] = useState(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isGenerated, setIsGenerated] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   if (group.isParsing) {
     return (
@@ -34,9 +37,16 @@ const CustomOrderCard = ({ group, onGenerated, onRemove }) => {
   const dotClass = missingCount > 0 ? styles.dot_partial : styles.dot_ready;
 
   const handleGenerate = async () => {
+    if (!selectedPrinter) {
+      notify(
+        { type: "Warning", title: "No printer selected", message: "Please select a printer before generating XML." },
+        { stage: "generateXML", code: "NO_PRINTER_SELECTED" },
+      );
+      return;
+    }
     setIsGenerating(true);
     try {
-      const res = await window.api.customOrder.generateXML({
+      const res = await generateCustomOrderXML({
         poNumber,
         materialName,
         printer: selectedPrinter,
@@ -73,6 +83,11 @@ const CustomOrderCard = ({ group, onGenerated, onRemove }) => {
         <div className={styles.name_and_badge}>
           <span className={styles.material_name}>{materialName}</span>
           <span className={styles.poly_badge}>POLYESTERS</span>
+          {missingCount > 0 && (
+            <span className={styles.header_missing}>
+              {missingCount} missing
+            </span>
+          )}
         </div>
         <div className={styles.header_right}>
           <span
@@ -84,11 +99,6 @@ const CustomOrderCard = ({ group, onGenerated, onRemove }) => {
           <span className={styles.header_count}>
             {files.length} {files.length === 1 ? "file" : "files"} · {totalMeters.toFixed(1)} m
           </span>
-          {missingCount > 0 && (
-            <span className={styles.header_missing}>
-              {missingCount} missing
-            </span>
-          )}
         </div>
         <div className={styles.printer_toggles} onClick={(e) => e.stopPropagation()}>
           {PRINTERS.map((p) => {
@@ -118,7 +128,23 @@ const CustomOrderCard = ({ group, onGenerated, onRemove }) => {
             onClick={handleGenerate}
             disabled={isGenerating || isGenerated}
           >
-            {isGenerated ? <LuCheck size={16} /> : <LuRefreshCw size={16} />}
+            {isGenerated ? <LuCheck size={16} /> : <LuPlay size={16} />}
+          </button>
+          <button
+            type="button"
+            className={styles.rescan_btn}
+            title="Re-scan folder and refresh file status"
+            disabled={isRefreshing || isGenerated}
+            onClick={async () => {
+              setIsRefreshing(true);
+              try {
+                await onRefresh?.();
+              } finally {
+                setIsRefreshing(false);
+              }
+            }}
+          >
+            <LuScanLine size={16} className={isRefreshing ? styles.spinning : ""} />
           </button>
           <button
             type="button"

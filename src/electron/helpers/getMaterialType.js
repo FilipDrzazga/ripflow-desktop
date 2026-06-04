@@ -1,6 +1,10 @@
+import { getFabricTypeFromCache } from "./fabricCache.js";
+
 const normalize = (s) => (s ?? "").toString().trim();
 
-const COTTON_MATERIALS = new Set(
+// Fallback sets used before DB is ready (startup) and for the POLY_MATERIALS export
+// used by parseFileName.js before the cache loads.
+const COTTON_MATERIALS_FALLBACK = new Set(
   [
     "Cotton Slub",
     "Stretch Lycra French Terry",
@@ -133,7 +137,12 @@ export const POLY_MATERIALS = new Set(
 export function getMaterialType(material) {
   const m = normalize(material);
   if (!m) return "Unknown";
-  if (COTTON_MATERIALS.has(m)) return "Cottons";
+
+  const fromCache = getFabricTypeFromCache(m);
+  if (fromCache !== null) return fromCache;
+
+  // Fallback: cache not yet loaded (before initDb completes)
+  if (COTTON_MATERIALS_FALLBACK.has(m)) return "Cottons";
   if (POLY_MATERIALS.has(m)) return "Polyesters";
-  return "Unknown"; // jeśli kiedyś dojdzie nowy materiał, od razu go wyłapiesz
+  return "Unknown";
 }

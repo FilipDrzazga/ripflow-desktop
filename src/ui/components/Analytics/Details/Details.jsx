@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { PRINTER_COLORS } from "@/constants/printerColors";
-import { ROLLBACK_REASONS } from "@/constants/rollbackReasons";
+import { useStore } from "@/store/useStore";
 import { LuDownload, LuRefreshCw, LuTrash2, LuChevronDown, LuChevronUp, LuFilter } from "react-icons/lu";
 import Summary from "../Summary/Summary";
 import style from "./Details.module.css";
+import { PRINTER } from "../../../../shared/constants";
 
 const PROCESS_OPTIONS = ["All", "Cottons", "Polyesters"];
-const PRINTER_OPTIONS = ["All", "DGEN", "YOKO", "YUMI"];
+const PRINTER_OPTIONS = ["All", PRINTER.DGEN, PRINTER.YOKO, PRINTER.YUMI];
 const PERIODS = [
   { id: "7d", label: "7 days" },
   { id: "30d", label: "30 days" },
@@ -16,13 +17,6 @@ const PERIODS = [
 const PROCESS_BADGE = {
   Cottons: { bg: PRINTER_COLORS.DGEN.bg, color: PRINTER_COLORS.DGEN.color },
   Polyesters: { bg: PRINTER_COLORS.YOKO.bg, color: PRINTER_COLORS.YOKO.color },
-};
-
-const REASON_LABELS = Object.fromEntries(ROLLBACK_REASONS.map((r) => [r.code, r.label]));
-
-const getDisplayReason = (code, label) => {
-  if (code === "OTHER") return label || "Other...";
-  return REASON_LABELS[code] || label || code;
 };
 
 const formatDate = (iso) => {
@@ -72,6 +66,15 @@ const PrinterBadge = ({ printer }) => {
 };
 
 const Details = ({ details, stats, isLoading, period, onPeriodChange, onClear, onRefresh, isClearing }) => {
+  const reasonDefinitions = useStore((s) => s.reasonDefinitions);
+  const reasonLabels = useMemo(
+    () => Object.fromEntries(reasonDefinitions.map((r) => [r.code, r.label])),
+    [reasonDefinitions],
+  );
+  const getDisplayReason = (code, label) => {
+    if (code === "OTHER") return label || "Other...";
+    return reasonLabels[code] || label || code;
+  };
   const [processFilter, setProcessFilter] = useState("All");
   const [printerFilter, setPrinterFilter] = useState("All");
   const [reasonFilter, setReasonFilter] = useState("All");
@@ -96,12 +99,12 @@ const Details = ({ details, stats, isLoading, period, onPeriodChange, onClear, o
         seen.add(row.reason_code);
         const label = row.reason_code === "OTHER"
           ? "Other"
-          : (REASON_LABELS[row.reason_code] || row.reason_label || row.reason_code);
+          : (reasonLabels[row.reason_code] || row.reason_label || row.reason_code);
         out.push({ code: row.reason_code, label });
       }
     }
     return out;
-  }, [details]);
+  }, [details, reasonLabels]);
 
   const filtered = useMemo(() => {
     return details.filter((row) => {
@@ -280,11 +283,11 @@ const Details = ({ details, stats, isLoading, period, onPeriodChange, onClear, o
                             </td>
                           </tr>
                           {rows.map((row) => (
-                            <TableRow key={row.id} row={row} />
+                            <TableRow key={row.id} row={row} getDisplayReason={getDisplayReason} />
                           ))}
                         </>
                       ))
-                    : filtered.map((row) => <TableRow key={row.id} row={row} />)}
+                    : filtered.map((row) => <TableRow key={row.id} row={row} getDisplayReason={getDisplayReason} />)}
                 </tbody>
               </table>
             </div>
@@ -296,7 +299,7 @@ const Details = ({ details, stats, isLoading, period, onPeriodChange, onClear, o
   );
 };
 
-const TableRow = ({ row }) => (
+const TableRow = ({ row, getDisplayReason }) => (
   <tr className={style.table_row}>
     <td className={style.td_date}>{formatDate(row.timestamp)}</td>
     <td className={style.td_mono}>{row.order_id || "—"}</td>

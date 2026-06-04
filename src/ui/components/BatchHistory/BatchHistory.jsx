@@ -6,7 +6,7 @@ import ContextMenu from "../ContextMenu/ContextMenu";
 import PdfPreviewModal from "../PdfPreviewModal/PdfPreviewModal";
 import RollbackModal from "../RollbackModal/RollbackModal";
 import { usePdfPreview } from "../../hooks/usePdfPreview";
-import { ROLLBACK_REASONS } from "../../constants/rollbackReasons";
+import { resolveIcon } from "../../constants/rollbackReasonIcons";
 import BatchRow from "./BatchRow";
 import gsap from "gsap";
 import { LuRefreshCw, LuEye, LuCornerUpLeft, LuFolderOpen, LuChevronsDownUp, LuChevronDown, LuChevronRight } from "react-icons/lu";
@@ -36,6 +36,7 @@ const parseDayFromBatchPath = (batchPath) => {
 
 const BatchHistory = () => {
   const setBatchDays = useStore((state) => state.setBatchDays);
+  const reasonDefinitions = useStore((state) => state.reasonDefinitions);
   const [dayGroups, setDayGroups] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -371,7 +372,6 @@ const BatchHistory = () => {
               }),
             })),
           );
-          await loadData();
           searchInputRef.current?.focus();
         } else {
           const err = res?.errors?.[0];
@@ -392,7 +392,7 @@ const BatchHistory = () => {
         );
       }
     },
-    [loadData],
+    [],
   );
 
   const handleConfirmRollbackBatch = useCallback(
@@ -682,8 +682,8 @@ const BatchHistory = () => {
                 label: "Rollback this file",
                 icon: <LuCornerUpLeft />,
                 danger: true,
-                children: ROLLBACK_REASONS.map((reason) => {
-                  const Icon = reason.icon;
+                children: reasonDefinitions.map((reason) => {
+                  const Icon = resolveIcon(reason.iconName);
                   return {
                   id: `rollback-${reason.code}`,
                   label: reason.label,
@@ -747,6 +747,7 @@ const BatchHistory = () => {
                 }}
                 autoFocus
               />
+              <p className={style.other_reason_hint}>before typing, make sure the reason you want to describe doesn&apos;t already exist in the options above.</p>
               <div className={style.other_reason_actions}>
                 <button
                   type="button"

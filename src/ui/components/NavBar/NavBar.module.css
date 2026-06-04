@@ -22,8 +22,12 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
-  padding-top: 16px;
-  border-top: 1px solid var(--border-grey);
+}
+
+.nav_divider {
+  height: 1px;
+  background-color: var(--border-grey);
+  margin: 0 4px;
 }
 
 .nav_item {

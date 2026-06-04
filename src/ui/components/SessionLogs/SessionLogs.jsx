@@ -1,6 +1,8 @@
 import { useMemo, useState } from "react";
 import { useStore } from "../../store/useStore";
-import { LuTrash2, LuChevronRight } from "react-icons/lu";
+import { notify } from "../../utils/notify";
+import { showConfirm } from "../../services/systemService";
+import { LuTrash2, LuChevronRight, LuCopy, LuCheck } from "react-icons/lu";
 import { HiMagnifyingGlass, HiXMark } from "react-icons/hi2";
 import style from "./SessionLogs.module.css";
 
@@ -17,6 +19,7 @@ const formatTime = (isoString) => new Date(isoString).toTimeString().slice(0, 8)
 
 const LogEntry = ({ log }) => {
   const [expanded, setExpanded] = useState(false);
+  const [copied, setCopied] = useState(false);
   const meta = TYPE_META[log.type] || TYPE_META.info;
   const detailData = log.detail ?? { stage: log.stage, code: log.code };
 
@@ -26,6 +29,14 @@ const LogEntry = ({ log }) => {
   } catch {
     detailJson = String(detailData);
   }
+
+  const handleCopy = (e) => {
+    e.stopPropagation();
+    navigator.clipboard.writeText(detailJson).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    });
+  };
 
   return (
     <div
@@ -49,6 +60,15 @@ const LogEntry = ({ log }) => {
       </div>
       {expanded && (
         <div className={style.detail_box}>
+          <button
+            type="button"
+            className={`${style.copy_btn} ${copied ? style.copy_btn_done : ""}`}
+            onClick={handleCopy}
+            title="Copy to clipboard"
+          >
+            {copied ? <LuCheck size={13} /> : <LuCopy size={13} />}
+            {copied ? "Copied!" : "Copy"}
+          </button>
           <pre className={style.detail_pre}>{detailJson}</pre>
         </div>
       )}
@@ -59,7 +79,6 @@ const LogEntry = ({ log }) => {
 const SessionLogs = () => {
   const logs = useStore((state) => state.logs);
   const clearLogs = useStore((state) => state.clearLogs);
-  const setAlert = useStore((state) => state.setAlert);
   const [searchQuery, setSearchQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState("All");
 
@@ -72,15 +91,14 @@ const SessionLogs = () => {
     });
   }, [logs, searchQuery, typeFilter]);
 
-  const handleClear = () => {
-    if (!window.confirm("Clear all session logs? This cannot be undone.")) return;
-    clearLogs();
-    setAlert({
-      id: crypto.randomUUID(),
-      type: "Success",
-      title: "Session logs cleared",
-      message: "All log entries have been removed.",
-    });
+  const handleClear = async () => {
+    const confirmed = await showConfirm("Clear all session logs? This cannot be undone.");
+    if (!confirmed) return;
+    await clearLogs();
+    notify(
+      { type: "Success", title: "Session logs cleared", message: "All log entries have been removed." },
+      { stage: "logs", code: "LOGS_CLEARED" },
+    );
   };
 
   return (

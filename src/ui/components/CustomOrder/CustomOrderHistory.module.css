@@ -37,11 +37,10 @@
 
 .item_header {
   display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 12px 14px;
+  align-items: center;
+  gap: 12px;
+  padding: 18px 14px;
   cursor: pointer;
-  position: relative;
   transition: background-color 0.12s ease;
   user-select: none;
 }
@@ -50,55 +49,62 @@
   background-color: var(--bg-grey-light);
 }
 
-.item_top {
+.item_row {
+  flex: 1;
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding-right: 22px;
+  gap: 10px;
+  min-width: 0;
 }
 
-.item_bottom {
+.item_right {
   display: flex;
   align-items: center;
-  gap: 12px;
-  font-size: 11px;
-  color: var(--text-secondary);
-  font-weight: 500;
+  gap: 20px;
+  flex-shrink: 0;
 }
 
 /* ── Chevron ─────────────────────────────────────────── */
 
 .chevron {
-  position: absolute;
-  right: 14px;
-  top: 50%;
-  transform: translateY(-50%);
   color: var(--text-secondary);
   flex-shrink: 0;
   transition: transform 0.2s ease;
 }
 
 .chevron_open {
-  transform: translateY(-50%) rotate(90deg);
+  transform: rotate(90deg);
 }
 
 /* ── Meta text ───────────────────────────────────────── */
 
-.po_number {
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--text-primary);
+.po_badge {
+  flex-shrink: 0;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 7px;
   white-space: nowrap;
+  background-color: var(--bg-grey-light);
+  color: var(--text-secondary);
 }
 
 .material_name {
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--text-secondary);
   flex: 1;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.meta {
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-secondary);
   white-space: nowrap;
 }
 

@@ -1,14 +1,19 @@
+import { useMemo } from "react";
 import { PRINTER_COLORS } from "@/constants/printerColors";
-import { ROLLBACK_REASONS } from "@/constants/rollbackReasons";
+import { useStore } from "@/store/useStore";
+import { resolveIcon } from "@/constants/rollbackReasonIcons";
 import style from "./Summary.module.css";
-
-const REASON_ICON_MAP = Object.fromEntries(ROLLBACK_REASONS.map((r) => [r.code, r.icon]));
 
 const NO_DATA = "No data for this period";
 
 const getReasonLabel = (code, label) => (code === "OTHER" ? "Other..." : label);
 
 const Summary = ({ stats, isLoading }) => {
+  const reasonDefinitions = useStore((s) => s.reasonDefinitions);
+  const reasonIconMap = useMemo(
+    () => Object.fromEntries(reasonDefinitions.map((r) => [r.code, resolveIcon(r.iconName)])),
+    [reasonDefinitions],
+  );
   const { total, byReason, byPrinter, byWorkstation, byProcess } = stats;
   const maxReason = byReason[0]?.count || 1;
   const maxPrinter = byPrinter[0]?.count || 1;
@@ -114,7 +119,7 @@ const Summary = ({ stats, isLoading }) => {
           <div className={style.list}>
             {byReason.map(({ reason_code, reason_label, count }, index) => {
               const pct = total > 0 ? Math.round((count / total) * 100) : 0;
-              const Icon = REASON_ICON_MAP[reason_code];
+              const Icon = reasonIconMap[reason_code];
               return (
                 <div key={reason_code} className={style.list_row}>
                   <span className={style.rank}>

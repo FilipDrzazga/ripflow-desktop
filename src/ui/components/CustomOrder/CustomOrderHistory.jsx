@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { LuChevronRight, LuCheck, LuX } from "react-icons/lu";
+import { LuChevronRight, LuCheck, LuX, LuCircleCheck } from "react-icons/lu";
 import { PRINTER_COLORS } from "@/constants/printerColors";
 import styles from "./CustomOrderHistory.module.css";
+import { CUSTOM_ORDER_STATUS } from "../../../shared/constants";
 
 const formatDate = (isoString) => {
   const d = new Date(isoString);
@@ -30,32 +31,34 @@ const CustomOrderHistory = ({ history }) => {
               role="button"
               aria-expanded={isExpanded}
             >
-              <div className={styles.item_top}>
-                <span className={styles.po_number}>{order.poNumber}</span>
+              <div className={styles.item_row}>
+                <span className={styles.po_badge}>PO {order.poNumber}</span>
                 <span className={styles.material_name}>{order.materialName}</span>
-                <span className={`${styles.status_badge} ${styles[order.status]}`}>
-                  {order.status === "complete"
-                    ? "✓ complete"
-                    : `⚠ ${order.missingFiles} missing`}
-                </span>
-              </div>
-              <div className={styles.item_bottom}>
                 <span
                   className={styles.printer_badge}
                   style={{ backgroundColor: printerColor.bg, color: printerColor.color }}
                 >
                   {order.printer}
                 </span>
-                <span>{order.totalFiles} files</span>
-                <span>{Number(order.totalMeters).toFixed(1)} m</span>
-                <span>{formatDate(order.date)}</span>
+                <span className={styles.meta}>{order.totalFiles} files</span>
+                <span className={styles.meta}>{Number(order.totalMeters).toFixed(1)} m</span>
+                <span className={styles.meta}>{formatDate(order.date)}</span>
               </div>
-              {files.length > 0 && (
-                <LuChevronRight
-                  size={15}
-                  className={`${styles.chevron} ${isExpanded ? styles.chevron_open : ""}`}
-                />
-              )}
+              <div className={styles.item_right}>
+                {order.status === CUSTOM_ORDER_STATUS.COMPLETE ? (
+                  <LuCircleCheck size={19} style={{ color: "#3B6D11" }} />
+                ) : (
+                  <span className={`${styles.status_badge} ${styles.partial}`}>
+                    {`⚠ ${order.missingFiles} missing`}
+                  </span>
+                )}
+                {files.length > 0 && (
+                  <LuChevronRight
+                    size={15}
+                    className={`${styles.chevron} ${isExpanded ? styles.chevron_open : ""}`}
+                  />
+                )}
+              </div>
             </div>
 
             {isExpanded && files.length > 0 && (

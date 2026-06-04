@@ -23,3 +23,9 @@ export const setSettings = ({ storagePath, xmlPath, workstationName, customOrder
   if (workstationName !== undefined) store.set("workstationName", workstationName);
   if (customOrderFolderPath !== undefined) store.set("customOrderFolderPath", customOrderFolderPath);
 };
+
+export const getRollbackDefinitions = () => store.get("reasonDefinitions", null);
+
+export const setRollbackDefinitions = (definitions) => store.set("reasonDefinitions", definitions);
+
+export const clearRollbackDefinitions = () => store.delete("reasonDefinitions");

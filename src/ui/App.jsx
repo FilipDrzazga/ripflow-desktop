@@ -22,12 +22,16 @@ const App = () => {
   const refreshBatchDays = useStore((state) => state.refreshBatchDays);
   const loadLogsFromDb = useStore((state) => state.loadLogsFromDb);
   const loadHeldFiles = useStore((state) => state.loadHeldFiles);
+  const loadReasonDefinitions = useStore((state) => state.loadReasonDefinitions);
+  const loadFabricConfig = useStore((state) => state.loadFabricConfig);
   const [isLoading, setIsLoading] = useState(true);
   const [activeView, setActiveView] = useState("print");
 
   useEffect(() => {
     const fetchFolders = async () => {
       loadLogsFromDb();
+      loadReasonDefinitions();
+      loadFabricConfig();
       await loadHeldFiles();
       await refreshFiles({
         successTitle: "Folders loaded",
@@ -36,7 +40,7 @@ const App = () => {
       refreshBatchDays();
     };
     fetchFolders();
-  }, [refreshFiles, refreshBatchDays, loadLogsFromDb, loadHeldFiles]);
+  }, [refreshFiles, refreshBatchDays, loadLogsFromDb, loadHeldFiles, loadReasonDefinitions, loadFabricConfig]);
 
   return (
     <div className={styles.app}>

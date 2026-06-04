@@ -4,6 +4,8 @@ import path from "path";
 import fs from "fs";
 import { estimatePrintLength } from "../../shared/estimatePrintLength.js";
 import { toIpcError } from "../helpers/ipcError.js";
+import { PRINTER } from "../../shared/constants.js";
+import { getFabricByName } from "../helpers/fabricCache.js";
 
 const STAGES = {
   INIT: "init",
@@ -39,21 +41,23 @@ const normalizeBatchId = (createdBatchId) => {
   return "";
 };
 
-const isVelvet = (item) =>
-  item.material?.toLowerCase().includes("velvet") ||
-  item.file?.name?.toLowerCase().includes("velvet");
+const getFabricFlag = (item, flagKey, fallbackKeyword) => {
+  const fabric = getFabricByName((item.material ?? "").trim());
+  if (fabric) return !!fabric[flagKey];
+  // Fallback to string matching when material not in DB
+  return (
+    item.material?.toLowerCase().includes(fallbackKeyword) ||
+    item.file?.name?.toLowerCase().includes(fallbackKeyword)
+  );
+};
 
-const isLinen = (item) =>
-  item.material?.toLowerCase().includes("linen") ||
-  item.file?.name?.toLowerCase().includes("linen");
-
-const isBlossom = (item) =>
-  item.material?.toLowerCase().includes("blossom") ||
-  item.file?.name?.toLowerCase().includes("blossom");
+const isVelvet = (item) => getFabricFlag(item, "isVelvet", "velvet");
+const isLinen = (item) => getFabricFlag(item, "isLinen", "linen");
+const isBlossom = (item) => getFabricFlag(item, "isBlossom", "blossom");
 
 const getWorkflowFolderName = (printer) => {
-  if (printer === "DGEN") return "AUTOMATION_WORKFLOW_COTTON";
-  if (printer === "YOKO" || printer === "YUMI") return "AUTOMATION_WORKFLOW_POLY";
+  if (printer === PRINTER.DGEN) return "AUTOMATION_WORKFLOW_COTTON";
+  if (printer === PRINTER.YOKO || printer === PRINTER.YUMI) return "AUTOMATION_WORKFLOW_POLY";
   throw Object.assign(new Error(`Unrecognized printer: "${printer}". Expected DGEN, YOKO, or YUMI.`), {
     code: "ERR_INVALID_PRINTER",
     stage: "validate",

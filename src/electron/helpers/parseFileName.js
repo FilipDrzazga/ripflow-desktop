@@ -1,5 +1,6 @@
 // parsePrintFileName.js
 import { POLY_MATERIALS } from "./getMaterialType.js";
+import { getXmlWidthFromCache } from "./fabricCache.js";
 import {
   LM_XML_POLY,
   LM_XML_COTTON,
@@ -196,7 +197,7 @@ function applyLmDimensions(out) {
 
     const material = (out.material ?? "").trim();
     const isPoly = POLY_MATERIALS.has(material);
-    out.width = isPoly ? LM_XML_POLY : (LM_XML_COTTON[material] ?? LM_XML_COTTON_DEFAULT);
+    out.width = getXmlWidthFromCache(material, isPoly);
     out.height = out.qty * 1000;
     return;
   }

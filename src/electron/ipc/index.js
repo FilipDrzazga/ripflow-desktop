@@ -12,8 +12,9 @@ import { registerCustomOrderHandlers } from "./customOrderHandlers.js";
 import { getStorageRootPath } from "../helpers/getRootPath.js";
 import { assertStorageFilePath } from "../helpers/validateStoragePath.js";
 import { parsePrintFileName } from "../helpers/parseFileName.js";
-import { getSettings, setSettings } from "../helpers/getSettings.js";
-import { initDb, insertLog, getAllLogs, clearAllLogs, holdFile, unholdFile, getHeldFiles, getRollbackReasonsByBatch, getRollbackReasonsByFile, getRollbackStats, getRollbackDetails, clearAllRollbackReasons, getLatestRollbackReasonsForFileIds } from "../helpers/db.js";
+import { getSettings, setSettings, getRollbackDefinitions, clearRollbackDefinitions } from "../helpers/getSettings.js";
+import { initDb, insertLog, getAllLogs, clearAllLogs, holdFile, unholdFile, getHeldFiles, getRollbackReasonsByBatch, getRollbackReasonsByFile, getRollbackStats, getRollbackDetails, clearAllRollbackReasons, getLatestRollbackReasonsForFileIds, getReasonDefinitions, setReasonDefinitions as setReasonDefinitionsDb, migrateReasonDefinitions, getAllFabrics, saveFabric, deleteFabric as deleteFabricDb, setAllFabrics, getFabricGlobals, setFabricGlobals, backupDb } from "../helpers/db.js";
+import { loadFabricCache, invalidateFabricCache } from "../helpers/fabricCache.js";
 
 const DAY_FOLDER_RE = /^\d{2}-\d{2}-\d{4}$/;
 
@@ -90,7 +91,18 @@ const processWatchEvent = async (relativePath) => {
 
 export function registerIpcHandlers() {
   initDb();
+
+  // Migrate reasonDefinitions from electron-store to DB (one-time, idempotent)
+  const storeReasonDefs = getRollbackDefinitions();
+  if (storeReasonDefs && Array.isArray(storeReasonDefs)) {
+    migrateReasonDefinitions(storeReasonDefs);
+    clearRollbackDefinitions();
+  }
+
+  loadFabricCache();
   registerCustomOrderHandlers();
+
+  backupDb(false).catch((err) => console.error("[backup] startup backup failed:", err));
 
   ipcMain.handle("logs:getAll", () => {
     return { success: true, data: getAllLogs() };
@@ -327,6 +339,60 @@ export function registerIpcHandlers() {
     }
     watcherSender = null;
     return { success: true };
+  });
+
+  ipcMain.handle("reasonDefs:get", () => {
+    return { success: true, data: getReasonDefinitions() };
+  });
+
+  ipcMain.handle("reasonDefs:set", (_event, definitions) => {
+    if (!Array.isArray(definitions)) return { success: false, error: "Definitions must be an array." };
+    setReasonDefinitionsDb(definitions);
+    return { success: true };
+  });
+
+  ipcMain.handle("fabricGlobals:get", () => {
+    return { success: true, data: getFabricGlobals() };
+  });
+
+  ipcMain.handle("fabricGlobals:set", (_event, globals) => {
+    if (!globals || typeof globals !== "object") return { success: false, error: "Globals must be an object." };
+    setFabricGlobals(globals);
+    invalidateFabricCache();
+    loadFabricCache();
+    return { success: true };
+  });
+
+  ipcMain.handle("fabrics:getAll", () => {
+    return { success: true, data: getAllFabrics() };
+  });
+
+  ipcMain.handle("fabrics:save", (_event, { oldName, fabric }) => {
+    if (!fabric?.name?.trim()) return { success: false, error: "Fabric name is required." };
+    saveFabric(oldName ?? fabric.name, fabric);
+    invalidateFabricCache();
+    loadFabricCache();
+    return { success: true };
+  });
+
+  ipcMain.handle("fabrics:delete", (_event, name) => {
+    if (!name?.trim()) return { success: false, error: "Fabric name is required." };
+    deleteFabricDb(name);
+    invalidateFabricCache();
+    loadFabricCache();
+    return { success: true };
+  });
+
+  ipcMain.handle("fabrics:setAll", (_event, fabrics) => {
+    if (!Array.isArray(fabrics)) return { success: false, error: "Fabrics must be an array." };
+    setAllFabrics(fabrics);
+    invalidateFabricCache();
+    loadFabricCache();
+    return { success: true };
+  });
+
+  ipcMain.handle("db:backup", async () => {
+    return backupDb(true);
   });
 
   ipcMain.handle("settings:get", () => {

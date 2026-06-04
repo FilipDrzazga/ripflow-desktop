@@ -1,127 +1,61 @@
 .container {
   display: flex;
-  flex-direction: column;
   flex: 1;
   min-height: 0;
-  overflow-y: auto;
+  gap: 16px;
 }
 
-.card {
+.sidebar {
+  width: 188px;
+  flex-shrink: 0;
   background-color: var(--bg-white);
   border-radius: 20px;
   box-shadow: var(--card-shadow);
-  overflow: hidden;
-  max-width: 680px;
+  padding: 12px;
+  align-self: flex-start;
+}
+
+.sidebar_nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sidebar_item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   width: 100%;
-}
-
-.card_header {
-  padding: 24px 28px;
-  border-bottom: 1px solid var(--border-grey);
-}
-
-.title {
-  margin: 0;
-  font-size: 20px;
-  font-weight: 500;
-  color: var(--text-primary);
-}
-
-.card_body {
-  padding: 24px 28px;
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-}
-
-.field {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.label {
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: var(--text-secondary);
   font-size: 13px;
   font-weight: 600;
-  color: var(--text-primary);
+  text-align: left;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
 }
 
-.input_row {
-  display: flex;
-  gap: 8px;
-}
-
-.input {
-  flex: 1;
-  padding: 9px 12px;
-  border-radius: 10px;
-  border: 1px solid var(--border-grey);
+.sidebar_item:hover {
   background-color: var(--bg-grey-light);
   color: var(--text-primary);
-  font-size: 13px;
-  font-weight: 500;
-  outline: none;
-  transition:
-    border-color 0.2s ease,
-    background-color 0.2s ease;
 }
 
-.input:focus {
-  border-color: var(--border-black);
-  background-color: var(--bg-white);
-}
-
-.browse_btn {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 9px 14px;
-  border-radius: 10px;
-  border: 1px solid var(--border-grey);
-  background-color: var(--bg-white);
+.sidebar_item.active {
+  background-color: var(--bg-grey);
   color: var(--text-primary);
-  font-size: 13px;
-  font-weight: 600;
-  box-shadow: var(--card-shadow);
-  cursor: pointer;
-  white-space: nowrap;
+}
+
+.sidebar_icon {
   flex-shrink: 0;
-  transition: border-color 0.15s ease;
 }
 
-.browse_btn:hover {
-  border-color: var(--border-black);
-}
-
-.hint {
-  margin: 0;
-  font-size: 12px;
-  color: var(--text-secondary);
-}
-
-.card_footer {
-  padding: 20px 28px;
-  border-top: 1px solid var(--border-grey);
-  display: flex;
-  justify-content: flex-end;
-}
-
-.save_btn {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 9px 20px;
-  border-radius: 10px;
-  background-color: var(--bg-black);
-  color: var(--text-white);
-  font-size: 13px;
-  font-weight: 600;
-  border: none;
-  cursor: pointer;
-  transition: opacity 0.2s ease;
-}
-
-.save_btn:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
+.content {
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
 }

@@ -305,11 +305,49 @@
 /* ===== DETAIL BOX ===== */
 
 .detail_box {
+  position: relative;
   margin: 0 16px 12px;
   padding: 12px 16px;
   background-color: var(--bg-white);
   border: 1px solid var(--border-grey);
   border-radius: 10px;
+}
+
+.copy_btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 7px;
+  background-color: var(--bg-grey-light);
+  border: 1px solid var(--border-grey);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.copy_btn:hover {
+  background-color: var(--bg-grey);
+  color: var(--text-primary);
+}
+
+.copy_btn_done {
+  background-color: #d1fae5;
+  border-color: transparent;
+  color: #047857;
+}
+
+.copy_btn_done:hover {
+  background-color: #d1fae5;
+  color: #047857;
 }
 
 .detail_pre {

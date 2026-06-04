@@ -544,6 +544,14 @@
   color: var(--text-secondary);
 }
 
+.other_reason_hint {
+  margin: -6px 0 12px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  opacity: 0.7;
+  line-height: 1.4;
+}
+
 .other_reason_actions {
   display: flex;
   justify-content: flex-end;

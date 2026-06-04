@@ -2,33 +2,40 @@ import { useState, useEffect } from "react";
 import { notify } from "@/utils/notify";
 import CustomOrderCard from "./CustomOrderCard";
 import CustomOrderHistory from "./CustomOrderHistory";
-import { LuCloudUpload } from "react-icons/lu";
+import { LuCloudUpload, LuTrash2 } from "react-icons/lu";
 import styles from "./CustomOrder.module.css";
+import {
+  scanCustomOrderFolder,
+  importCSVContent,
+  getCustomOrderHistory,
+  clearCustomOrderHistory,
+  selectCustomOrderCSV,
+} from "../../services/customOrderService";
+import { showConfirm } from "../../services/systemService";
 
 const CustomOrder = () => {
   const [csvGroups, setCsvGroups] = useState([]);
   const [history, setHistory] = useState([]);
   const [isDragging, setIsDragging] = useState(false);
 
-  const refreshHistory = () => {
-    window.api.customOrder.getHistory().then((res) => {
-      if (res.success) setHistory(res.data);
-    });
-  };
+  const refreshHistory = () =>
+    getCustomOrderHistory()
+      .then((res) => { if (res.success) setHistory(res.data); })
+      .catch(() => {});
 
   useEffect(() => {
-    window.api.customOrder.scanFolder().catch(() => {});
+    scanCustomOrderFolder().catch(() => {});
     refreshHistory();
   }, []);
 
-  const handleFilePaths = async (filePaths) => {
-    for (const csvPath of filePaths) {
+  const handleCSVFiles = async (csvFiles) => {
+    for (const { name, content } of csvFiles) {
       const uid = crypto.randomUUID();
-      setCsvGroups((prev) => [...prev, { uid, isParsing: true, csvPath }]);
+      setCsvGroups((prev) => [...prev, { uid, isParsing: true, csvPath: name }]);
       try {
-        const res = await window.api.customOrder.importCSV(csvPath);
+        const res = await importCSVContent(content);
         if (res.success) {
-          setCsvGroups((prev) => prev.map((g) => (g.uid === uid ? { uid, isParsing: false, ...res.data } : g)));
+          setCsvGroups((prev) => prev.map((g) => (g.uid === uid ? { uid, isParsing: false, csvContent: content, ...res.data } : g)));
         } else {
           setCsvGroups((prev) => prev.filter((g) => g.uid !== uid));
           notify(
@@ -47,39 +54,20 @@ const CustomOrder = () => {
   };
 
   const handleSelectFiles = async () => {
-    const res = await window.api.customOrder.selectCSV();
-    if (!res.canceled && res.paths.length > 0) {
-      handleFilePaths(res.paths);
+    const res = await selectCustomOrderCSV();
+    if (!res.canceled && res.files.length > 0) {
+      await handleCSVFiles(res.files);
     }
   };
 
   const handleDrop = async (e) => {
     e.preventDefault();
     setIsDragging(false);
-    const csvFiles = [...e.dataTransfer.files].filter((f) => f.name.toLowerCase().endsWith(".csv"));
-    for (const file of csvFiles) {
-      const uid = crypto.randomUUID();
-      setCsvGroups((prev) => [...prev, { uid, isParsing: true, csvPath: file.name }]);
-      try {
-        const content = await file.text();
-        const res = await window.api.customOrder.importCSVContent(content);
-        if (res.success) {
-          setCsvGroups((prev) => prev.map((g) => (g.uid === uid ? { uid, isParsing: false, ...res.data } : g)));
-        } else {
-          setCsvGroups((prev) => prev.filter((g) => g.uid !== uid));
-          notify(
-            { type: "Error", title: "CSV import failed", message: res.error ?? "Could not parse CSV." },
-            { stage: "importCSV", code: "CSV_IMPORT_FAILED" },
-          );
-        }
-      } catch (err) {
-        setCsvGroups((prev) => prev.filter((g) => g.uid !== uid));
-        notify(
-          { type: "Error", title: "CSV import failed", message: err?.message ?? "Could not parse CSV." },
-          { stage: "importCSV", code: "CSV_IMPORT_FAILED" },
-        );
-      }
-    }
+    const droppedFiles = [...e.dataTransfer.files].filter((f) => f.name.toLowerCase().endsWith(".csv"));
+    const csvFiles = await Promise.all(
+      droppedFiles.map(async (f) => ({ name: f.name, content: await f.text() })),
+    );
+    await handleCSVFiles(csvFiles);
   };
 
   const handleDragOver = (e) => {
@@ -88,6 +76,34 @@ const CustomOrder = () => {
   };
 
   const handleDragLeave = () => setIsDragging(false);
+
+  const handleRefreshGroup = async (uid, csvContent) => {
+    await scanCustomOrderFolder();
+    const res = await importCSVContent(csvContent);
+    if (res.success) {
+      setCsvGroups((prev) =>
+        prev.map((g) =>
+          g.uid === uid ? { uid, isParsing: false, csvContent, ...res.data } : g,
+        ),
+      );
+    }
+  };
+
+  const handleClearHistory = async () => {
+    const confirmed = await showConfirm("Clear all custom order history? This cannot be undone.");
+    if (!confirmed) return;
+    try {
+      const res = await clearCustomOrderHistory();
+      if (res.success) {
+        setHistory([]);
+        notify({ type: "Success", title: "History cleared", message: "All custom order history has been removed." });
+      } else {
+        notify({ type: "Error", title: "Clear failed", message: res.error ?? "Could not clear history." });
+      }
+    } catch (err) {
+      notify({ type: "Error", title: "Clear failed", message: err?.message ?? "Could not clear history." });
+    }
+  };
 
   const handleGenerated = () => {
     refreshHistory();
@@ -118,6 +134,7 @@ const CustomOrder = () => {
                 key={group.uid}
                 group={group}
                 onGenerated={handleGenerated}
+                onRefresh={() => handleRefreshGroup(group.uid, group.csvContent)}
                 onRemove={() => setCsvGroups((prev) => prev.filter((g) => g.uid !== group.uid))}
               />
             ))}
@@ -128,6 +145,12 @@ const CustomOrder = () => {
       <div className={styles.right_column}>
         <div className={styles.right_topbar}>
           <h2 className={styles.history_label}>Custom Order History</h2>
+          {history.length > 0 && (
+            <button className={styles.clear_history_btn} onClick={handleClearHistory} title="Clear history">
+              <LuTrash2 size={14} />
+              Clear
+            </button>
+          )}
         </div>
         <CustomOrderHistory history={history} />
       </div>

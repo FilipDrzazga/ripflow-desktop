@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { createPortal } from "react-dom";
-import { ROLLBACK_REASONS } from "@/constants/rollbackReasons";
+import { useStore } from "@/store/useStore";
+import { resolveIcon } from "@/constants/rollbackReasonIcons";
 import style from "./RollbackModal.module.css";
 
 const RollbackModal = ({ batchName, onConfirm, onCancel }) => {
+  const reasonDefinitions = useStore((s) => s.reasonDefinitions);
   const [selectedReason, setSelectedReason] = useState(null);
   const [otherText, setOtherText] = useState("");
 
@@ -31,8 +33,8 @@ const RollbackModal = ({ batchName, onConfirm, onCancel }) => {
         {batchName && <p className={style.subtitle}>{batchName}</p>}
         <p className={style.label}>Select reason for rollback:</p>
         <div className={style.reasons}>
-          {ROLLBACK_REASONS.map((reason) => {
-            const Icon = reason.icon;
+          {reasonDefinitions.map((reason) => {
+            const Icon = resolveIcon(reason.iconName);
             return (
               <button
                 key={reason.code}
@@ -47,14 +49,17 @@ const RollbackModal = ({ batchName, onConfirm, onCancel }) => {
           })}
         </div>
         {selectedReason?.code === "OTHER" && (
-          <input
-            className={style.other_input}
-            type="text"
-            placeholder="Describe the issue..."
-            value={otherText}
-            onChange={(e) => setOtherText(e.target.value)}
-            autoFocus
-          />
+          <>
+            <input
+              className={style.other_input}
+              type="text"
+              placeholder="Describe the issue..."
+              value={otherText}
+              onChange={(e) => setOtherText(e.target.value)}
+              autoFocus
+            />
+            <p className={style.other_hint}>before typing, make sure the reason you want to describe doesn&apos;t already exist in the options above.</p>
+          </>
         )}
         <div className={style.actions}>
           <button type="button" className={style.cancel_btn} onClick={onCancel}>

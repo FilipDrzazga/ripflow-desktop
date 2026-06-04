@@ -7,13 +7,13 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
   import.meta.url,
 ).href;
 
-// Module-level cache — survives component remounts
+// Module-level LRU cache — survives component remounts; capped at 30 entries
+const CACHE_LIMIT = 30;
 const previewCache = new Map();
 
 async function readFileAsUint8Array(filePath) {
   const result = await readFileBuffer(filePath);
   if (!result.success) throw new Error(result.error || "Failed to read file");
-  // Decode base64 → Uint8Array
   const binary = atob(result.data);
   const bytes = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
@@ -21,20 +21,34 @@ async function readFileAsUint8Array(filePath) {
 }
 
 async function renderFirstPageToJpeg(filePath) {
-  if (previewCache.has(filePath)) return previewCache.get(filePath);
+  if (previewCache.has(filePath)) {
+    // Refresh insertion order for LRU eviction
+    const cached = previewCache.get(filePath);
+    previewCache.delete(filePath);
+    previewCache.set(filePath, cached);
+    return cached;
+  }
 
   const data = await readFileAsUint8Array(filePath);
   const pdf = await pdfjsLib.getDocument({ data }).promise;
   const page = await pdf.getPage(1);
 
-  const viewport = page.getViewport({ scale: 1.0 });
+  const viewport = page.getViewport({ scale: 0.75 });
   const canvas = document.createElement("canvas");
   canvas.width = viewport.width;
   canvas.height = viewport.height;
 
   await page.render({ canvasContext: canvas.getContext("2d"), viewport }).promise;
 
-  const dataUrl = canvas.toDataURL("image/jpeg", 0.8);
+  const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
+
+  // Release GPU-backed canvas memory
+  canvas.width = 0;
+  canvas.height = 0;
+
+  if (previewCache.size >= CACHE_LIMIT) {
+    previewCache.delete(previewCache.keys().next().value);
+  }
   previewCache.set(filePath, dataUrl);
   return dataUrl;
 }

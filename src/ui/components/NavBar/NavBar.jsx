@@ -4,7 +4,6 @@ import styles from "./NavBar.module.css";
 const TOP_ITEMS = [
   { id: "print", label: "Print", icon: LuPrinter },
   { id: "batch", label: "Batch", icon: LuLayers },
-  { id: "analytics", label: "Analytics", icon: LuChartBar },
   { id: "customOrder", label: "Custom Orders", icon: LuFactory },
 ];
 
@@ -24,6 +23,14 @@ const NavBar = ({ activeView, onViewChange }) => {
         ))}
       </div>
       <div className={styles.nav_bottom}>
+        <button
+          className={`${styles.nav_item} ${activeView === "analytics" ? styles.active : ""}`}
+          onClick={() => onViewChange("analytics")}
+        >
+          <LuChartBar className={styles.nav_icon} />
+          <span className={styles.nav_label}>Analytics</span>
+        </button>
+        <div className={styles.nav_divider} />
         <button
           className={`${styles.nav_item} ${activeView === "logs" ? styles.active : ""}`}
           onClick={() => onViewChange("logs")}

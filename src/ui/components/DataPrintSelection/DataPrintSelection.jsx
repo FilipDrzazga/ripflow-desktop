@@ -5,13 +5,14 @@ import { useGSAP } from "@gsap/react";
 import { useStore } from "../../store/useStore";
 import { notify } from "../../utils/notify";
 import style from "./DataPrintSelection.module.css";
+import { PRINTER } from "../../../shared/constants";
 
 gsap.registerPlugin(useGSAP);
 
 const PRINTERS = [
-  { name: "DGEN", value: "DGEN", materialType: "Cottons" },
-  { name: "YOKO", value: "YOKO", materialType: "Polyesters" },
-  { name: "YUMI", value: "YUMI", materialType: "Polyesters" },
+  { name: PRINTER.DGEN, value: PRINTER.DGEN, materialType: "Cottons" },
+  { name: PRINTER.YOKO, value: PRINTER.YOKO, materialType: "Polyesters" },
+  { name: PRINTER.YUMI, value: PRINTER.YUMI, materialType: "Polyesters" },
 ];
 
 const DataPrintSelection = () => {
@@ -40,7 +41,7 @@ const DataPrintSelection = () => {
 
   useEffect(() => {
     if (materialType === "Cottons") {
-      setSelectedPrinter("DGEN");
+      setSelectedPrinter(PRINTER.DGEN);
     } else {
       setSelectedPrinter(null);
     }

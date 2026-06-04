@@ -99,6 +99,14 @@
   color: var(--text-secondary);
 }
 
+.other_hint {
+  margin: -10px 0 16px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  opacity: 0.7;
+  line-height: 1.4;
+}
+
 .actions {
   display: flex;
   justify-content: flex-end;

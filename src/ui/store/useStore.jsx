@@ -2,10 +2,13 @@ import { create } from "zustand";
 import { subscribeWithSelector } from "zustand/middleware";
 import { estimatePrintLength } from "../../shared/estimatePrintLength";
 import { BATCH_STATUS, FILE_STATUS } from "../../shared/constants";
+import { ROLLBACK_REASONS } from "../constants/rollbackReasons";
 import { readFolders } from "../services/fileService";
 import { readPrintedFolder } from "../services/batchService";
 import { getLogs, clearLogs as clearLogsApi, getHeldFiles, holdFile as holdFileApi, unholdFile as unholdFileApi } from "../services/systemService";
 import { getRollbackReasonsForFiles as getRollbackReasonsForFilesApi } from "../services/analyticsService";
+import { getRollbackDefinitions as getRollbackDefinitionsApi } from "../services/reasonDefsService";
+import { getFabricGlobals as getFabricGlobalsApi, getFabrics as getFabricsApi } from "../services/fabricService";
 
 const applySort = (groups, sortOrder) => {
   if (!sortOrder) return groups;
@@ -115,7 +118,7 @@ export const useStore = create(
     },
 
     logs: [],
-    addLog: (log) => set((state) => ({ logs: [log, ...state.logs] })),
+    addLog: (log) => set((state) => ({ logs: [log, ...state.logs].slice(0, 500) })),
     clearLogs: async () => {
       set({ logs: [] });
       try {
@@ -143,6 +146,25 @@ export const useStore = create(
     heldIds: new Set(),
     heldReasons: new Map(),
     rollbackReasons: new Map(),
+    reasonDefinitions: ROLLBACK_REASONS.map((r) => ({ code: r.code, label: r.label, iconName: r.iconName })),
+    loadReasonDefinitions: async () => {
+      try {
+        const res = await getRollbackDefinitionsApi();
+        if (res?.success && Array.isArray(res.data) && res.data.length > 0) {
+          set({ reasonDefinitions: res.data });
+        }
+      } catch (err) { console.error("[store] loadReasonDefinitions failed:", err); }
+    },
+
+    fabricConfig: null,
+    loadFabricConfig: async () => {
+      try {
+        const [globalsRes, fabricsRes] = await Promise.all([getFabricGlobalsApi(), getFabricsApi()]);
+        if (globalsRes?.success && fabricsRes?.success) {
+          set({ fabricConfig: { globals: globalsRes.data, fabrics: fabricsRes.data } });
+        }
+      } catch (err) { console.error("[store] loadFabricConfig failed:", err); }
+    },
     loadRollbackReasonsForInbox: async (fileIds) => {
       if (!fileIds.length) { set({ rollbackReasons: new Map() }); return; }
       try {
@@ -332,7 +354,7 @@ export const useStore = create(
               type: "warning",
               stage: "readFolders",
               code: "FILE_INVALID",
-              message: `Invalid file: ${item.file?.name ?? item.name}`,
+              message: `Invalid file: ${item.file.name}`,
               detail: item.errors?.length || item.warnings?.length
                 ? { errors: item.errors, warnings: item.warnings }
                 : null,

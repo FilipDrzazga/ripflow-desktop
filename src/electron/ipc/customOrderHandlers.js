@@ -4,10 +4,11 @@ import fs from "fs";
 import { randomUUID } from "crypto";
 import { getSettings } from "../helpers/getSettings.js";
 import { getStorageRootPath } from "../helpers/getRootPath.js";
-import { parseCustomOrderCSV, parseCSVContent } from "../helpers/parseCustomOrderCSV.js";
+import { parseCSVContent } from "../helpers/parseCustomOrderCSV.js";
 import { scanCustomOrderFolder, matchFiles } from "../helpers/customOrderMatcher.js";
-import { saveOrder, getAllOrders } from "../helpers/customOrderHistory.js";
+import { insertCustomOrder, getAllCustomOrders, clearCustomOrders } from "../helpers/db.js";
 import { LM_XML_POLY } from "../../shared/printWidths.js";
+import { PRINTER, CUSTOM_ORDER_STATUS } from "../../shared/constants.js";
 
 let cachedFileNames = [];
 
@@ -56,7 +57,7 @@ const buildCustomOrderXML = (group, batchId) => {
   <PONumber>${escapeXml(poNumber)}</PONumber>
   <NestingGroup>${escapeXml(nestingId)}</NestingGroup>
   <LogisticGroup>${escapeXml(nestingId)}_${escapeXml(totalMeters)}m</LogisticGroup>
-  <PhysicalGroup>CUSTOM_ORDER_${escapeXml(totalMeters)}m</PhysicalGroup>
+  <PhysicalGroup>Minerva_${escapeXml(materialName)}_${escapeXml(totalMeters)}m</PhysicalGroup>
   <Documents>
 ${documentsXml}
   </Documents>
@@ -73,28 +74,6 @@ export function registerCustomOrderHandlers() {
       }
       cachedFileNames = await scanCustomOrderFolder(customOrderFolderPath);
       return { success: true, count: cachedFileNames.length };
-    } catch (err) {
-      return { success: false, error: err.message };
-    }
-  });
-
-  ipcMain.handle("customOrder:importCSV", async (_event, csvPath) => {
-    try {
-      const parsed = await parseCustomOrderCSV(csvPath);
-      const enriched = matchFiles(parsed, cachedFileNames);
-      const totalMeters = enriched.files.reduce((sum, f) => sum + f.metersToprint, 0);
-      const missingCount = enriched.files.filter((f) => !f.found).length;
-      return {
-        success: true,
-        data: {
-          poNumber: enriched.poNumber,
-          materialName: enriched.materialName,
-          printer: null,
-          files: enriched.files,
-          totalMeters,
-          missingCount,
-        },
-      };
     } catch (err) {
       return { success: false, error: err.message };
     }
@@ -126,11 +105,11 @@ export function registerCustomOrderHandlers() {
     try {
       const { poNumber, printer, files, totalMeters } = group;
 
-      if (!printer || (printer !== "YOKO" && printer !== "YUMI")) {
+      if (!printer || (printer !== PRINTER.YOKO && printer !== PRINTER.YUMI)) {
         return { success: false, error: "Invalid printer selection. Choose YOKO or YUMI." };
       }
 
-      const workflowPath = path.join(getStorageRootPath(), "AUTOMATION_WORKFLOW_POLY");
+      const workflowPath = path.join(getStorageRootPath(), "AUTOMATION_WORKFLOW_MINERVA");
       await fs.promises.mkdir(workflowPath, { recursive: true });
 
       const safePo = poNumber.replace(/[^a-zA-Z0-9_-]/g, "_");
@@ -145,7 +124,7 @@ export function registerCustomOrderHandlers() {
       await fs.promises.rename(tempPath, finalPath);
 
       const missingFiles = files.filter((f) => !f.found);
-      await saveOrder({
+      insertCustomOrder({
         poNumber: group.poNumber,
         materialName: group.materialName,
         printer,
@@ -153,7 +132,7 @@ export function registerCustomOrderHandlers() {
         totalFiles: files.length,
         missingFiles: missingFiles.length,
         totalMeters,
-        status: missingFiles.length > 0 ? "partial" : "complete",
+        status: missingFiles.length > 0 ? CUSTOM_ORDER_STATUS.PARTIAL : CUSTOM_ORDER_STATUS.COMPLETE,
         files: files.map((f) => ({ fileName: f.fileName, meters: f.metersToprint, found: f.found })),
       });
 
@@ -165,8 +144,17 @@ export function registerCustomOrderHandlers() {
 
   ipcMain.handle("customOrder:getHistory", async () => {
     try {
-      const orders = await getAllOrders();
+      const orders = getAllCustomOrders();
       return { success: true, data: orders };
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+  });
+
+  ipcMain.handle("customOrder:clearHistory", () => {
+    try {
+      clearCustomOrders();
+      return { success: true };
     } catch (err) {
       return { success: false, error: err.message };
     }
@@ -179,8 +167,14 @@ export function registerCustomOrderHandlers() {
       filters: [{ name: "CSV Files", extensions: ["csv"] }],
     });
     if (result.canceled || result.filePaths.length === 0) {
-      return { success: true, canceled: true, paths: [] };
+      return { success: true, canceled: true, files: [] };
     }
-    return { success: true, canceled: false, paths: result.filePaths };
+    const files = await Promise.all(
+      result.filePaths.map(async (filePath) => {
+        const content = await fs.promises.readFile(filePath, "utf8");
+        return { name: path.basename(filePath), content };
+      }),
+    );
+    return { success: true, canceled: false, files };
   });
 }

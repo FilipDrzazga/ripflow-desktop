@@ -15,3 +15,8 @@ export const PRINTER = {
   YOKO: "YOKO",
   YUMI: "YUMI",
 };
+
+export const CUSTOM_ORDER_STATUS = {
+  COMPLETE: "complete",
+  PARTIAL: "partial",
+};

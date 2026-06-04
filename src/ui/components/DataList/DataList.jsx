@@ -7,7 +7,7 @@ import PdfPreviewModal from "../PdfPreviewModal/PdfPreviewModal";
 import { usePdfPreview } from "../../hooks/usePdfPreview";
 import { estimatePrintLength } from "../../../shared/estimatePrintLength";
 import { FILE_STATUS } from "../../../shared/constants";
-import { ROLLBACK_REASONS } from "../../constants/rollbackReasons";
+import { resolveIcon } from "../../constants/rollbackReasonIcons";
 import { openPreview as openPreviewApi, openInFolder as openInFolderApi, openInShopify as openInShopifyApi } from "../../services/fileService";
 import { FiInbox, FiLock, FiUnlock } from "react-icons/fi";
 import {
@@ -61,6 +61,7 @@ const DataList = () => {
   const heldIds = useStore((state) => state.heldIds);
   const heldReasons = useStore((state) => state.heldReasons);
   const rollbackReasons = useStore((state) => state.rollbackReasons);
+  const reasonDefinitions = useStore((state) => state.reasonDefinitions);
   const toggleGroupSelection = useStore((state) => state.toggleGroupSelection);
   const toggleItemSelection = useStore((state) => state.toggleItemSelection);
   const toggleHold = useStore((state) => state.toggleHold);
@@ -299,8 +300,8 @@ const DataList = () => {
                         />
                         <span className={style.file_name_text}>{item.file.name}</span>
                         {rollbackReason && (() => {
-                          const def = ROLLBACK_REASONS.find((r) => r.code === rollbackReason.reasonCode);
-                          const ReasonIcon = def?.icon;
+                          const def = reasonDefinitions.find((r) => r.code === rollbackReason.reasonCode);
+                          const ReasonIcon = resolveIcon(def?.iconName);
                           return (
                             <span className={style.rollback_badge}>
                               {ReasonIcon && <ReasonIcon className={style.rollback_badge_icon} />}

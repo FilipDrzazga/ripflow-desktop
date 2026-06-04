@@ -1,0 +1,259 @@
+.list {
+  padding: 8px 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.row {
+  border-radius: 12px;
+  transition: background-color 0.15s ease;
+}
+
+.row_view {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+}
+
+.row_view:hover {
+  background-color: var(--bg-grey-light);
+}
+
+.row_icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background-color: var(--bg-grey);
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.row_label {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.row_locked_badge {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background-color: var(--bg-grey);
+  padding: 2px 8px;
+  border-radius: 6px;
+}
+
+.edit_btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  border: none;
+  background: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s ease, background-color 0.15s ease;
+}
+
+.row_view:hover .edit_btn {
+  opacity: 1;
+}
+
+.edit_btn:hover {
+  background-color: var(--bg-grey);
+  color: var(--text-primary);
+}
+
+/* ── Edit mode ── */
+
+.row_editing {
+  background-color: var(--bg-grey-light);
+  border: 1px solid var(--border-grey);
+}
+
+.edit_wrap {
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.edit_controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.icon_trigger {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 7px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border-grey);
+  background-color: var(--bg-white);
+  color: var(--text-primary);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: border-color 0.15s ease;
+}
+
+.icon_trigger:hover {
+  border-color: var(--border-black);
+}
+
+.label_input {
+  flex: 1;
+  padding: 7px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border-grey);
+  background-color: var(--bg-white);
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 500;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.label_input:focus {
+  border-color: var(--border-black);
+}
+
+.label_input:disabled {
+  background-color: var(--bg-grey-light);
+  color: var(--text-secondary);
+  cursor: not-allowed;
+}
+
+.row_actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.cancel_btn {
+  padding: 7px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border-grey);
+  background-color: var(--bg-white);
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.cancel_btn:hover {
+  border-color: var(--border-black);
+  color: var(--text-primary);
+}
+
+.save_row_btn {
+  padding: 7px 14px;
+  border-radius: 8px;
+  border: none;
+  background-color: var(--bg-black);
+  color: var(--text-white);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.save_row_btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* ── Icon picker ── */
+
+.icon_picker {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 4px;
+  padding: 8px;
+  background-color: var(--bg-white);
+  border: 1px solid var(--border-grey);
+  border-radius: 12px;
+}
+
+.icon_opt {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background-color 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+}
+
+.icon_opt:hover {
+  background-color: var(--bg-grey-light);
+  color: var(--text-primary);
+}
+
+.icon_opt_active {
+  background-color: var(--bg-grey);
+  color: var(--text-primary);
+  border-color: var(--border-grey);
+}
+
+/* ── Code preview ── */
+
+.code_preview {
+  margin: 0;
+  font-size: 11px;
+  color: var(--text-secondary);
+  padding: 0 4px;
+}
+
+.code_preview span {
+  font-family: monospace;
+  font-size: 12px;
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+/* ── Add area ── */
+
+.add_area {
+  padding: 12px 16px 16px;
+  border-top: 1px solid var(--border-grey);
+}
+
+.add_btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 10px;
+  border: 1px dashed var(--border-grey);
+  background: none;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease, background-color 0.15s ease;
+  width: 100%;
+  justify-content: center;
+}
+
+.add_btn:hover {
+  border-color: var(--border-black);
+  color: var(--text-primary);
+  background-color: var(--bg-grey-light);
+}

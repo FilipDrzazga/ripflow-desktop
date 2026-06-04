@@ -20,7 +20,11 @@
       "PowerShell(net use *)",
       "Bash(git -C \"C:\\\\ripflow-desktop\" log --oneline --all)",
       "Bash(git -C \"C:\\\\ripflow-desktop\" show --stat 69ccea2)",
-      "Bash(git *)"
+      "Bash(git *)",
+      "PowerShell(Remove-Item *)",
+      "Bash(curl -s http://localhost:5173)",
+      "Bash(curl -s http://localhost:5173/src/ui/components/Settings/views/FabricsView.jsx)",
+      "Bash(curl -s \"http://localhost:5173/src/ui/components/Settings/views/FabricsView.jsx\")"
     ]
   }
 }

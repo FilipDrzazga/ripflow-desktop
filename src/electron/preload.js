@@ -83,6 +83,29 @@ const api = Object.freeze({
     ipcRenderer.on("batch:update", handler);
     return () => ipcRenderer.removeListener("batch:update", handler);
   },
+  getRollbackDefinitions: () => ipcRenderer.invoke("reasonDefs:get"),
+  setReasonDefinitions: (defs) => {
+    if (!Array.isArray(defs)) throw new TypeError("Definitions must be an array.");
+    return ipcRenderer.invoke("reasonDefs:set", defs);
+  },
+  getFabricGlobals: () => ipcRenderer.invoke("fabricGlobals:get"),
+  setFabricGlobals: (globals) => {
+    if (!isPlainObject(globals)) throw new TypeError("Globals must be a plain object.");
+    return ipcRenderer.invoke("fabricGlobals:set", globals);
+  },
+  getFabrics: () => ipcRenderer.invoke("fabrics:getAll"),
+  saveFabric: (oldName, fabric) => {
+    if (!isPlainObject(fabric)) throw new TypeError("Fabric must be a plain object.");
+    return ipcRenderer.invoke("fabrics:save", { oldName, fabric });
+  },
+  deleteFabric: (name) => {
+    if (!isNonEmptyString(name)) throw new TypeError("Fabric name must be a non-empty string.");
+    return ipcRenderer.invoke("fabrics:delete", name);
+  },
+  setAllFabrics: (fabrics) => {
+    if (!Array.isArray(fabrics)) throw new TypeError("Fabrics must be an array.");
+    return ipcRenderer.invoke("fabrics:setAll", fabrics);
+  },
   getSettings: () => ipcRenderer.invoke("settings:get"),
   setSettings: (settings) => {
     if (!isPlainObject(settings)) throw new TypeError("Settings must be a plain object.");
@@ -118,6 +141,7 @@ const api = Object.freeze({
     if (!Array.isArray(fileIds)) throw new TypeError("fileIds must be an array.");
     return ipcRenderer.invoke("get-rollback-reasons-files", fileIds);
   },
+  backupDb: () => ipcRenderer.invoke("db:backup"),
   selectFolder: () => ipcRenderer.invoke("dialog:select-folder"),
   minimizeWindow: () => ipcRenderer.send("window:minimize"),
   maximizeWindow: () => ipcRenderer.send("window:maximize"),
@@ -125,10 +149,6 @@ const api = Object.freeze({
 
   customOrder: Object.freeze({
     scanFolder: () => ipcRenderer.invoke("customOrder:scanFolder"),
-    importCSV: (csvPath) => {
-      assertPath(csvPath);
-      return ipcRenderer.invoke("customOrder:importCSV", csvPath);
-    },
     importCSVContent: (content) => {
       if (!isNonEmptyString(content)) throw new TypeError("CSV content must be a non-empty string.");
       return ipcRenderer.invoke("customOrder:importCSVContent", content);
@@ -138,6 +158,7 @@ const api = Object.freeze({
       return ipcRenderer.invoke("customOrder:generateXML", group);
     },
     getHistory: () => ipcRenderer.invoke("customOrder:getHistory"),
+    clearHistory: () => ipcRenderer.invoke("customOrder:clearHistory"),
     selectCSV: () => ipcRenderer.invoke("customOrder:selectCSV"),
   }),
 });
