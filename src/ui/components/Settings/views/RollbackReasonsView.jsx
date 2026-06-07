@@ -124,6 +124,14 @@ const RollbackReasonsView = () => {
           const isOther = reason.code === "OTHER";
 
           if (isEditing) {
+            const original = reasonDefinitions.find((r) => r.code === reason.code);
+            const isUnchanged = original
+              ? (isOther
+                  ? reason.iconName === original.iconName
+                  : reason.label === original.label && reason.iconName === original.iconName)
+              : false;
+            const labelEmpty = !isOther && !reason.label.trim();
+
             return (
               <div key={reason.code} className={styles.row_editing}>
                 <div className={styles.edit_wrap}>
@@ -148,7 +156,7 @@ const RollbackReasonsView = () => {
                       <button className={styles.cancel_btn} onClick={handleCancelEdit}>
                         Cancel
                       </button>
-                      <button className={styles.save_row_btn} onClick={() => handleSave()} disabled={isSaving}>
+                      <button className={styles.save_row_btn} onClick={() => handleSave()} disabled={isSaving || isUnchanged || labelEmpty}>
                         {isSaving ? "Saving…" : "Save"}
                       </button>
                     </div>

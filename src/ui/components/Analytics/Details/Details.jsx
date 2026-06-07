@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { PRINTER_COLORS } from "@/constants/printerColors";
 import { PRINT_TYPE_MAP } from "@/constants/printTypeMap";
 import { useStore } from "@/store/useStore";
-import { LuDownload, LuRefreshCw, LuTrash2, LuChevronDown, LuChevronUp, LuFilter } from "react-icons/lu";
+import { LuDownload, LuRefreshCw, LuTrash2, LuChevronDown, LuChevronUp, LuFilter, LuSearch, LuX } from "react-icons/lu";
 import Summary from "../Summary/Summary";
 import style from "./Details.module.css";
 import { PRINTER } from "../../../../shared/constants";
@@ -90,6 +90,7 @@ const Details = ({ details, stats, isLoading, period, onPeriodChange, onClear, o
   const [processFilter, setProcessFilter] = useState("All");
   const [printerFilter, setPrinterFilter] = useState("All");
   const [reasonFilter, setReasonFilter] = useState("All");
+  const [searchQuery, setSearchQuery] = useState("");
   const [reasonOpen, setReasonOpen] = useState(false);
   const [splitByDay, setSplitByDay] = useState(true);
   const reasonRef = useRef(null);
@@ -119,13 +120,19 @@ const Details = ({ details, stats, isLoading, period, onPeriodChange, onClear, o
   }, [details, reasonLabels]);
 
   const filtered = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
     return details.filter((row) => {
       if (processFilter !== "All" && row.process !== processFilter) return false;
       if (printerFilter !== "All" && row.printer !== printerFilter) return false;
       if (reasonFilter !== "All" && row.reason_code !== reasonFilter) return false;
+      if (q) {
+        const fabricMatch = (row.fabric ?? "").toLowerCase().includes(q);
+        const reasonMatch = getDisplayReason(row.reason_code, row.reason_label).toLowerCase().includes(q);
+        if (!fabricMatch && !reasonMatch) return false;
+      }
       return true;
     });
-  }, [details, processFilter, printerFilter, reasonFilter]);
+  }, [details, processFilter, printerFilter, reasonFilter, searchQuery]);
 
   const handleExportCsv = () => {
     const header = ["Date", "OrderID", "Customer", "Fabric", "Process", "Printer", "Reason", "Type", "Meters"];
@@ -222,6 +229,24 @@ const Details = ({ details, stats, isLoading, period, onPeriodChange, onClear, o
                     </button>
                   ))}
                 </div>
+              )}
+            </div>
+
+            <div className={style.separator} />
+
+            <div className={style.search_wrapper}>
+              <LuSearch size={13} className={style.search_icon} />
+              <input
+                type="text"
+                className={style.search_input}
+                placeholder="Fabric or reason…"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+              {searchQuery && (
+                <button className={style.search_clear} onClick={() => setSearchQuery("")}>
+                  <LuX size={12} />
+                </button>
               )}
             </div>
 

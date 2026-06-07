@@ -206,7 +206,7 @@
 }
 
 .spinning_icon {
-  animation: spin 0.8s linear infinite;
+  animation: spin 0.7s linear infinite;
 }
 
 /* ===== TREE ===== */
@@ -225,10 +225,10 @@
 }
 
 .loading_spinner {
-  width: 28px;
-  height: 28px;
-  border: 3px solid var(--border-grey);
-  border-top-color: var(--text-secondary);
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--text-secondary);
+  border-top-color: transparent;
   border-radius: 50%;
   animation: spin 0.7s linear infinite;
 }

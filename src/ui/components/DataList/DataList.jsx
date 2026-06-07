@@ -46,6 +46,7 @@ const STATUS_MAP = {
 const DataList = () => {
   const filteredFiles = useStore((state) => state.filteredFiles);
   const selectedIds = useStore((state) => state.selectedIds);
+  const isBatchSubmitting = useStore((state) => state.isBatchSubmitting);
   const heldIds = useStore((state) => state.heldIds);
   const heldReasons = useStore((state) => state.heldReasons);
   const rollbackReasons = useStore((state) => state.rollbackReasons);
@@ -225,7 +226,7 @@ const DataList = () => {
                 ref={(e) => {
                   if (e) e.indeterminate = isGroupIndeterminate;
                 }}
-                disabled={!groupHasSelectable}
+                disabled={!groupHasSelectable || isBatchSubmitting}
                 id={unqGroupId}
                 type="checkbox"
                 className={style.checkbox}
@@ -279,7 +280,7 @@ const DataList = () => {
                     <div className={style.item_info}>
                       <label htmlFor={item.id} className={style.item_name} data-tooltip={tooltip}>
                         <input
-                          disabled={isInvalid || isLocked || isHeld}
+                          disabled={isInvalid || isLocked || isHeld || isBatchSubmitting}
                           id={item.id}
                           type="checkbox"
                           className={style.checkbox}
@@ -293,7 +294,7 @@ const DataList = () => {
                           return (
                             <span className={style.rollback_badge}>
                               {ReasonIcon && <ReasonIcon className={style.rollback_badge_icon} />}
-                              {rollbackReason.reasonLabel}
+                              Rollback: {rollbackReason.reasonLabel}
                             </span>
                           );
                         })()}

@@ -43,11 +43,16 @@ const FLAG_DEFS = [
 const GlobalParamsCard = () => {
   const loadFabricConfig = useStore((s) => s.loadFabricConfig);
   const [values, setValues] = useState(DEFAULT_GLOBALS);
+  const [initialValues, setInitialValues] = useState(DEFAULT_GLOBALS);
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     getFabricGlobals().then((res) => {
-      if (res?.success && res.data) setValues({ ...DEFAULT_GLOBALS, ...res.data });
+      if (res?.success && res.data) {
+        const loaded = { ...DEFAULT_GLOBALS, ...res.data };
+        setValues(loaded);
+        setInitialValues(loaded);
+      }
     });
   }, []);
 
@@ -58,6 +63,7 @@ const GlobalParamsCard = () => {
       for (const { key } of GLOBAL_FIELDS_GROUPED) parsed[key] = Number(values[key]) || 0;
       const res = await setFabricGlobalsApi(parsed);
       if (res?.success) {
+        setInitialValues(parsed);
         await loadFabricConfig();
         notify({ type: "Success", title: "Saved", message: "Global fabric parameters updated." });
       } else {
@@ -68,6 +74,15 @@ const GlobalParamsCard = () => {
     }
   };
 
+  const hasInvalid = GLOBAL_FIELDS_GROUPED.some(({ key }) => {
+    const v = Number(values[key]);
+    return !v || v <= 0;
+  });
+
+  const isUnchanged = GLOBAL_FIELDS_GROUPED.every(
+    ({ key }) => Number(values[key]) === Number(initialValues[key]),
+  );
+
   return (
     <div className={`${styles.card} ${styles.card_globals}`}>
       <div className={styles.card_header}>
@@ -77,24 +92,30 @@ const GlobalParamsCard = () => {
         </p>
       </div>
       <div className={styles.globals_body}>
-        {GLOBAL_FIELDS_GROUPED.map(({ key, label, unit }) => (
-          <div key={key} className={styles.globals_field}>
-            <span className={styles.globals_label}>{label}</span>
-            <div className={styles.globals_input_wrap}>
-              <input
-                type="number"
-                className={styles.globals_input}
-                value={values[key] ?? ""}
-                onChange={(e) => setValues((v) => ({ ...v, [key]: e.target.value }))}
-                spellCheck={false}
-              />
-              <span className={styles.globals_unit}>{unit}</span>
+        {GLOBAL_FIELDS_GROUPED.map(({ key, label, unit }) => {
+          const invalid = !Number(values[key]) || Number(values[key]) <= 0;
+          return (
+            <div key={key} className={styles.globals_field}>
+              <span className={styles.globals_label}>{label}</span>
+              <div className={styles.globals_input_wrap}>
+                <input
+                  type="number"
+                  className={`${styles.globals_input} ${invalid ? styles.globals_input_error : ""}`}
+                  value={values[key] ?? ""}
+                  onChange={(e) => setValues((v) => ({ ...v, [key]: e.target.value }))}
+                  spellCheck={false}
+                />
+                <span className={styles.globals_unit}>{unit}</span>
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
       <div className={styles.globals_footer}>
-        <button className={styles.save_btn} onClick={handleSave} disabled={isSaving}>
+        {hasInvalid && (
+          <p className={styles.globals_error_msg}>All values must be greater than 0.</p>
+        )}
+        <button className={styles.save_btn} onClick={handleSave} disabled={isSaving || hasInvalid || isUnchanged}>
           {isSaving ? "Saving…" : "Save"}
         </button>
       </div>

@@ -7,13 +7,16 @@ import styles from "./SettingsView.module.css";
 const GeneralView = () => {
   const [allSettings, setAllSettings] = useState(null);
   const [workstationName, setWorkstationName] = useState("");
+  const [initialName, setInitialName] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     getSettings().then((res) => {
       if (res.success) {
         setAllSettings(res.settings);
-        setWorkstationName(res.settings.workstationName ?? "");
+        const name = res.settings.workstationName ?? "";
+        setWorkstationName(name);
+        setInitialName(name);
       }
     });
   }, []);
@@ -24,6 +27,7 @@ const GeneralView = () => {
       const res = await setSettings({ ...allSettings, workstationName });
       if (res.success) {
         setAllSettings((s) => ({ ...s, workstationName }));
+        setInitialName(workstationName);
         notify({ type: "Success", title: "Settings saved", message: "Workstation name updated." });
       } else {
         notify({ type: "Error", title: "Save failed", message: res.error || "Could not save settings." });
@@ -32,6 +36,9 @@ const GeneralView = () => {
       setIsSaving(false);
     }
   };
+
+  const nameEmpty = workstationName.trim() === "";
+  const isUnchanged = allSettings !== null && workstationName === initialName;
 
   return (
     <div className={styles.view}>
@@ -44,17 +51,20 @@ const GeneralView = () => {
           <label className={styles.label}>Workstation Name</label>
           <div className={styles.input_row}>
             <input
-              className={styles.input}
+              className={`${styles.input} ${nameEmpty ? styles.input_error : ""}`}
               value={workstationName}
               onChange={(e) => setWorkstationName(e.target.value)}
               spellCheck={false}
             />
           </div>
-          <p className={styles.hint}>Identifies this machine in session logs shared across workstations.</p>
+          {nameEmpty
+            ? <p className={styles.field_error}>Workstation name cannot be empty.</p>
+            : <p className={styles.hint}>Identifies this machine in session logs shared across workstations.</p>
+          }
         </div>
       </div>
       <div className={styles.view_footer}>
-        <button className={styles.save_btn} onClick={handleSave} disabled={isSaving || !allSettings}>
+        <button className={styles.save_btn} onClick={handleSave} disabled={isSaving || !allSettings || nameEmpty || isUnchanged}>
           <LuSave size={15} />
           {isSaving ? "Saving…" : "Save"}
         </button>

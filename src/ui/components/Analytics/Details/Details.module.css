@@ -191,6 +191,65 @@
   flex: 1;
 }
 
+/* === SEARCH === */
+.search_wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.search_icon {
+  position: absolute;
+  left: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-secondary);
+  pointer-events: none;
+  flex-shrink: 0;
+}
+
+.search_input {
+  padding: 8px 28px 8px 26px;
+  border: 1px solid var(--border-grey);
+  border-radius: 10px;
+  background: var(--bg-white);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-black);
+  width: 180px;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.search_input::placeholder {
+  color: var(--text-secondary);
+  font-weight: 400;
+}
+
+.search_input:focus {
+  border-color: var(--text-secondary);
+}
+
+.search_clear {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-secondary);
+  padding: 2px;
+  border-radius: 4px;
+}
+
+.search_clear:hover {
+  color: var(--text-primary);
+}
+
 /* === PERIOD GROUP === */
 .period_group {
   display: flex;

@@ -6,85 +6,68 @@ import style from "./StartapLoader.module.css";
 import MaakeLogo from "@/assets/image/Maake_Logo.webp";
 
 const StartupLoader = ({ onDone }) => {
-  const loaderRef = useRef(null);
+  const containerRef = useRef(null);
+  const fillRef = useRef(null);
+  const logoRef = useRef(null);
   const doneOnceRef = useRef(false);
   const [progressLabel, setProgressLabel] = useState("");
   const [realProgressPercent, setRealProgressPercent] = useState(0);
-  const [displayedProgressPercent, setDisplayedProgressPercent] = useState(0);
-  const [isDone, setIsDone] = useState(false);
 
+  // Initial state + entry animation
   useGSAP(() => {
-    if (loaderRef.current) {
-      gsap.set(loaderRef.current, {
-        width: "0%",
-      });
-    }
-  });
+    gsap.set(fillRef.current, { width: "0%" });
+    gsap.set(logoRef.current, { opacity: 0 });
+    gsap.from(containerRef.current, { opacity: 0, duration: 0.35, ease: "power2.out" });
+  }, { scope: containerRef });
 
-  // Nasłuchiwanie postępu czytania folderów z main process
+  // Progress listener
   useEffect(() => {
-    let unsubscribe;
-    const listenProgress = () => {
-      unsubscribe = onReadFoldersProgress((payload) => {
-        setProgressLabel(payload.label);
-        setRealProgressPercent(payload.percent);
-      });
-    };
-
-    listenProgress();
-
-    return () => {
-      unsubscribe && unsubscribe();
-    };
+    const unsubscribe = onReadFoldersProgress((payload) => {
+      setProgressLabel(payload.label);
+      setRealProgressPercent(payload.percent);
+    });
+    return () => unsubscribe?.();
   }, []);
 
-  // Animacja płynnego wzrostu paska postępu
+  // Animate bar + logo in sync, trigger exit at 100%
   useEffect(() => {
-    const interval = setInterval(() => {
-      setDisplayedProgressPercent((prev) => {
-        if (realProgressPercent === 100 && prev === 99) {
-          setIsDone(true);
-          return 100;
-        }
-        if (prev < realProgressPercent) {
-          return prev + 1;
-        }
-        return prev;
-      });
-    }, 16);
+    if (!fillRef.current || !logoRef.current) return;
 
-    return () => clearInterval(interval);
-  }, [realProgressPercent]);
-
-  // Wywołanie onDone po zakończeniu ładowania, ale tylko raz
-  useEffect(() => {
-    if (!isDone) return;
-    if (doneOnceRef.current) return;
-    doneOnceRef.current = true;
-    onDone?.();
-  }, [isDone, onDone]);
-
-  // Animacja GSAP do płynnej zmiany szerokości paska postępu
-  useEffect(() => {
-    if (!loaderRef.current) return;
-    gsap.to(loaderRef.current, {
-      width: `${displayedProgressPercent}%`,
+    gsap.to(fillRef.current, {
+      width: `${realProgressPercent}%`,
       duration: 0.5,
       ease: "power1.out",
       overwrite: "auto",
     });
-  }, [displayedProgressPercent]);
 
-  if (isDone) return null;
+    gsap.to(logoRef.current, {
+      opacity: realProgressPercent / 100,
+      duration: 0.5,
+      ease: "power1.out",
+      overwrite: "auto",
+    });
+
+    if (realProgressPercent >= 100 && !doneOnceRef.current) {
+      doneOnceRef.current = true;
+      gsap.to(containerRef.current, {
+        opacity: 0,
+        scale: 0.97,
+        duration: 0.4,
+        delay: 0.35,
+        ease: "power2.in",
+        onComplete: () => onDone?.(),
+      });
+    }
+  }, [realProgressPercent, onDone]);
 
   return (
-    <div className={style.loader_container}>
+    <div ref={containerRef} className={style.loader_container}>
       <div className={style.loader_content}>
         <h1 className={style.loader_title}>{progressLabel}</h1>
         <div className={style.loader_track}>
-          <div ref={loaderRef} className={style.loader_fill} style={{ width: `${realProgressPercent}%` }}></div>
+          <div ref={fillRef} className={style.loader_fill} />
         </div>
-        <img src={MaakeLogo} alt="Maake Logo" className={style.loader_logo} />
+        <img ref={logoRef} src={MaakeLogo} alt="Maake Logo" className={style.loader_logo} />
       </div>
     </div>
   );

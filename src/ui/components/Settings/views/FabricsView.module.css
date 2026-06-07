@@ -111,10 +111,30 @@
   flex-shrink: 0;
 }
 
+.globals_input_error {
+  color: #e63641 !important;
+}
+
+.globals_input_wrap:has(.globals_input_error) {
+  border-color: #fca5a5;
+  background-color: #fff5f5;
+}
+
+.globals_error_msg {
+  flex: 1;
+  margin: 0;
+  font-size: 12px;
+  font-weight: 500;
+  color: #e63641;
+  align-self: center;
+}
+
 .globals_footer {
   padding: 14px 24px;
   display: flex;
+  align-items: center;
   justify-content: flex-end;
+  gap: 12px;
   border-top: 1px solid var(--border-grey);
 }
 
