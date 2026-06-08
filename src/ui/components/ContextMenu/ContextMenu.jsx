@@ -126,21 +126,26 @@ const ContextMenu = ({ id, anchorX, anchorY, options, onClose, onBackdropContext
                 </button>
                 {activeSubmenu === option.id && (
                   <div ref={submenuRef} className={style.submenu} role="menu" onMouseEnter={() => showSubmenu(option.id)}>
-                    {option.children.map((child) => (
-                      <button
-                        key={child.id}
-                        type="button"
-                        className={`${style.menu_item} ${child.danger ? style.menu_item_danger : ""}`}
-                        onClick={() => {
-                          onClose();
-                          child.onClick();
-                        }}
-                        role="menuitem"
-                      >
-                        {child.icon && <span className={style.menu_item_icon}>{child.icon}</span>}
-                        {child.label}
-                      </button>
-                    ))}
+                    {option.children.map((child) => {
+                      if (child.separator) {
+                        return <div key={child.id} className={style.menu_divider} aria-hidden="true" />;
+                      }
+                      return (
+                        <button
+                          key={child.id}
+                          type="button"
+                          className={`${style.menu_item} ${child.danger ? style.menu_item_danger : ""}`}
+                          onClick={() => {
+                            onClose();
+                            child.onClick();
+                          }}
+                          role="menuitem"
+                        >
+                          {child.icon && <span className={style.menu_item_icon}>{child.icon}</span>}
+                          {child.label}
+                        </button>
+                      );
+                    })}
                   </div>
                 )}
               </div>

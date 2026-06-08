@@ -682,23 +682,31 @@ const BatchHistory = () => {
                 label: "Rollback this file",
                 icon: <LuCornerUpLeft />,
                 danger: true,
-                children: reasonDefinitions.map((reason) => {
-                  const Icon = resolveIcon(reason.iconName);
-                  return {
-                  id: `rollback-${reason.code}`,
-                  label: reason.label,
-                  icon: Icon ? <Icon size={14} /> : null,
-                  onClick: async () => {
-                    const { file, batch } = contextMenu;
-                    if (reason.code === "OTHER") {
-                      setOtherReasonText("");
-                      setOtherReasonTarget({ file, batch });
-                      return;
-                    }
-                    await handleRollbackFile(file.path, batch.path, { code: reason.code, label: reason.label });
-                  },
+                children: (() => {
+                  const makeItem = (reason) => {
+                    const Icon = resolveIcon(reason.iconName);
+                    return {
+                      id: `rollback-${reason.code}`,
+                      label: reason.label,
+                      icon: Icon ? <Icon size={14} /> : null,
+                      onClick: async () => {
+                        const { file, batch } = contextMenu;
+                        if (reason.code === "OTHER") {
+                          setOtherReasonText("");
+                          setOtherReasonTarget({ file, batch });
+                          return;
+                        }
+                        await handleRollbackFile(file.path, batch.path, { code: reason.code, label: reason.label });
+                      },
+                    };
                   };
-                }),
+                  const others = reasonDefinitions.filter((r) => r.code === "OTHER");
+                  const rest = reasonDefinitions.filter((r) => r.code !== "OTHER");
+                  return [
+                    ...rest.map(makeItem),
+                    ...(others.length > 0 ? [{ id: "sep-other", separator: true }, ...others.map(makeItem)] : []),
+                  ];
+                })(),
               },
             ]}
           />,

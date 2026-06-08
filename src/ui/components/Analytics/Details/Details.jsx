@@ -23,17 +23,23 @@ const PROCESS_BADGE = {
 const formatDate = (iso) => {
   if (!iso) return "";
   const d = new Date(iso);
-  return d.toLocaleDateString("en-GB") + " " + d.toTimeString().slice(0, 5);
+  if (isNaN(d.getTime())) return "";
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mm = String(d.getMinutes()).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  const mo = String(d.getMonth() + 1).padStart(2, "0");
+  const yyyy = d.getFullYear();
+  return `${dd}/${mo}/${yyyy} ${hh}:${mm}`;
 };
+
+const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
 const formatDateKey = (iso) => {
   if (!iso) return "";
-  return new Date(iso).toLocaleDateString("en-GB", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "";
+  return `${DAYS[d.getDay()]}, ${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
 };
 
 const groupByDay = (rows) => {

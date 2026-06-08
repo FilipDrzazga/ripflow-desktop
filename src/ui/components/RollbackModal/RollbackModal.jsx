@@ -33,7 +33,7 @@ const RollbackModal = ({ batchName, onConfirm, onCancel }) => {
         {batchName && <p className={style.subtitle}>{batchName}</p>}
         <p className={style.label}>Select reason for rollback:</p>
         <div className={style.reasons}>
-          {reasonDefinitions.map((reason) => {
+          {[...reasonDefinitions].sort((a, b) => (a.code === "OTHER" ? 1 : b.code === "OTHER" ? -1 : 0)).map((reason) => {
             const Icon = resolveIcon(reason.iconName);
             return (
               <button
