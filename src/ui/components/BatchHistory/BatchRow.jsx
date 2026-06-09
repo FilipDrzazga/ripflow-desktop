@@ -1,6 +1,8 @@
+import { useEffect } from "react";
 import { LuRefreshCw, LuFolderOpen, LuCornerUpLeft, LuTrash2, LuChevronRight, LuChevronDown } from "react-icons/lu";
 import { BATCH_STATUS, FILE_STATUS } from "../../../shared/constants";
 import { PRINTER_COLORS } from "../../constants/printerColors";
+import { useStore } from "../../store/useStore";
 import FileRow from "./FileRow";
 import style from "./BatchHistory.module.css";
 
@@ -16,6 +18,13 @@ const BatchRow = ({
   elementRefsRef,
   activeContextFilePath,
 }) => {
+  const productionStages = useStore((s) => s.productionStages);
+  const loadStagesForBatch = useStore((s) => s.loadStagesForBatch);
+
+  useEffect(() => {
+    if (isBatchExpanded) loadStagesForBatch(batch.path);
+  }, [isBatchExpanded, batch.path, loadStagesForBatch]);
+
   const isRolledBack = batch.status === BATCH_STATUS.ROLLED_BACK;
   const rolledBackCount = batch.files.filter((f) => f.status === FILE_STATUS.ROLLED_BACK).length;
   const printerColors = PRINTER_COLORS[batch.printer] || { bg: "#f0f0f0", color: "#555" };
@@ -110,6 +119,7 @@ const BatchRow = ({
               key={file.path}
               file={file}
               batch={batch}
+              stageRow={productionStages[file.name.replace(/\.[^.]+$/, "")]}
               activeContextFilePath={activeContextFilePath}
               onContextMenu={onContextMenu}
               elementRefsRef={elementRefsRef}

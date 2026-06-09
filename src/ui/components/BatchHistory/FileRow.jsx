@@ -1,5 +1,6 @@
 import { LuFileText } from "react-icons/lu";
 import { FILE_STATUS } from "../../../shared/constants";
+import StageBadge from "../StageBadge/StageBadge";
 import style from "./BatchHistory.module.css";
 
 const formatRolledBackAt = (isoString) => {
@@ -11,7 +12,7 @@ const formatRolledBackAt = (isoString) => {
   return `${hh}:${mm} ${dd}/${mo}`;
 };
 
-const FileRow = ({ file, batch, activeContextFilePath, onContextMenu, elementRefsRef }) => {
+const FileRow = ({ file, batch, stageRow, activeContextFilePath, onContextMenu, elementRefsRef }) => {
   const isFileRolledBack = file.status === FILE_STATUS.ROLLED_BACK;
   const fileId = file.name.replace(/\.[^.]+$/, "");
   const rollbackReason = isFileRolledBack
@@ -50,6 +51,9 @@ const FileRow = ({ file, batch, activeContextFilePath, onContextMenu, elementRef
       )}
       {!isFileRolledBack && file.type && file.type !== "UNKNOWN" && (
         <span className={style.type_badge}>{file.type}</span>
+      )}
+      {!isFileRolledBack && stageRow?.stage && (
+        <StageBadge stage={stageRow.stage} />
       )}
     </li>
   );
