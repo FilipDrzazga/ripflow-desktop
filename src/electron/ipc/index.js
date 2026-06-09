@@ -14,7 +14,7 @@ import { getStorageRootPath } from "../helpers/getRootPath.js";
 import { assertStorageFilePath } from "../helpers/validateStoragePath.js";
 import { parsePrintFileName } from "../helpers/parseFileName.js";
 import { getSettings, setSettings, getRollbackDefinitions, clearRollbackDefinitions } from "../helpers/getSettings.js";
-import { initDb, insertLog, getAllLogs, clearAllLogs, holdFile, unholdFile, getHeldFiles, getRollbackReasonsByBatch, getRollbackReasonsByFile, getRollbackStats, getRollbackDetails, clearAllRollbackReasons, getLatestRollbackReasonsForFileIds, getReasonDefinitions, setReasonDefinitions as setReasonDefinitionsDb, migrateReasonDefinitions, getAllFabrics, saveFabric, deleteFabric as deleteFabricDb, setAllFabrics, getFabricGlobals, setFabricGlobals, backupDb } from "../helpers/db.js";
+import { initDb, insertLog, getAllLogs, clearAllLogs, holdFile, unholdFile, getHeldFiles, getRollbackReasonsByBatch, getRollbackReasonsByFile, getRollbackStats, getRollbackDetails, clearAllRollbackReasons, getLatestRollbackReasonsForFileIds, getReasonDefinitions, setReasonDefinitions as setReasonDefinitionsDb, migrateReasonDefinitions, getAllFabrics, saveFabric, deleteFabric as deleteFabricDb, setAllFabrics, getFabricGlobals, setFabricGlobals, backupDb, cleanupShippedStages } from "../helpers/db.js";
 import { loadFabricCache, invalidateFabricCache } from "../helpers/fabricCache.js";
 
 const DAY_FOLDER_RE = /^\d{2}-\d{2}-\d{4}$/;
@@ -103,6 +103,7 @@ export function registerIpcHandlers() {
   loadFabricCache();
   registerCustomOrderHandlers();
   registerProductionHandlers();
+  cleanupShippedStages(getSettings().shippedRetentionDays ?? 30);
 
   backupDb(false).catch((err) => console.error("[backup] startup backup failed:", err));
 
@@ -404,7 +405,7 @@ export function registerIpcHandlers() {
   });
 
   ipcMain.handle("settings:set", async (_event, settings) => {
-    const { storagePath, xmlPath, workstationName, customOrderFolderPath, labelPrinterName, workstationRole } = settings ?? {};
+    const { storagePath, xmlPath, workstationName, customOrderFolderPath, labelPrinterName, workstationRole, shippedRetentionDays } = settings ?? {};
     if (!storagePath || !xmlPath) {
       return { success: false, error: "Both paths are required." };
     }
@@ -425,7 +426,7 @@ export function registerIpcHandlers() {
         return { success: false, error: `Custom Order folder path does not exist: ${customOrderFolderPath}` };
       }
     }
-    setSettings({ storagePath, xmlPath, workstationName, customOrderFolderPath, labelPrinterName, workstationRole });
+    setSettings({ storagePath, xmlPath, workstationName, customOrderFolderPath, labelPrinterName, workstationRole, shippedRetentionDays });
     return { success: true };
   });
 

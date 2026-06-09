@@ -875,6 +875,19 @@ export const backupDb = async (force = false) => {
   }
 };
 
+export const cleanupShippedStages = (days) => {
+  if (!db) return;
+  try {
+    const safeDays = Math.max(1, Math.floor(Number(days) || 30));
+    const info = db.prepare(
+      `DELETE FROM file_stages WHERE stage = 'shipped' AND updated_at < datetime('now', '-${safeDays} days')`
+    ).run();
+    if (info.changes > 0) console.log(`[db] cleanupShippedStages: removed ${info.changes} records older than ${safeDays} days`);
+  } catch (err) {
+    console.error("[db] cleanupShippedStages failed:", err);
+  }
+};
+
 export const getRollbackDetails = (since) => {
   if (!db) return [];
   try {

@@ -89,6 +89,7 @@ const GeneralView = () => {
   const [allSettings, setAllSettings] = useState(null);
   const [workstationName, setWorkstationName] = useState("");
   const [workstationRole, setWorkstationRole] = useState("");
+  const [shippedRetentionDays, setShippedRetentionDays] = useState(30);
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
@@ -97,6 +98,7 @@ const GeneralView = () => {
         setAllSettings(res.settings);
         setWorkstationName(res.settings.workstationName ?? "");
         setWorkstationRole(res.settings.workstationRole ?? "");
+        setShippedRetentionDays(res.settings.shippedRetentionDays ?? 30);
       }
     });
   }, []);
@@ -104,9 +106,9 @@ const GeneralView = () => {
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      const res = await setSettings({ ...allSettings, workstationName, workstationRole });
+      const res = await setSettings({ ...allSettings, workstationName, workstationRole, shippedRetentionDays });
       if (res.success) {
-        setAllSettings((s) => ({ ...s, workstationName, workstationRole }));
+        setAllSettings((s) => ({ ...s, workstationName, workstationRole, shippedRetentionDays }));
         notify({ type: "Success", title: "Settings saved", message: "General settings updated." });
       } else {
         notify({ type: "Error", title: "Save failed", message: res.error || "Could not save settings." });
@@ -141,6 +143,21 @@ const GeneralView = () => {
             <RoleDropdown value={workstationRole} onChange={setWorkstationRole} />
           </div>
           <p className={styles.hint}>Controls scanner behaviour in the Production view on this PC.</p>
+        </div>
+        <div className={styles.field}>
+          <label className={styles.label}>Shipped file retention (days)</label>
+          <div className={styles.input_row}>
+            <input
+              className={styles.input}
+              type="number"
+              min="1"
+              max="365"
+              value={shippedRetentionDays}
+              onChange={(e) => setShippedRetentionDays(Math.max(1, Math.floor(Number(e.target.value) || 30)))}
+              style={{ maxWidth: 100 }}
+            />
+          </div>
+          <p className={styles.hint}>Production stage records for shipped files are deleted after this many days on startup.</p>
         </div>
       </div>
       <div className={styles.view_footer}>

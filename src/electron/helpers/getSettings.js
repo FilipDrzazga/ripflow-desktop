@@ -9,6 +9,7 @@ const store = new Store({
     customOrderFolderPath: "",
     labelPrinterName: "",
     workstationRole: "",
+    shippedRetentionDays: 30,
   },
 });
 
@@ -19,15 +20,17 @@ export const getSettings = () => ({
   customOrderFolderPath: store.get("customOrderFolderPath"),
   labelPrinterName: store.get("labelPrinterName"),
   workstationRole: store.get("workstationRole"),
+  shippedRetentionDays: store.get("shippedRetentionDays"),
 });
 
-export const setSettings = ({ storagePath, xmlPath, workstationName, customOrderFolderPath, labelPrinterName, workstationRole }) => {
+export const setSettings = ({ storagePath, xmlPath, workstationName, customOrderFolderPath, labelPrinterName, workstationRole, shippedRetentionDays }) => {
   if (storagePath !== undefined) store.set("storagePath", storagePath);
   if (xmlPath !== undefined) store.set("xmlPath", xmlPath);
   if (workstationName !== undefined) store.set("workstationName", workstationName);
   if (customOrderFolderPath !== undefined) store.set("customOrderFolderPath", customOrderFolderPath);
   if (labelPrinterName !== undefined) store.set("labelPrinterName", labelPrinterName);
   if (workstationRole !== undefined) store.set("workstationRole", workstationRole);
+  if (shippedRetentionDays !== undefined) store.set("shippedRetentionDays", Math.max(1, Math.floor(Number(shippedRetentionDays) || 30)));
 };
 
 export const getRollbackDefinitions = () => store.get("reasonDefinitions", null);
