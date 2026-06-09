@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { LuRefreshCw, LuFolderOpen, LuCornerUpLeft, LuTrash2, LuChevronRight, LuChevronDown } from "react-icons/lu";
+import { LuRefreshCw, LuFolderOpen, LuCornerUpLeft, LuTrash2, LuChevronRight, LuChevronDown, LuPrinter } from "react-icons/lu";
 import { BATCH_STATUS, FILE_STATUS } from "../../../shared/constants";
 import { PRINTER_COLORS } from "../../constants/printerColors";
 import { useStore } from "../../store/useStore";
@@ -17,6 +17,8 @@ const BatchRow = ({
   onContextMenu,
   elementRefsRef,
   activeContextFilePath,
+  canPrintLabel,
+  onPrintLabel,
 }) => {
   const productionStages = useStore((s) => s.productionStages);
   const loadStagesForBatch = useStore((s) => s.loadStagesForBatch);
@@ -73,6 +75,16 @@ const BatchRow = ({
         <div className={style.batch_actions}>
           {!isRolledBack && (
             <>
+              {canPrintLabel && (
+                <button
+                  type="button"
+                  className={`${style.action_btn} ${style.action_neutral}`}
+                  title="Print label"
+                  onClick={(e) => { e.stopPropagation(); onPrintLabel(batch.name); }}
+                >
+                  <LuPrinter size={16} />
+                </button>
+              )}
               <button
                 type="button"
                 className={`${style.action_btn} ${style.action_success}`}

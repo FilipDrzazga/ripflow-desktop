@@ -10,6 +10,7 @@ const store = new Store({
     labelPrinterName: "",
     workstationRole: "",
     shippedRetentionDays: 30,
+    labelPrintMode: "automatic",
   },
 });
 
@@ -21,9 +22,10 @@ export const getSettings = () => ({
   labelPrinterName: store.get("labelPrinterName"),
   workstationRole: store.get("workstationRole"),
   shippedRetentionDays: store.get("shippedRetentionDays"),
+  labelPrintMode: store.get("labelPrintMode"),
 });
 
-export const setSettings = ({ storagePath, xmlPath, workstationName, customOrderFolderPath, labelPrinterName, workstationRole, shippedRetentionDays }) => {
+export const setSettings = ({ storagePath, xmlPath, workstationName, customOrderFolderPath, labelPrinterName, workstationRole, shippedRetentionDays, labelPrintMode }) => {
   if (storagePath !== undefined) store.set("storagePath", storagePath);
   if (xmlPath !== undefined) store.set("xmlPath", xmlPath);
   if (workstationName !== undefined) store.set("workstationName", workstationName);
@@ -31,6 +33,7 @@ export const setSettings = ({ storagePath, xmlPath, workstationName, customOrder
   if (labelPrinterName !== undefined) store.set("labelPrinterName", labelPrinterName);
   if (workstationRole !== undefined) store.set("workstationRole", workstationRole);
   if (shippedRetentionDays !== undefined) store.set("shippedRetentionDays", Math.max(1, Math.floor(Number(shippedRetentionDays) || 30)));
+  if (labelPrintMode !== undefined) store.set("labelPrintMode", labelPrintMode === "manual" ? "manual" : "automatic");
 };
 
 export const getRollbackDefinitions = () => store.get("reasonDefinitions", null);

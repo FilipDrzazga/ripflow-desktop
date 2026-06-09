@@ -108,6 +108,39 @@
   background-color: #fff5f5 !important;
 }
 
+.toggle_row {
+  display: flex;
+  gap: 6px;
+}
+
+.toggle_btn {
+  padding: 7px 18px;
+  border-radius: 10px;
+  border: 1px solid var(--border-grey);
+  background-color: var(--bg-grey-light);
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.toggle_btn:hover {
+  border-color: var(--border-black);
+  color: var(--text-primary);
+}
+
+.toggle_btn_active {
+  background-color: var(--bg-black);
+  border-color: var(--bg-black);
+  color: var(--text-white);
+}
+
+.toggle_btn_active:hover {
+  background-color: var(--bg-black);
+  color: var(--text-white);
+}
+
 .view_footer {
   padding: 20px 28px;
   border-top: 1px solid var(--border-grey);

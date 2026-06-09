@@ -405,7 +405,7 @@ export function registerIpcHandlers() {
   });
 
   ipcMain.handle("settings:set", async (_event, settings) => {
-    const { storagePath, xmlPath, workstationName, customOrderFolderPath, labelPrinterName, workstationRole, shippedRetentionDays } = settings ?? {};
+    const { storagePath, xmlPath, workstationName, customOrderFolderPath, labelPrinterName, workstationRole, shippedRetentionDays, labelPrintMode } = settings ?? {};
     if (!storagePath || !xmlPath) {
       return { success: false, error: "Both paths are required." };
     }
@@ -426,7 +426,7 @@ export function registerIpcHandlers() {
         return { success: false, error: `Custom Order folder path does not exist: ${customOrderFolderPath}` };
       }
     }
-    setSettings({ storagePath, xmlPath, workstationName, customOrderFolderPath, labelPrinterName, workstationRole, shippedRetentionDays });
+    setSettings({ storagePath, xmlPath, workstationName, customOrderFolderPath, labelPrinterName, workstationRole, shippedRetentionDays, labelPrintMode });
     return { success: true };
   });
 

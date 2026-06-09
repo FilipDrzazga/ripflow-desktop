@@ -10,6 +10,7 @@ const PathsView = () => {
   const [xmlPath, setXmlPath] = useState("");
   const [customOrderFolderPath, setCustomOrderFolderPath] = useState("");
   const [labelPrinterName, setLabelPrinterName] = useState("");
+  const [labelPrintMode, setLabelPrintMode] = useState("automatic");
   const [initialPaths, setInitialPaths] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -21,11 +22,13 @@ const PathsView = () => {
         const xp = res.settings.xmlPath ?? "";
         const cp = res.settings.customOrderFolderPath ?? "";
         const lp = res.settings.labelPrinterName ?? "";
+        const lm = res.settings.labelPrintMode ?? "automatic";
         setStoragePath(sp);
         setXmlPath(xp);
         setCustomOrderFolderPath(cp);
         setLabelPrinterName(lp);
-        setInitialPaths({ storagePath: sp, xmlPath: xp, customOrderFolderPath: cp, labelPrinterName: lp });
+        setLabelPrintMode(lm);
+        setInitialPaths({ storagePath: sp, xmlPath: xp, customOrderFolderPath: cp, labelPrinterName: lp, labelPrintMode: lm });
       }
     });
   }, []);
@@ -42,10 +45,10 @@ const PathsView = () => {
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      const res = await setSettings({ ...allSettings, storagePath, xmlPath, customOrderFolderPath, labelPrinterName });
+      const res = await setSettings({ ...allSettings, storagePath, xmlPath, customOrderFolderPath, labelPrinterName, labelPrintMode });
       if (res.success) {
-        setAllSettings((s) => ({ ...s, storagePath, xmlPath, customOrderFolderPath, labelPrinterName }));
-        setInitialPaths({ storagePath, xmlPath, customOrderFolderPath, labelPrinterName });
+        setAllSettings((s) => ({ ...s, storagePath, xmlPath, customOrderFolderPath, labelPrinterName, labelPrintMode }));
+        setInitialPaths({ storagePath, xmlPath, customOrderFolderPath, labelPrinterName, labelPrintMode });
         notify({ type: "Success", title: "Settings saved", message: "Paths updated successfully." });
       } else {
         notify({ type: "Error", title: "Save failed", message: res.error || "Could not save settings." });
@@ -61,7 +64,8 @@ const PathsView = () => {
     storagePath === initialPaths.storagePath &&
     xmlPath === initialPaths.xmlPath &&
     customOrderFolderPath === initialPaths.customOrderFolderPath &&
-    labelPrinterName === initialPaths.labelPrinterName;
+    labelPrinterName === initialPaths.labelPrinterName &&
+    labelPrintMode === initialPaths.labelPrintMode;
 
   return (
     <div className={styles.view}>
@@ -138,6 +142,27 @@ const PathsView = () => {
             placeholder="e.g. ZDesigner ZD421"
           />
           <p className={styles.hint}>Enter the exact printer name as shown in Windows Devices &amp; Printers.</p>
+        </div>
+
+        <div className={styles.field}>
+          <label className={styles.label}>Label Print Mode</label>
+          <div className={styles.toggle_row}>
+            {["automatic", "manual"].map((mode) => (
+              <button
+                key={mode}
+                type="button"
+                className={`${styles.toggle_btn} ${labelPrintMode === mode ? styles.toggle_btn_active : ""}`}
+                onClick={() => setLabelPrintMode(mode)}
+              >
+                {mode.charAt(0).toUpperCase() + mode.slice(1)}
+              </button>
+            ))}
+          </div>
+          <p className={styles.hint}>
+            {labelPrintMode === "automatic"
+              ? "Label prints automatically after each Rip."
+              : "Label does not print automatically — use the print button in Batch History."}
+          </p>
         </div>
       </div>
       <div className={styles.view_footer}>

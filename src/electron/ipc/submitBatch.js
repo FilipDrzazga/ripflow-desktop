@@ -79,15 +79,17 @@ export const submitBatch = async (batch) => {
     const now = new Date().toISOString();
 
     // fire-and-forget — label print must not delay the submit response
-    const printerMatch = batchName.match(/-(DGEN|YOKO|YUMI)$/i);
-    const batchPrinter = printerMatch ? printerMatch[1].toUpperCase() : "UNKNOWN";
-    printBatchLabel({
-      batchPath,
-      batchName,
-      printer: batchPrinter,
-      fileCount: batch.length,
-      material: batch.length === 1 ? (batch[0].material ?? "Mixed") : "Mixed",
-    }).catch((err) => console.error("[submitBatch] printBatchLabel failed:", err));
+    if (getSettings().labelPrintMode !== "manual") {
+      const printerMatch = batchName.match(/-(DGEN|YOKO|YUMI)$/i);
+      const batchPrinter = printerMatch ? printerMatch[1].toUpperCase() : "UNKNOWN";
+      printBatchLabel({
+        batchPath,
+        batchName,
+        printer: batchPrinter,
+        fileCount: batch.length,
+        material: batch.length === 1 ? (batch[0].material ?? "Mixed") : "Mixed",
+      }).catch((err) => console.error("[submitBatch] printBatchLabel failed:", err));
+    }
 
     for (const item of batch) {
       insertFileStage({

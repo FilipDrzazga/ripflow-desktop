@@ -26,6 +26,8 @@ import {
 } from "../../services/batchService";
 import { openPreview as openPreviewApi, openInFolder as openInFolderApi, openInShopify as openInShopifyApi } from "../../services/fileService";
 import { showConfirm } from "../../services/systemService";
+import { getSettings } from "../../services/settingsService";
+import { printBatchLabel } from "../../services/productionService";
 
 const PRINTERS = Object.values(PRINTER);
 
@@ -48,10 +50,30 @@ const BatchHistory = () => {
   const [otherReasonTarget, setOtherReasonTarget] = useState(null);
   const [otherReasonText, setOtherReasonText] = useState("");
 
+  const [canPrintLabel, setCanPrintLabel] = useState(false);
+
   const pendingAnimationsRef = useRef(new Set());
   const elementRefsRef = useRef(new Map());
   const isInitialLoadRef = useRef(true);
   const searchInputRef = useRef(null);
+
+  useEffect(() => {
+    getSettings().then((res) => {
+      if (res.success) setCanPrintLabel(!!res.settings.labelPrinterName);
+    });
+  }, []);
+
+  const handlePrintLabel = useCallback(async (batchName) => {
+    const res = await printBatchLabel({ batchName });
+    if (res?.success) {
+      notify({ type: "Success", title: "Label sent", message: `Label for ${batchName} sent to printer.` });
+    } else {
+      notify(
+        { type: "Error", title: "Print failed", message: res?.error || "Could not print label." },
+        { stage: "printLabel", code: "PRINT_LABEL_FAILED" },
+      );
+    }
+  }, []);
 
   const loadData = useCallback(async () => {
     setIsLoading(true);
@@ -627,6 +649,8 @@ const BatchHistory = () => {
                       onContextMenu={(file, batch, x, y) => setContextMenu({ file, batch, x, y })}
                       elementRefsRef={elementRefsRef}
                       activeContextFilePath={activeContextFilePath}
+                      canPrintLabel={canPrintLabel}
+                      onPrintLabel={handlePrintLabel}
                     />
                   ))}
                 </div>
