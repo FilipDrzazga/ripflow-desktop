@@ -24,7 +24,9 @@
       "PowerShell(Remove-Item *)",
       "Bash(curl -s http://localhost:5173)",
       "Bash(curl -s http://localhost:5173/src/ui/components/Settings/views/FabricsView.jsx)",
-      "Bash(curl -s \"http://localhost:5173/src/ui/components/Settings/views/FabricsView.jsx\")"
+      "Bash(curl -s \"http://localhost:5173/src/ui/components/Settings/views/FabricsView.jsx\")",
+      "Bash(echo \"Exit: $?\")",
+      "Bash(echo \"---MERGE_EXIT: $?\")"
     ]
   }
 }
