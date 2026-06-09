@@ -1,7 +1,11 @@
 import fs from "fs";
+import path from "path";
 import { createBatch, rollbackBatch } from "./createBatch.js";
 import { submitBatchToPrintFactory } from "./createXML.js";
 import { toIpcError } from "../helpers/ipcError.js";
+import { insertFileStage } from "../helpers/db.js";
+import { getSettings } from "../helpers/getSettings.js";
+import { printBatchLabel } from "../helpers/labelPrinter.js";
 
 const toSubmitBatchError = (error, stage, fallbackTitle = "Batch submission failed") =>
   toIpcError(error, stage, fallbackTitle);
@@ -67,6 +71,39 @@ export const submitBatch = async (batch) => {
         ],
         rollbackPerformed: rollbackResult.rollbackPerformed,
       };
+    }
+
+    const batchPath = createdBatchResult.finalBatchFolderPath;
+    const batchName = path.basename(batchPath);
+    const { workstationName } = getSettings();
+    const now = new Date().toISOString();
+
+    // fire-and-forget — label print must not delay the submit response
+    const printerMatch = batchName.match(/-(DGEN|YOKO|YUMI)$/i);
+    const batchPrinter = printerMatch ? printerMatch[1].toUpperCase() : "UNKNOWN";
+    printBatchLabel({
+      batchPath,
+      batchName,
+      printer: batchPrinter,
+      fileCount: batch.length,
+      material: batch.length === 1 ? (batch[0].material ?? "Mixed") : "Mixed",
+    }).catch((err) => console.error("[submitBatch] printBatchLabel failed:", err));
+
+    for (const item of batch) {
+      insertFileStage({
+        file_id:       path.parse(item.file.name).name,
+        batch_path:    batchPath,
+        print_type:    item.printTypeCode ?? null,
+        customer_name: item.customerName ?? null,
+        order_id:      item.orderId ?? null,
+        material:      item.material ?? null,
+        stage:         "printed",
+        prev_stage:    null,
+        updated_at:    now,
+        updated_by:    workstationName ?? null,
+        sewing_sent_at:     null,
+        sewing_received_at: null,
+      });
     }
 
     return {

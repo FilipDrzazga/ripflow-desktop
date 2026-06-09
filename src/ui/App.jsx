@@ -16,6 +16,7 @@ import Settings from "./components/Settings/Settings";
 import Analytics from "./components/Analytics/Analytics";
 import ErrorBoundary from "./components/ErrorBoundary/ErrorBoundary";
 import CustomOrder from "./components/CustomOrder/CustomOrder";
+import Production from "./components/Production/Production";
 
 const App = () => {
   const refreshFiles = useStore((state) => state.refreshFiles);
@@ -68,6 +69,11 @@ const App = () => {
             {activeView === "analytics" && (
               <ErrorBoundary>
                 <Analytics />
+              </ErrorBoundary>
+            )}
+            {activeView === "production" && (
+              <ErrorBoundary>
+                <Production />
               </ErrorBoundary>
             )}
             {activeView === "customOrder" && <CustomOrder />}

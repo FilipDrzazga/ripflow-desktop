@@ -9,6 +9,7 @@ import { getLogs, clearLogs as clearLogsApi, getHeldFiles, holdFile as holdFileA
 import { getRollbackReasonsForFiles as getRollbackReasonsForFilesApi } from "../services/analyticsService";
 import { getRollbackDefinitions as getRollbackDefinitionsApi } from "../services/reasonDefsService";
 import { getFabricGlobals as getFabricGlobalsApi, getFabrics as getFabricsApi } from "../services/fabricService";
+import { getStagesByBatch as getStagesByBatchApi, getAllStages as getAllStagesApi, getStagesAfter as getStagesAfterApi, getAllStageHistory as getAllStageHistoryApi, clearAllProductionStages as clearAllProductionStagesApi } from "../services/productionService";
 
 const applySort = (groups, sortOrder) => {
   if (!sortOrder) return groups;
@@ -165,6 +166,90 @@ export const useStore = create(
         }
       } catch (err) { console.error("[store] loadFabricConfig failed:", err); }
     },
+    productionStages: {},
+    loadStagesForBatch: async (batchPath) => {
+      try {
+        const res = await getStagesByBatchApi(batchPath);
+        if (res?.success) {
+          set((state) => ({
+            productionStages: {
+              ...state.productionStages,
+              ...Object.fromEntries(res.data.map((r) => [r.file_id, r])),
+            },
+          }));
+        }
+      } catch (err) { console.error("[store] loadStagesForBatch failed:", err); }
+    },
+    loadAllStages: async () => {
+      try {
+        const res = await getAllStagesApi();
+        if (res?.success) {
+          set({ productionStages: Object.fromEntries(res.data.map((r) => [r.file_id, r])) });
+        }
+      } catch (err) { console.error("[store] loadAllStages failed:", err); }
+    },
+    loadStagesAfter: async (since) => {
+      try {
+        const res = await getStagesAfterApi(since);
+        if (res?.success) {
+          if (res.data.length > 0) {
+            set((state) => ({
+              productionStages: {
+                ...state.productionStages,
+                ...Object.fromEntries(res.data.map((r) => [r.file_id, r])),
+              },
+            }));
+          }
+          return { success: true };
+        }
+        return { success: false };
+      } catch (err) {
+        console.error("[store] loadStagesAfter failed:", err);
+        return { success: false };
+      }
+    },
+    updateStageInStore: (fileId, stageRow) => {
+      set((state) => ({
+        productionStages: { ...state.productionStages, [fileId]: stageRow },
+      }));
+    },
+    stageHistory: {},
+    loadAllStageHistory: async () => {
+      try {
+        const res = await getAllStageHistoryApi();
+        if (res?.success && Array.isArray(res.data)) {
+          const grouped = {};
+          for (const row of res.data) {
+            if (!grouped[row.file_id]) grouped[row.file_id] = [];
+            grouped[row.file_id].push({ stage: row.stage, entered_at: row.entered_at });
+          }
+          set({ stageHistory: grouped });
+        }
+      } catch (err) { console.error("[store] loadAllStageHistory failed:", err); }
+    },
+    clearAllStages: async () => {
+      try {
+        const res = await clearAllProductionStagesApi();
+        if (res?.success) set({ productionStages: {}, stageHistory: {} });
+      } catch (err) { console.error("[store] clearAllStages failed:", err); }
+    },
+    addStageHistoryEntry: (fileId, stage, enteredAt) => {
+      set((state) => {
+        const existing = state.stageHistory[fileId] ?? [];
+        return { stageHistory: { ...state.stageHistory, [fileId]: [...existing, { stage, entered_at: enteredAt }] } };
+      });
+    },
+
+    removeStageFromStore: (fileId) => {
+      set((state) => {
+        const next = { ...state.productionStages };
+        delete next[fileId];
+        const nextHistory = { ...state.stageHistory };
+        delete nextHistory[fileId];
+        return { productionStages: next, stageHistory: nextHistory };
+      });
+    },
+
     loadRollbackReasonsForInbox: async (fileIds) => {
       if (!fileIds.length) { set({ rollbackReasons: new Map() }); return; }
       try {

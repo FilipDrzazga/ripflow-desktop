@@ -1,22 +1,102 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { getSettings, setSettings } from "../../../services/settingsService";
 import { notify } from "@/utils/notify";
-import { LuSave } from "react-icons/lu";
+import { LuSave, LuChevronDown } from "react-icons/lu";
 import styles from "./SettingsView.module.css";
+
+const ROLE_OPTIONS = [
+  { value: "",          label: "No role / default" },
+  { value: "cotton",    label: "Cotton / Dryer" },
+  { value: "rollpress", label: "Rollpress" },
+  { value: "qc",        label: "QC" },
+];
+
+const RoleDropdown = ({ value, onChange }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const triggerRef = useRef(null);
+  const panelRef = useRef(null);
+  const [panelPos, setPanelPos] = useState({ top: 0, left: 0, minWidth: 0 });
+
+  const selected = ROLE_OPTIONS.find((o) => o.value === value) ?? ROLE_OPTIONS[0];
+
+  const openDropdown = () => {
+    if (triggerRef.current) {
+      const rect = triggerRef.current.getBoundingClientRect();
+      setPanelPos({ top: rect.bottom + 6, left: rect.left, minWidth: rect.width });
+    }
+    setIsOpen(true);
+  };
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleClick = (e) => {
+      if (!triggerRef.current?.contains(e.target) && !panelRef.current?.contains(e.target)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener("pointerdown", handleClick);
+    return () => document.removeEventListener("pointerdown", handleClick);
+  }, [isOpen]);
+
+  return (
+    <>
+      <button
+        ref={triggerRef}
+        type="button"
+        className={`${styles.input} ${styles.select_trigger}`}
+        onClick={() => (isOpen ? setIsOpen(false) : openDropdown())}
+        aria-haspopup="listbox"
+        aria-expanded={isOpen}
+      >
+        <span>{selected.label}</span>
+        <LuChevronDown
+          size={14}
+          className={`${styles.select_chevron} ${isOpen ? styles.select_chevron_open : ""}`}
+        />
+      </button>
+      {isOpen &&
+        createPortal(
+          <div
+            ref={panelRef}
+            className={styles.select_panel}
+            style={{ top: panelPos.top, left: panelPos.left, minWidth: panelPos.minWidth }}
+            role="listbox"
+          >
+            {ROLE_OPTIONS.map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                className={`${styles.select_option} ${opt.value === value ? styles.select_option_active : ""}`}
+                onClick={() => {
+                  onChange(opt.value);
+                  setIsOpen(false);
+                }}
+                role="option"
+                aria-selected={opt.value === value}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>,
+          document.body
+        )}
+    </>
+  );
+};
 
 const GeneralView = () => {
   const [allSettings, setAllSettings] = useState(null);
   const [workstationName, setWorkstationName] = useState("");
-  const [initialName, setInitialName] = useState("");
+  const [workstationRole, setWorkstationRole] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     getSettings().then((res) => {
       if (res.success) {
         setAllSettings(res.settings);
-        const name = res.settings.workstationName ?? "";
-        setWorkstationName(name);
-        setInitialName(name);
+        setWorkstationName(res.settings.workstationName ?? "");
+        setWorkstationRole(res.settings.workstationRole ?? "");
       }
     });
   }, []);
@@ -24,11 +104,10 @@ const GeneralView = () => {
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      const res = await setSettings({ ...allSettings, workstationName });
+      const res = await setSettings({ ...allSettings, workstationName, workstationRole });
       if (res.success) {
-        setAllSettings((s) => ({ ...s, workstationName }));
-        setInitialName(workstationName);
-        notify({ type: "Success", title: "Settings saved", message: "Workstation name updated." });
+        setAllSettings((s) => ({ ...s, workstationName, workstationRole }));
+        notify({ type: "Success", title: "Settings saved", message: "General settings updated." });
       } else {
         notify({ type: "Error", title: "Save failed", message: res.error || "Could not save settings." });
       }
@@ -36,9 +115,6 @@ const GeneralView = () => {
       setIsSaving(false);
     }
   };
-
-  const nameEmpty = workstationName.trim() === "";
-  const isUnchanged = allSettings !== null && workstationName === initialName;
 
   return (
     <div className={styles.view}>
@@ -51,20 +127,24 @@ const GeneralView = () => {
           <label className={styles.label}>Workstation Name</label>
           <div className={styles.input_row}>
             <input
-              className={`${styles.input} ${nameEmpty ? styles.input_error : ""}`}
+              className={styles.input}
               value={workstationName}
               onChange={(e) => setWorkstationName(e.target.value)}
               spellCheck={false}
             />
           </div>
-          {nameEmpty
-            ? <p className={styles.field_error}>Workstation name cannot be empty.</p>
-            : <p className={styles.hint}>Identifies this machine in session logs shared across workstations.</p>
-          }
+          <p className={styles.hint}>Identifies this machine in session logs shared across workstations.</p>
+        </div>
+        <div className={styles.field}>
+          <label className={styles.label}>Workstation Role</label>
+          <div className={styles.input_row}>
+            <RoleDropdown value={workstationRole} onChange={setWorkstationRole} />
+          </div>
+          <p className={styles.hint}>Controls scanner behaviour in the Production view on this PC.</p>
         </div>
       </div>
       <div className={styles.view_footer}>
-        <button className={styles.save_btn} onClick={handleSave} disabled={isSaving || !allSettings || nameEmpty || isUnchanged}>
+        <button className={styles.save_btn} onClick={handleSave} disabled={isSaving || !allSettings}>
           <LuSave size={15} />
           {isSaving ? "Saving…" : "Save"}
         </button>

@@ -161,6 +161,26 @@ const api = Object.freeze({
     clearHistory: () => ipcRenderer.invoke("customOrder:clearHistory"),
     selectCSV: () => ipcRenderer.invoke("customOrder:selectCSV"),
   }),
+
+  stage: Object.freeze({
+    getByBatch:             (batchPath)                    => ipcRenderer.invoke("stage:getByBatch", batchPath),
+    getAll:                 ()                             => ipcRenderer.invoke("stage:getAll"),
+    getAfter:               (since)                        => ipcRenderer.invoke("stage:getAfter", since),
+    advance:                (fileId, newStage, expectedStage) => ipcRenderer.invoke("stage:advance", { fileId, newStage, expectedStage: expectedStage ?? null }),
+    reject:                 (fileId, reason, expectedStage)   => ipcRenderer.invoke("stage:reject", { fileId, reason, expectedStage: expectedStage ?? null }),
+    override:               (fileId)                       => ipcRenderer.invoke("stage:override", { fileId }),
+    clearFile:              (fileId)                       => ipcRenderer.invoke("stage:clearFile", fileId),
+    clearBatch:             (batchPath)                    => ipcRenderer.invoke("stage:clearBatch", batchPath),
+    setSewingSent:          (fileId, expectedStage)        => ipcRenderer.invoke("stage:setSewingSent", { fileId, expectedStage: expectedStage ?? null }),
+    setSewingReceived:      (fileId, expectedStage)        => ipcRenderer.invoke("stage:setSewingReceived", { fileId, expectedStage: expectedStage ?? null }),
+    insertRollbackReason:   (data)                         => ipcRenderer.invoke("stage:insertRollbackReason", data),
+    getAllHistory:           ()                             => ipcRenderer.invoke("stage:getAllHistory"),
+    clearAll:               ()                             => ipcRenderer.invoke("stage:clearAll"),
+  }),
+
+  label: Object.freeze({
+    printBatch: (data) => ipcRenderer.invoke("label:printBatch", data),
+  }),
 });
 
 contextBridge.exposeInMainWorld("api", api);

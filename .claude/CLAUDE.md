@@ -29,7 +29,7 @@ src/electron/
     parseFileName.js       # CORE LOGIC 600+ lines — change with extreme care
     getMaterialType.js     # material → "Cottons" | "Polyesters" | "Unknown"
                            # Uses fabricCache as primary; falls back to static sets if cache not loaded
-    getSettings.js         # electron-store: storagePath, xmlPath, workstationName, customOrderFolderPath
+    getSettings.js         # electron-store: storagePath, xmlPath, workstationName, customOrderFolderPath, workstationRole, labelPrinterName
                            # NO longer stores reasonDefinitions (migrated to DB on first run)
     getRootPath.js         # Derives all paths from getSettings() — no hardcoded values
     db.js                  # SQLite: all tables; all fns guarded if(!db)
@@ -141,7 +141,7 @@ Tokenize by `_`, detect CUSHION/TEA_TOWEL by keyword, others by XWD hex token.
 ## Storage — Two-tier config
 
 **electron-store** (per-machine, `%APPDATA%\ripflow-desktop\config.json`):
-- `storagePath`, `xmlPath`, `workstationName`, `customOrderFolderPath`
+- `storagePath`, `xmlPath`, `workstationName`, `customOrderFolderPath`, `workstationRole`, `labelPrinterName`
 
 **ripflow.db** (shared across all PCs via network `storagePath`):
 - Operational: `logs`, `held_files`, `rollback_reasons`, `custom_order_history`
@@ -226,9 +226,9 @@ saveFabric(oldName, fabric)            // → { success } — handles rename (de
 deleteFabric(name)                     // → { success }
 setAllFabrics(fabrics)                 // → { success } — bulk replace
 
-// Settings — ALWAYS pass all 4 fields to avoid null overwrite
-getSettings()  // → { success, settings: { storagePath, xmlPath, workstationName, customOrderFolderPath } }
-setSettings({ storagePath, xmlPath, workstationName, customOrderFolderPath })
+// Settings — ALWAYS spread allSettings before overriding individual fields to avoid null overwrite
+getSettings()  // → { success, settings: { storagePath, xmlPath, workstationName, customOrderFolderPath, workstationRole, labelPrinterName } }
+setSettings({ storagePath, xmlPath, workstationName, customOrderFolderPath, workstationRole, labelPrinterName })
 selectFolder() // → { success, canceled, path }
 
 // Logs / Held files
@@ -297,6 +297,33 @@ refreshBatchDays()      // non-awaited
 **Fixed product dims stay hardcoded** (never user-editable):
 - SAMPLE 220×200mm, FQ 670×480mm, TEA_TOWEL 700×500mm
 
+## Production — Key Behaviors
+DB tables: `file_stages` (one row per active file), `file_stage_history` (append-only per stage transition).
+
+**Stages pipeline:** `printed → heatpress → qc → packed → shipped` (or with sewing: `qc → to_sewing → from_sewing → qc → packed → shipped`)
+
+**Rollback = physical file move to inbox** — calling `rollbackFile` automatically calls `clearFileStage(fileId)` in `batchHistoryHandlers.js`. No separate DB cleanup needed. The card disappears from Production UI via `removeStageFromStore(fileId)`.
+
+**No REJECTED stage in UI** — "Rollback to inbox" is the only destructive action for any non-shipped file. REJECTED/OVERRIDDEN constants remain in code for DB backward compatibility only.
+
+**Polling** — `POLL_INTERVAL = 15s`; `loadStagesAfter(since)` returns `{ success: bool }`. Update `lastPollAt` only on success so a network failure retries the same window on the next tick.
+
+**Workstation roles** (`workstationRole` in electron-store, per-machine):
+- `"cotton"` — scanner advances `printed → heatpress`
+- `"rollpress"` — scanner advances `heatpress → qc`
+- `"qc"` — scanner opens QCModal; REJECT action in QCModal calls `rollbackFile` (file goes to inbox)
+- `""` (default) — scanner only filters view to scanned batch
+
+**QCModal phases:**
+- Phase 1 `sewing_return` (only if batch has TO_SEWING files): toggle each file received/reject; "Confirm Received →" requires reasons for all rejected files before enabling
+- Phase 2 `qc`: toggle pass/sewing/reject per file; REJECT = rollback to inbox; SEWING = send to sewing
+
+**Optimistic updates** — all stage transitions call `updateStageInStore` + `addStageHistoryEntry` immediately after IPC success. No `loadAllStages()` reload needed after single actions.
+
+**Stage counts in tabs** — when `batchFilter` is active, tab counts reflect only that batch's files.
+
+**Scanner barcode guard** — `e.ctrlKey || e.metaKey || e.altKey` keys are ignored to avoid contaminating the barcode buffer.
+
 ## BatchHistory — Key Behaviors
 - Call `stopBatchWatcher()` on unmount
 - Click anywhere on batch row to expand/collapse; action buttons use `e.stopPropagation()`
@@ -357,7 +384,7 @@ npm run test:watch # Vitest watch mode
 1. **Always grep before deleting** — audit reports miss non-obvious imports
 2. `parseFileName` returns `file: { name, ext, dir, fullPath }` — use `item.file.name`, not `item.name`
 3. `rollbackBatch`/`rollbackFile` take object `{ ..., reason }` — not positional args
-4. `setSettings()`: always pass all 4 fields (`storagePath`, `xmlPath`, `workstationName`, `customOrderFolderPath`)
+4. `setSettings()`: always spread `allSettings` first then override changed fields — avoids null overwrite of `workstationRole`, `labelPrinterName`, etc.
 5. Use `notify()` not `setAlert()` — only `notify()` writes to SessionLogs
 6. `ripflow.db` lives in `storagePath` — fails if network unavailable; app continues (all db fns guarded)
 7. pdfjs-dist **must stay v4** — v5 incompatible with Electron 40 Chromium

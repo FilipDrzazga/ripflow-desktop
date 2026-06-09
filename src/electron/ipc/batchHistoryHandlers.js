@@ -7,7 +7,7 @@ import { parsePrintFileName } from "../helpers/parseFileName.js";
 import { getMaterialType } from "../helpers/getMaterialType.js";
 import { submitBatchToPrintFactory } from "./createXML.js";
 import { parseBatchFolderName } from "./readPrintedFolder.js";
-import { insertRollbackReason } from "../helpers/db.js";
+import { insertRollbackReason, clearFileStagesByBatch, clearFileStage } from "../helpers/db.js";
 import { getSettings } from "../helpers/getSettings.js";
 import { GROUP_NAME_OVERRIDES_REVERSE } from "../helpers/createBatchIds.js";
 import { getCachedFabrics, getCachedGlobals } from "../helpers/fabricCache.js";
@@ -77,6 +77,7 @@ export const rollbackBatchFromHistory = async ({ batchPath, reason } = {}) => {
     }
 
     result.success = true;
+    clearFileStagesByBatch(validatedBatchPath);
 
     if (reason) {
       const workstation = getSettings().workstationName;
@@ -157,10 +158,11 @@ export const rollbackFileFromHistory = async ({ filePath, batchPath, reason } = 
     const dest = path.join(destDir, filename);
     await fs.promises.rename(validatedFilePath, dest);
 
+    const fileId = path.basename(validatedFilePath, path.extname(validatedFilePath));
     result.success = true;
+    clearFileStage(fileId);
 
     if (reason) {
-      const fileId = path.basename(validatedFilePath, path.extname(validatedFilePath));
       const parsed = parsePrintFileName(path.basename(validatedFilePath));
       const fabric = parsed?.material ?? null;
       const materialType = fabric ? getMaterialType(fabric) : "Unknown";

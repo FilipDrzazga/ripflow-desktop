@@ -9,6 +9,7 @@ import { openInShopify } from "./openInShopify.js";
 import { readPrintedFolder, readSingleBatch, parseBatchFolderName } from "./readPrintedFolder.js";
 import { rollbackBatchFromHistory, rollbackFileFromHistory, regenerateXmlForBatch, deleteBatchFolder } from "./batchHistoryHandlers.js";
 import { registerCustomOrderHandlers } from "./customOrderHandlers.js";
+import { registerProductionHandlers } from "./productionHandlers.js";
 import { getStorageRootPath } from "../helpers/getRootPath.js";
 import { assertStorageFilePath } from "../helpers/validateStoragePath.js";
 import { parsePrintFileName } from "../helpers/parseFileName.js";
@@ -101,6 +102,9 @@ export function registerIpcHandlers() {
 
   loadFabricCache();
   registerCustomOrderHandlers();
+  registerProductionHandlers();
+
+  backupDb(false).catch((err) => console.error("[backup] startup backup failed:", err));
 
   backupDb(false).catch((err) => console.error("[backup] startup backup failed:", err));
 
@@ -400,7 +404,7 @@ export function registerIpcHandlers() {
   });
 
   ipcMain.handle("settings:set", async (_event, settings) => {
-    const { storagePath, xmlPath, workstationName, customOrderFolderPath } = settings ?? {};
+    const { storagePath, xmlPath, workstationName, customOrderFolderPath, labelPrinterName, workstationRole } = settings ?? {};
     if (!storagePath || !xmlPath) {
       return { success: false, error: "Both paths are required." };
     }
@@ -421,7 +425,7 @@ export function registerIpcHandlers() {
         return { success: false, error: `Custom Order folder path does not exist: ${customOrderFolderPath}` };
       }
     }
-    setSettings({ storagePath, xmlPath, workstationName, customOrderFolderPath });
+    setSettings({ storagePath, xmlPath, workstationName, customOrderFolderPath, labelPrinterName, workstationRole });
     return { success: true };
   });
 

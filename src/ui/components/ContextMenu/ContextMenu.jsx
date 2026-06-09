@@ -105,17 +105,43 @@ const ContextMenu = ({ id, anchorX, anchorY, options, onClose, onBackdropContext
             return <div key={option.id} className={style.menu_divider} aria-hidden="true" />;
           }
 
+          if (option.type === "pair") {
+            const { left, right } = option;
+            return (
+              <div key={option.id} className={style.pair_row}>
+                <button
+                  type="button"
+                  className={`${style.pair_btn} ${left.advance ? style.pair_btn_advance : ""}`}
+                  onClick={left.onClick}
+                  role="menuitem"
+                >
+                  <span className={style.menu_item_icon}>{left.icon}</span>
+                  {left.label}
+                </button>
+                <button
+                  type="button"
+                  className={`${style.pair_btn} ${right.advance ? style.pair_btn_advance : ""}`}
+                  onClick={right.onClick}
+                  role="menuitem"
+                >
+                  <span className={style.menu_item_icon}>{right.icon}</span>
+                  {right.label}
+                </button>
+              </div>
+            );
+          }
+
           if (option.children) {
             return (
               <div
                 key={option.id}
                 className={style.menu_item_wrapper}
-                onMouseEnter={() => showSubmenu(option.id)}
+                onMouseEnter={() => !option.disabled && showSubmenu(option.id)}
                 onMouseLeave={scheduleHideSubmenu}
               >
                 <button
                   type="button"
-                  className={`${style.menu_item} ${style.hasSubmenu} ${option.danger ? style.menu_item_danger : ""}`}
+                  className={`${style.menu_item} ${style.hasSubmenu} ${option.danger ? style.menu_item_danger : ""} ${option.advance ? style.menu_item_advance : ""} ${option.amber ? style.menu_item_amber : ""} ${option.disabled ? style.menu_item_disabled : ""}`}
                   role="menuitem"
                   aria-haspopup="true"
                   aria-expanded={activeSubmenu === option.id}
@@ -156,7 +182,7 @@ const ContextMenu = ({ id, anchorX, anchorY, options, onClose, onBackdropContext
             <button
               key={option.id}
               type="button"
-              className={`${style.menu_item} ${option.danger ? style.menu_item_danger : ""}`}
+              className={`${style.menu_item} ${option.danger ? style.menu_item_danger : ""} ${option.advance ? style.menu_item_advance : ""} ${option.amber ? style.menu_item_amber : ""} ${option.disabled ? style.menu_item_disabled : ""}`}
               onClick={option.onClick}
               role="menuitem"
             >

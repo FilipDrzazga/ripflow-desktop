@@ -21,6 +21,26 @@ let stmtClearRollbackReasons = null;
 let stmtInsertCustomOrder = null;
 let stmtGetAllCustomOrders = null;
 let stmtClearCustomOrders = null;
+let stmtInsertFileStage = null;
+let stmtGetFileStage = null;
+let stmtGetFileStagesByBatch = null;
+let stmtGetAllFileStages = null;
+let stmtAdvanceFileStage = null;
+let stmtRejectFileStage = null;
+let stmtOverrideFileStage = null;
+let stmtClearFileStage = null;
+let stmtClearFileStagesByBatch = null;
+let stmtSetSewingSent = null;
+let stmtSetSewingReceived = null;
+let stmtInsertStageHistory = null;
+let stmtGetAllStageHistory = null;
+let stmtClearStageHistoryByFileId = null;
+let stmtClearStageHistoryByBatch = null;
+let stmtAdvanceFileStageGuarded = null;
+let stmtRejectFileStageGuarded = null;
+let stmtSetSewingSentGuarded = null;
+let stmtSetSewingReceivedGuarded = null;
+let stmtGetFileStagesAfter = null;
 
 const PRINTER_RE = /-(DGEN|YOKO|YUMI)$/i;
 
@@ -209,6 +229,60 @@ export const initDb = () => {
         stmtF.run(f.name, f.type, f.xmlWidth, f.rollWidth, f.isVelvet, f.isLinen, f.isBlossom);
       }
     }
+
+    // ── file_stages ───────────────────────────────────────────────────────────
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS file_stages (
+        file_id            TEXT PRIMARY KEY,
+        batch_path         TEXT NOT NULL,
+        print_type         TEXT,
+        customer_name      TEXT,
+        order_id           TEXT,
+        material           TEXT,
+        stage              TEXT NOT NULL DEFAULT 'printed',
+        prev_stage         TEXT,
+        updated_at         TEXT NOT NULL,
+        updated_by         TEXT,
+        sewing_sent_at     TEXT,
+        sewing_received_at TEXT
+      )
+    `);
+    db.exec("CREATE INDEX IF NOT EXISTS idx_file_stages_batch ON file_stages(batch_path)");
+    db.exec("CREATE INDEX IF NOT EXISTS idx_file_stages_stage ON file_stages(stage)");
+
+    stmtInsertFileStage = db.prepare(
+      "INSERT OR REPLACE INTO file_stages (file_id, batch_path, print_type, customer_name, order_id, material, stage, prev_stage, updated_at, updated_by, sewing_sent_at, sewing_received_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+    );
+    stmtGetFileStage = db.prepare("SELECT * FROM file_stages WHERE file_id = ?");
+    stmtGetFileStagesByBatch = db.prepare("SELECT * FROM file_stages WHERE batch_path = ?");
+    stmtGetAllFileStages = db.prepare("SELECT * FROM file_stages ORDER BY updated_at DESC");
+    stmtAdvanceFileStage = db.prepare("UPDATE file_stages SET stage = ?, updated_at = ?, updated_by = ? WHERE file_id = ?");
+    stmtRejectFileStage = db.prepare("UPDATE file_stages SET prev_stage = stage, stage = 'rejected', updated_at = ?, updated_by = ? WHERE file_id = ?");
+    stmtOverrideFileStage = db.prepare("UPDATE file_stages SET stage = 'overridden', updated_at = ?, updated_by = ? WHERE file_id = ?");
+    stmtClearFileStage = db.prepare("DELETE FROM file_stages WHERE file_id = ?");
+    stmtClearFileStagesByBatch = db.prepare("DELETE FROM file_stages WHERE batch_path = ?");
+    stmtSetSewingSent = db.prepare("UPDATE file_stages SET stage = 'to_sewing', sewing_sent_at = ?, updated_at = ?, updated_by = ? WHERE file_id = ?");
+    stmtSetSewingReceived = db.prepare("UPDATE file_stages SET stage = 'from_sewing', sewing_received_at = ?, updated_at = ?, updated_by = ? WHERE file_id = ?");
+
+    // ── file_stage_history ────────────────────────────────────────────────────
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS file_stage_history (
+        id         INTEGER PRIMARY KEY AUTOINCREMENT,
+        file_id    TEXT NOT NULL,
+        stage      TEXT NOT NULL,
+        entered_at TEXT NOT NULL
+      )
+    `);
+    db.exec("CREATE INDEX IF NOT EXISTS idx_stage_history_file ON file_stage_history(file_id)");
+    stmtInsertStageHistory       = db.prepare("INSERT INTO file_stage_history (file_id, stage, entered_at) VALUES (?, ?, ?)");
+    stmtGetAllStageHistory       = db.prepare("SELECT file_id, stage, entered_at FROM file_stage_history ORDER BY entered_at ASC");
+    stmtClearStageHistoryByFileId = db.prepare("DELETE FROM file_stage_history WHERE file_id = ?");
+    stmtClearStageHistoryByBatch  = db.prepare("DELETE FROM file_stage_history WHERE file_id IN (SELECT file_id FROM file_stages WHERE batch_path = ?)");
+    stmtAdvanceFileStageGuarded  = db.prepare("UPDATE file_stages SET stage = ?, updated_at = ?, updated_by = ? WHERE file_id = ? AND stage = ?");
+    stmtRejectFileStageGuarded   = db.prepare("UPDATE file_stages SET prev_stage = stage, stage = 'rejected', updated_at = ?, updated_by = ? WHERE file_id = ? AND stage = ?");
+    stmtSetSewingSentGuarded     = db.prepare("UPDATE file_stages SET stage = 'to_sewing', sewing_sent_at = ?, updated_at = ?, updated_by = ? WHERE file_id = ? AND stage = ?");
+    stmtSetSewingReceivedGuarded = db.prepare("UPDATE file_stages SET stage = 'from_sewing', sewing_received_at = ?, updated_at = ?, updated_by = ? WHERE file_id = ? AND stage = ?");
+    stmtGetFileStagesAfter       = db.prepare("SELECT * FROM file_stages WHERE updated_at > ? ORDER BY updated_at ASC");
   } catch (err) {
     console.error("[db] initDb failed:", err);
     db = null;
@@ -226,6 +300,26 @@ export const initDb = () => {
     stmtInsertCustomOrder = null;
     stmtGetAllCustomOrders = null;
     stmtClearCustomOrders = null;
+    stmtInsertFileStage = null;
+    stmtGetFileStage = null;
+    stmtGetFileStagesByBatch = null;
+    stmtGetAllFileStages = null;
+    stmtAdvanceFileStage = null;
+    stmtRejectFileStage = null;
+    stmtOverrideFileStage = null;
+    stmtClearFileStage = null;
+    stmtClearFileStagesByBatch = null;
+    stmtSetSewingSent = null;
+    stmtSetSewingReceived = null;
+    stmtInsertStageHistory = null;
+    stmtGetAllStageHistory = null;
+    stmtClearStageHistoryByFileId = null;
+    stmtClearStageHistoryByBatch = null;
+    stmtAdvanceFileStageGuarded = null;
+    stmtRejectFileStageGuarded = null;
+    stmtSetSewingSentGuarded = null;
+    stmtSetSewingReceivedGuarded = null;
+    stmtGetFileStagesAfter = null;
   }
 };
 
@@ -583,6 +677,172 @@ export const setAllFabrics = (fabrics) => {
     })();
   } catch (err) {
     console.error("[db] setAllFabrics failed:", err);
+  }
+};
+
+// ── file_stage_history ────────────────────────────────────────────────────────
+
+const _insertStageHistory = (fileId, stage, enteredAt) => {
+  if (!stmtInsertStageHistory) return;
+  stmtInsertStageHistory.run(fileId, stage, enteredAt);
+};
+
+export const clearAllFileStages = () => {
+  if (!db) return;
+  db.exec("DELETE FROM file_stage_history");
+  db.exec("DELETE FROM file_stages");
+};
+
+export const getAllStageHistory = () => {
+  if (!stmtGetAllStageHistory) return [];
+  try {
+    return stmtGetAllStageHistory.all();
+  } catch (err) {
+    console.error("[db] getAllStageHistory failed:", err);
+    return [];
+  }
+};
+
+// ── file_stages ───────────────────────────────────────────────────────────────
+
+export const insertFileStage = (row) => {
+  if (!stmtInsertFileStage) return null;
+  try {
+    stmtInsertFileStage.run(
+      row.file_id, row.batch_path, row.print_type ?? null, row.customer_name ?? null,
+      row.order_id ?? null, row.material ?? null, row.stage ?? "printed", row.prev_stage ?? null,
+      row.updated_at, row.updated_by ?? null, row.sewing_sent_at ?? null, row.sewing_received_at ?? null,
+    );
+    _insertStageHistory(row.file_id, row.stage ?? "printed", row.updated_at);
+  } catch (err) {
+    console.error("[db] insertFileStage failed:", err);
+  }
+};
+
+export const getFileStage = (fileId) => {
+  if (!stmtGetFileStage) return null;
+  try {
+    return stmtGetFileStage.get(fileId) ?? null;
+  } catch (err) {
+    console.error("[db] getFileStage failed:", err);
+    return null;
+  }
+};
+
+export const getFileStagesByBatch = (batchPath) => {
+  if (!stmtGetFileStagesByBatch) return [];
+  try {
+    return stmtGetFileStagesByBatch.all(batchPath);
+  } catch (err) {
+    console.error("[db] getFileStagesByBatch failed:", err);
+    return [];
+  }
+};
+
+export const getFileStagesAfter = (since) => {
+  if (!stmtGetFileStagesAfter) return [];
+  try {
+    return stmtGetFileStagesAfter.all(since);
+  } catch (err) {
+    console.error("[db] getFileStagesAfter failed:", err);
+    return [];
+  }
+};
+
+export const getAllFileStages = () => {
+  if (!stmtGetAllFileStages) return [];
+  try {
+    return stmtGetAllFileStages.all();
+  } catch (err) {
+    console.error("[db] getAllFileStages failed:", err);
+    return [];
+  }
+};
+
+export const advanceFileStage = (fileId, newStage, updatedBy, expectedStage) => {
+  if (!stmtAdvanceFileStage) return null;
+  try {
+    const now = new Date().toISOString();
+    const result = expectedStage
+      ? stmtAdvanceFileStageGuarded.run(newStage, now, updatedBy ?? null, fileId, expectedStage)
+      : stmtAdvanceFileStage.run(newStage, now, updatedBy ?? null, fileId);
+    if (result.changes > 0) _insertStageHistory(fileId, newStage, now);
+    return { updated: result.changes > 0 };
+  } catch (err) {
+    console.error("[db] advanceFileStage failed:", err);
+  }
+};
+
+export const rejectFileStage = (fileId, updatedBy, expectedStage) => {
+  if (!stmtRejectFileStage) return null;
+  try {
+    const now = new Date().toISOString();
+    const result = expectedStage
+      ? stmtRejectFileStageGuarded.run(now, updatedBy ?? null, fileId, expectedStage)
+      : stmtRejectFileStage.run(now, updatedBy ?? null, fileId);
+    if (result.changes > 0) _insertStageHistory(fileId, "rejected", now);
+    return { updated: result.changes > 0 };
+  } catch (err) {
+    console.error("[db] rejectFileStage failed:", err);
+  }
+};
+
+export const overrideFileStage = (fileId, updatedBy) => {
+  if (!stmtOverrideFileStage) return null;
+  try {
+    const now = new Date().toISOString();
+    stmtOverrideFileStage.run(now, updatedBy ?? null, fileId);
+    _insertStageHistory(fileId, "overridden", now);
+  } catch (err) {
+    console.error("[db] overrideFileStage failed:", err);
+  }
+};
+
+export const clearFileStage = (fileId) => {
+  if (!stmtClearFileStage) return null;
+  try {
+    if (stmtClearStageHistoryByFileId) stmtClearStageHistoryByFileId.run(fileId);
+    stmtClearFileStage.run(fileId);
+  } catch (err) {
+    console.error("[db] clearFileStage failed:", err);
+  }
+};
+
+export const clearFileStagesByBatch = (batchPath) => {
+  if (!stmtClearFileStagesByBatch) return null;
+  try {
+    if (stmtClearStageHistoryByBatch) stmtClearStageHistoryByBatch.run(batchPath);
+    stmtClearFileStagesByBatch.run(batchPath);
+  } catch (err) {
+    console.error("[db] clearFileStagesByBatch failed:", err);
+  }
+};
+
+export const setSewingSent = (fileId, updatedBy, expectedStage) => {
+  if (!stmtSetSewingSent) return null;
+  try {
+    const now = new Date().toISOString();
+    const result = expectedStage
+      ? stmtSetSewingSentGuarded.run(now, now, updatedBy ?? null, fileId, expectedStage)
+      : stmtSetSewingSent.run(now, now, updatedBy ?? null, fileId);
+    if (result.changes > 0) _insertStageHistory(fileId, "to_sewing", now);
+    return { updated: result.changes > 0 };
+  } catch (err) {
+    console.error("[db] setSewingSent failed:", err);
+  }
+};
+
+export const setSewingReceived = (fileId, updatedBy, expectedStage) => {
+  if (!stmtSetSewingReceived) return null;
+  try {
+    const now = new Date().toISOString();
+    const result = expectedStage
+      ? stmtSetSewingReceivedGuarded.run(now, now, updatedBy ?? null, fileId, expectedStage)
+      : stmtSetSewingReceived.run(now, now, updatedBy ?? null, fileId);
+    if (result.changes > 0) _insertStageHistory(fileId, "from_sewing", now);
+    return { updated: result.changes > 0 };
+  } catch (err) {
+    console.error("[db] setSewingReceived failed:", err);
   }
 };
 

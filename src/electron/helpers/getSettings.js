@@ -7,6 +7,8 @@ const store = new Store({
     xmlPath: "\\\\192.168.0.17\\Original_files\\SPPrintReadyArtwork",
     workstationName: os.hostname(),
     customOrderFolderPath: "",
+    labelPrinterName: "",
+    workstationRole: "",
   },
 });
 
@@ -15,13 +17,17 @@ export const getSettings = () => ({
   xmlPath: store.get("xmlPath"),
   workstationName: store.get("workstationName"),
   customOrderFolderPath: store.get("customOrderFolderPath"),
+  labelPrinterName: store.get("labelPrinterName"),
+  workstationRole: store.get("workstationRole"),
 });
 
-export const setSettings = ({ storagePath, xmlPath, workstationName, customOrderFolderPath }) => {
+export const setSettings = ({ storagePath, xmlPath, workstationName, customOrderFolderPath, labelPrinterName, workstationRole }) => {
   if (storagePath !== undefined) store.set("storagePath", storagePath);
   if (xmlPath !== undefined) store.set("xmlPath", xmlPath);
   if (workstationName !== undefined) store.set("workstationName", workstationName);
   if (customOrderFolderPath !== undefined) store.set("customOrderFolderPath", customOrderFolderPath);
+  if (labelPrinterName !== undefined) store.set("labelPrinterName", labelPrinterName);
+  if (workstationRole !== undefined) store.set("workstationRole", workstationRole);
 };
 
 export const getRollbackDefinitions = () => store.get("reasonDefinitions", null);

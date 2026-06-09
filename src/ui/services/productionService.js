@@ -1,0 +1,12 @@
+export const getStagesByBatch               = (batchPath)                    => window.api.stage.getByBatch(batchPath);
+export const getAllStages                   = ()                             => window.api.stage.getAll();
+export const getStagesAfter                = (since)                        => window.api.stage.getAfter(since);
+export const advanceStage                  = (fileId, newStage, expectedStage) => window.api.stage.advance(fileId, newStage, expectedStage ?? null);
+export const rejectStage                   = (fileId, reason, expectedStage)   => window.api.stage.reject(fileId, reason, expectedStage ?? null);
+export const overrideStage                 = (fileId)                       => window.api.stage.override(fileId);
+export const setSewingSent                 = (fileId, expectedStage)        => window.api.stage.setSewingSent(fileId, expectedStage ?? null);
+export const setSewingReceived             = (fileId, expectedStage)        => window.api.stage.setSewingReceived(fileId, expectedStage ?? null);
+export const insertProductionRollbackReason = (data)                        => window.api.stage.insertRollbackReason(data);
+export const printBatchLabel               = (data)                         => window.api.label.printBatch(data);
+export const getAllStageHistory             = ()                             => window.api.stage.getAllHistory();
+export const clearAllProductionStages      = ()                             => window.api.stage.clearAll();
