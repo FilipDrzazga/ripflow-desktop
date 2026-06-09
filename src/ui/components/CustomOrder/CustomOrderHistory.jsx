@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { LuChevronRight, LuCheck, LuX } from "react-icons/lu";
+import { LuChevronRight, LuCheck, LuX, LuFileText } from "react-icons/lu";
 import { PRINTER_COLORS } from "@/constants/printerColors";
 import styles from "./CustomOrderHistory.module.css";
 import { CUSTOM_ORDER_STATUS } from "../../../shared/constants";
@@ -33,6 +33,7 @@ const CustomOrderHistory = ({ history }) => {
               aria-expanded={isExpanded}
             >
               <span className={`${styles.status_dot} ${isComplete ? styles.dot_complete : styles.dot_partial}`} />
+              <LuFileText className={styles.file_icon} />
               <div className={styles.name_and_badge}>
                 <span className={styles.material_name}>{order.materialName}</span>
                 <span

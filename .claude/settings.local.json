@@ -26,7 +26,17 @@
       "Bash(curl -s http://localhost:5173/src/ui/components/Settings/views/FabricsView.jsx)",
       "Bash(curl -s \"http://localhost:5173/src/ui/components/Settings/views/FabricsView.jsx\")",
       "Bash(echo \"Exit: $?\")",
-      "Bash(echo \"---MERGE_EXIT: $?\")"
+      "Bash(echo \"---MERGE_EXIT: $?\")",
+      "PowerShell(& sqlite3 $db \"SELECT id, reason_code, reason_label, timestamp, workstation FROM rollback_reasons WHERE reason_label LIKE '%test%' COLLATE NOCASE ORDER BY timestamp DESC;\")",
+      "PowerShell($db = \"O:\\\\SPPrintReadyArtwork\\\\ripflow.db\")",
+      "Bash(sqlite3 --version)",
+      "Bash(python3 -c \"import sqlite3; print\\('ok'\\)\")",
+      "Bash(python -c \"import sqlite3; print\\('ok'\\)\")",
+      "PowerShell(Get-Command *)",
+      "PowerShell(python.exe -c \"import sqlite3; db = sqlite3.connect\\('O:/SPPrintReadyArtwork/ripflow.db'\\); cur = db.cursor\\(\\); cur.execute\\(\\\\\"SELECT id, reason_code, reason_label, timestamp, workstation FROM rollback_reasons WHERE reason_label LIKE '%test%'\\\\\"\\); rows = cur.fetchall\\(\\); print\\('Znaleziono:', len\\(rows\\)\\); [print\\(r\\) for r in rows]; db.close\\(\\)\")",
+      "PowerShell(npm list *)",
+      "PowerShell(npm install *)",
+      "Bash(xargs grep -l \"Refresh\\\\|refresh_btn\\\\|HiArrowPath\")"
     ]
   }
 }

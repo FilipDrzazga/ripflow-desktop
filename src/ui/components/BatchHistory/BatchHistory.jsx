@@ -39,6 +39,7 @@ const parseDayFromBatchPath = (batchPath) => {
 const BatchHistory = () => {
   const setBatchDays = useStore((state) => state.setBatchDays);
   const reasonDefinitions = useStore((state) => state.reasonDefinitions);
+  const refreshFiles = useStore((state) => state.refreshFiles);
   const [dayGroups, setDayGroups] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -51,6 +52,10 @@ const BatchHistory = () => {
   const [otherReasonText, setOtherReasonText] = useState("");
 
   const [canPrintLabel, setCanPrintLabel] = useState(false);
+
+  // Multi-file selection for bulk rollback
+  const [selectedFiles, setSelectedFiles] = useState(new Map()); // Map<filePath, batchPath>
+  const [bulkRollbackPending, setBulkRollbackPending] = useState(false);
 
   const pendingAnimationsRef = useRef(new Set());
   const elementRefsRef = useRef(new Map());
@@ -74,6 +79,82 @@ const BatchHistory = () => {
       );
     }
   }, []);
+
+  const toggleFileSelect = useCallback((filePath, batchPath) => {
+    setSelectedFiles((prev) => {
+      const next = new Map(prev);
+      if (next.has(filePath)) next.delete(filePath);
+      else next.set(filePath, batchPath);
+      return next;
+    });
+  }, []);
+
+  const clearFileSelection = useCallback(() => setSelectedFiles(new Map()), []);
+
+  const handleBulkRollback = useCallback(
+    async (reason) => {
+      const entries = [...selectedFiles.entries()];
+      setSelectedFiles(new Map());
+      let successCount = 0;
+      let failCount = 0;
+      const succeededFiles = [];
+
+      for (const [filePath, batchPath] of entries) {
+        const res = await rollbackFileApi({ filePath, batchPath, reason });
+        if (res?.success) {
+          succeededFiles.push({ filePath, batchPath });
+          successCount++;
+        } else {
+          failCount++;
+        }
+      }
+
+      if (succeededFiles.length > 0) {
+        const now = new Date().toISOString();
+        setDayGroups((prev) =>
+          prev.map((day) => ({
+            ...day,
+            batches: day.batches.map((b) => {
+              const batchSucceeded = succeededFiles.filter((e) => e.batchPath === b.path);
+              if (batchSucceeded.length === 0) return b;
+              const succeededPaths = new Set(batchSucceeded.map((e) => e.filePath));
+              const newReasons = batchSucceeded.map(({ filePath: fp }) => {
+                const fileName = fp.replace(/\\/g, "/").split("/").pop();
+                const fid = fileName.replace(/\.[^.]+$/, "");
+                return { file_id: fid, reason_code: reason.code, reason_label: reason.label };
+              });
+              return {
+                ...b,
+                files: b.files.map((f) =>
+                  succeededPaths.has(f.path) ? { ...f, status: FILE_STATUS.ROLLED_BACK, rolledBackAt: now } : f,
+                ),
+                rollbackReasons: [...(b.rollbackReasons ?? []), ...newReasons],
+              };
+            }),
+          })),
+        );
+        refreshFiles();
+      }
+
+      if (failCount === 0) {
+        notify(
+          { type: "Success", title: "Files rolled back", message: `${successCount} file(s) returned to inbox.` },
+          { stage: "rollback", code: "FILES_ROLLED_BACK" },
+        );
+      } else if (successCount > 0) {
+        notify(
+          { type: "Warning", title: "Partially rolled back", message: `${successCount} succeeded, ${failCount} failed.` },
+          { stage: "rollback", code: "FILES_ROLLBACK_PARTIAL" },
+        );
+      } else {
+        notify(
+          { type: "Error", title: "Rollback failed", message: `${failCount} file(s) could not be rolled back.` },
+          { stage: "rollback", code: "FILES_ROLLBACK_FAILED" },
+        );
+      }
+    },
+    [selectedFiles, refreshFiles],
+  );
 
   const loadData = useCallback(async () => {
     setIsLoading(true);
@@ -131,21 +212,28 @@ const BatchHistory = () => {
     const { type, batch, batchPath, file } = payload;
 
     if (type === "new-batch") {
-      pendingAnimationsRef.current.add(`batch:${batch.path}`);
+      let resolvedBatch = batch;
+      if (batch.files?.some((f) => f.status === FILE_STATUS.ROLLED_BACK)) {
+        try {
+          const reasonsRes = await getRollbackReasonsByBatch(batch.path);
+          resolvedBatch = { ...batch, rollbackReasons: reasonsRes?.data ?? [] };
+        } catch (err) { console.error("[BatchHistory] getRollbackReasonsByBatch failed in new-batch:", err); }
+      }
+      pendingAnimationsRef.current.add(`batch:${resolvedBatch.path}`);
       setDayGroups((prev) => {
-        const dayFolder = parseDayFromBatchPath(batch.path);
+        const dayFolder = parseDayFromBatchPath(resolvedBatch.path);
         const existingDayIdx = prev.findIndex((d) => d.date === dayFolder);
 
         if (existingDayIdx >= 0) {
           const updated = [...prev];
           const day = updated[existingDayIdx];
-          const existsBatch = day.batches.find((b) => b.path === batch.path);
+          const existsBatch = day.batches.find((b) => b.path === resolvedBatch.path);
           const newBatches = existsBatch
             ? day.batches.map((b) => {
-                if (b.path !== batch.path) return b;
-                return { ...batch, rollbackReasons: batch.rollbackReasons ?? b.rollbackReasons };
+                if (b.path !== resolvedBatch.path) return b;
+                return { ...resolvedBatch, rollbackReasons: resolvedBatch.rollbackReasons ?? b.rollbackReasons };
               })
-            : [...day.batches, batch];
+            : [...day.batches, resolvedBatch];
           updated[existingDayIdx] = {
             ...day,
             batches: newBatches,
@@ -169,7 +257,7 @@ const BatchHistory = () => {
           else if (date.getTime() === yesterday.getTime()) label = "Yesterday";
         }
 
-        const newDay = { date: dayFolder, label, totalBatches: 1, totalFiles: batch.fileCount, batches: [batch] };
+        const newDay = { date: dayFolder, label, totalBatches: 1, totalFiles: resolvedBatch.fileCount, batches: [resolvedBatch] };
         return [newDay, ...prev].sort((a, b) => {
           const [ad, am, ay] = a.date.split("-").map(Number);
           const [bd, bm, by] = b.date.split("-").map(Number);
@@ -394,6 +482,7 @@ const BatchHistory = () => {
               }),
             })),
           );
+          refreshFiles();
           searchInputRef.current?.focus();
         } else {
           const err = res?.errors?.[0];
@@ -445,6 +534,7 @@ const BatchHistory = () => {
               totalFiles: day.batches.reduce((s, b) => s + (b.path === batchPath ? 0 : b.fileCount), 0),
             })),
           );
+          refreshFiles();
           searchInputRef.current?.focus();
         } else {
           const err = res?.errors?.[0];
@@ -599,9 +689,9 @@ const BatchHistory = () => {
         </button>
         <button type="button" className={style.refresh_btn} onClick={loadData} disabled={isLoading}>
           <LuRefreshCw size={15} className={isLoading ? style.spinning_icon : ""} />
-          {isLoading ? "Refreshing..." : "Refresh"}
         </button>
       </div>
+
 
       <div className={style.tree}>
         {isLoading && dayGroups.length === 0 && (
@@ -651,6 +741,8 @@ const BatchHistory = () => {
                       activeContextFilePath={activeContextFilePath}
                       canPrintLabel={canPrintLabel}
                       onPrintLabel={handlePrintLabel}
+                      selectedFilePaths={selectedFiles}
+                      onToggleFileSelect={toggleFileSelect}
                     />
                   ))}
                 </div>
@@ -662,78 +754,87 @@ const BatchHistory = () => {
 
       {contextMenu &&
         createPortal(
-          <ContextMenu
-            id="batch-history-context-menu"
-            anchorX={contextMenu.x}
-            anchorY={contextMenu.y}
-            onClose={() => setContextMenu(null)}
-            options={[
-              {
-                id: "preview",
-                label: "Quick Preview",
-                icon: <LuEye />,
-                onClick: () => {
-                  const { file, batch } = contextMenu;
-                  setContextMenu(null);
-                  const batchFileList = batch.files
-                    .filter((f) => f.status !== FILE_STATUS.ROLLED_BACK)
-                    .map((f) => ({ path: f.path, name: f.name }));
-                  openPreview(file.path, batchFileList);
-                },
-              },
-              {
-                id: "folder",
-                label: "Open in Folder",
-                icon: <LuFolderOpen />,
-                onClick: async () => {
-                  const { file } = contextMenu;
-                  setContextMenu(null);
-                  await handleOpenInFolder(file.path);
-                },
-              },
-              {
-                id: "shopify",
-                label: "Open in Shopify",
-                onClick: async () => {
-                  const { file } = contextMenu;
-                  setContextMenu(null);
-                  await handleOpenInShopify(file);
-                },
-              },
-              { id: "sep-1", separator: true },
-              {
-                id: "rollback-file",
-                label: "Rollback this file",
-                icon: <LuCornerUpLeft />,
-                danger: true,
-                children: (() => {
-                  const makeItem = (reason) => {
-                    const Icon = resolveIcon(reason.iconName);
-                    return {
-                      id: `rollback-${reason.code}`,
-                      label: reason.label,
-                      icon: Icon ? <Icon size={14} /> : null,
-                      onClick: async () => {
-                        const { file, batch } = contextMenu;
-                        if (reason.code === "OTHER") {
-                          setOtherReasonText("");
-                          setOtherReasonTarget({ file, batch });
-                          return;
-                        }
-                        await handleRollbackFile(file.path, batch.path, { code: reason.code, label: reason.label });
-                      },
-                    };
-                  };
-                  const others = reasonDefinitions.filter((r) => r.code === "OTHER");
-                  const rest = reasonDefinitions.filter((r) => r.code !== "OTHER");
-                  return [
-                    ...rest.map(makeItem),
-                    ...(others.length > 0 ? [{ id: "sep-other", separator: true }, ...others.map(makeItem)] : []),
-                  ];
-                })(),
-              },
-            ]}
-          />,
+          (() => {
+            const isBulkContext = selectedFiles.has(contextMenu.file.path) && selectedFiles.size > 1;
+            return (
+              <ContextMenu
+                id="batch-history-context-menu"
+                anchorX={contextMenu.x}
+                anchorY={contextMenu.y}
+                onClose={() => { setContextMenu(null); if (selectedFiles.size > 0) clearFileSelection(); }}
+                options={[
+                  {
+                    id: "preview",
+                    label: "Quick Preview",
+                    icon: <LuEye />,
+                    onClick: () => {
+                      const { file, batch } = contextMenu;
+                      setContextMenu(null);
+                      const batchFileList = batch.files
+                        .filter((f) => f.status !== FILE_STATUS.ROLLED_BACK)
+                        .map((f) => ({ path: f.path, name: f.name }));
+                      openPreview(file.path, batchFileList);
+                    },
+                  },
+                  {
+                    id: "folder",
+                    label: "Open in Folder",
+                    icon: <LuFolderOpen />,
+                    onClick: async () => {
+                      const { file } = contextMenu;
+                      setContextMenu(null);
+                      await handleOpenInFolder(file.path);
+                    },
+                  },
+                  {
+                    id: "shopify",
+                    label: "Open in Shopify",
+                    onClick: async () => {
+                      const { file } = contextMenu;
+                      setContextMenu(null);
+                      await handleOpenInShopify(file);
+                    },
+                  },
+                  { id: "sep-1", separator: true },
+                  {
+                    id: "rollback-file",
+                    label: isBulkContext ? `Rollback ${selectedFiles.size} selected` : "Rollback this file",
+                    icon: <LuCornerUpLeft />,
+                    danger: true,
+                    children: (() => {
+                      const makeItem = (reason) => {
+                        const Icon = resolveIcon(reason.iconName);
+                        return {
+                          id: `rollback-${reason.code}`,
+                          label: reason.label,
+                          icon: Icon ? <Icon size={14} /> : null,
+                          onClick: async () => {
+                            const { file, batch } = contextMenu;
+                            if (reason.code === "OTHER") {
+                              setOtherReasonText("");
+                              setOtherReasonTarget(isBulkContext ? { action: "bulk-rollback" } : { file, batch });
+                              return;
+                            }
+                            if (isBulkContext) {
+                              await handleBulkRollback({ code: reason.code, label: reason.label });
+                            } else {
+                              await handleRollbackFile(file.path, batch.path, { code: reason.code, label: reason.label });
+                            }
+                          },
+                        };
+                      };
+                      const others = reasonDefinitions.filter((r) => r.code === "OTHER");
+                      const rest = reasonDefinitions.filter((r) => r.code !== "OTHER");
+                      return [
+                        ...rest.map(makeItem),
+                        ...(others.length > 0 ? [{ id: "sep-other", separator: true }, ...others.map(makeItem)] : []),
+                      ];
+                    })(),
+                  },
+                ]}
+              />
+            );
+          })(),
           document.body,
         )}
       <PdfPreviewModal
@@ -754,6 +855,16 @@ const BatchHistory = () => {
           onCancel={() => setRollbackModal(null)}
         />
       )}
+      {bulkRollbackPending && (
+        <RollbackModal
+          batchName={`${selectedFiles.size} selected ${selectedFiles.size === 1 ? "file" : "files"}`}
+          onConfirm={(reason) => {
+            setBulkRollbackPending(false);
+            handleBulkRollback(reason);
+          }}
+          onCancel={() => setBulkRollbackPending(false)}
+        />
+      )}
       {otherReasonTarget &&
         createPortal(
           <>
@@ -772,9 +883,11 @@ const BatchHistory = () => {
                 onKeyDown={(e) => {
                   if (e.key === "Escape") setOtherReasonTarget(null);
                   if (e.key === "Enter" && otherReasonText.trim()) {
-                    const { file, batch } = otherReasonTarget;
+                    const { file, batch, action } = otherReasonTarget;
+                    const reason = { code: "OTHER", label: otherReasonText.trim() };
                     setOtherReasonTarget(null);
-                    handleRollbackFile(file.path, batch.path, { code: "OTHER", label: otherReasonText.trim() });
+                    if (action === "bulk-rollback") handleBulkRollback(reason);
+                    else handleRollbackFile(file.path, batch.path, reason);
                   }
                 }}
                 autoFocus
@@ -793,9 +906,11 @@ const BatchHistory = () => {
                   className={style.other_reason_confirm}
                   disabled={!otherReasonText.trim()}
                   onClick={() => {
-                    const { file, batch } = otherReasonTarget;
+                    const { file, batch, action } = otherReasonTarget;
+                    const reason = { code: "OTHER", label: otherReasonText.trim() };
                     setOtherReasonTarget(null);
-                    handleRollbackFile(file.path, batch.path, { code: "OTHER", label: otherReasonText.trim() });
+                    if (action === "bulk-rollback") handleBulkRollback(reason);
+                    else handleRollbackFile(file.path, batch.path, reason);
                   }}
                 >
                   Rollback

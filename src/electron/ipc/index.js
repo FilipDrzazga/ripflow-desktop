@@ -79,10 +79,11 @@ const processWatchEvent = async (relativePath) => {
     });
   } catch {
     try {
-      const entries = await fs.promises.readdir(batchPath, { withFileTypes: true });
-      const hasPdfs = entries.some((e) => e.isFile() && e.name.toLowerCase().endsWith(".pdf"));
-      if (!hasPdfs) {
+      const batchData = await readSingleBatch(batchPath, meta);
+      if (batchData.fileCount === 0) {
         watcherSender.send("batch:update", { type: "removed", batchPath });
+      } else {
+        watcherSender.send("batch:update", { type: "new-batch", batch: batchData });
       }
     } catch {
       watcherSender.send("batch:update", { type: "removed", batchPath });

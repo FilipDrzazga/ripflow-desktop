@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { LuSettings2, LuFolderOpen, LuLayers, LuRotateCcw, LuDatabase } from "react-icons/lu";
+import { LuSettings2, LuFolderOpen, LuLayers, LuRotateCcw, LuDatabase, LuWrench } from "react-icons/lu";
 import GeneralView from "./views/GeneralView";
 import PathsView from "./views/PathsView";
 import FabricsView from "./views/FabricsView";
 import RollbackReasonsView from "./views/RollbackReasonsView";
 import DatabaseView from "./views/DatabaseView";
+import MaintenanceView from "./views/MaintenanceView";
 import styles from "./Settings.module.css";
 
 const SECTIONS = [
@@ -13,6 +14,7 @@ const SECTIONS = [
   { id: "fabrics", label: "Fabrics", icon: LuLayers },
   { id: "rollbackReasons", label: "Rollback Reasons", icon: LuRotateCcw },
   { id: "database", label: "Database", icon: LuDatabase },
+  { id: "maintenance", label: "Maintenance", icon: LuWrench },
 ];
 
 const VIEWS = {
@@ -21,6 +23,7 @@ const VIEWS = {
   fabrics: FabricsView,
   rollbackReasons: RollbackReasonsView,
   database: DatabaseView,
+  maintenance: MaintenanceView,
 };
 
 const Settings = () => {

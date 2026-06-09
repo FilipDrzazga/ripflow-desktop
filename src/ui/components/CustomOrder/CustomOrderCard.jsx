@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { notify } from "@/utils/notify";
-import { LuChevronRight, LuCheck, LuX, LuPlay, LuTrash2, LuScanLine } from "react-icons/lu";
+import { LuChevronRight, LuCheck, LuX, LuPlay, LuTrash2, LuScanLine, LuFileText } from "react-icons/lu";
 import { PRINTER_COLORS } from "@/constants/printerColors";
 import styles from "./CustomOrderCard.module.css";
 import { generateCustomOrderXML } from "../../services/customOrderService";
@@ -80,6 +80,7 @@ const CustomOrderCard = ({ group, onGenerated, onRefresh, onRemove }) => {
         aria-expanded={isExpanded}
       >
         <span className={`${styles.status_dot} ${dotClass}`} />
+        <LuFileText className={styles.file_icon} />
         <div className={styles.name_and_badge}>
           <span className={styles.material_name}>{materialName}</span>
           <span className={styles.poly_badge}>POLYESTERS</span>
@@ -176,7 +177,6 @@ const CustomOrderCard = ({ group, onGenerated, onRefresh, onRemove }) => {
                       <span className={`${styles.file_name} ${!file.found ? styles.file_name_missing : ""}`}>
                         {file.fileName}
                       </span>
-                      {!file.found && file.suggestion && <span className={styles.suggestion}>→ {file.suggestion}</span>}
                     </div>
                   </td>
                   <td className={`${styles.cell} ${styles.cell_meters}`}>{file.metersToprint.toFixed(1)}m</td>

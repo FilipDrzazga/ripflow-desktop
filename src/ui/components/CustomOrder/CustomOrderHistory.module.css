@@ -26,7 +26,7 @@
 
 .card {
   background-color: var(--bg-white);
-  border-radius: 20px;
+  border-radius: 10px;
   box-shadow: var(--card-shadow);
   overflow: hidden;
   flex-shrink: 0;
@@ -38,12 +38,20 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  height: 80px;
-  padding: 0 19px;
+  height: 48px;
+  padding: 0 16px;
   cursor: pointer;
   user-select: none;
-  border-radius: 20px 20px 0 0;
+  border-radius: 10px 10px 0 0;
   transition: background-color 0.15s ease;
+}
+
+.file_icon {
+  font-size: 17px;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+  width: 17px;
+  height: 17px;
 }
 
 .card_header:hover {
@@ -163,7 +171,8 @@
 
 .file_table {
   width: 100%;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0 4px;
 }
 
 .file_row {

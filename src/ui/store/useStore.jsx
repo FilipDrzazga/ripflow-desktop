@@ -37,7 +37,7 @@ const applyFilters = (files, activeTab, searchQuery, sortOrder, printTypeFilter)
       ...group,
       items: group.items.filter((item) => {
         if (activeTab !== "All" && item.materialType !== activeTab) return false;
-        if (printTypeFilter && item.printTypeCode !== printTypeFilter) return false;
+        if (printTypeFilter.length > 0 && !printTypeFilter.includes(item.printTypeCode)) return false;
         if (query) {
           const matchesOrderId = item.orderId?.toLowerCase().includes(query);
           const matchesCustomer = item.customerName?.toLowerCase().includes(query);
@@ -87,7 +87,7 @@ export const useStore = create(
         sortOrder: order,
         filteredFiles: applyFilters(state.files, state.activeTab, state.searchQuery, order, state.printTypeFilter),
       })),
-    printTypeFilter: null,
+    printTypeFilter: [],
     setPrintTypeFilter: (printType) =>
       set((state) => ({
         printTypeFilter: printType,

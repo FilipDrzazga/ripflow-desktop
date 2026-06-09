@@ -13,6 +13,7 @@ import { FiInbox, FiLock, FiUnlock } from "react-icons/fi";
 import {
   LuClock,
   LuFile,
+  LuFileText,
   LuLeaf,
   LuCircleHelp,
   LuCircleCheck,
@@ -266,6 +267,7 @@ const DataList = () => {
                   isInvalid ? style.list_item_invalid : null,
                   isWarning ? style.list_item_warning : null,
                   activeContextItemId === item.id ? style.list_item_active : null,
+                  selectedIds.has(item.id) ? style.list_item_selected : null,
                 ]
                   .filter(Boolean)
                   .join(" ");
@@ -287,6 +289,7 @@ const DataList = () => {
                           checked={selectedIds.has(item.id)}
                           onChange={(e) => handleItemCheckboxChange(e, item)}
                         />
+                        <LuFileText className={style.file_icon} />
                         <span className={style.file_name_text}>{item.file.name}</span>
                         {rollbackReason && (() => {
                           const def = reasonDefinitions.find((r) => r.code === rollbackReason.reasonCode);

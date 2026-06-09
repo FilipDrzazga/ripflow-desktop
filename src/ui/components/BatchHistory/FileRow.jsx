@@ -1,4 +1,4 @@
-import { LuFileText } from "react-icons/lu";
+import { LuFileText, LuCheck } from "react-icons/lu";
 import { FILE_STATUS } from "../../../shared/constants";
 import StageBadge from "../StageBadge/StageBadge";
 import style from "./BatchHistory.module.css";
@@ -12,7 +12,7 @@ const formatRolledBackAt = (isoString) => {
   return `${hh}:${mm} ${dd}/${mo}`;
 };
 
-const FileRow = ({ file, batch, stageRow, activeContextFilePath, onContextMenu, elementRefsRef }) => {
+const FileRow = ({ file, batch, stageRow, activeContextFilePath, onContextMenu, elementRefsRef, isSelected, onToggleSelect }) => {
   const isFileRolledBack = file.status === FILE_STATUS.ROLLED_BACK;
   const fileId = file.name.replace(/\.[^.]+$/, "");
   const rollbackReason = isFileRolledBack
@@ -22,9 +22,10 @@ const FileRow = ({ file, batch, stageRow, activeContextFilePath, onContextMenu, 
 
   return (
     <li
-      className={`${style.file_row} ${activeContextFilePath === file.path ? style.file_row_active : ""} ${isFileRolledBack ? style.file_row_rolled_back : ""}`}
+      className={`${style.file_row} ${activeContextFilePath === file.path ? style.file_row_active : ""} ${isFileRolledBack ? style.file_row_rolled_back : ""} ${isSelected ? style.file_row_selected : ""} ${!isFileRolledBack ? style.file_row_selectable : ""}`}
+      onClick={!isFileRolledBack ? () => onToggleSelect?.(file.path) : undefined}
       onContextMenu={
-        isFileRolledBack
+        isFileRolledBack || !isSelected
           ? undefined
           : (e) => {
               e.preventDefault();
@@ -37,6 +38,11 @@ const FileRow = ({ file, batch, stageRow, activeContextFilePath, onContextMenu, 
         else elementRefsRef.current.delete(`file:${file.path}`);
       }}
     >
+      {!isFileRolledBack && (
+        <span className={`${style.file_checkbox} ${isSelected ? style.file_checkbox_checked : ""}`}>
+          {isSelected && <LuCheck size={10} />}
+        </span>
+      )}
       <LuFileText className={style.file_icon} />
       <span className={style.file_name} title={file.name}>
         {file.name}

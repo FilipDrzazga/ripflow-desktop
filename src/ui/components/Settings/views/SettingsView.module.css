@@ -6,6 +6,10 @@
   overflow: hidden;
 }
 
+.view_wide {
+  max-width: 760px;
+}
+
 .view_header {
   padding: 24px 28px;
   border-bottom: 1px solid var(--border-grey);
@@ -166,4 +170,103 @@
 .save_btn:disabled {
   opacity: 0.55;
   cursor: not-allowed;
+}
+
+.action_row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 20px;
+  border: 1px solid var(--border-grey);
+  border-radius: 12px;
+  background-color: var(--bg-grey-light);
+}
+
+.action_info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.danger_btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 10px;
+  border: 1px solid #fca5a5;
+  background-color: #fff5f5;
+  color: #e63641;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.danger_btn:hover {
+  background-color: #fee2e2;
+  border-color: #f87171;
+}
+
+.danger_btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.select_trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  text-align: left;
+}
+
+.select_chevron {
+  flex-shrink: 0;
+  color: var(--text-secondary);
+  transition: transform 0.15s ease;
+}
+
+.select_chevron_open {
+  transform: rotate(180deg);
+}
+
+.select_panel {
+  position: fixed;
+  z-index: 9999;
+  background-color: var(--bg-white);
+  border: 1px solid var(--border-grey);
+  border-radius: 10px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.select_option {
+  display: block;
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: none;
+  background-color: transparent;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.1s ease;
+}
+
+.select_option:hover {
+  background-color: var(--bg-grey-light);
+}
+
+.select_option_active {
+  background-color: var(--bg-grey-light);
+  font-weight: 600;
 }

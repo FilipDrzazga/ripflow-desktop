@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useStore } from "../../store/useStore";
 import {
-  HiArrowPath,
   HiClipboardDocumentList,
   HiOutlineClipboardDocumentList,
   HiMagnifyingGlass,
@@ -12,7 +11,9 @@ import {
   HiArrowTrendingDown,
   HiClock,
   HiFunnel,
+  HiCheck,
 } from "react-icons/hi2";
+import { LuRefreshCw } from "react-icons/lu";
 import { IoLeaf, IoLeafOutline } from "react-icons/io5";
 import { PiPolygon, PiPolygonFill } from "react-icons/pi";
 import styles from "./DataFilters.module.css";
@@ -24,7 +25,6 @@ const SORT_OPTIONS = [
 ];
 
 const PRINT_TYPE_OPTIONS = [
-  { value: null, label: "All Types" },
   { value: "LM", label: "Linear Meter" },
   { value: "FQ", label: "Fat Quarter" },
   { value: "SAMPLE", label: "Sample" },
@@ -79,9 +79,29 @@ const DataFilters = () => {
     await refreshFiles({ clearSelection: true });
   };
 
+  const handleTypeToggle = (value) => {
+    const next = printTypeFilter.includes(value)
+      ? printTypeFilter.filter((v) => v !== value)
+      : [...printTypeFilter, value];
+    setPrintTypeFilter(next);
+    clearSelection();
+  };
+
+  const handleTypeClear = () => {
+    setPrintTypeFilter([]);
+    clearSelection();
+    setTypeOpen(false);
+  };
+
+  const typeButtonLabel =
+    printTypeFilter.length === 0
+      ? "All Types"
+      : printTypeFilter.length === 1
+        ? (PRINT_TYPE_OPTIONS.find((o) => o.value === printTypeFilter[0])?.label ?? printTypeFilter[0])
+        : `${printTypeFilter.length} types`;
+
   const activeSortOption = SORT_OPTIONS.find((o) => o.value === sortOrder) ?? SORT_OPTIONS[0];
   const ActiveSortIcon = activeSortOption.icon;
-  const activePrintTypeOption = PRINT_TYPE_OPTIONS.find((o) => o.value === printTypeFilter) ?? PRINT_TYPE_OPTIONS[0];
 
   return (
     <div className={styles.filters_container}>
@@ -107,31 +127,47 @@ const DataFilters = () => {
       <div className={styles.sort_wrapper} ref={typeRef}>
         <button
           type="button"
-          className={`${styles.filter_button} ${styles.type_button} ${printTypeFilter !== null ? styles.active : ""}`}
+          className={`${styles.filter_button} ${styles.type_button} ${printTypeFilter.length > 0 ? styles.active : ""}`}
           onClick={() => setTypeOpen((v) => !v)}
         >
           <span className={styles.sort_btn_label}>
             <HiFunnel />
-            {activePrintTypeOption.label}
+            {typeButtonLabel}
           </span>
           <span className={styles.sort_chevron}>{typeOpen ? <HiChevronUp /> : <HiChevronDown />}</span>
         </button>
         {typeOpen && (
           <div className={`${styles.sort_dropdown} ${styles.type_dropdown}`}>
-            {PRINT_TYPE_OPTIONS.map((opt) => (
+            {printTypeFilter.length > 0 && (
               <button
-                key={String(opt.value)}
                 type="button"
-                className={`${styles.sort_option} ${printTypeFilter === opt.value ? styles.sort_option_active : ""}`}
-                onClick={() => {
-                  setPrintTypeFilter(opt.value);
-                  clearSelection();
-                  setTypeOpen(false);
-                }}
+                className={`${styles.sort_option} ${styles.type_clear_option}`}
+                onClick={handleTypeClear}
               >
-                <span className={styles.sort_option_content}>{opt.label}</span>
+                <span className={styles.sort_option_content}>
+                  <HiXMark />
+                  Clear filter
+                </span>
               </button>
-            ))}
+            )}
+            {PRINT_TYPE_OPTIONS.map((opt) => {
+              const isSelected = printTypeFilter.includes(opt.value);
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  className={`${styles.sort_option} ${isSelected ? styles.sort_option_active : ""}`}
+                  onClick={() => handleTypeToggle(opt.value)}
+                >
+                  <span className={styles.sort_option_content}>
+                    <span className={styles.type_option_check}>
+                      {isSelected && <HiCheck />}
+                    </span>
+                    {opt.label}
+                  </span>
+                </button>
+              );
+            })}
           </div>
         )}
       </div>
@@ -193,8 +229,7 @@ const DataFilters = () => {
           disabled={isRefreshingFiles}
           className={`${styles.filter_button} ${styles.refresh_button}`}
         >
-          {isRefreshingFiles ? <span className={styles.spinner} /> : <HiArrowPath />}
-          {isRefreshingFiles ? "Refreshing..." : "Refresh list"}
+          {isRefreshingFiles ? <span className={styles.spinner} /> : <LuRefreshCw size={15} />}
         </button>
       </div>
     </div>

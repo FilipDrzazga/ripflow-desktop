@@ -4,6 +4,7 @@ import gsap from "gsap";
 import {
   LuScissors,
   LuPrinter, LuThermometer, LuSearch, LuPackage, LuTruck,
+  LuFileText, LuCheck,
 } from "react-icons/lu";
 import {
   PRODUCTION_STAGE, STAGE_LABEL, STAGE_COLOR, SEWING_SUGGESTED_TYPES,
@@ -130,8 +131,12 @@ const ProductionCard = ({ stage: row, history, highlighted, selected, onSelect, 
       ref={cardRef}
       data-file-id={row.file_id}
       onClick={() => onSelect?.(row.file_id)}
-      onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); onContextMenu?.(row, e.clientX, e.clientY); }}
+      onContextMenu={(e) => { if (!selected) return; e.preventDefault(); e.stopPropagation(); onContextMenu?.(row, e.clientX, e.clientY); }}
     >
+      <span className={`${style.card_checkbox} ${selected ? style.card_checkbox_checked : ""}`}>
+        {selected && <LuCheck size={10} />}
+      </span>
+      <LuFileText className={style.card_file_icon} />
       <div className={style.card_info}>
         <span className={style.card_order}>{row.order_id ?? "—"}</span>
         <span className={style.card_customer}>{row.customer_name ?? "—"}</span>

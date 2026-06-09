@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { PRINTER_COLORS } from "@/constants/printerColors";
 import { PRINT_TYPE_MAP } from "@/constants/printTypeMap";
 import { useStore } from "@/store/useStore";
-import { LuDownload, LuRefreshCw, LuTrash2, LuChevronDown, LuChevronUp, LuFilter, LuSearch, LuX } from "react-icons/lu";
+import { LuDownload, LuRefreshCw, LuChevronDown, LuChevronUp, LuFilter, LuSearch, LuX } from "react-icons/lu";
 import Summary from "../Summary/Summary";
 import style from "./Details.module.css";
 import { PRINTER } from "../../../../shared/constants";
@@ -83,7 +83,7 @@ const TypeBadge = ({ printType }) => {
   );
 };
 
-const Details = ({ details, stats, isLoading, period, onPeriodChange, onClear, onRefresh, isClearing }) => {
+const Details = ({ details, stats, isLoading, period, onPeriodChange, onRefresh }) => {
   const reasonDefinitions = useStore((s) => s.reasonDefinitions);
   const reasonLabels = useMemo(
     () => Object.fromEntries(reasonDefinitions.map((r) => [r.code, r.label])),
@@ -287,9 +287,6 @@ const Details = ({ details, stats, isLoading, period, onPeriodChange, onClear, o
             <button className={style.export_btn} onClick={handleExportCsv} disabled={isEmpty}>
               <LuDownload size={14} />
               Export CSV
-            </button>
-            <button className={style.icon_btn} onClick={onClear} disabled={isLoading || isClearing} title="Clear all rollback history">
-              <LuTrash2 size={15} />
             </button>
             <button className={`${style.icon_btn} ${isLoading ? style.icon_btn_active : ""}`} onClick={onRefresh} disabled={isLoading} title="Refresh">
               <LuRefreshCw size={15} className={isLoading ? style.spinning : ""} />

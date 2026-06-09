@@ -19,6 +19,8 @@ const BatchRow = ({
   activeContextFilePath,
   canPrintLabel,
   onPrintLabel,
+  selectedFilePaths,
+  onToggleFileSelect,
 }) => {
   const productionStages = useStore((s) => s.productionStages);
   const loadStagesForBatch = useStore((s) => s.loadStagesForBatch);
@@ -78,7 +80,7 @@ const BatchRow = ({
               {canPrintLabel && (
                 <button
                   type="button"
-                  className={`${style.action_btn} ${style.action_neutral}`}
+                  className={`${style.action_btn} ${style.action_label}`}
                   title="Print label"
                   onClick={(e) => { e.stopPropagation(); onPrintLabel(batch.name); }}
                 >
@@ -135,6 +137,8 @@ const BatchRow = ({
               activeContextFilePath={activeContextFilePath}
               onContextMenu={onContextMenu}
               elementRefsRef={elementRefsRef}
+              isSelected={selectedFilePaths?.has(file.path) ?? false}
+              onToggleSelect={(filePath) => onToggleFileSelect?.(filePath, batch.path)}
             />
           ))}
         </ul>

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { createPortal } from "react-dom";
-import { HiMagnifyingGlass, HiArrowPath } from "react-icons/hi2";
-import { LuArrowRight, LuArrowLeft, LuScissors, LuRefreshCw, LuCornerUpLeft, LuEye, LuTrash2 } from "react-icons/lu";
+import { HiMagnifyingGlass } from "react-icons/hi2";
+import { LuArrowRight, LuArrowLeft, LuScissors, LuRefreshCw, LuCornerUpLeft, LuEye } from "react-icons/lu";
 import { useStore } from "../../store/useStore";
 import { STAGE_LABEL, STAGE_NEXT, STAGE_PREV, PRODUCTION_STAGE, QC_ACTION } from "../../../shared/constants";
 import {
@@ -13,7 +13,6 @@ import {
 import { rollbackFile } from "../../services/batchService";
 import { openInFolder as openInFolderApi, openInShopify as openInShopifyApi } from "../../services/fileService";
 import { getSettings } from "../../services/settingsService";
-import { showConfirm } from "../../services/systemService";
 import { notify } from "@/utils/notify";
 import { usePdfPreview } from "../../hooks/usePdfPreview";
 import { resolveIcon } from "../../constants/rollbackReasonIcons";
@@ -43,10 +42,10 @@ const Production = () => {
   const updateStageInStore  = useStore((s) => s.updateStageInStore);
   const removeStageFromStore = useStore((s) => s.removeStageFromStore);
   const reasonDefinitions   = useStore((s) => s.reasonDefinitions);
+  const refreshFiles        = useStore((s) => s.refreshFiles);
   const stageHistory         = useStore((s) => s.stageHistory);
   const loadAllStageHistory  = useStore((s) => s.loadAllStageHistory);
   const addStageHistoryEntry = useStore((s) => s.addStageHistoryEntry);
-  const clearAllStages       = useStore((s) => s.clearAllStages);
 
   const [stageFilter,    setStageFilter]    = useState("all");
   const [search,         setSearch]         = useState("");
@@ -166,6 +165,7 @@ const Production = () => {
     if (res?.success) {
       removeStageFromStore(fileId);
       notify({ type: "Success", title: "Rolled back", message: "File returned to inbox." });
+      refreshFiles();
     } else {
       notify({ type: "Error", title: "Rollback failed", message: res?.errors?.[0]?.message ?? "Unknown error" });
     }
@@ -219,10 +219,9 @@ const Production = () => {
     let successCount = 0;
     let failCount = 0;
 
-    for (const { fileId, action, fromSewing, reason } of decisions) {
+    for (const { fileId, action, fromSewing } of decisions) {
       try {
-        // setSewingReceived only for received-from-sewing files; skip if rejecting
-        if (fromSewing && action !== QC_ACTION.REJECT) {
+        if (fromSewing) {
           const srRes = await setSewingReceived(fileId, PRODUCTION_STAGE.TO_SEWING);
           if (!srRes?.success) { failCount++; continue; }
         }
@@ -250,17 +249,6 @@ const Production = () => {
               updateStageInStore(fileId, { ...row, stage: PRODUCTION_STAGE.TO_SEWING, updated_at: now });
               addStageHistoryEntry(fileId, PRODUCTION_STAGE.TO_SEWING, now);
             }
-            successCount++;
-          } else {
-            failCount++;
-          }
-        } else if (action === QC_ACTION.REJECT) {
-          const row = productionStages[fileId];
-          if (!row?.batch_path) { failCount++; continue; }
-          const filePath = `${row.batch_path}\\${fileId}.pdf`;
-          const res = await rollbackFile({ filePath, batchPath: row.batch_path, reason });
-          if (res?.success) {
-            removeStageFromStore(fileId);
             successCount++;
           } else {
             failCount++;
@@ -303,16 +291,6 @@ const Production = () => {
     } finally {
       setIsRefreshing(false);
     }
-  };
-
-  const handleClearAll = async () => {
-    const confirmed = await showConfirm(
-      "Clear all production tracking data? This cannot be undone.",
-    );
-    if (!confirmed) return;
-    await clearAllStages();
-    lastPollAt.current = new Date().toISOString();
-    notify({ type: "Success", title: "Production cleared", message: "All tracking data removed." });
   };
 
   const handleBulkGoBack = async () => {
@@ -379,6 +357,7 @@ const Production = () => {
     } else {
       notify({ type: "Error", title: "Rollback failed", message: `${failCount} file(s) could not be rolled back.` });
     }
+    if (successCount > 0) refreshFiles();
   };
 
   // Clear selection when filter changes
@@ -550,7 +529,7 @@ const Production = () => {
     if (prevStage) {
       items.push({
         id: "go-back",
-        label: isBulk ? `Move back ${selectedFileIds.size} selected` : STAGE_LABEL[prevStage],
+        label: isBulk ? `${STAGE_LABEL[prevStage]} ${selectedFileIds.size} selected` : STAGE_LABEL[prevStage],
         icon: <LuArrowLeft size={14} />,
         onClick: () => {
           setContextMenu(null);
@@ -562,7 +541,7 @@ const Production = () => {
     if (canAdvance && nextStage) {
       items.push({
         id: "advance",
-        label: isBulk ? `Advance ${selectedFileIds.size} selected` : STAGE_LABEL[nextStage],
+        label: isBulk ? `${STAGE_LABEL[nextStage]} ${selectedFileIds.size} selected` : STAGE_LABEL[nextStage],
         icon: <LuArrowRight size={14} />,
         advance: true,
         onClick: () => {
@@ -609,7 +588,7 @@ const Production = () => {
     if (canAdvance && batchPath) {
       items.push({
         id: "rollback",
-        label: isBulk ? `Rollback ${selectedFileIds.size} to inbox` : "Rollback to inbox",
+        label: isBulk ? (selectedFileIds.size === 1 ? "Rollback this file" : `Rollback ${selectedFileIds.size} files`) : "Rollback",
         icon: <LuCornerUpLeft size={14} />,
         danger: true,
         children: reasonDefinitions.map((reason) => {
@@ -682,11 +661,7 @@ const Production = () => {
             />
           </div>
           <button type="button" className={style.refresh_btn} onClick={handleRefresh} disabled={isRefreshing}>
-            {isRefreshing ? <span className={style.spinner} /> : <HiArrowPath />}
-            {isRefreshing ? "Refreshing..." : "Refresh"}
-          </button>
-          <button type="button" className={style.icon_btn_danger} title="Clear all production data" onClick={handleClearAll}>
-            <LuTrash2 size={15} />
+            <LuRefreshCw size={15} className={isRefreshing ? style.spinning_icon : ""} />
           </button>
         </div>
       </div>
@@ -700,13 +675,7 @@ const Production = () => {
         </div>
       )}
 
-      {selectedFileIds.size > 0 && (
-        <div className={style.selection_bar}>
-          <span className={style.selection_count}>{selectedFileIds.size} selected</span>
-        </div>
-      )}
-
-      <div className={style.cards_wrapper}>
+<div className={style.cards_wrapper}>
         {isLoading && allRows.length === 0 ? (
           <div className={style.loading_state}>
             <div className={style.loading_spinner} />

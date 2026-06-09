@@ -2,16 +2,14 @@ import { useState, useEffect } from "react";
 import { notify } from "@/utils/notify";
 import CustomOrderCard from "./CustomOrderCard";
 import CustomOrderHistory from "./CustomOrderHistory";
-import { LuCloudUpload, LuTrash2 } from "react-icons/lu";
+import { LuCloudUpload } from "react-icons/lu";
 import styles from "./CustomOrder.module.css";
 import {
   scanCustomOrderFolder,
   importCSVContent,
   getCustomOrderHistory,
-  clearCustomOrderHistory,
   selectCustomOrderCSV,
 } from "../../services/customOrderService";
-import { showConfirm } from "../../services/systemService";
 
 const CustomOrder = () => {
   const [csvGroups, setCsvGroups] = useState([]);
@@ -89,22 +87,6 @@ const CustomOrder = () => {
     }
   };
 
-  const handleClearHistory = async () => {
-    const confirmed = await showConfirm("Clear all custom order history? This cannot be undone.");
-    if (!confirmed) return;
-    try {
-      const res = await clearCustomOrderHistory();
-      if (res.success) {
-        setHistory([]);
-        notify({ type: "Success", title: "History cleared", message: "All custom order history has been removed." });
-      } else {
-        notify({ type: "Error", title: "Clear failed", message: res.error ?? "Could not clear history." });
-      }
-    } catch (err) {
-      notify({ type: "Error", title: "Clear failed", message: err?.message ?? "Could not clear history." });
-    }
-  };
-
   const handleGenerated = () => {
     refreshHistory();
   };
@@ -145,12 +127,6 @@ const CustomOrder = () => {
       <div className={styles.right_column}>
         <div className={styles.right_topbar}>
           <h2 className={styles.history_label}>Custom Order History</h2>
-          {history.length > 0 && (
-            <button className={styles.clear_history_btn} onClick={handleClearHistory} title="Clear history">
-              <LuTrash2 size={14} />
-              Clear
-            </button>
-          )}
         </div>
         <CustomOrderHistory history={history} />
       </div>
