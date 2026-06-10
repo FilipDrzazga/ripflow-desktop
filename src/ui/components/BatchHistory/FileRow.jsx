@@ -25,7 +25,7 @@ const FileRow = ({ file, batch, stageRow, activeContextFilePath, onContextMenu, 
       className={`${style.file_row} ${activeContextFilePath === file.path ? style.file_row_active : ""} ${isFileRolledBack ? style.file_row_rolled_back : ""} ${isSelected ? style.file_row_selected : ""} ${!isFileRolledBack ? style.file_row_selectable : ""}`}
       onClick={!isFileRolledBack ? () => onToggleSelect?.(file.path) : undefined}
       onContextMenu={
-        isFileRolledBack || !isSelected
+        isFileRolledBack
           ? undefined
           : (e) => {
               e.preventDefault();

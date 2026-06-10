@@ -131,7 +131,7 @@ const ProductionCard = ({ stage: row, history, highlighted, selected, onSelect, 
       ref={cardRef}
       data-file-id={row.file_id}
       onClick={() => onSelect?.(row.file_id)}
-      onContextMenu={(e) => { if (!selected) return; e.preventDefault(); e.stopPropagation(); onContextMenu?.(row, e.clientX, e.clientY); }}
+      onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); onContextMenu?.(row, e.clientX, e.clientY); }}
     >
       <span className={`${style.card_checkbox} ${selected ? style.card_checkbox_checked : ""}`}>
         {selected && <LuCheck size={10} />}

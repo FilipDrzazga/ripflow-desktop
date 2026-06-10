@@ -13,9 +13,10 @@ import {
   HiFunnel,
   HiCheck,
 } from "react-icons/hi2";
-import { LuRefreshCw } from "react-icons/lu";
+import { LuRefreshCw, LuCircle } from "react-icons/lu";
 import { IoLeaf, IoLeafOutline } from "react-icons/io5";
 import { PiPolygon, PiPolygonFill } from "react-icons/pi";
+import { PRINT_TYPE_MAP } from "@/constants/printTypeMap";
 import styles from "./DataFilters.module.css";
 
 const SORT_OPTIONS = [
@@ -25,11 +26,11 @@ const SORT_OPTIONS = [
 ];
 
 const PRINT_TYPE_OPTIONS = [
-  { value: "LM", label: "Linear Meter" },
-  { value: "FQ", label: "Fat Quarter" },
-  { value: "SAMPLE", label: "Sample" },
-  { value: "CUSHION", label: "Cushion" },
-  { value: "TEA_TOWEL", label: "Tea Towel" },
+  { value: "LM",        label: "Linear Meter" },
+  { value: "FQ",        label: "Fat Quarter"  },
+  { value: "SAMPLE",    label: "Sample"       },
+  { value: "CUSHION",   label: "Cushion"      },
+  { value: "TEA_TOWEL", label: "Tea Towel"    },
 ];
 
 const DataFilters = () => {
@@ -93,11 +94,15 @@ const DataFilters = () => {
     setTypeOpen(false);
   };
 
+  const singleTypeOpt = printTypeFilter.length === 1
+    ? PRINT_TYPE_OPTIONS.find((o) => o.value === printTypeFilter[0])
+    : null;
+  const singleTypeDef = singleTypeOpt ? PRINT_TYPE_MAP[singleTypeOpt.value] : null;
   const typeButtonLabel =
     printTypeFilter.length === 0
       ? "All Types"
-      : printTypeFilter.length === 1
-        ? (PRINT_TYPE_OPTIONS.find((o) => o.value === printTypeFilter[0])?.label ?? printTypeFilter[0])
+      : singleTypeOpt
+        ? singleTypeOpt.label
         : `${printTypeFilter.length} types`;
 
   const activeSortOption = SORT_OPTIONS.find((o) => o.value === sortOrder) ?? SORT_OPTIONS[0];
@@ -131,27 +136,30 @@ const DataFilters = () => {
           onClick={() => setTypeOpen((v) => !v)}
         >
           <span className={styles.sort_btn_label}>
-            <HiFunnel />
+            {singleTypeDef
+              ? <singleTypeDef.Icon size={15} style={{ color: singleTypeDef.color }} />
+              : <HiFunnel />
+            }
             {typeButtonLabel}
           </span>
           <span className={styles.sort_chevron}>{typeOpen ? <HiChevronUp /> : <HiChevronDown />}</span>
         </button>
         {typeOpen && (
           <div className={`${styles.sort_dropdown} ${styles.type_dropdown}`}>
-            {printTypeFilter.length > 0 && (
-              <button
-                type="button"
-                className={`${styles.sort_option} ${styles.type_clear_option}`}
-                onClick={handleTypeClear}
-              >
-                <span className={styles.sort_option_content}>
-                  <HiXMark />
-                  Clear filter
-                </span>
-              </button>
-            )}
+            <button
+              type="button"
+              className={`${styles.sort_option} ${printTypeFilter.length === 0 ? styles.sort_option_active : ""}`}
+              onClick={handleTypeClear}
+            >
+              <span className={styles.sort_option_content}>
+                <HiFunnel />
+                All Types
+              </span>
+            </button>
             {PRINT_TYPE_OPTIONS.map((opt) => {
               const isSelected = printTypeFilter.includes(opt.value);
+              const def = PRINT_TYPE_MAP[opt.value];
+              const Icon = def?.Icon;
               return (
                 <button
                   key={opt.value}
@@ -161,8 +169,9 @@ const DataFilters = () => {
                 >
                   <span className={styles.sort_option_content}>
                     <span className={styles.type_option_check}>
-                      {isSelected && <HiCheck />}
+                      {isSelected ? <HiCheck /> : <LuCircle size={12} style={{ opacity: 0.25 }} />}
                     </span>
+                    {Icon && <Icon size={15} style={{ color: isSelected ? def.color : undefined, flexShrink: 0 }} />}
                     {opt.label}
                   </span>
                 </button>

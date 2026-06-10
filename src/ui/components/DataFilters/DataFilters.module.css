@@ -207,14 +207,6 @@
   color: var(--text-primary);
 }
 
-.type_clear_option {
-  color: var(--text-secondary);
-  border-bottom: 1px solid var(--border-grey);
-  border-radius: 8px 8px 0 0;
-  margin-bottom: 4px;
-  padding-bottom: 12px;
-}
-
 .refresh_button {
   height: 36px;
   padding: 0 12px;
