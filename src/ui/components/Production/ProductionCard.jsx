@@ -148,6 +148,10 @@ const ProductionCard = ({ stage: row, history, highlighted, selected, onSelect, 
         ) : row.print_type ? (
           <span className={style.card_type_tag}>{row.print_type}</span>
         ) : null}
+        {row.print_type === "LM"
+          ? row.meters != null && <span className={style.card_type_badge}>{row.meters}m</span>
+          : row.qty != null && <span className={style.card_type_badge}>x{row.qty}</span>
+        }
       </div>
 
       <span className={style.separator} />

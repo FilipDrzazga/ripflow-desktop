@@ -309,7 +309,8 @@ DB tables: `file_stages` (one row per active file), `file_stage_history` (append
 **Polling** — `POLL_INTERVAL = 15s`; `loadStagesAfter(since)` returns `{ success: bool }`. Update `lastPollAt` only on success so a network failure retries the same window on the next tick.
 
 **Workstation roles** (`workstationRole` in electron-store, per-machine):
-- `"cotton"` — scanner advances `printed → heatpress`
+- `"cotton"` — scanner advances `printed → heatpress → qc` in one scan (two sequential DB calls per file; cotton skips manual heatpress step)
+- `"polyester"` — scanner advances `printed → heatpress`
 - `"rollpress"` — scanner advances `heatpress → qc`
 - `"qc"` — scanner opens QCModal; REJECT action in QCModal calls `rollbackFile` (file goes to inbox)
 - `""` (default) — scanner only filters view to scanned batch

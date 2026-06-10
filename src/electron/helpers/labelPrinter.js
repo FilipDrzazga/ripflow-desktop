@@ -12,8 +12,9 @@ const buildLabelHtml = ({ batchName, barcodeBase64 }) => {
   @page { size: 102mm 76mm; margin: 4mm; }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { width: 102mm; background: #fff; color: #000; font-family: Helvetica, Arial, sans-serif; }
-  .batch-name { font-size: 11pt; font-weight: bold; margin-bottom: 4mm; word-break: break-all; }
-  .barcode img { width: 100%; display: block; }
+  .batch-name { font-size: 8pt; font-weight: bold; margin-bottom: 4mm; word-break: break-all; text-align: center; }
+  .barcode { display: flex; justify-content: center; }
+  .barcode img { width: 50%; display: block; }
 </style>
 </head>
 <body>
@@ -89,10 +90,12 @@ export const printBatchLabel = async ({ batchName }) => {
   try {
     const { labelPrinterName } = getSettings();
 
+    const barcodeText = batchName.match(/^PRINTED_(\d{6})/)?.[1] ?? batchName;
+
     const barcodeBuffer = await bwipjs.toBuffer({
       bcid: "code128",
-      text: batchName,
-      scale: 3,
+      text: barcodeText,
+      scale: 1,
       height: 10,
       includetext: false,
     });

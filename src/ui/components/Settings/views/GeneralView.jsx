@@ -6,10 +6,11 @@ import { LuSave, LuChevronDown } from "react-icons/lu";
 import styles from "./SettingsView.module.css";
 
 const ROLE_OPTIONS = [
-  { value: "",          label: "No role / default" },
-  { value: "cotton",    label: "Cotton / Dryer" },
-  { value: "rollpress", label: "Rollpress" },
-  { value: "qc",        label: "QC" },
+  { value: "",           label: "No role / default" },
+  { value: "cotton",     label: "Cotton" },
+  { value: "polyester",  label: "Polyester" },
+  { value: "rollpress",  label: "Rollpress" },
+  { value: "qc",         label: "QC" },
 ];
 
 const RoleDropdown = ({ value, onChange }) => {

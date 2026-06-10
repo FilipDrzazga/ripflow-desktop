@@ -68,6 +68,13 @@ export const initDb = () => {
       // column already exists in older databases — safe to ignore
     }
 
+    // Assign UUIDs to any legacy log rows that have a NULL id (SQLite allows NULLs in TEXT PRIMARY KEY)
+    const nullIdLogs = db.prepare("SELECT rowid FROM logs WHERE id IS NULL").all();
+    if (nullIdLogs.length > 0) {
+      const fixStmt = db.prepare("UPDATE logs SET id = ? WHERE rowid = ?");
+      for (const row of nullIdLogs) fixStmt.run(crypto.randomUUID(), row.rowid);
+    }
+
     // Migrate held_files: add workstation column if missing (per-PC holds)
     let heldFilesNeedsMigration = false;
     try {
@@ -220,14 +227,12 @@ export const initDb = () => {
         is_blossom INTEGER NOT NULL DEFAULT 0
       )
     `);
-    const fabricsCount = db.prepare("SELECT COUNT(*) AS c FROM fabrics").get().c;
-    if (fabricsCount === 0) {
-      const stmtF = db.prepare(
-        "INSERT OR IGNORE INTO fabrics (name, type, xml_width, roll_width, is_velvet, is_linen, is_blossom) VALUES (?, ?, ?, ?, ?, ?, ?)",
-      );
-      for (const f of DEFAULT_FABRICS) {
-        stmtF.run(f.name, f.type, f.xmlWidth, f.rollWidth, f.isVelvet, f.isLinen, f.isBlossom);
-      }
+    // Insert OR IGNORE — seeds on first run, backfills new defaults on existing DBs without overwriting user edits
+    const stmtF = db.prepare(
+      "INSERT OR IGNORE INTO fabrics (name, type, xml_width, roll_width, is_velvet, is_linen, is_blossom) VALUES (?, ?, ?, ?, ?, ?, ?)",
+    );
+    for (const f of DEFAULT_FABRICS) {
+      stmtF.run(f.name, f.type, f.xmlWidth, f.rollWidth, f.isVelvet, f.isLinen, f.isBlossom);
     }
 
     // ── file_stages ───────────────────────────────────────────────────────────
@@ -239,6 +244,8 @@ export const initDb = () => {
         customer_name      TEXT,
         order_id           TEXT,
         material           TEXT,
+        meters             REAL,
+        qty                INTEGER,
         stage              TEXT NOT NULL DEFAULT 'printed',
         prev_stage         TEXT,
         updated_at         TEXT NOT NULL,
@@ -249,9 +256,11 @@ export const initDb = () => {
     `);
     db.exec("CREATE INDEX IF NOT EXISTS idx_file_stages_batch ON file_stages(batch_path)");
     db.exec("CREATE INDEX IF NOT EXISTS idx_file_stages_stage ON file_stages(stage)");
+    try { db.exec("ALTER TABLE file_stages ADD COLUMN meters REAL"); } catch { /* already exists */ }
+    try { db.exec("ALTER TABLE file_stages ADD COLUMN qty INTEGER"); } catch { /* already exists */ }
 
     stmtInsertFileStage = db.prepare(
-      "INSERT OR REPLACE INTO file_stages (file_id, batch_path, print_type, customer_name, order_id, material, stage, prev_stage, updated_at, updated_by, sewing_sent_at, sewing_received_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+      "INSERT OR REPLACE INTO file_stages (file_id, batch_path, print_type, customer_name, order_id, material, meters, qty, stage, prev_stage, updated_at, updated_by, sewing_sent_at, sewing_received_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
     );
     stmtGetFileStage = db.prepare("SELECT * FROM file_stages WHERE file_id = ?");
     stmtGetFileStagesByBatch = db.prepare("SELECT * FROM file_stages WHERE batch_path = ?");
@@ -710,7 +719,7 @@ export const insertFileStage = (row) => {
   try {
     stmtInsertFileStage.run(
       row.file_id, row.batch_path, row.print_type ?? null, row.customer_name ?? null,
-      row.order_id ?? null, row.material ?? null, row.stage ?? "printed", row.prev_stage ?? null,
+      row.order_id ?? null, row.material ?? null, row.meters ?? null, row.qty ?? null, row.stage ?? "printed", row.prev_stage ?? null,
       row.updated_at, row.updated_by ?? null, row.sewing_sent_at ?? null, row.sewing_received_at ?? null,
     );
     _insertStageHistory(row.file_id, row.stage ?? "printed", row.updated_at);

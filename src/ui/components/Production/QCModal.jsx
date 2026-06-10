@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { createPortal } from "react-dom";
+import { LuFileText, LuScissors } from "react-icons/lu";
 import { PRODUCTION_STAGE, QC_ACTION, SEWING_SUGGESTED_TYPES } from "../../../shared/constants";
+import { PRINT_TYPE_MAP } from "@/constants/printTypeMap";
 import style from "./Production.module.css";
 
 const TOGGLE_CYCLE = [QC_ACTION.PASS, QC_ACTION.SEWING];
@@ -26,8 +28,17 @@ const QCModal = ({ batchPath, files, onConfirm, onClose }) => {
     sewingFiles.forEach((f) => {
       newQcChoices.set(f.file_id, { action: QC_ACTION.PASS, fromSewing: true });
     });
-    setQcChoices(newQcChoices);
-    setPhase("qc");
+
+    if (qcFiles.length === 0) {
+      const decisions = [];
+      newQcChoices.forEach(({ action, fromSewing }, fileId) => {
+        decisions.push({ fileId, action, fromSewing, reason: null });
+      });
+      onConfirm(decisions);
+    } else {
+      setQcChoices(newQcChoices);
+      setPhase("qc");
+    }
   };
 
   // ─── QC helpers ───────────────────────────────────────────────────────────
@@ -58,7 +69,8 @@ const QCModal = ({ batchPath, files, onConfirm, onClose }) => {
   const renderQcFileRow = (file) => {
     const choice = qcChoices.get(file.file_id) ?? { action: QC_ACTION.PASS, fromSewing: false };
     const { action, fromSewing } = choice;
-    const sewingSuggested = !fromSewing && SEWING_SUGGESTED_TYPES.includes(file.print_type);
+    const canToggleSewing = !fromSewing && SEWING_SUGGESTED_TYPES.includes(file.print_type);
+    const printTypeDef = PRINT_TYPE_MAP[file.print_type];
 
     const toggleLabel = action === QC_ACTION.PASS
       ? (fromSewing ? "✓ received" : "✓ pass")
@@ -66,19 +78,32 @@ const QCModal = ({ batchPath, files, onConfirm, onClose }) => {
     const toggleClass = action === QC_ACTION.PASS ? style.qc_toggle_pass : style.qc_toggle_sewing;
 
     return (
-      <div key={file.file_id} className={style.qc_file_row}>
-        <div className={style.qc_file_info}>
+      <div key={file.file_id} className={style.card} style={{ margin: "3px 0" }}>
+        {canToggleSewing ? (
           <button type="button" className={`${style.qc_toggle} ${toggleClass}`} onClick={() => toggleQcChoice(file.file_id)}>
             {toggleLabel}
           </button>
-          <span className={style.qc_order}>{file.order_id ?? "—"}</span>
-          <span className={style.qc_customer}>{file.customer_name ?? "—"}</span>
-          {file.print_type && (
-            <span className={`${style.card_type_tag} ${sewingSuggested ? style.qc_sewing_hint : ""}`}>
-              {file.print_type}{sewingSuggested ? " ✨" : ""}
+        ) : (
+          <span className={`${style.qc_toggle} ${style.qc_toggle_pass}`}>{toggleLabel}</span>
+        )}
+        <LuFileText className={style.card_file_icon} />
+        <div className={style.card_info}>
+          <span className={style.card_order}>{file.order_id ?? "—"}</span>
+          <span className={style.card_customer}>{file.customer_name ?? "—"}</span>
+          {printTypeDef ? (
+            <span className={style.card_type_tag}>
+              <printTypeDef.Icon size={16} style={{ color: printTypeDef.color }} />
+              {printTypeDef.label}
             </span>
-          )}
+          ) : file.print_type ? (
+            <span className={style.card_type_tag}>{file.print_type}</span>
+          ) : null}
+          {file.print_type === "LM"
+            ? file.meters != null && <span className={style.card_meters}>{file.meters}m</span>
+            : file.qty != null && <span className={style.card_meters}>{file.qty} szt.</span>
+          }
         </div>
+        {canToggleSewing && <span className={style.qc_sewing_end}><LuScissors size={15} /></span>}
       </div>
     );
   };
@@ -99,35 +124,49 @@ const QCModal = ({ batchPath, files, onConfirm, onClose }) => {
             <h3 className={style.modal_title}>RETURNED FROM SEWING</h3>
             <p className={style.qc_subtitle}>Only showing items returned from sewing. Other files in this batch are already done.</p>
             <div className={style.qc_file_list}>
-              {sewingFiles.map((f) => (
-                <div key={f.file_id} className={style.qc_file_row}>
-                  <div className={style.qc_file_info}>
+              {sewingFiles.map((f) => {
+                const printTypeDef = PRINT_TYPE_MAP[f.print_type];
+                return (
+                  <div key={f.file_id} className={style.card} style={{ margin: "3px 0" }}>
                     <span className={`${style.qc_toggle} ${style.qc_toggle_pass}`}>✓ received</span>
-                    <span className={style.qc_order}>{f.order_id ?? "—"}</span>
-                    <span className={style.qc_customer}>{f.customer_name ?? "—"}</span>
-                    {f.print_type && <span className={style.card_type_tag}>{f.print_type}</span>}
+                    <LuFileText className={style.card_file_icon} />
+                    <div className={style.card_info}>
+                      <span className={style.card_order}>{f.order_id ?? "—"}</span>
+                      <span className={style.card_customer}>{f.customer_name ?? "—"}</span>
+                      {printTypeDef ? (
+                        <span className={style.card_type_tag}>
+                          <printTypeDef.Icon size={16} style={{ color: printTypeDef.color }} />
+                          {printTypeDef.label}
+                        </span>
+                      ) : f.print_type ? (
+                        <span className={style.card_type_tag}>{f.print_type}</span>
+                      ) : null}
+                      {f.print_type === "LM"
+                        ? f.meters != null && <span className={style.card_meters}>{f.meters}m</span>
+                        : f.qty != null && <span className={style.card_meters}>{f.qty} szt.</span>
+                      }
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
             <div className={style.modal_footer}>
               <button type="button" className={style.modal_cancel} onClick={onClose}>Cancel</button>
               <button type="button" className={style.modal_confirm} onClick={handleConfirmSewingReturn}>
-                Confirm Received →
+                Confirm Received
               </button>
             </div>
           </>
         ) : (
           <>
-            <h3 className={style.modal_title}>QC — {batchName}</h3>
+            <h3 className={style.modal_title}>{batchName}</h3>
             <div className={style.qc_file_list}>
               {qcDisplayFiles.map((f) => renderQcFileRow(f))}
             </div>
-            <p className={style.qc_legend}>Legend: ✓ pass &nbsp;✂ sewing</p>
-            <div className={style.modal_footer}>
+<div className={style.modal_footer}>
               <button type="button" className={style.modal_cancel} onClick={onClose}>Cancel</button>
               <button type="button" className={style.modal_confirm} onClick={handleConfirmQC}>
-                Confirm QC →
+                Confirm
               </button>
             </div>
           </>

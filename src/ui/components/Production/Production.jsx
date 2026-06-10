@@ -330,7 +330,7 @@ const Production = () => {
       }
     }
     setSelectedFileIds(new Set());
-    if (count > 0) notify({ type: "Success", title: "Advanced", message: `${count} file(s) advanced.` });
+    if (count > 0) notify({ type: "Success", title: `${count} file${count > 1 ? "s" : ""} moved`, message: "Moved to next stage." });
   };
 
   const handleBulkRollback = async (reason) => {
@@ -377,7 +377,14 @@ const Production = () => {
       const nameMatch = Object.values(productionStages).find(
         (r) => r.batch_path?.split(/[/\\]/).pop() === value,
       );
-      if (nameMatch) resolvedBatchPath = nameMatch.batch_path;
+      if (nameMatch) {
+        resolvedBatchPath = nameMatch.batch_path;
+      } else if (/^\d{6}$/.test(value)) {
+        const tsMatch = Object.values(productionStages).find(
+          (r) => r.batch_path?.split(/[/\\]/).pop().startsWith(`PRINTED_${value}`),
+        );
+        if (tsMatch) resolvedBatchPath = tsMatch.batch_path;
+      }
     }
 
     if (resolvedBatchPath) {
@@ -399,14 +406,38 @@ const Production = () => {
         const now = new Date().toISOString();
         let count = 0;
         for (const f of targets) {
-          const res = await advanceStage(f.file_id, PRODUCTION_STAGE.HEATPRESS, f.stage);
+          const r1 = await advanceStage(f.file_id, PRODUCTION_STAGE.HEATPRESS, PRODUCTION_STAGE.PRINTED);
+          if (!r1?.success) continue;
+          updateStageInStore(f.file_id, { ...f, stage: PRODUCTION_STAGE.HEATPRESS, updated_at: now });
+          addStageHistoryEntry(f.file_id, PRODUCTION_STAGE.HEATPRESS, now);
+          const r2 = await advanceStage(f.file_id, PRODUCTION_STAGE.QC, PRODUCTION_STAGE.HEATPRESS);
+          if (r2?.success) {
+            updateStageInStore(f.file_id, { ...f, stage: PRODUCTION_STAGE.QC, updated_at: now });
+            addStageHistoryEntry(f.file_id, PRODUCTION_STAGE.QC, now);
+            count++;
+          }
+        }
+        if (count > 0) notify({ type: "Success", title: `${count} file${count > 1 ? "s" : ""} moved`, message: "Moved to QC" });
+        return;
+      }
+
+      if (workstationRole === "polyester") {
+        const targets = batchFiles.filter((f) => f.stage === PRODUCTION_STAGE.PRINTED);
+        if (targets.length === 0) {
+          notify({ type: "Warning", title: "Nothing to advance", message: "No files at Printed stage in this batch." });
+          return;
+        }
+        const now = new Date().toISOString();
+        let count = 0;
+        for (const f of targets) {
+          const res = await advanceStage(f.file_id, PRODUCTION_STAGE.HEATPRESS, PRODUCTION_STAGE.PRINTED);
           if (res?.success) {
             updateStageInStore(f.file_id, { ...f, stage: PRODUCTION_STAGE.HEATPRESS, updated_at: now });
             addStageHistoryEntry(f.file_id, PRODUCTION_STAGE.HEATPRESS, now);
             count++;
           }
         }
-        if (count > 0) notify({ type: "Success", title: "Advanced", message: `${count} file(s) → Heat Press` });
+        if (count > 0) notify({ type: "Success", title: `${count} file${count > 1 ? "s" : ""} moved`, message: "Moved to Heat Press" });
         return;
       }
 
@@ -417,16 +448,20 @@ const Production = () => {
           return;
         }
         const now = new Date().toISOString();
-        let count = 0;
+        const advancedIds = new Set();
         for (const f of targets) {
           const res = await advanceStage(f.file_id, PRODUCTION_STAGE.QC, f.stage);
           if (res?.success) {
             updateStageInStore(f.file_id, { ...f, stage: PRODUCTION_STAGE.QC, updated_at: now });
             addStageHistoryEntry(f.file_id, PRODUCTION_STAGE.QC, now);
-            count++;
+            advancedIds.add(f.file_id);
           }
         }
-        if (count > 0) notify({ type: "Success", title: "Advanced", message: `${count} file(s) → QC` });
+        if (advancedIds.size === 0) {
+          notify({ type: "Error", title: "Advance failed", message: "Could not advance files to QC." });
+          return;
+        }
+        notify({ type: "Success", title: "Advanced to QC", message: `${advancedIds.size} file(s) moved to QC.` });
         return;
       }
 
@@ -434,10 +469,35 @@ const Production = () => {
         const qcOrSewing = batchFiles.filter((f) =>
           f.stage === PRODUCTION_STAGE.QC || f.stage === PRODUCTION_STAGE.TO_SEWING,
         );
+
         if (qcOrSewing.length === 0) {
-          notify({ type: "Warning", title: "Nothing to process", message: "No files awaiting QC in this batch." });
+          const heatpressFiles = batchFiles.filter((f) => f.stage === PRODUCTION_STAGE.HEATPRESS);
+          if (heatpressFiles.length === 0) {
+            notify({ type: "Warning", title: "Nothing to process", message: "No files awaiting QC in this batch." });
+            return;
+          }
+          const now = new Date().toISOString();
+          const advancedIds = new Set();
+          for (const f of heatpressFiles) {
+            const res = await advanceStage(f.file_id, PRODUCTION_STAGE.QC, f.stage);
+            if (res?.success) {
+              updateStageInStore(f.file_id, { ...f, stage: PRODUCTION_STAGE.QC, updated_at: now });
+              addStageHistoryEntry(f.file_id, PRODUCTION_STAGE.QC, now);
+              advancedIds.add(f.file_id);
+            }
+          }
+          if (advancedIds.size === 0) {
+            notify({ type: "Error", title: "Advance failed", message: "Could not advance files to QC." });
+            return;
+          }
+          const updatedBatchFiles = batchFiles.map((f) =>
+            advancedIds.has(f.file_id) ? { ...f, stage: PRODUCTION_STAGE.QC } : f,
+          );
+          setQcModalBatch({ batchPath: resolvedBatchPath, files: updatedBatchFiles });
+          setQcModalOpen(true);
           return;
         }
+
         setQcModalBatch({ batchPath: resolvedBatchPath, files: batchFiles });
         setQcModalOpen(true);
         return;
@@ -500,6 +560,16 @@ const Production = () => {
     }
     return true;
   });
+
+  const allFilteredSelected = filtered.length > 0 && filtered.every((r) => selectedFileIds.has(r.file_id));
+
+  const handleSelectAll = () => {
+    if (allFilteredSelected) {
+      setSelectedFileIds(new Set());
+    } else {
+      setSelectedFileIds(new Set(filtered.map((r) => r.file_id)));
+    }
+  };
 
   // Tab counts reflect the current batch filter when active
   const countableRows = batchFilter ? allRows.filter((r) => r.batch_path === batchFilter) : allRows;
@@ -591,31 +661,39 @@ const Production = () => {
         label: isBulk ? (selectedFileIds.size === 1 ? "Rollback this file" : `Rollback ${selectedFileIds.size} files`) : "Rollback",
         icon: <LuCornerUpLeft size={14} />,
         danger: true,
-        children: reasonDefinitions.map((reason) => {
-          const Icon = resolveIcon(reason.iconName);
-          return {
-            id: `rollback-${reason.code}`,
-            label: reason.label,
-            icon: Icon ? <Icon size={14} /> : null,
-            onClick: async () => {
-              if (isBulk) {
-                if (reason.code === "OTHER") {
-                  setOtherReasonText("");
-                  setOtherReasonTarget({ action: "bulk-rollback" });
-                  return;
+        children: (() => {
+          const makeItem = (reason) => {
+            const Icon = resolveIcon(reason.iconName);
+            return {
+              id: `rollback-${reason.code}`,
+              label: reason.label,
+              icon: Icon ? <Icon size={14} /> : null,
+              onClick: async () => {
+                if (isBulk) {
+                  if (reason.code === "OTHER") {
+                    setOtherReasonText("");
+                    setOtherReasonTarget({ action: "bulk-rollback" });
+                    return;
+                  }
+                  await handleBulkRollback({ code: reason.code, label: reason.label });
+                } else {
+                  if (reason.code === "OTHER") {
+                    setOtherReasonText("");
+                    setOtherReasonTarget({ fileId, batchPath, action: "rollback" });
+                    return;
+                  }
+                  await handleRollbackWithReason(fileId, batchPath, { code: reason.code, label: reason.label });
                 }
-                await handleBulkRollback({ code: reason.code, label: reason.label });
-              } else {
-                if (reason.code === "OTHER") {
-                  setOtherReasonText("");
-                  setOtherReasonTarget({ fileId, batchPath, action: "rollback" });
-                  return;
-                }
-                await handleRollbackWithReason(fileId, batchPath, { code: reason.code, label: reason.label });
-              }
-            },
+              },
+            };
           };
-        }),
+          const others = reasonDefinitions.filter((r) => r.code === "OTHER");
+          const rest = reasonDefinitions.filter((r) => r.code !== "OTHER");
+          return [
+            ...rest.map(makeItem),
+            ...(others.length > 0 ? [{ id: "sep-other", separator: true }, ...others.map(makeItem)] : []),
+          ];
+        })(),
       });
     }
 
@@ -655,9 +733,23 @@ const Production = () => {
             <HiMagnifyingGlass className={style.search_icon} />
             <input
               className={style.search_input}
-              placeholder="Search order ID or customer..."
+              placeholder="Search order ID or customer... (Enter to scan)"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key !== "Enter") return;
+                const val = search.trim();
+                if (val.length <= 5) return;
+                const isBatchName = Object.values(productionStages).some(
+                  (r) => r.batch_path?.split(/[/\\]/).pop() === val
+                );
+                const isFileId = !!productionStages[val];
+                const isBatchPath = val.includes("\\") || val.includes("/");
+                if (isBatchName || isFileId || isBatchPath) {
+                  handleScan(val);
+                  setSearch("");
+                }
+              }}
             />
           </div>
           <button type="button" className={style.refresh_btn} onClick={handleRefresh} disabled={isRefreshing}>
@@ -668,10 +760,15 @@ const Production = () => {
 
       {batchFilter && (
         <div className={style.filter_bar}>
-          <span className={style.filter_bar_label}>Batch</span>
+          <span className={style.filter_bar_label}>Batch:</span>
           <button type="button" className={style.batch_chip} onClick={() => setBatchFilter(null)}>
             {batchFilter.split(/[/\\]/).pop()} ×
           </button>
+          {filtered.length > 0 && (
+            <button type="button" className={style.select_all_btn} onClick={handleSelectAll}>
+              {allFilteredSelected ? "Deselect All" : `Select All (${filtered.length})`}
+            </button>
+          )}
         </div>
       )}
 

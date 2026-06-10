@@ -86,7 +86,7 @@ const SessionLogs = () => {
     const q = searchQuery.trim().toLowerCase();
     return logs.filter((log) => {
       if (typeFilter !== "All" && log.type !== typeFilter.toLowerCase()) return false;
-      if (q) return log.message.toLowerCase().includes(q) || log.code.toLowerCase().includes(q);
+      if (q) return log.message?.toLowerCase().includes(q) || log.code?.toLowerCase().includes(q);
       return true;
     });
   }, [logs, searchQuery, typeFilter]);
@@ -146,8 +146,8 @@ const SessionLogs = () => {
             <span>{logs.length === 0 ? "No events yet." : "No results for current filters."}</span>
           </div>
         )}
-        {filtered.map((log) => (
-          <LogEntry key={log.id} log={log} />
+        {filtered.map((log, i) => (
+          <LogEntry key={log.id ?? i} log={log} />
         ))}
       </div>
     </div>

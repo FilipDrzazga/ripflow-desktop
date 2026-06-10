@@ -128,6 +128,7 @@ export const POLY_MATERIALS = new Set(
     "Eco Super Fine Chiffon",
     "Georgette",
     "Faux Silky Satin",
+    "Eco Faux Silky Satin",
     "Eco Taffeta",
     "Eco Chiffon",
     "Stretch Jersey",

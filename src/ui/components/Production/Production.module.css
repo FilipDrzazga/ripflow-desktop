@@ -170,6 +170,28 @@
   flex-shrink: 0;
 }
 
+.select_all_btn {
+  display: flex;
+  align-items: center;
+  padding: 5px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border-grey);
+  background-color: var(--bg-white);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.select_all_btn:hover {
+  background-color: var(--bg-grey-light);
+  color: var(--text-primary);
+  border-color: var(--text-secondary);
+}
+
 .refresh_btn {
   display: flex;
   align-items: center;
@@ -467,7 +489,7 @@
 }
 
 .modal_title {
-  margin: 0 0 16px;
+  margin: 0 0 4px;
   font-size: 15px;
   font-weight: 600;
   color: var(--text-primary);
@@ -530,6 +552,7 @@
   display: flex;
   justify-content: flex-end;
   gap: 10px;
+  margin-top: 20px;
 }
 
 .modal_cancel {
@@ -660,6 +683,29 @@
   background: transparent;
   color: var(--text-secondary);
   font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.card_meters {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.card_type_badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  border-radius: 7px;
+  border: 1px solid var(--border-grey);
+  background-color: var(--bg-grey-light);
+  color: var(--text-secondary);
+  font-size: 11px;
   font-weight: 600;
   white-space: nowrap;
   flex-shrink: 0;
@@ -828,7 +874,7 @@
 .qc_subtitle {
   font-size: 13px;
   color: var(--text-secondary);
-  margin: 0 0 12px;
+  margin: 0 0 20px;
 }
 
 .qc_note {
@@ -847,9 +893,10 @@
 .qc_file_list {
   display: flex;
   flex-direction: column;
-  gap: 2px;
   max-height: 320px;
   overflow-y: auto;
+  padding: 2px 2px 4px;
+  margin-top: 16px;
   margin-bottom: 8px;
 }
 
@@ -887,6 +934,12 @@
 .qc_toggle_pass   { background: #d1fae5; color: #047857; }
 .qc_toggle_sewing { background: #e2d9f3; color: #432874; }
 .qc_toggle_reject { background: #ffe7e5; color: #e63641; }
+
+.qc_sewing_end {
+  margin-left: auto;
+  flex-shrink: 0;
+  color: #432874;
+}
 
 .qc_order {
   font-size: 12px;

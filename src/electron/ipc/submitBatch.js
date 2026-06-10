@@ -92,6 +92,7 @@ export const submitBatch = async (batch) => {
     }
 
     for (const item of batch) {
+      const meters = item.height != null ? Math.round(item.height) / 1000 : null;
       insertFileStage({
         file_id:       path.parse(item.file.name).name,
         batch_path:    batchPath,
@@ -99,6 +100,8 @@ export const submitBatch = async (batch) => {
         customer_name: item.customerName ?? null,
         order_id:      item.orderId ?? null,
         material:      item.material ?? null,
+        meters,
+        qty:           item.qty ?? null,
         stage:         "printed",
         prev_stage:    null,
         updated_at:    now,

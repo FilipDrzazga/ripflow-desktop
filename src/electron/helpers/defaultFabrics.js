@@ -126,6 +126,7 @@ const POLY_NAMES = [
   "Eco Super Fine Chiffon",
   "Georgette",
   "Faux Silky Satin",
+  "Eco Faux Silky Satin",
   "Eco Taffeta",
   "Eco Chiffon",
   "Stretch Jersey",
