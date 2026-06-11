@@ -1,7 +1,7 @@
 {
   "name": "ripflow-desktop",
   "private": true,
-  "version": "1.0.1",
+  "version": "1.0.3",
   "author": "Filip Drzazga",
   "type": "module",
   "main": "src/electron/main.js",
@@ -37,7 +37,8 @@
     "publish": {
       "provider": "github",
       "owner": "FilipDrzazga",
-      "repo": "ripflow-desktop"
+      "repo": "ripflow-desktop",
+      "releaseType": "release"
     }
   },
   "dependencies": {

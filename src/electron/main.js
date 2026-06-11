@@ -1,9 +1,11 @@
 import { app, BrowserWindow, ipcMain, dialog } from "electron";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
+import { createRequire } from "module";
 import process from "process";
 import { registerIpcHandlers } from "./ipc/index.js";
-import { autoUpdater } from "electron-updater";
+const require = createRequire(import.meta.url);
+const { autoUpdater } = require("electron-updater");
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);

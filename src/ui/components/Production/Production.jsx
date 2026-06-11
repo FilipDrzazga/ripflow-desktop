@@ -600,18 +600,6 @@ const Production = () => {
       tab.key === "all" ? countableRows.length : countableRows.filter((r) => r.stage === tab.key).length,
     ]),
   );
-  const printersByStage = useMemo(() => {
-    const map = {};
-    for (const row of countableRows) {
-      if (!row.printer) continue;
-      const key = row.stage;
-      if (!map[key]) map[key] = new Set();
-      map[key].add(row.printer);
-    }
-    map["all"] = new Set(countableRows.map((r) => r.printer).filter(Boolean));
-    return map;
-  }, [countableRows]);
-
   // ─── Context menu options (memoized) ─────────────────────────────────────
 
   const contextMenuOptions = useMemo(() => {

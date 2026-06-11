@@ -2,7 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { PRINTER_COLORS } from "@/constants/printerColors";
 import { PRINT_TYPE_MAP } from "@/constants/printTypeMap";
 import { useStore } from "@/store/useStore";
-import { LuDownload, LuRefreshCw, LuChevronDown, LuChevronUp, LuFilter, LuSearch, LuX } from "react-icons/lu";
+import { LuDownload, LuRefreshCw, LuChevronDown, LuChevronUp, LuFilter, LuSearch, LuX, LuMinus } from "react-icons/lu";
+import { resolveIcon } from "@/constants/rollbackReasonIcons";
 import Summary from "../Summary/Summary";
 import style from "./Details.module.css";
 import { PRINTER } from "../../../../shared/constants";
@@ -52,9 +53,12 @@ const groupByDay = (rows) => {
   return [...map.entries()].sort((a, b) => (b[0] > a[0] ? 1 : -1));
 };
 
+const Empty = () => <LuMinus size={13} className={style.empty_cell} />;
+
 const ProcessBadge = ({ process }) => {
+  if (!process) return <Empty />;
   const colors = PROCESS_BADGE[process];
-  if (!colors) return <span className={style.badge_neutral}>{process || "—"}</span>;
+  if (!colors) return <span className={style.badge_neutral}>{process}</span>;
   return (
     <span className={style.badge} style={{ background: colors.bg, color: colors.color }}>
       {process}
@@ -63,7 +67,7 @@ const ProcessBadge = ({ process }) => {
 };
 
 const PrinterBadge = ({ printer }) => {
-  if (!printer) return <span className={style.badge_neutral}>—</span>;
+  if (!printer) return <Empty />;
   const colors = PRINTER_COLORS[printer] || { bg: "#f1f1f1", color: "#616161" };
   return (
     <span className={style.badge} style={{ background: colors.bg, color: colors.color }}>
@@ -74,7 +78,7 @@ const PrinterBadge = ({ printer }) => {
 
 const TypeBadge = ({ printType }) => {
   const def = PRINT_TYPE_MAP[printType];
-  if (!def) return <span className={style.badge_neutral}>—</span>;
+  if (!def) return <Empty />;
   return (
     <span className={style.type_badge}>
       <def.Icon style={{ fontSize: 14, color: def.color }} />
@@ -87,6 +91,10 @@ const Details = ({ details, stats, isLoading, period, onPeriodChange, onRefresh 
   const reasonDefinitions = useStore((s) => s.reasonDefinitions);
   const reasonLabels = useMemo(
     () => Object.fromEntries(reasonDefinitions.map((r) => [r.code, r.label])),
+    [reasonDefinitions],
+  );
+  const reasonIconMap = useMemo(
+    () => Object.fromEntries(reasonDefinitions.map((r) => [r.code, resolveIcon(r.iconName)])),
     [reasonDefinitions],
   );
   const getDisplayReason = (code, label) => {
@@ -293,47 +301,41 @@ const Details = ({ details, stats, isLoading, period, onPeriodChange, onRefresh 
             </button>
           </div>
 
-          {/* Table */}
+          {/* Cards */}
           <div className={style.content}>
-          {isEmpty ? (
-            <div className={style.empty_state}>No rollbacks found for selected filters</div>
-          ) : (
-            <div className={style.table_wrapper}>
-              <table className={style.table}>
-                <thead>
-                  <tr>
-                    <th>Date</th>
-                    <th>Order ID</th>
-                    <th>Customer</th>
-                    <th>Fabric</th>
-                    <th>Process</th>
-                    <th>Printer</th>
-                    <th>Reason</th>
-                    <th>Type</th>
-                    <th>Meters</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {splitByDay && dayGroups
-                    ? dayGroups.map(([key, rows]) => (
-                        <>
-                          <tr key={`day-${key}`} className={style.day_separator}>
-                            <td colSpan={9}>
-                              <span className={style.day_label}>
-                                {formatDateKey(rows[0]?.timestamp)} — {rows.length} entries
-                              </span>
-                            </td>
-                          </tr>
-                          {rows.map((row) => (
-                            <TableRow key={row.id} row={row} getDisplayReason={getDisplayReason} />
-                          ))}
-                        </>
-                      ))
-                    : filtered.map((row) => <TableRow key={row.id} row={row} getDisplayReason={getDisplayReason} />)}
-                </tbody>
-              </table>
-            </div>
-          )}
+            {isEmpty ? (
+              <div className={style.empty_state}>No rollbacks found for selected filters</div>
+            ) : (
+              <div className={style.cards_wrapper}>
+                <div className={style.col_header}>
+                  <span>Date</span>
+                  <span>Order ID</span>
+                  <span>Customer</span>
+                  <span>Fabric</span>
+                  <span>Process</span>
+                  <span>Printer</span>
+                  <span>Reason</span>
+                  <span>Type</span>
+                  <span>Meters</span>
+                </div>
+                {splitByDay && dayGroups
+                  ? dayGroups.map(([key, rows]) => (
+                      <div key={`day-${key}`}>
+                        <div className={style.day_header}>
+                          <span className={style.day_label}>
+                            {formatDateKey(rows[0]?.timestamp)} - {rows.length} entries
+                          </span>
+                        </div>
+                        {rows.map((row) => (
+                          <AnalyticsCard key={row.id} row={row} getDisplayReason={getDisplayReason} reasonIconMap={reasonIconMap} />
+                        ))}
+                      </div>
+                    ))
+                  : filtered.map((row) => (
+                      <AnalyticsCard key={row.id} row={row} getDisplayReason={getDisplayReason} reasonIconMap={reasonIconMap} />
+                    ))}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -341,22 +343,24 @@ const Details = ({ details, stats, isLoading, period, onPeriodChange, onRefresh 
   );
 };
 
-const TableRow = ({ row, getDisplayReason }) => (
-  <tr className={style.table_row}>
-    <td className={style.td_date}>{formatDate(row.timestamp)}</td>
-    <td className={style.td_mono}>{row.order_id || "—"}</td>
-    <td>{row.customer || "—"}</td>
-    <td className={style.td_fabric}>{row.fabric || "—"}</td>
-    <td>
-      <ProcessBadge process={row.process} />
-    </td>
-    <td>
-      <PrinterBadge printer={row.printer} />
-    </td>
-    <td className={style.td_reason}>{getDisplayReason(row.reason_code, row.reason_label)}</td>
-    <td><TypeBadge printType={row.print_type} /></td>
-    <td className={style.td_meters}>{row.meters != null ? `${row.meters.toFixed(2)} m` : "—"}</td>
-  </tr>
-);
+const AnalyticsCard = ({ row, getDisplayReason, reasonIconMap }) => {
+  const Icon = reasonIconMap?.[row.reason_code];
+  return (
+  <div className={style.card}>
+    <span className={style.col_date}>{formatDate(row.timestamp) || <Empty />}</span>
+    <span className={style.col_order}>{row.order_id || <Empty />}</span>
+    <span className={style.col_customer}>{row.customer || <Empty />}</span>
+    <span className={style.col_fabric}>{row.fabric || <Empty />}</span>
+    <span className={style.col_cell}><ProcessBadge process={row.process} /></span>
+    <span className={style.col_cell}><PrinterBadge printer={row.printer} /></span>
+    <span className={style.col_reason}>
+      {Icon && <Icon size={13} className={style.col_reason_icon} />}
+      {getDisplayReason(row.reason_code, row.reason_label)}
+    </span>
+    <span className={style.col_cell}><TypeBadge printType={row.print_type} /></span>
+    <span className={style.col_meters}>{row.meters != null ? `${row.meters.toFixed(2)} m` : <Empty />}</span>
+  </div>
+  );
+};
 
 export default Details;

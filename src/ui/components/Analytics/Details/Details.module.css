@@ -397,73 +397,157 @@
   color: var(--text-secondary);
 }
 
-/* === TABLE VIEW === */
-.table_wrapper {
+/* === COLUMN TEMPLATE (shared between header and cards) === */
+:root {
+  --analytics-cols: 115px 90px 1fr 1fr 96px 72px 1.4fr 68px 65px;
+  --analytics-pad: 0 16px;
+}
+
+/* === CARDS WRAPPER === */
+.cards_wrapper {
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 40px;
+}
+
+/* === COLUMN HEADER (sticky at top of scroll area) === */
+.col_header {
+  display: grid;
+  grid-template-columns: var(--analytics-cols);
+  align-items: center;
+  gap: 0 10px;
+  padding: var(--analytics-pad);
+  height: 44px;
+  position: sticky;
+  top: 0;
+  z-index: 2;
   background: var(--bg-white);
-  border-radius: 16px;
+  border: 1px solid var(--border-grey);
+  border-radius: 10px 10px 0 0;
   box-shadow: var(--card-shadow);
-  overflow: hidden;
+  margin: 0 8px;
+  flex-shrink: 0;
 }
 
-.table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 13px;
-}
-
-.table thead th {
-  padding: 10px 14px;
-  text-align: left;
+.col_header span {
   font-size: 11px;
   font-weight: 700;
   color: var(--text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  background: var(--bg-grey-light);
-  border-bottom: 1px solid var(--border-grey);
   white-space: nowrap;
 }
 
-.table_row td {
-  padding: 9px 14px;
-  border-bottom: 1px solid var(--border-grey);
-  color: var(--text-primary);
-  vertical-align: middle;
+/* === DAY HEADER (sticky below col header) === */
+.day_header {
+  padding: 5px 16px;
+  background: var(--bg-grey);
+  position: sticky;
+  top: 44px;
+  z-index: 1;
 }
 
-.table_row:last-child td {
-  border-bottom: none;
-}
-
-.table_row:hover td {
-  background: var(--bg-grey-light);
-}
-
-.td_date {
-  white-space: nowrap;
-  font-size: 12px;
+.day_label {
+  font-size: 11px;
+  font-weight: 700;
   color: var(--text-secondary);
-  width: 130px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
-.td_mono {
-  font-family: "Courier New", Courier, monospace;
-  font-size: 12px;
-  width: 90px;
+/* === ANALYTICS CARD === */
+.card {
+  display: grid;
+  grid-template-columns: var(--analytics-cols);
+  align-items: center;
+  gap: 0 10px;
+  margin: 4px 8px;
+  padding: var(--analytics-pad);
+  height: 44px;
+  border-radius: 10px;
+  background: var(--bg-white);
+  box-shadow: var(--card-shadow);
+  flex-shrink: 0;
+  transition: background-color 0.15s ease;
 }
 
-.td_fabric {
-  max-width: 160px;
+.card:hover {
+  background-color: var(--bg-grey-light);
+}
+
+/* === COLUMN CELLS === */
+.col_date {
+  font-size: 11px;
+  color: var(--text-secondary);
+  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
-.td_reason {
+.col_order {
+  font-size: 13px;
   font-weight: 600;
-  color: #b45309;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
+.col_customer {
+  font-size: 13px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.col_fabric {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.col_cell {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.col_reason {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.col_reason_icon {
+  flex-shrink: 0;
+  color: var(--text-secondary);
+}
+
+.empty_cell {
+  color: var(--text-secondary);
+  opacity: 0.3;
+  flex-shrink: 0;
+}
+
+.col_meters {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  text-align: right;
+}
+
+/* === BADGES === */
 .type_badge {
   display: inline-flex;
   align-items: center;
@@ -474,30 +558,6 @@
   white-space: nowrap;
 }
 
-.td_meters {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-primary);
-  white-space: nowrap;
-  text-align: right;
-}
-
-/* === DAY SEPARATOR (table) === */
-.day_separator td {
-  padding: 6px 14px;
-  background: var(--bg-grey);
-  border-bottom: 1px solid var(--border-grey);
-}
-
-.day_label {
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-/* === BADGES === */
 .badge {
   display: inline-flex;
   align-items: center;
