@@ -82,7 +82,7 @@ const BatchRow = ({
                   type="button"
                   className={`${style.action_btn} ${style.action_label}`}
                   title="Print label"
-                  onClick={(e) => { e.stopPropagation(); onPrintLabel(batch.name); }}
+                  onClick={(e) => { e.stopPropagation(); onPrintLabel(batch.name, batch.printLengthM); }}
                 >
                   <LuPrinter size={16} />
                 </button>

@@ -98,6 +98,15 @@
   color: #92400e;
 }
 
+.menu_item_sewing {
+  color: #432874;
+}
+
+.menu_item_sewing:hover {
+  background-color: #e2d9f3;
+  color: #432874;
+}
+
 .pair_row {
   display: flex;
   gap: 4px;

@@ -6,7 +6,7 @@ export const getStagesAfter                = (since)                          =>
 export const advanceStage                  = (fileId, newStage, expectedStage) => withTimeout(window.api.stage.advance(fileId, newStage, expectedStage ?? null), 10_000, "stage:advance");
 export const rejectStage                   = (fileId, reason, expectedStage)   => withTimeout(window.api.stage.reject(fileId, reason, expectedStage ?? null),    10_000, "stage:reject");
 export const overrideStage                 = (fileId)                         => withTimeout(window.api.stage.override(fileId),                   10_000, "stage:override");
-export const setSewingSent                 = (fileId, expectedStage)          => withTimeout(window.api.stage.setSewingSent(fileId, expectedStage ?? null),       10_000, "stage:setSewingSent");
+export const setSewingSent                 = (fileId, expectedStage, sewingCompany) => withTimeout(window.api.stage.setSewingSent(fileId, expectedStage ?? null, sewingCompany ?? null), 10_000, "stage:setSewingSent");
 export const setSewingReceived             = (fileId, expectedStage)          => withTimeout(window.api.stage.setSewingReceived(fileId, expectedStage ?? null),   10_000, "stage:setSewingReceived");
 export const insertProductionRollbackReason = (data)                          => withTimeout(window.api.stage.insertRollbackReason(data),          5_000,  "stage:insertRollbackReason");
 export const printBatchLabel               = (data)                           => withTimeout(window.api.label.printBatch(data),                   30_000, "label:printBatch");

@@ -37,7 +37,7 @@ export const STAGE_NEXT = {
   printed:     "heatpress",
   heatpress:   "qc",
   qc:          "packed",
-  from_sewing: "qc",
+  from_sewing: "packed",
   packed:      "shipped",
 };
 
@@ -75,9 +75,10 @@ export const STAGE_COLOR = {
 };
 
 export const QC_ACTION = {
-  PASS:   "pass",
-  REJECT: "reject",
-  SEWING: "sewing",
+  PASS:    "pass",
+  REJECT:  "reject",
+  SEWING:  "sewing",
+  PENDING: "pending",
 };
 
 export const SEWING_SUGGESTED_TYPES = ["CUSHION", "TEA_TOWEL"];

@@ -1,0 +1,9 @@
+[
+  {
+    "version": "1.0.1",
+    "date": "2025-06-11",
+    "changes": [
+      { "text": "Pierwsza wersja produkcyjna", "clients": ["all"] }
+    ]
+  }
+]

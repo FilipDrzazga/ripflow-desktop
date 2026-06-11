@@ -6,6 +6,8 @@ import { toIpcError } from "../helpers/ipcError.js";
 import { insertFileStage } from "../helpers/db.js";
 import { getSettings } from "../helpers/getSettings.js";
 import { printBatchLabel } from "../helpers/labelPrinter.js";
+import { getMaterialType } from "../helpers/getMaterialType.js";
+import { estimatePrintLength } from "../../shared/estimatePrintLength.js";
 
 const toSubmitBatchError = (error, stage, fallbackTitle = "Batch submission failed") =>
   toIpcError(error, stage, fallbackTitle);
@@ -82,12 +84,15 @@ export const submitBatch = async (batch) => {
     if (getSettings().labelPrintMode !== "manual") {
       const printerMatch = batchName.match(/-(DGEN|YOKO|YUMI)$/i);
       const batchPrinter = printerMatch ? printerMatch[1].toUpperCase() : "UNKNOWN";
+      const parsedForLength = batch.map((item) => ({ ...item, materialType: getMaterialType(item.material) }));
+      const { fixedTotalLengthM } = estimatePrintLength(parsedForLength);
       printBatchLabel({
         batchPath,
         batchName,
         printer: batchPrinter,
         fileCount: batch.length,
         material: batch.length === 1 ? (batch[0].material ?? "Mixed") : "Mixed",
+        totalMeters: fixedTotalLengthM,
       }).catch((err) => console.error("[submitBatch] printBatchLabel failed:", err));
     }
 

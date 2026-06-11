@@ -13,7 +13,7 @@ const resolveIcon = (option) => {
   return null;
 };
 
-const ContextMenu = ({ id, anchorX, anchorY, options, onClose, onBackdropContextMenu }) => {
+const ContextMenu = ({ id, anchorX, anchorY, options, onClose, onBackdropContextMenu, zIndex }) => {
   const menuRef = useRef(null);
   const submenuRef = useRef(null);
   const [activeSubmenu, setActiveSubmenu] = useState(null);
@@ -75,6 +75,7 @@ const ContextMenu = ({ id, anchorX, anchorY, options, onClose, onBackdropContext
     <>
       <div
         className={style.backdrop}
+        style={zIndex ? { zIndex: zIndex - 1 } : undefined}
         onPointerDown={(event) => {
           event.preventDefault();
           event.stopPropagation();
@@ -96,7 +97,7 @@ const ContextMenu = ({ id, anchorX, anchorY, options, onClose, onBackdropContext
         ref={menuRef}
         id={id}
         className={style.menu}
-        style={{ left: `${anchorX}px`, top: `${anchorY}px` }}
+        style={{ left: `${anchorX}px`, top: `${anchorY}px`, ...(zIndex ? { zIndex } : {}) }}
         role="menu"
         aria-label="Item actions"
       >
@@ -141,7 +142,7 @@ const ContextMenu = ({ id, anchorX, anchorY, options, onClose, onBackdropContext
               >
                 <button
                   type="button"
-                  className={`${style.menu_item} ${style.hasSubmenu} ${option.danger ? style.menu_item_danger : ""} ${option.advance ? style.menu_item_advance : ""} ${option.amber ? style.menu_item_amber : ""} ${option.disabled ? style.menu_item_disabled : ""}`}
+                  className={`${style.menu_item} ${style.hasSubmenu} ${option.danger ? style.menu_item_danger : ""} ${option.advance ? style.menu_item_advance : ""} ${option.amber ? style.menu_item_amber : ""} ${option.sewing ? style.menu_item_sewing : ""} ${option.disabled ? style.menu_item_disabled : ""}`}
                   role="menuitem"
                   aria-haspopup="true"
                   aria-expanded={activeSubmenu === option.id}
@@ -182,7 +183,7 @@ const ContextMenu = ({ id, anchorX, anchorY, options, onClose, onBackdropContext
             <button
               key={option.id}
               type="button"
-              className={`${style.menu_item} ${option.danger ? style.menu_item_danger : ""} ${option.advance ? style.menu_item_advance : ""} ${option.amber ? style.menu_item_amber : ""} ${option.disabled ? style.menu_item_disabled : ""}`}
+              className={`${style.menu_item} ${option.danger ? style.menu_item_danger : ""} ${option.advance ? style.menu_item_advance : ""} ${option.amber ? style.menu_item_amber : ""} ${option.sewing ? style.menu_item_sewing : ""} ${option.disabled ? style.menu_item_disabled : ""}`}
               onClick={option.onClick}
               role="menuitem"
             >

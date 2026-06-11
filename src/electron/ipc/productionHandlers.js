@@ -100,10 +100,10 @@ export function registerProductionHandlers() {
     }
   });
 
-  ipcMain.handle("stage:setSewingSent", (_event, { fileId, expectedStage }) => {
+  ipcMain.handle("stage:setSewingSent", (_event, { fileId, expectedStage, sewingCompany }) => {
     try {
       const { workstationName } = getSettings();
-      setSewingSent(fileId, workstationName, expectedStage ?? null);
+      setSewingSent(fileId, workstationName, expectedStage ?? null, sewingCompany ?? null);
       return { success: true };
     } catch (err) {
       return { success: false, error: err.message };

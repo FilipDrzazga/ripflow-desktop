@@ -40,6 +40,7 @@ const BatchHistory = () => {
   const setBatchDays = useStore((state) => state.setBatchDays);
   const reasonDefinitions = useStore((state) => state.reasonDefinitions);
   const refreshFiles = useStore((state) => state.refreshFiles);
+  const removeStageFromStore = useStore((state) => state.removeStageFromStore);
   const [dayGroups, setDayGroups] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -68,8 +69,8 @@ const BatchHistory = () => {
     });
   }, []);
 
-  const handlePrintLabel = useCallback(async (batchName) => {
-    const res = await printBatchLabel({ batchName });
+  const handlePrintLabel = useCallback(async (batchName, totalMeters) => {
+    const res = await printBatchLabel({ batchName, totalMeters: totalMeters ?? null });
     if (res?.success) {
       notify({ type: "Success", title: "Label sent", message: `Label for ${batchName} sent to printer.` });
     } else {
@@ -133,6 +134,10 @@ const BatchHistory = () => {
             }),
           })),
         );
+        succeededFiles.forEach(({ filePath: fp }) => {
+          const fn = fp.replace(/\\/g, "/").split("/").pop();
+          removeStageFromStore(fn.replace(/\.[^.]+$/, ""));
+        });
         refreshFiles();
       }
 
@@ -482,6 +487,7 @@ const BatchHistory = () => {
               }),
             })),
           );
+          removeStageFromStore(fileId);
           refreshFiles();
           searchInputRef.current?.focus();
         } else {
@@ -534,6 +540,10 @@ const BatchHistory = () => {
               totalFiles: day.batches.reduce((s, b) => s + (b.path === batchPath ? 0 : b.fileCount), 0),
             })),
           );
+          const allStages = useStore.getState().productionStages;
+          Object.keys(allStages)
+            .filter((id) => allStages[id].batch_path === batchPath)
+            .forEach((id) => removeStageFromStore(id));
           refreshFiles();
           searchInputRef.current?.focus();
         } else {

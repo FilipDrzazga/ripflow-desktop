@@ -3,12 +3,15 @@ import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 import process from "process";
 import { registerIpcHandlers } from "./ipc/index.js";
+import { autoUpdater } from "electron-updater";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-const mainWindow = () => {
-  const win = new BrowserWindow({
+let win = null;
+
+const createWindow = () => {
+  win = new BrowserWindow({
     width: 1280,
     height: 800,
     minWidth: 960,
@@ -50,20 +53,41 @@ const mainWindow = () => {
     win.show();
   });
 
-  // DEV: Vite
   if (!app.isPackaged) {
     win.loadURL("http://localhost:5173");
     win.webContents.openDevTools();
   } else {
-    // PROD: po buildzie Vite -> dist/index.html
     win.loadFile(join(app.getAppPath(), "dist/index.html"));
   }
 };
 
 app.whenReady().then(() => {
-  // Menu.setApplicationMenu(null);
   registerIpcHandlers();
-  mainWindow();
+  createWindow();
+
+  autoUpdater.autoDownload = true;
+  autoUpdater.autoInstallOnAppQuit = true;
+
+  autoUpdater.on("update-available", (info) => {
+    win?.webContents.send("update:available", info.version);
+  });
+  autoUpdater.on("download-progress", (progress) => {
+    win?.webContents.send("update:progress", Math.floor(progress.percent));
+  });
+  autoUpdater.on("update-downloaded", () => {
+    win?.webContents.send("update:ready");
+  });
+  autoUpdater.on("error", (err) => {
+    win?.webContents.send("update:error", err.message);
+  });
+
+  if (app.isPackaged) {
+    setTimeout(() => autoUpdater.checkForUpdates(), 3000);
+  }
+
+  ipcMain.handle("app:getVersion", () => app.getVersion());
+  ipcMain.handle("update:check", () => autoUpdater.checkForUpdates());
+  ipcMain.handle("update:install", () => autoUpdater.quitAndInstall());
 });
 
 app.on("window-all-closed", () => {

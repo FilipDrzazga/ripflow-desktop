@@ -2,8 +2,11 @@ import { BrowserWindow } from "electron";
 import bwipjs from "bwip-js";
 import { getSettings } from "./getSettings.js";
 
-const buildLabelHtml = ({ batchName, barcodeBase64 }) => {
+const buildLabelHtml = ({ batchName, barcodeBase64, totalMeters }) => {
   const displayName = batchName.length > 48 ? `${batchName.slice(0, 45)}…` : batchName;
+  const metersHtml = totalMeters != null
+    ? `<div class="meters">${Number(totalMeters).toFixed(2)} m</div>`
+    : "";
   return `<!DOCTYPE html>
 <html>
 <head>
@@ -12,14 +15,16 @@ const buildLabelHtml = ({ batchName, barcodeBase64 }) => {
   @page { size: 102mm 76mm; margin: 4mm; }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { width: 102mm; background: #fff; color: #000; font-family: Helvetica, Arial, sans-serif; }
-  .batch-name { font-size: 8pt; font-weight: bold; margin-bottom: 4mm; word-break: break-all; text-align: center; }
+  .batch-name { font-size: 11pt; font-weight: bold; margin-bottom: 4mm; word-break: break-all; text-align: center; }
   .barcode { display: flex; justify-content: center; }
   .barcode img { width: 50%; display: block; }
+  .meters { font-size: 18pt; font-weight: bold; text-align: center; margin-top: 3mm; }
 </style>
 </head>
 <body>
   <div class="batch-name">${displayName}</div>
   <div class="barcode"><img src="data:image/png;base64,${barcodeBase64}"></div>
+  ${metersHtml}
 </body>
 </html>`;
 };
@@ -86,7 +91,7 @@ const printHtml = (html, labelPrinterName) =>
     });
   });
 
-export const printBatchLabel = async ({ batchName }) => {
+export const printBatchLabel = async ({ batchName, totalMeters = null }) => {
   try {
     const { labelPrinterName } = getSettings();
 
@@ -101,7 +106,7 @@ export const printBatchLabel = async ({ batchName }) => {
     });
 
     const barcodeBase64 = barcodeBuffer.toString("base64");
-    const html = buildLabelHtml({ batchName, barcodeBase64 });
+    const html = buildLabelHtml({ batchName, barcodeBase64, totalMeters });
     const printError = await printHtml(html, labelPrinterName);
 
     if (printError) {

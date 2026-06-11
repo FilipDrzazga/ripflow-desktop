@@ -81,32 +81,29 @@ export const rollbackBatchFromHistory = async ({ batchPath, reason } = {}) => {
 
     if (reason) {
       const workstation = getSettings().workstationName;
-      const parsedFiles = pdfNames
-        .map((name) => {
-          const p = parsePrintFileName(name);
-          if (!p) return null;
-          return { ...p, materialType: p.material ? getMaterialType(p.material) : "Unknown" };
-        })
-        .filter(Boolean);
-      const firstParsed = parsedFiles[0] ?? null;
-      const fabric = firstParsed?.material ?? null;
-      const metersResult = parsedFiles.length > 0
-        ? estimatePrintLength(parsedFiles, { globals: getCachedGlobals(), fabrics: getCachedFabrics() })
-        : null;
-      insertRollbackReason({
-        id: crypto.randomUUID(),
-        fileId: null,
-        batchPath: validatedBatchPath,
-        reasonCode: reason.code,
-        reasonLabel: reason.label,
-        workstation,
-        orderId: null,
-        customer: null,
-        fabric,
-        process: fabric ? getMaterialType(fabric) : null,
-        printType: null,
-        meters: metersResult?.fixedTotalLengthM ?? null,
-      });
+      for (const pdfName of pdfNames) {
+        const fileId = pdfName.replace(/\.[^.]+$/, "");
+        const p = parsePrintFileName(pdfName);
+        const parsed = p ? { ...p, materialType: p.material ? getMaterialType(p.material) : "Unknown" } : null;
+        const fileFabric = parsed?.material ?? null;
+        const metersResult = parsed
+          ? estimatePrintLength([parsed], { globals: getCachedGlobals(), fabrics: getCachedFabrics() })
+          : null;
+        insertRollbackReason({
+          id: crypto.randomUUID(),
+          fileId,
+          batchPath: validatedBatchPath,
+          reasonCode: reason.code,
+          reasonLabel: reason.label,
+          workstation,
+          orderId: parsed?.orderId ?? null,
+          customer: parsed?.customerName ?? null,
+          fabric: fileFabric,
+          process: fileFabric ? getMaterialType(fileFabric) : null,
+          printType: parsed?.printTypeCode ?? null,
+          meters: metersResult?.fixedTotalLengthM ?? null,
+        });
+      }
     }
   } catch (err) {
     result.errors = [toError(err, err.title || "Rollback failed")];

@@ -258,9 +258,10 @@ export const initDb = () => {
     db.exec("CREATE INDEX IF NOT EXISTS idx_file_stages_stage ON file_stages(stage)");
     try { db.exec("ALTER TABLE file_stages ADD COLUMN meters REAL"); } catch { /* already exists */ }
     try { db.exec("ALTER TABLE file_stages ADD COLUMN qty INTEGER"); } catch { /* already exists */ }
+    try { db.exec("ALTER TABLE file_stages ADD COLUMN sewing_company TEXT"); } catch { /* already exists */ }
 
     stmtInsertFileStage = db.prepare(
-      "INSERT OR REPLACE INTO file_stages (file_id, batch_path, print_type, customer_name, order_id, material, meters, qty, stage, prev_stage, updated_at, updated_by, sewing_sent_at, sewing_received_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+      "INSERT OR REPLACE INTO file_stages (file_id, batch_path, print_type, customer_name, order_id, material, meters, qty, stage, prev_stage, updated_at, updated_by, sewing_sent_at, sewing_received_at, sewing_company) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
     );
     stmtGetFileStage = db.prepare("SELECT * FROM file_stages WHERE file_id = ?");
     stmtGetFileStagesByBatch = db.prepare("SELECT * FROM file_stages WHERE batch_path = ?");
@@ -270,7 +271,7 @@ export const initDb = () => {
     stmtOverrideFileStage = db.prepare("UPDATE file_stages SET stage = 'overridden', updated_at = ?, updated_by = ? WHERE file_id = ?");
     stmtClearFileStage = db.prepare("DELETE FROM file_stages WHERE file_id = ?");
     stmtClearFileStagesByBatch = db.prepare("DELETE FROM file_stages WHERE batch_path = ?");
-    stmtSetSewingSent = db.prepare("UPDATE file_stages SET stage = 'to_sewing', sewing_sent_at = ?, updated_at = ?, updated_by = ? WHERE file_id = ?");
+    stmtSetSewingSent = db.prepare("UPDATE file_stages SET stage = 'to_sewing', sewing_sent_at = ?, sewing_company = ?, updated_at = ?, updated_by = ? WHERE file_id = ?");
     stmtSetSewingReceived = db.prepare("UPDATE file_stages SET stage = 'from_sewing', sewing_received_at = ?, updated_at = ?, updated_by = ? WHERE file_id = ?");
 
     // ── file_stage_history ────────────────────────────────────────────────────
@@ -289,7 +290,7 @@ export const initDb = () => {
     stmtClearStageHistoryByBatch  = db.prepare("DELETE FROM file_stage_history WHERE file_id IN (SELECT file_id FROM file_stages WHERE batch_path = ?)");
     stmtAdvanceFileStageGuarded  = db.prepare("UPDATE file_stages SET stage = ?, updated_at = ?, updated_by = ? WHERE file_id = ? AND stage = ?");
     stmtRejectFileStageGuarded   = db.prepare("UPDATE file_stages SET prev_stage = stage, stage = 'rejected', updated_at = ?, updated_by = ? WHERE file_id = ? AND stage = ?");
-    stmtSetSewingSentGuarded     = db.prepare("UPDATE file_stages SET stage = 'to_sewing', sewing_sent_at = ?, updated_at = ?, updated_by = ? WHERE file_id = ? AND stage = ?");
+    stmtSetSewingSentGuarded     = db.prepare("UPDATE file_stages SET stage = 'to_sewing', sewing_sent_at = ?, sewing_company = ?, updated_at = ?, updated_by = ? WHERE file_id = ? AND stage = ?");
     stmtSetSewingReceivedGuarded = db.prepare("UPDATE file_stages SET stage = 'from_sewing', sewing_received_at = ?, updated_at = ?, updated_by = ? WHERE file_id = ? AND stage = ?");
     stmtGetFileStagesAfter       = db.prepare("SELECT * FROM file_stages WHERE updated_at > ? ORDER BY updated_at ASC");
   } catch (err) {
@@ -720,7 +721,7 @@ export const insertFileStage = (row) => {
     stmtInsertFileStage.run(
       row.file_id, row.batch_path, row.print_type ?? null, row.customer_name ?? null,
       row.order_id ?? null, row.material ?? null, row.meters ?? null, row.qty ?? null, row.stage ?? "printed", row.prev_stage ?? null,
-      row.updated_at, row.updated_by ?? null, row.sewing_sent_at ?? null, row.sewing_received_at ?? null,
+      row.updated_at, row.updated_by ?? null, row.sewing_sent_at ?? null, row.sewing_received_at ?? null, row.sewing_company ?? null,
     );
     _insertStageHistory(row.file_id, row.stage ?? "printed", row.updated_at);
   } catch (err) {
@@ -751,17 +752,23 @@ export const getFileStagesByBatch = (batchPath) => {
 export const getFileStagesAfter = (since) => {
   if (!stmtGetFileStagesAfter) return [];
   try {
-    return stmtGetFileStagesAfter.all(since);
+    return stmtGetFileStagesAfter.all(since).map(addPrinterToStageRow);
   } catch (err) {
     console.error("[db] getFileStagesAfter failed:", err);
     return [];
   }
 };
 
+const addPrinterToStageRow = (row) => {
+  const batchFolder = row.batch_path ? row.batch_path.split(/[/\\]/).pop() : "";
+  const printerMatch = batchFolder.match(PRINTER_RE);
+  return { ...row, printer: printerMatch ? printerMatch[1].toUpperCase() : null };
+};
+
 export const getAllFileStages = () => {
   if (!stmtGetAllFileStages) return [];
   try {
-    return stmtGetAllFileStages.all();
+    return stmtGetAllFileStages.all().map(addPrinterToStageRow);
   } catch (err) {
     console.error("[db] getAllFileStages failed:", err);
     return [];
@@ -827,13 +834,13 @@ export const clearFileStagesByBatch = (batchPath) => {
   }
 };
 
-export const setSewingSent = (fileId, updatedBy, expectedStage) => {
+export const setSewingSent = (fileId, updatedBy, expectedStage, sewingCompany) => {
   if (!stmtSetSewingSent) return null;
   try {
     const now = new Date().toISOString();
     const result = expectedStage
-      ? stmtSetSewingSentGuarded.run(now, now, updatedBy ?? null, fileId, expectedStage)
-      : stmtSetSewingSent.run(now, now, updatedBy ?? null, fileId);
+      ? stmtSetSewingSentGuarded.run(now, sewingCompany ?? null, now, updatedBy ?? null, fileId, expectedStage)
+      : stmtSetSewingSent.run(now, sewingCompany ?? null, now, updatedBy ?? null, fileId);
     if (result.changes > 0) _insertStageHistory(fileId, "to_sewing", now);
     return { updated: result.changes > 0 };
   } catch (err) {

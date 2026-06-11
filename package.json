@@ -10,7 +10,7 @@
     "dev:electron": "electron .",
     "dev": "concurrently -k -n VITE,ELECTRON -c auto \"npm run dev:vite\" \"wait-on tcp:5173 && npm run dev:electron\"",
     "build": "vite build",
-    "build:dist": "vite build && electron-builder",
+    "build:dist": "vite build && dotenv -e .env -- electron-builder --win --publish always",
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "eslint .",
@@ -33,11 +33,17 @@
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "FilipDrzazga",
+      "repo": "ripflow-desktop"
     }
   },
   "dependencies": {
     "@gsap/react": "^2.1.2",
     "better-sqlite3": "^12.10.0",
+    "electron-updater": "^6.6.2",
     "bwip-js": "^4.11.1",
     "electron-store": "^11.0.2",
     "fuse.js": "^7.3.0",
@@ -54,6 +60,7 @@
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.1",
     "concurrently": "^9.2.1",
+    "dotenv-cli": "^8.0.0",
     "electron": "^40.1.0",
     "electron-builder": "^26.8.1",
     "electron-rebuild": "^3.2.9",

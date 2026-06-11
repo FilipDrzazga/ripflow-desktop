@@ -16,6 +16,7 @@ import { getSettings } from "../../services/settingsService";
 import { notify } from "@/utils/notify";
 import { usePdfPreview } from "../../hooks/usePdfPreview";
 import { resolveIcon } from "../../constants/rollbackReasonIcons";
+import { PRINTER_COLORS } from "../../constants/printerColors";
 import ContextMenu from "../ContextMenu/ContextMenu";
 import PdfPreviewModal from "../PdfPreviewModal/PdfPreviewModal";
 import ProductionCard from "./ProductionCard";
@@ -25,10 +26,10 @@ import style from "./Production.module.css";
 const FILTER_TABS = [
   { key: "all",                        label: "All" },
   { key: PRODUCTION_STAGE.PRINTED,     label: STAGE_LABEL.printed },
-  { key: PRODUCTION_STAGE.HEATPRESS,   label: STAGE_LABEL.heatpress },
+  { key: PRODUCTION_STAGE.HEATPRESS,   label: "Press" },
   { key: PRODUCTION_STAGE.QC,          label: STAGE_LABEL.qc },
-  { key: PRODUCTION_STAGE.TO_SEWING,   label: STAGE_LABEL.to_sewing },
-  { key: PRODUCTION_STAGE.FROM_SEWING, label: STAGE_LABEL.from_sewing },
+  { key: PRODUCTION_STAGE.TO_SEWING,   label: "Sew Out" },
+  { key: PRODUCTION_STAGE.FROM_SEWING, label: "Sew In" },
   { key: PRODUCTION_STAGE.PACKED,      label: STAGE_LABEL.packed },
   { key: PRODUCTION_STAGE.SHIPPED,     label: STAGE_LABEL.shipped },
 ];
@@ -43,7 +44,6 @@ const Production = () => {
   const removeStageFromStore = useStore((s) => s.removeStageFromStore);
   const reasonDefinitions   = useStore((s) => s.reasonDefinitions);
   const refreshFiles        = useStore((s) => s.refreshFiles);
-  const stageHistory         = useStore((s) => s.stageHistory);
   const loadAllStageHistory  = useStore((s) => s.loadAllStageHistory);
   const addStageHistoryEntry = useStore((s) => s.addStageHistoryEntry);
 
@@ -129,13 +129,13 @@ const Production = () => {
     }
   };
 
-  const handleSewing = async (fileId) => {
+  const handleSewing = async (fileId, sewingCompany) => {
     const row = productionStages[fileId];
     if (!row) return;
-    const res = await setSewingSent(fileId, row.stage);
+    const res = await setSewingSent(fileId, row.stage, sewingCompany ?? null);
     if (res?.success) {
       const now = new Date().toISOString();
-      updateStageInStore(fileId, { ...row, stage: PRODUCTION_STAGE.TO_SEWING, updated_at: now });
+      updateStageInStore(fileId, { ...row, stage: PRODUCTION_STAGE.TO_SEWING, sewing_sent_at: now, sewing_company: sewingCompany ?? null, updated_at: now });
       addStageHistoryEntry(fileId, PRODUCTION_STAGE.TO_SEWING, now);
     }
   };
@@ -151,7 +151,8 @@ const Production = () => {
     const batchRows = stageRows.filter((r) => r.batch_path === batchPath);
     const materials = [...new Set(batchRows.map((r) => r.material).filter(Boolean))];
     const material = materials.length === 1 ? materials[0] : "Mixed";
-    const res = await printBatchLabel({ batchPath, batchName, printer, fileCount: batchRows.length, material });
+    const totalMeters = batchRows.reduce((sum, r) => sum + (r.meters ?? 0), 0);
+    const res = await printBatchLabel({ batchPath, batchName, printer, fileCount: batchRows.length, material, totalMeters: Number(totalMeters.toFixed(2)) });
     if (res?.success) {
       notify({ type: "Success", title: "Label sent", message: batchName });
     } else {
@@ -219,11 +220,17 @@ const Production = () => {
     let successCount = 0;
     let failCount = 0;
 
-    for (const { fileId, action, fromSewing } of decisions) {
+    let pendingCount = 0;
+    for (const { fileId, action, fromSewing, reason, sewingCompany } of decisions) {
+      if (action === QC_ACTION.PENDING || (fromSewing && action === QC_ACTION.SEWING)) { pendingCount++; continue; }
       try {
         if (fromSewing) {
-          const srRes = await setSewingReceived(fileId, PRODUCTION_STAGE.TO_SEWING);
-          if (!srRes?.success) { failCount++; continue; }
+          const currentStage = useStore.getState().productionStages[fileId]?.stage;
+          if (currentStage === PRODUCTION_STAGE.TO_SEWING) {
+            const srRes = await setSewingReceived(fileId, PRODUCTION_STAGE.TO_SEWING);
+            if (!srRes?.success) { failCount++; continue; }
+          }
+          // FROM_SEWING: already received, skip setSewingReceived
         }
 
         if (action === QC_ACTION.PASS) {
@@ -241,14 +248,25 @@ const Production = () => {
             failCount++;
           }
         } else if (action === QC_ACTION.SEWING) {
-          const res = await setSewingSent(fileId, PRODUCTION_STAGE.QC);
+          const res = await setSewingSent(fileId, PRODUCTION_STAGE.QC, sewingCompany ?? null);
           if (res?.success) {
             const now = new Date().toISOString();
-            const row = productionStages[fileId];
+            const row = useStore.getState().productionStages[fileId];
             if (row) {
-              updateStageInStore(fileId, { ...row, stage: PRODUCTION_STAGE.TO_SEWING, updated_at: now });
+              updateStageInStore(fileId, { ...row, stage: PRODUCTION_STAGE.TO_SEWING, sewing_sent_at: now, sewing_company: sewingCompany ?? null, updated_at: now });
               addStageHistoryEntry(fileId, PRODUCTION_STAGE.TO_SEWING, now);
             }
+            successCount++;
+          } else {
+            failCount++;
+          }
+        } else if (action === QC_ACTION.REJECT) {
+          const row = productionStages[fileId];
+          if (!row?.batch_path) { failCount++; continue; }
+          const filePath = `${row.batch_path}\\${fileId}.pdf`;
+          const res = await rollbackFile({ filePath, batchPath: row.batch_path, reason });
+          if (res?.success) {
+            removeStageFromStore(fileId);
             successCount++;
           } else {
             failCount++;
@@ -261,10 +279,11 @@ const Production = () => {
 
     setQcModalOpen(false);
 
+    const pendingNote = pendingCount > 0 ? ` (${pendingCount} pending)` : "";
     if (failCount === 0) {
-      notify({ type: "Success", title: "QC complete", message: `${successCount} file(s) processed` });
+      notify({ type: "Success", title: "QC complete", message: `${successCount} file(s) processed${pendingNote}` });
     } else if (successCount > 0) {
-      notify({ type: "Warning", title: "QC partially done", message: `${successCount} succeeded, ${failCount} failed.` });
+      notify({ type: "Warning", title: "QC partially done", message: `${successCount} succeeded, ${failCount} failed${pendingNote}.` });
     } else {
       notify({ type: "Error", title: "QC failed", message: `${failCount} file(s) could not be processed.` });
     }
@@ -467,7 +486,9 @@ const Production = () => {
 
       if (workstationRole === "qc") {
         const qcOrSewing = batchFiles.filter((f) =>
-          f.stage === PRODUCTION_STAGE.QC || f.stage === PRODUCTION_STAGE.TO_SEWING,
+          f.stage === PRODUCTION_STAGE.QC ||
+          f.stage === PRODUCTION_STAGE.TO_SEWING ||
+          f.stage === PRODUCTION_STAGE.FROM_SEWING,
         );
 
         if (qcOrSewing.length === 0) {
@@ -579,6 +600,17 @@ const Production = () => {
       tab.key === "all" ? countableRows.length : countableRows.filter((r) => r.stage === tab.key).length,
     ]),
   );
+  const printersByStage = useMemo(() => {
+    const map = {};
+    for (const row of countableRows) {
+      if (!row.printer) continue;
+      const key = row.stage;
+      if (!map[key]) map[key] = new Set();
+      map[key].add(row.printer);
+    }
+    map["all"] = new Set(countableRows.map((r) => r.printer).filter(Boolean));
+    return map;
+  }, [countableRows]);
 
   // ─── Context menu options (memoized) ─────────────────────────────────────
 
@@ -658,7 +690,7 @@ const Production = () => {
     if (canAdvance && batchPath) {
       items.push({
         id: "rollback",
-        label: isBulk ? (selectedFileIds.size === 1 ? "Rollback this file" : `Rollback ${selectedFileIds.size} files`) : "Rollback",
+        label: isBulk ? (selectedFileIds.size === 1 ? "Rollback this file" : `Rollback ${selectedFileIds.size} files`) : "Rollback this file",
         icon: <LuCornerUpLeft size={14} />,
         danger: true,
         children: (() => {
@@ -702,7 +734,10 @@ const Production = () => {
         id: "sewing",
         label: "Send to Sewing",
         icon: <LuScissors size={14} />,
-        onClick: () => { setContextMenu(null); handleSewing(fileId); },
+        children: [
+          { id: "sewing-olya",     label: "Olya",     onClick: () => { setContextMenu(null); handleSewing(fileId, "Olya"); } },
+          { id: "sewing-vagabond", label: "Vagabond", onClick: () => { setContextMenu(null); handleSewing(fileId, "Vagabond"); } },
+        ],
       });
     }
 
@@ -786,7 +821,6 @@ const Production = () => {
             <ProductionCard
               key={row.file_id}
               stage={row}
-              history={stageHistory[row.file_id] ?? []}
               highlighted={highlightedId === row.file_id}
               selected={selectedFileIds.has(row.file_id)}
               onSelect={toggleProductionSelect}

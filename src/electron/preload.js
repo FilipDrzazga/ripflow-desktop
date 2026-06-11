@@ -141,6 +141,7 @@ const api = Object.freeze({
     if (!Array.isArray(fileIds)) throw new TypeError("fileIds must be an array.");
     return ipcRenderer.invoke("get-rollback-reasons-files", fileIds);
   },
+  getAppVersion: () => ipcRenderer.invoke("app:getVersion"),
   backupDb: () => ipcRenderer.invoke("db:backup"),
   selectFolder: () => ipcRenderer.invoke("dialog:select-folder"),
   minimizeWindow: () => ipcRenderer.send("window:minimize"),
@@ -171,7 +172,7 @@ const api = Object.freeze({
     override:               (fileId)                       => ipcRenderer.invoke("stage:override", { fileId }),
     clearFile:              (fileId)                       => ipcRenderer.invoke("stage:clearFile", fileId),
     clearBatch:             (batchPath)                    => ipcRenderer.invoke("stage:clearBatch", batchPath),
-    setSewingSent:          (fileId, expectedStage)        => ipcRenderer.invoke("stage:setSewingSent", { fileId, expectedStage: expectedStage ?? null }),
+    setSewingSent:          (fileId, expectedStage, sewingCompany) => ipcRenderer.invoke("stage:setSewingSent", { fileId, expectedStage: expectedStage ?? null, sewingCompany: sewingCompany ?? null }),
     setSewingReceived:      (fileId, expectedStage)        => ipcRenderer.invoke("stage:setSewingReceived", { fileId, expectedStage: expectedStage ?? null }),
     insertRollbackReason:   (data)                         => ipcRenderer.invoke("stage:insertRollbackReason", data),
     getAllHistory:           ()                             => ipcRenderer.invoke("stage:getAllHistory"),
@@ -180,6 +181,31 @@ const api = Object.freeze({
 
   label: Object.freeze({
     printBatch: (data) => ipcRenderer.invoke("label:printBatch", data),
+  }),
+
+  update: Object.freeze({
+    check: () => ipcRenderer.invoke("update:check"),
+    install: () => ipcRenderer.invoke("update:install"),
+    onAvailable: (cb) => {
+      const handler = (_e, version) => cb(version);
+      ipcRenderer.on("update:available", handler);
+      return () => ipcRenderer.removeListener("update:available", handler);
+    },
+    onProgress: (cb) => {
+      const handler = (_e, percent) => cb(percent);
+      ipcRenderer.on("update:progress", handler);
+      return () => ipcRenderer.removeListener("update:progress", handler);
+    },
+    onReady: (cb) => {
+      const handler = () => cb();
+      ipcRenderer.on("update:ready", handler);
+      return () => ipcRenderer.removeListener("update:ready", handler);
+    },
+    onError: (cb) => {
+      const handler = (_e, msg) => cb(msg);
+      ipcRenderer.on("update:error", handler);
+      return () => ipcRenderer.removeListener("update:error", handler);
+    },
   }),
 });
 
