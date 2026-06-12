@@ -469,8 +469,16 @@
   flex-shrink: 0;
 }
 
-.file_name {
+.file_name_group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.file_name {
   font-size: 14px;
   color: var(--text-primary);
   overflow: hidden;
@@ -614,6 +622,21 @@
   color: #c05208;
   background-color: #fff7ed;
   border: 1px solid #fed7aa;
+  border-radius: 7px;
+  padding: 3px 8px;
+  white-space: nowrap;
+}
+
+.override_badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  flex-shrink: 0;
+  font-size: 10px;
+  font-weight: 600;
+  color: #c05208;
+  background-color: #fff7ed;
+  border: 1px solid rgba(192, 82, 8, 0.4);
   border-radius: 7px;
   padding: 3px 8px;
   white-space: nowrap;

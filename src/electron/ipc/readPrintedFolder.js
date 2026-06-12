@@ -33,6 +33,15 @@ const getDayLabel = (dateStr) => {
 export const readSingleBatch = async (batchPath, meta) => {
   const entries = await fs.promises.readdir(batchPath, { withFileTypes: true });
 
+  let batchOverrides = {};
+  try {
+    const raw = await fs.promises.readFile(path.join(batchPath, "_batch_info.json"), "utf8");
+    const info = JSON.parse(raw);
+    batchOverrides = info.overrides ?? {};
+  } catch {
+    // no _batch_info.json or no overrides field — safe to ignore
+  }
+
   let xmlExists = false;
   const activeFiles = [];
   const parsedForLength = [];
@@ -47,11 +56,14 @@ export const readSingleBatch = async (batchPath, meta) => {
     if (lower.endsWith(".pdf")) {
       const filePath = path.join(batchPath, f.name);
       const parsed = parsePrintFileName(f.name, { fullPath: filePath, dir: batchPath });
+      const stem = path.parse(f.name).name;
       activeFiles.push({
         name: f.name,
         path: filePath,
         type: parsed?.printTypeCode || "UNKNOWN",
         orderId: parsed?.orderId || null,
+        qtyOverride: batchOverrides[stem]?.qty ?? null,
+        metersOverride: batchOverrides[stem]?.meters ?? null,
       });
       if (parsed?.status === FILE_STATUS.READY) {
         parsedForLength.push({ ...parsed, materialType: getMaterialType(parsed.material) });
@@ -67,6 +79,7 @@ export const readSingleBatch = async (batchPath, meta) => {
     for (const fname of snapshot.files || []) {
       if (activeNames.has(fname)) continue;
       const parsed = parsePrintFileName(fname, { fullPath: path.join(batchPath, fname), dir: batchPath });
+      const fstem = path.parse(fname).name;
       files.push({
         name: fname,
         path: path.join(batchPath, fname),
@@ -74,6 +87,8 @@ export const readSingleBatch = async (batchPath, meta) => {
         orderId: parsed?.orderId || null,
         status: FILE_STATUS.ROLLED_BACK,
         rolledBackAt: snapshot.rolledBackAt || null,
+        qtyOverride: batchOverrides[fstem]?.qty ?? null,
+        metersOverride: batchOverrides[fstem]?.meters ?? null,
       });
     }
   } catch {

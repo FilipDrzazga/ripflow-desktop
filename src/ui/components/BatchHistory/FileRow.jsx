@@ -44,8 +44,15 @@ const FileRow = ({ file, batch, stageRow, activeContextFilePath, onContextMenu, 
         </span>
       )}
       <LuFileText className={style.file_icon} />
-      <span className={style.file_name} title={file.name}>
-        {file.name}
+      <span className={style.file_name_group}>
+        <span className={style.file_name} title={file.name}>
+          {file.name}
+        </span>
+        {(file.qtyOverride != null || file.metersOverride != null) && (
+          <span className={style.override_badge}>
+            {file.metersOverride != null ? `${file.metersOverride}m` : `x${file.qtyOverride}`}
+          </span>
+        )}
       </span>
       {isFileRolledBack && file.rolledBackAt && (
         <span className={style.file_rolled_back_label}>

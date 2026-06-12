@@ -108,6 +108,14 @@ const ProductionCard = ({ stage: row, highlighted, selected, onSelect, onContext
           ? row.meters != null && <span className={style.card_type_badge}>{row.meters}m</span>
           : row.qty != null && <span className={style.card_type_badge}>x{row.qty}</span>
         }
+        {row.print_type === "LM"
+          ? row.meters_override != null && (
+              <span className={style.card_type_badge_override}>Override: {row.meters_override}m</span>
+            )
+          : row.qty_override != null && (
+              <span className={style.card_type_badge_override}>Override: x{row.qty_override}</span>
+            )
+        }
         {row.material && <span className={style.card_material}>{row.material}</span>}
         {row.printer && (() => {
           const pc = PRINTER_COLORS[row.printer] ?? { bg: "#f0f0f0", color: "#616161" };

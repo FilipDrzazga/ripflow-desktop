@@ -259,9 +259,11 @@ export const initDb = () => {
     try { db.exec("ALTER TABLE file_stages ADD COLUMN meters REAL"); } catch { /* already exists */ }
     try { db.exec("ALTER TABLE file_stages ADD COLUMN qty INTEGER"); } catch { /* already exists */ }
     try { db.exec("ALTER TABLE file_stages ADD COLUMN sewing_company TEXT"); } catch { /* already exists */ }
+    try { db.exec("ALTER TABLE file_stages ADD COLUMN qty_override INTEGER"); } catch { /* already exists */ }
+    try { db.exec("ALTER TABLE file_stages ADD COLUMN meters_override REAL"); } catch { /* already exists */ }
 
     stmtInsertFileStage = db.prepare(
-      "INSERT OR REPLACE INTO file_stages (file_id, batch_path, print_type, customer_name, order_id, material, meters, qty, stage, prev_stage, updated_at, updated_by, sewing_sent_at, sewing_received_at, sewing_company) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+      "INSERT OR REPLACE INTO file_stages (file_id, batch_path, print_type, customer_name, order_id, material, meters, qty, qty_override, meters_override, stage, prev_stage, updated_at, updated_by, sewing_sent_at, sewing_received_at, sewing_company) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
     );
     stmtGetFileStage = db.prepare("SELECT * FROM file_stages WHERE file_id = ?");
     stmtGetFileStagesByBatch = db.prepare("SELECT * FROM file_stages WHERE batch_path = ?");
@@ -720,7 +722,9 @@ export const insertFileStage = (row) => {
   try {
     stmtInsertFileStage.run(
       row.file_id, row.batch_path, row.print_type ?? null, row.customer_name ?? null,
-      row.order_id ?? null, row.material ?? null, row.meters ?? null, row.qty ?? null, row.stage ?? "printed", row.prev_stage ?? null,
+      row.order_id ?? null, row.material ?? null, row.meters ?? null, row.qty ?? null,
+      row.qty_override ?? null, row.meters_override ?? null,
+      row.stage ?? "printed", row.prev_stage ?? null,
       row.updated_at, row.updated_by ?? null, row.sewing_sent_at ?? null, row.sewing_received_at ?? null, row.sewing_company ?? null,
     );
     _insertStageHistory(row.file_id, row.stage ?? "printed", row.updated_at);

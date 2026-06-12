@@ -55,7 +55,7 @@ src/ui/
   utils/notify.js          # ALWAYS use instead of setAlert() — adds toast + SessionLogs entry
   services/                # IPC abstraction layer — ALWAYS import from here, NOT window.api directly
     batchService.js        # readPrintedFolder, rollback*, watcher, deleteBatch, regenerateXml
-    fileService.js         # readFolders, submitBatch, openPreview, openInFolder, readFileBuffer
+    fileService.js         # readFolders, submitBatch, openPreview, openInFolder, openInShopify, readFileBuffer
     settingsService.js     # getSettings, setSettings, selectFolder
     analyticsService.js    # getRollbackStats, getRollbackDetails, clearRollbackReasons
     systemService.js       # getLogs, clearLogs, hold*, minimizeWindow, closeWindow, showConfirm
@@ -64,10 +64,14 @@ src/ui/
     reasonDefsService.js   # getRollbackDefinitions, setReasonDefinitions — reads/writes DB via IPC
     fabricService.js       # getFabricGlobals, setFabricGlobals, getFabrics, saveFabric,
                            #   deleteFabric, setAllFabrics
+    productionService.js   # getAllStages, getStagesAfter, getStagesByBatch, advanceStage,
+                           #   setSewingSent, setSewingReceived, printBatchLabel,
+                           #   getAllStageHistory, clearAllProductionStages
   constants/
     printerColors.js       # PRINTER_COLORS: { DGEN, YOKO, YUMI } → { bg, color }
     rollbackReasons.js     # ROLLBACK_REASONS: static fallback only — runtime data comes from DB
     rollbackReasonIcons.js # ICON_MAP, ICON_OPTIONS, resolveIcon(iconName)
+    printTypeMap.js        # PRINT_TYPE_MAP: { LM, FQ, SAMPLE, CUSHION, TEA_TOWEL } → { label, Icon, color }
   components/
     Analytics/             # rollback analytics (Details/, Summary/, hooks/)
     BatchHistory/          # day→batch→file tree, real-time watcher, rollback with reasons
@@ -79,6 +83,10 @@ src/ui/
       CustomOrderCard.jsx  # per-CSV card: printer toggle, generate XML button
       CustomOrderHistory.jsx # read-only history list from DB
     DataList/              # Inbox file list; own usePdfPreview instance; 5 fixed-width tag slots
+    Production/            # Stage tracking board for in-progress batches
+      Production.jsx       # filters, scanner, bulk-select, context menu, polling, QCModal trigger
+      ProductionCard.jsx   # single file card: stage pills pipeline, GSAP highlight on scan
+      QCModal.jsx          # two-phase QC modal (sewing_return → qc); context menu per file
     ContextMenu/           # Portal popup; supports submenu (children field) with hover delay 150ms
     RollbackModal/         # Portal modal; reason pills from store.reasonDefinitions; OTHER → text input
     ErrorBoundary/         # Class component — wraps DataList, BatchHistory, Analytics in App.jsx
@@ -98,6 +106,8 @@ src/shared/
   printWidths.js                # Hardcoded defaults (still used as fallback; DB is primary)
                                 # Fixed dims stay hardcoded: SAMPLE 220×200, FQ 670×480, TEA_TOWEL 700×500
   constants.js                  # BATCH_STATUS, FILE_STATUS, PRINTER, CUSTOM_ORDER_STATUS
+                               # PRODUCTION_STAGE, STAGE_NEXT, STAGE_PREV, STAGE_LABEL, STAGE_COLOR
+                               # QC_ACTION, SEWING_SUGGESTED_TYPES (["CUSHION", "TEA_TOWEL"])
 ```
 
 ## Workflow
@@ -119,6 +129,7 @@ INBOX → PARSE FILENAME → UI → SELECT FILES+PRINTER → CREATE BATCH+XML �
 | `"logs"` | SessionLogs |
 | `"settings"` | Settings (sidebar: General / Paths / Fabrics / Rollback Reasons) |
 | `"customOrder"` | CustomOrder (CustomOrderCard + CustomOrderHistory) |
+| `"production"` | Production (ProductionCard + QCModal) |
 
 ## File Types (`parseFileName.js`)
 - **LM** — Linear Meter | **FQ** — Fat Quarter | **SAMPLE** — Sample Print
@@ -159,7 +170,7 @@ Derived paths:
 ```
 
 ## SQLite (`helpers/db.js`)
-Tables: `logs`, `held_files`, `rollback_reasons`, `custom_order_history`, `reason_definitions`, `fabric_globals`, `fabrics`
+Tables: `logs`, `held_files`, `rollback_reasons`, `custom_order_history`, `reason_definitions`, `fabric_globals`, `fabrics`, `file_stages`, `file_stage_history`
 
 - `rollback_reasons.file_id = null` → whole batch reason; `= filename-without-ext` → single file
 - `logs.workstation` can be NULL in old records — render conditionally
@@ -250,6 +261,19 @@ customOrder.importCSVContent(str) // → { success, data: { poNumber, materialNa
 customOrder.generateXML(group)    // → { success }
 customOrder.getHistory()          // → { success, data: order[] }
 customOrder.clearHistory()        // → { success }
+
+// Production stages — use productionService, never window.api.stage directly
+stage.getAll()                                         // → { success, data: stageRow[] }
+stage.getAfter(since)                                  // → { success, data: stageRow[] }
+stage.getByBatch(batchPath)                            // → { success, data: stageRow[] }
+stage.advance(fileId, newStage, expectedStage)         // → { success }
+stage.setSewingSent(fileId, expectedStage, company)    // → { success }
+stage.setSewingReceived(fileId, expectedStage)         // → { success }
+stage.getAllHistory()                                   // → { success, data: historyRow[] }
+stage.clearAll()                                       // → { success }
+
+// Label printing
+label.printBatch({ batchPath, batchName, printer, fileCount, material, totalMeters }) // → { success }
 ```
 
 ## Zustand Store (`useStore.jsx`)
@@ -265,8 +289,20 @@ customOrder.clearHistory()        // → { success }
   alerts: [{ id, type, title, message }],
   reasonDefinitions: [{code, label, iconName}],  // loaded from DB on startup; fallback to static ROLLBACK_REASONS
   fabricConfig: { globals: {...}, fabrics: [...] } | null,  // loaded from DB on startup
+  productionStages: {},         // fileId → stageRow ({ file_id, stage, batch_path, order_id, customer_name, ... })
+  stageHistory: {},             // fileId → [{ stage, entered_at }] — append-only per transition
 }
 ```
+
+**Production store actions:**
+- `loadAllStages()` — full reload from DB into `productionStages`
+- `loadStagesAfter(since)` → `{ success: bool }` — incremental poll; merges updates
+- `loadStagesForBatch(batchPath)` — merge single batch rows (used by BatchHistory)
+- `updateStageInStore(fileId, stageRow)` — optimistic single update
+- `removeStageFromStore(fileId)` — remove on rollback (also clears stageHistory entry)
+- `loadAllStageHistory()` — load full history; groups by fileId
+- `addStageHistoryEntry(fileId, stage, enteredAt)` — optimistic append
+- `clearAllStages()` — dev/admin reset; clears both `productionStages` and `stageHistory`
 Key: `getLastBatch(batchDays)` exported helper. `applyFilters()` internal helper.
 
 **Startup load order (App.jsx):**
@@ -300,7 +336,8 @@ refreshBatchDays()      // non-awaited
 ## Production — Key Behaviors
 DB tables: `file_stages` (one row per active file), `file_stage_history` (append-only per stage transition).
 
-**Stages pipeline:** `printed → heatpress → qc → packed → shipped` (or with sewing: `qc → to_sewing → from_sewing → qc → packed → shipped`)
+**Stages pipeline:** `printed → heatpress → qc → packed → shipped` (or with sewing: `qc → to_sewing → from_sewing → packed → shipped`)
+`STAGE_NEXT` / `STAGE_PREV` maps are the source of truth — use them, never hardcode transitions.
 
 **Rollback = physical file move to inbox** — calling `rollbackFile` automatically calls `clearFileStage(fileId)` in `batchHistoryHandlers.js`. No separate DB cleanup needed. The card disappears from Production UI via `removeStageFromStore(fileId)`.
 
@@ -312,18 +349,25 @@ DB tables: `file_stages` (one row per active file), `file_stage_history` (append
 - `"cotton"` — scanner advances `printed → heatpress → qc` in one scan (two sequential DB calls per file; cotton skips manual heatpress step)
 - `"polyester"` — scanner advances `printed → heatpress`
 - `"rollpress"` — scanner advances `heatpress → qc`
-- `"qc"` — scanner opens QCModal; REJECT action in QCModal calls `rollbackFile` (file goes to inbox)
+- `"qc"` — scanner opens QCModal; if batch has no QC/sewing files but has heatpress files, auto-advances them to QC first, then opens modal. REJECT action in QCModal calls `rollbackFile` (file goes to inbox)
 - `""` (default) — scanner only filters view to scanned batch
 
+**Scanner input** — `e.ctrlKey || e.metaKey || e.altKey` keys ignored to avoid contaminating barcode buffer. Buffer flushed after 100ms idle; fires on Enter if buffer > 5 chars. Search box Enter key also routes to handleScan when value matches a batch name, file_id, or batch path. File-level scan (matching file_id) clears filters, scrolls to card, highlights it for 1.5s via GSAP.
+
 **QCModal phases:**
-- Phase 1 `sewing_return` (only if batch has TO_SEWING files): toggle each file received/reject; "Confirm Received →" requires reasons for all rejected files before enabling
-- Phase 2 `qc`: toggle pass/sewing/reject per file; REJECT = rollback to inbox; SEWING = send to sewing
+- Phase 1 `sewing_return` (only if batch has `TO_SEWING` OR `FROM_SEWING` files): per-file action = PASS (receive) | PENDING (keep at sewing) | REJECT (rollback). Requires reason for every REJECT before "Confirm →" enables. If no QC files, skips phase 2 and calls onConfirm directly.
+- Phase 2 `qc`: per-file action = PASS (→ packed) | SEWING (→ to_sewing, pick company) | PENDING (stay at QC) | REJECT (rollback to inbox). SEWING hint icon shown for `SEWING_SUGGESTED_TYPES` (CUSHION, TEA_TOWEL).
+- Both phases support multi-select via left-click + context menu bulk actions.
+
+**Multi-select & bulk actions** — click card to toggle select; `BatchGroupHeader` "Select All" toggles whole batch. Bulk context menu: advance all, go back all, rollback all (with reason submenu). Selection cleared on filter/batch change.
+
+**Grouping** — `groupingEnabled` toggle (default on). When on and `stageFilter === "all"` or `batchFilter` active: cards grouped by `batch_path` under `BatchGroupHeader` showing stage-count pills and printer badge.
 
 **Optimistic updates** — all stage transitions call `updateStageInStore` + `addStageHistoryEntry` immediately after IPC success. No `loadAllStages()` reload needed after single actions.
 
 **Stage counts in tabs** — when `batchFilter` is active, tab counts reflect only that batch's files.
 
-**Scanner barcode guard** — `e.ctrlKey || e.metaKey || e.altKey` keys are ignored to avoid contaminating the barcode buffer.
+**Context menu extras** — "Reprint Label" calls `printBatchLabel` (aggregates batch material + total meters from store); "Open in Shopify" calls `openInShopify(orderId)` from fileService; "Send to Sewing" submenu: Olya | Vagabond.
 
 ## BatchHistory — Key Behaviors
 - Call `stopBatchWatcher()` on unmount
@@ -393,7 +437,7 @@ npm run test:watch # Vitest watch mode
 9. `Badge` component exists but is **unused** in DataList (inline icon tags used instead)
 10. `DataDaysCounter` was removed — age rendered inline in DataList; do not recreate
 11. **Never call `window.api` directly in components** — always import from `src/ui/services/`
-12. **Use `BATCH_STATUS`, `FILE_STATUS`, `PRINTER`, `CUSTOM_ORDER_STATUS` from `src/shared/constants.js`** — never compare against raw strings like `"rolled_back"`, `"active"`, `"complete"`, `"partial"`
+12. **Use constants from `src/shared/constants.js`** — never compare against raw strings. Covers: `BATCH_STATUS`, `FILE_STATUS`, `PRINTER`, `CUSTOM_ORDER_STATUS`, `PRODUCTION_STAGE`, `STAGE_NEXT`, `STAGE_PREV`, `STAGE_LABEL`, `STAGE_COLOR`, `QC_ACTION`, `SEWING_SUGGESTED_TYPES`
 13. **All file IPC handlers** use `assertStorageFilePath` — prevents path traversal outside storagePath
 14. Vitest tests exist in `src/shared/` — run `npm run test` before shipping changes to `estimatePrintLength.js`
 15. **Custom Order CSV import**: `customOrder:importCSV` was removed — use `selectCSV()` (returns `files: [{name, content}]`) then `importCSVContent(content)`. Never pass file paths from renderer to main for reading.

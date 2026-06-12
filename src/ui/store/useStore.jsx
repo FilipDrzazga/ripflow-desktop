@@ -304,6 +304,20 @@ export const useStore = create(
     },
 
     selectedIds: new Set(),
+    selectedOverrides: new Map(),
+    setOverride: (itemId, override) =>
+      set((s) => {
+        const next = new Map(s.selectedOverrides);
+        next.set(itemId, override);
+        return { selectedOverrides: next };
+      }),
+    clearOverride: (itemId) =>
+      set((s) => {
+        const next = new Map(s.selectedOverrides);
+        next.delete(itemId);
+        return { selectedOverrides: next };
+      }),
+    clearAllOverrides: () => set({ selectedOverrides: new Map() }),
     toggleItemSelection: (id) =>
       set((state) => {
         const newSelectedIds = new Set(state.selectedIds);
@@ -375,7 +389,7 @@ export const useStore = create(
         return { selectedIds: newSelectedIds };
       }),
 
-    toggleClearSelection: () => set(() => ({ selectedIds: new Set() })),
+    toggleClearSelection: () => set(() => ({ selectedIds: new Set(), selectedOverrides: new Map() })),
 
     holdSelectedFiles: async (reason = "") => {
       const { selectedIds, heldIds } = get();

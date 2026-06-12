@@ -25,6 +25,8 @@ const DataPrintSelection = () => {
   const refreshFiles = useStore((state) => state.refreshFiles);
   const refreshBatchDays = useStore((state) => state.refreshBatchDays);
   const setIsBatchSubmitting = useStore((state) => state.setIsBatchSubmitting);
+  const selectedOverrides = useStore((state) => state.selectedOverrides);
+  const clearAllOverrides = useStore((state) => state.clearAllOverrides);
   const contentRef = useRef(null);
 
   const isSelectionMode = selectedIds.size > 0;
@@ -98,7 +100,7 @@ const DataPrintSelection = () => {
       setIsSubmitting(true);
       setIsBatchSubmitting(true);
       try {
-        const submitBatchResponse = await submitBatch(print);
+        const submitBatchResponse = await submitBatch(print, selectedOverrides);
 
         if (!submitBatchResponse.success) {
           const firstError = submitBatchResponse.errors?.[0];
@@ -143,6 +145,7 @@ const DataPrintSelection = () => {
           }
         );
 
+        clearAllOverrides();
         await refreshFiles({ clearSelection: true });
         await refreshBatchDays();
         setSelectedPrinter(null);

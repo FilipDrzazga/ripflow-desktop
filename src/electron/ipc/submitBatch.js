@@ -97,20 +97,24 @@ export const submitBatch = async (batch) => {
     }
 
     for (const item of batch) {
-      const meters = item.height != null ? Math.round(item.height) / 1000 : null;
+      const sourceHeight = item._heightOverridden ? item._originalHeight : item.height;
+      const meters = sourceHeight != null ? Math.round(sourceHeight) / 1000 : null;
+      const qty = item._qtyOverridden ? (item._originalQty ?? null) : (item.qty ?? null);
       insertFileStage({
-        file_id:       path.parse(item.file.name).name,
-        batch_path:    batchPath,
-        print_type:    item.printTypeCode ?? null,
-        customer_name: item.customerName ?? null,
-        order_id:      item.orderId ?? null,
-        material:      item.material ?? null,
+        file_id:         path.parse(item.file.name).name,
+        batch_path:      batchPath,
+        print_type:      item.printTypeCode ?? null,
+        customer_name:   item.customerName ?? null,
+        order_id:        item.orderId ?? null,
+        material:        item.material ?? null,
         meters,
-        qty:           item.qty ?? null,
-        stage:         "printed",
-        prev_stage:    null,
-        updated_at:    now,
-        updated_by:    workstationName ?? null,
+        qty,
+        qty_override:    item.qtyOverride ?? null,
+        meters_override: item.metersOverride ?? null,
+        stage:           "printed",
+        prev_stage:      null,
+        updated_at:      now,
+        updated_by:      workstationName ?? null,
         sewing_sent_at:     null,
         sewing_received_at: null,
       });

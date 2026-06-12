@@ -8,7 +8,7 @@ import { usePdfPreview } from "../../hooks/usePdfPreview";
 import { estimatePrintLength } from "../../../shared/estimatePrintLength";
 import { FILE_STATUS } from "../../../shared/constants";
 import { resolveIcon } from "../../constants/rollbackReasonIcons";
-import { openPreview as openPreviewApi, openInFolder as openInFolderApi, openInShopify as openInShopifyApi } from "../../services/fileService";
+import { openInFolder as openInFolderApi, openInShopify as openInShopifyApi } from "../../services/fileService";
 import { FiInbox, FiLock, FiUnlock } from "react-icons/fi";
 import {
   LuClock,
@@ -20,6 +20,7 @@ import {
   LuCircleX,
   LuTriangleAlert,
   LuEye,
+  LuPencil,
 } from "react-icons/lu";
 import { PiPolygon } from "react-icons/pi";
 import { PRINT_TYPE_MAP } from "@/constants/printTypeMap";
@@ -33,14 +34,14 @@ const formatFileSize = (bytes) => {
 };
 
 const MATERIAL_MAP = {
-  Cottons:    { Icon: LuLeaf,       color: "#3B6D11", label: "Cottons" },
-  Polyesters: { Icon: PiPolygon,    color: "#185FA5", label: "Polyesters" },
-  Unknown:    { Icon: LuCircleHelp, color: "#888780", label: "Unknown" },
+  Cottons: { Icon: LuLeaf, color: "#3B6D11", label: "Cottons" },
+  Polyesters: { Icon: PiPolygon, color: "#185FA5", label: "Polyesters" },
+  Unknown: { Icon: LuCircleHelp, color: "#888780", label: "Unknown" },
 };
 
 const STATUS_MAP = {
-  READY:   { Icon: LuCircleCheck,   color: "#3B6D11" },
-  INVALID: { Icon: LuCircleX,       color: "#A32D2D" },
+  READY: { Icon: LuCircleCheck, color: "#3B6D11" },
+  INVALID: { Icon: LuCircleX, color: "#A32D2D" },
   WARNING: { Icon: LuTriangleAlert, color: "#BA7517" },
 };
 
@@ -56,9 +57,14 @@ const DataList = () => {
   const toggleItemSelection = useStore((state) => state.toggleItemSelection);
   const toggleHold = useStore((state) => state.toggleHold);
   const holdSelectedFiles = useStore((state) => state.holdSelectedFiles);
+  const selectedOverrides = useStore((state) => state.selectedOverrides);
+  const setOverride = useStore((state) => state.setOverride);
+  const clearOverride = useStore((state) => state.clearOverride);
   const [contextMenu, setContextMenu] = useState(null);
   const [holdModal, setHoldModal] = useState(null);
   const [holdReason, setHoldReason] = useState("");
+  const [overrideModal, setOverrideModal] = useState(null);
+  const [overrideValue, setOverrideValue] = useState("");
   const activeContextItemId = contextMenu?.item?.id || null;
   const { openPreview, closePreview, navigate, isOpen, isLoading, imgSrc, error, currentPath, currentIndex, fileList } =
     usePdfPreview();
@@ -85,28 +91,6 @@ const DataList = () => {
     toggleItemSelection(item.id);
   };
   const closeContextMenu = () => setContextMenu(null);
-
-  const handleOpenPreview = async (item) => {
-    try {
-      const response = await openPreviewApi(item.file.fullPath);
-      if (response?.success) return;
-      const firstError = response?.errors?.[0];
-      throw {
-        type: firstError?.type || "Error",
-        title: firstError?.title || "Preview failed",
-        message: firstError?.message || "The file could not be opened.",
-      };
-    } catch (error) {
-      notify(
-        {
-          type: error?.type || "Error",
-          title: error?.title || "Preview failed",
-          message: error?.message || "The file could not be opened.",
-        },
-        { stage: "app", code: "OPEN_PREVIEW_FAILED" },
-      );
-    }
-  };
 
   const handleOpenInFolder = async (item) => {
     try {
@@ -250,8 +234,7 @@ const DataList = () => {
                 else if (isHeld) {
                   const detail = heldReasons.get(item.id);
                   tooltip = detail ? `On hold · ${detail}` : "File is on hold";
-                }
-                else if (isLocked) tooltip = `Cannot mix ${lockMaterial} with ${item.materialType}`;
+                } else if (isLocked) tooltip = `Cannot mix ${lockMaterial} with ${item.materialType}`;
 
                 const age = item.diffDays;
                 const ageColor = age <= 1 ? "#3B6D11" : age === 2 ? "#D4860E" : age === 3 ? "#C05208" : "#A32D2D";
@@ -291,15 +274,22 @@ const DataList = () => {
                         />
                         <LuFileText className={style.file_icon} />
                         <span className={style.file_name_text}>{item.file.name}</span>
-                        {rollbackReason && (() => {
-                          const def = reasonDefinitions.find((r) => r.code === rollbackReason.reasonCode);
-                          const ReasonIcon = resolveIcon(def?.iconName);
-                          return (
-                            <span className={style.rollback_badge}>
-                              {ReasonIcon && <ReasonIcon className={style.rollback_badge_icon} />}
-                              Rollback: {rollbackReason.reasonLabel}
-                            </span>
-                          );
+                        {rollbackReason &&
+                          (() => {
+                            const def = reasonDefinitions.find((r) => r.code === rollbackReason.reasonCode);
+                            const ReasonIcon = resolveIcon(def?.iconName);
+                            return (
+                              <span className={style.rollback_badge}>
+                                {ReasonIcon && <ReasonIcon className={style.rollback_badge_icon} />}
+                                Rollback: {rollbackReason.reasonLabel}
+                              </span>
+                            );
+                          })()}
+                        {(() => {
+                          const ov = selectedOverrides.get(item.id);
+                          if (!ov) return null;
+                          const label = ov.meters != null ? `${ov.meters}m` : `x${ov.qty}`;
+                          return <span className={style.override_badge}>Override: {label}</span>;
                         })()}
                         {isHeld && <FiLock className={style.hold_icon} />}
                       </label>
@@ -426,7 +416,36 @@ const DataList = () => {
                   },
                 };
               })(),
-            ]}
+              (() => {
+                const item = contextMenu.item;
+                const isItemInvalid = item.status === FILE_STATUS.INVALID;
+                const isItemHeld = heldIds.has(item.id);
+                if (isItemInvalid || isItemHeld) return null;
+                const hasOverride = selectedOverrides.has(item.id);
+                if (hasOverride) {
+                  return {
+                    id: "set-qty",
+                    label: "Clear override",
+                    icon: <LuPencil />,
+                    danger: true,
+                    onClick: () => {
+                      closeContextMenu();
+                      clearOverride(item.id);
+                    },
+                  };
+                }
+                return {
+                  id: "set-qty",
+                  label: "Override quantity",
+                  icon: <LuPencil />,
+                  onClick: () => {
+                    closeContextMenu();
+                    setOverrideValue("");
+                    setOverrideModal({ item });
+                  },
+                };
+              })(),
+            ].filter(Boolean)}
           />,
           document.body,
         )}
@@ -441,6 +460,78 @@ const DataList = () => {
         onClose={closePreview}
         onNavigate={navigate}
       />
+      {overrideModal &&
+        createPortal(
+          <>
+            <div className={style.hold_backdrop} onClick={() => { clearOverride(overrideModal.item.id); setOverrideModal(null); }} />
+            <div className={style.hold_modal}>
+              <p className={style.hold_modal_title}>Set quantity override</p>
+              <p className={style.hold_modal_filename}>{overrideModal.item.file.name}</p>
+              {(() => {
+                const val = Number(overrideValue);
+                const item = overrideModal.item;
+                const original = item.printTypeCode === "LM" ? (item.height != null ? item.height / 1000 : null) : item.qty;
+                const visible = overrideValue && val === original;
+                return (
+                  <p className={style.override_modal_hint} style={{ visibility: visible ? "visible" : "hidden" }}>
+                    Value is the same as the original - no override needed.
+                  </p>
+                );
+              })()}
+              <input
+                className={style.hold_modal_input}
+                type="number"
+                min={1}
+                max={overrideModal.item.printTypeCode === "LM"
+                  ? (overrideModal.item.height != null ? overrideModal.item.height / 1000 : undefined)
+                  : (overrideModal.item.qty ?? undefined)}
+                placeholder={overrideModal.item.printTypeCode === "LM"
+                  ? (overrideModal.item.height != null ? `${overrideModal.item.height / 1000}m` : "e.g. 10m")
+                  : (overrideModal.item.qty != null ? `x${overrideModal.item.qty}` : "e.g. x4")
+                }
+                value={overrideValue}
+                autoFocus
+                onChange={(e) => setOverrideValue(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Escape") { clearOverride(overrideModal.item.id); setOverrideModal(null); }
+                  if (e.key === "Enter") {
+                    const val = Number(overrideValue);
+                    const item = overrideModal.item;
+                    const original = item.printTypeCode === "LM" ? (item.height != null ? item.height / 1000 : null) : item.qty;
+                    if (overrideValue && val >= 1 && val !== original) {
+                      setOverride(item.id, item.printTypeCode === "LM" ? { meters: val } : { qty: val });
+                    }
+                    setOverrideModal(null);
+                  }
+                }}
+              />
+              <div className={style.hold_modal_actions}>
+                <button type="button" className={style.hold_modal_cancel} onClick={() => { clearOverride(overrideModal.item.id); setOverrideModal(null); }}>
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className={style.hold_modal_confirm}
+                  disabled={(() => {
+                    const val = Number(overrideValue);
+                    const item = overrideModal.item;
+                    const original = item.printTypeCode === "LM" ? (item.height != null ? item.height / 1000 : null) : item.qty;
+                    return !overrideValue || val < 1 || val === original;
+                  })()}
+                  onClick={() => {
+                    const val = Number(overrideValue);
+                    const item = overrideModal.item;
+                    setOverride(item.id, item.printTypeCode === "LM" ? { meters: val } : { qty: val });
+                    setOverrideModal(null);
+                  }}
+                >
+                  Set override
+                </button>
+              </div>
+            </div>
+          </>,
+          document.body,
+        )}
       {holdModal &&
         createPortal(
           <>

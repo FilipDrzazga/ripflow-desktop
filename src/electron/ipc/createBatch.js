@@ -248,9 +248,18 @@ export const createBatch = async (batch) => {
     committed = true;
 
     try {
+      const overridesMap = {};
+      for (const item of batch) {
+        const stem = path.parse(item.file?.name ?? "").name;
+        if (item.qtyOverride != null) overridesMap[stem] = { qty: item.qtyOverride };
+        if (item.metersOverride != null) overridesMap[stem] = { meters: item.metersOverride };
+      }
       await fs.promises.writeFile(
         path.join(finalBatchFolderPath, "_batch_info.json"),
-        JSON.stringify({ originalGroup: path.basename(sourceEntries[0].sourceDir) }, null, 2),
+        JSON.stringify({
+          originalGroup: path.basename(sourceEntries[0].sourceDir),
+          ...(Object.keys(overridesMap).length > 0 ? { overrides: overridesMap } : {}),
+        }, null, 2),
         "utf8",
       );
     } catch {
