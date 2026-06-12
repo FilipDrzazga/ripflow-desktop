@@ -1,5 +1,5 @@
 .grid {
-  width: 360px;
+  width: 300px;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
@@ -46,7 +46,7 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
-  padding: 16px 18px;
+  padding: 14px 14px;
   background: var(--bg-white);
   border-radius: 20px;
   box-shadow: var(--card-shadow);
@@ -97,7 +97,7 @@
 /* === PROCESS LABEL === */
 .process_label {
   flex-shrink: 0;
-  width: 82px;
+  width: 70px;
   font-size: 12px;
   font-weight: 700;
   overflow: hidden;
@@ -120,7 +120,7 @@
 /* === FABRIC NAME === */
 .fabric_name {
   flex-shrink: 0;
-  width: 110px;
+  width: 90px;
   font-size: 12px;
   font-weight: 600;
   color: var(--text-primary);
@@ -131,7 +131,7 @@
 
 .meters_value {
   flex-shrink: 0;
-  width: 54px;
+  width: 48px;
   font-size: 12px;
   font-weight: 700;
   color: var(--text-primary);
@@ -158,7 +158,7 @@
 
 .reason_label {
   flex-shrink: 0;
-  width: 110px;
+  width: 90px;
   font-size: 12px;
   font-weight: 600;
   color: var(--text-primary);

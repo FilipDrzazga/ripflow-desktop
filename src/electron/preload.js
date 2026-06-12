@@ -201,6 +201,11 @@ const api = Object.freeze({
       ipcRenderer.on("update:ready", handler);
       return () => ipcRenderer.removeListener("update:ready", handler);
     },
+    onNotAvailable: (cb) => {
+      const handler = () => cb();
+      ipcRenderer.on("update:not-available", handler);
+      return () => ipcRenderer.removeListener("update:not-available", handler);
+    },
     onError: (cb) => {
       const handler = (_e, msg) => cb(msg);
       ipcRenderer.on("update:error", handler);

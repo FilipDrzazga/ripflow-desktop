@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { LuRefreshCw, LuDownload } from "react-icons/lu";
+import { useState, useEffect, useRef } from "react";
+import { LuRefreshCw, LuDownload, LuTag } from "react-icons/lu";
 import { getSettings } from "../../../services/settingsService";
 import {
   checkForUpdate,
@@ -7,6 +7,7 @@ import {
   onUpdateAvailable,
   onUpdateProgress,
   onUpdateReady,
+  onUpdateNotAvailable,
   onUpdateError,
   getAppVersion,
 } from "../../../services/updateService";
@@ -21,6 +22,7 @@ const UpdatesView = () => {
   const [changelog, setChangelog] = useState([]);
   const [clientId, setClientId] = useState("all");
   const [appVersion, setAppVersion] = useState(null);
+  const checkTimeoutRef = useRef(null);
 
   useEffect(() => {
     getAppVersion().then(setAppVersion);
@@ -36,24 +38,32 @@ const UpdatesView = () => {
       .then(setChangelog)
       .catch(() => {});
 
+    const clearCheckTimeout = () => clearTimeout(checkTimeoutRef.current);
+
     const unsubAvailable = onUpdateAvailable((version) => {
+      clearCheckTimeout();
       setAvailableVersion(version);
       setStatus("available");
     });
     const unsubProgress = onUpdateProgress((percent) => {
+      clearCheckTimeout();
       setProgress(percent);
       setStatus("downloading");
     });
-    const unsubReady = onUpdateReady(() => setStatus("ready"));
+    const unsubReady = onUpdateReady(() => { clearCheckTimeout(); setStatus("ready"); });
+    const unsubNotAvailable = onUpdateNotAvailable(() => { clearCheckTimeout(); setStatus("uptodate"); });
     const unsubError = onUpdateError((msg) => {
+      clearCheckTimeout();
       setErrorMsg(msg);
       setStatus("error");
     });
 
     return () => {
+      clearCheckTimeout();
       unsubAvailable();
       unsubProgress();
       unsubReady();
+      unsubNotAvailable();
       unsubError();
     };
   }, []);
@@ -61,9 +71,15 @@ const UpdatesView = () => {
   const handleCheck = async () => {
     setStatus("checking");
     setErrorMsg(null);
+    clearTimeout(checkTimeoutRef.current);
+    checkTimeoutRef.current = setTimeout(() => {
+      setErrorMsg("Update check timed out. Check your internet connection.");
+      setStatus("error");
+    }, 14000);
     try {
       await checkForUpdate();
     } catch (err) {
+      clearTimeout(checkTimeoutRef.current);
       setErrorMsg(err?.message ?? "Update check failed.");
       setStatus("error");
     }
@@ -88,11 +104,16 @@ const UpdatesView = () => {
       </div>
       <div className={sharedStyles.view_body}>
         <div className={sharedStyles.field}>
-          <span className={sharedStyles.label}>Current Version</span>
-          <div className={styles.version_row}>
-            {appVersion && <span className={styles.version_badge}>{appVersion}</span>}
-            <button className={styles.check_btn} onClick={handleCheck} disabled={isDisabled}>
-              <LuRefreshCw size={14} />
+          <div className={styles.label_row}>
+            <span className={sharedStyles.label}>Current Version:</span>
+            {appVersion && (
+              <span className={styles.version_badge}>
+                <LuTag size={11} />
+                {appVersion}
+              </span>
+            )}
+            <button className={`${styles.check_btn} ${styles.check_btn_right}`} onClick={handleCheck} disabled={isDisabled}>
+              {isDisabled ? <span className={styles.spinner} /> : <LuRefreshCw size={14} />}
               Check for updates
             </button>
           </div>
@@ -100,6 +121,11 @@ const UpdatesView = () => {
             {status === "checking" && (
               <p className={`${styles.status_text} ${styles.status_checking}`}>
                 Checking for updates…
+              </p>
+            )}
+            {status === "uptodate" && (
+              <p className={`${styles.status_text} ${styles.status_uptodate}`}>
+                You're up to date.
               </p>
             )}
             {status === "available" && (
@@ -138,7 +164,7 @@ const UpdatesView = () => {
 
         {visibleChangelog.length > 0 && (
           <div className={sharedStyles.field}>
-            <span className={sharedStyles.label}>Changelog</span>
+            <span className={sharedStyles.label}>Changelog:</span>
             <div className={styles.changelog_section}>
               {visibleChangelog.map((entry) => (
                 <div key={entry.version} className={styles.changelog_entry}>

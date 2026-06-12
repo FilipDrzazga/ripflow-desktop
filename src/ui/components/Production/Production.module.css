@@ -3,10 +3,15 @@
   flex-direction: column;
   flex: 1;
   min-height: 0;
-  border-radius: 20px;
+  gap: 8px;
+}
+
+.top_section {
+  border-radius: 20px 20px 0 0;
   box-shadow: var(--card-shadow);
   background-color: var(--bg-white);
   overflow: hidden;
+  flex-shrink: 0;
 }
 
 /* ===== TOPBAR ===== */
@@ -315,7 +320,13 @@
 .cards_wrapper {
   flex: 1;
   overflow: auto;
-  padding: 8px 0 40px;
+  padding: 0 0 40px;
+  scrollbar-width: none;
+}
+
+.table_wrapper::-webkit-scrollbar,
+.cards_wrapper::-webkit-scrollbar {
+  display: none;
 }
 
 .empty_state {
@@ -605,9 +616,9 @@
 /* ===== PRODUCTION CARD ===== */
 
 .card {
-  margin: 8px 16px;
+  margin: 4px 0;
   padding: 0 16px;
-  height: 48px;
+  height: 44px;
   border-radius: 10px;
   background: var(--bg-white);
   box-shadow: var(--card-shadow);
@@ -1059,4 +1070,127 @@
   height: 1px;
   margin: 4px 0 0;
   background-color: var(--border-grey);
+}
+
+/* ===== BATCH GROUP ===== */
+
+.batch_group {
+}
+
+.topbar_right_sep {
+  width: 1px;
+  height: 24px;
+  background: var(--border-grey);
+  flex-shrink: 0;
+  margin: 0 12px;
+}
+
+.group_toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.group_toggle_checkbox {
+  width: 15px;
+  height: 15px;
+  cursor: pointer;
+  accent-color: var(--bg-black);
+}
+
+.batch_group_header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 16px;
+  min-height: 24px;
+  background-color: var(--bg-grey);
+}
+
+
+.batch_group_name {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.batch_group_printer {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 7px;
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  white-space: nowrap;
+  flex-shrink: 0;
+  letter-spacing: 0.02em;
+}
+
+.batch_group_count {
+  font-size: 12px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.batch_group_sep {
+  width: 1px;
+  height: 16px;
+  background: var(--border-grey);
+  flex-shrink: 0;
+}
+
+.batch_group_stages {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.batch_group_stage_pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 7px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.batch_group_select_btn {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 7px;
+  border: 1px solid var(--border-grey);
+  background-color: var(--bg-white);
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: background-color 0.12s ease, color 0.12s ease;
+}
+
+.batch_group_select_btn:hover {
+  background-color: var(--bg-grey);
+  color: var(--text-primary);
+}
+
+.batch_group .card:nth-child(2) {
+  margin-top: 12px;
+}
+
+.batch_group .card:last-child {
+  margin-bottom: 12px;
 }

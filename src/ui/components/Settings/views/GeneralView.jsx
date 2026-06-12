@@ -91,6 +91,7 @@ const GeneralView = () => {
   const [workstationName, setWorkstationName] = useState("");
   const [workstationRole, setWorkstationRole] = useState("");
   const [shippedRetentionDays, setShippedRetentionDays] = useState(30);
+  const [clientId, setClientId] = useState("all");
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
@@ -100,6 +101,7 @@ const GeneralView = () => {
         setWorkstationName(res.settings.workstationName ?? "");
         setWorkstationRole(res.settings.workstationRole ?? "");
         setShippedRetentionDays(res.settings.shippedRetentionDays ?? 30);
+        setClientId(res.settings.clientId ?? "all");
       }
     });
   }, []);
@@ -107,9 +109,9 @@ const GeneralView = () => {
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      const res = await setSettings({ ...allSettings, workstationName, workstationRole, shippedRetentionDays });
+      const res = await setSettings({ ...allSettings, workstationName, workstationRole, shippedRetentionDays, clientId });
       if (res.success) {
-        setAllSettings((s) => ({ ...s, workstationName, workstationRole, shippedRetentionDays }));
+        setAllSettings((s) => ({ ...s, workstationName, workstationRole, shippedRetentionDays, clientId }));
         notify({ type: "Success", title: "Settings saved", message: "General settings updated." });
       } else {
         notify({ type: "Error", title: "Save failed", message: res.error || "Could not save settings." });

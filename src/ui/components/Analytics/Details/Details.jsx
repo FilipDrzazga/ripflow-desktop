@@ -2,7 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { PRINTER_COLORS } from "@/constants/printerColors";
 import { PRINT_TYPE_MAP } from "@/constants/printTypeMap";
 import { useStore } from "@/store/useStore";
-import { LuDownload, LuRefreshCw, LuChevronDown, LuChevronUp, LuFilter, LuSearch, LuX, LuMinus } from "react-icons/lu";
+import { LuDownload, LuRefreshCw, LuChevronDown, LuChevronUp, LuFilter, LuSearch, LuX, LuMinus, LuCircle } from "react-icons/lu";
+import { HiCheck } from "react-icons/hi2";
 import { resolveIcon } from "@/constants/rollbackReasonIcons";
 import Summary from "../Summary/Summary";
 import style from "./Details.module.css";
@@ -103,7 +104,7 @@ const Details = ({ details, stats, isLoading, period, onPeriodChange, onRefresh 
   };
   const [processFilter, setProcessFilter] = useState("All");
   const [printerFilter, setPrinterFilter] = useState("All");
-  const [reasonFilter, setReasonFilter] = useState("All");
+  const [reasonFilter, setReasonFilter] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [reasonOpen, setReasonOpen] = useState(false);
   const [splitByDay, setSplitByDay] = useState(true);
@@ -120,7 +121,7 @@ const Details = ({ details, stats, isLoading, period, onPeriodChange, onRefresh 
 
   const uniqueReasons = useMemo(() => {
     const seen = new Set();
-    const out = [{ code: "All", label: "All reasons" }];
+    const out = [];
     for (const row of details) {
       if (!seen.has(row.reason_code)) {
         seen.add(row.reason_code);
@@ -138,7 +139,7 @@ const Details = ({ details, stats, isLoading, period, onPeriodChange, onRefresh 
     return details.filter((row) => {
       if (processFilter !== "All" && row.process !== processFilter) return false;
       if (printerFilter !== "All" && row.printer !== printerFilter) return false;
-      if (reasonFilter !== "All" && row.reason_code !== reasonFilter) return false;
+      if (reasonFilter.length > 0 && !reasonFilter.includes(row.reason_code)) return false;
       if (q) {
         const fabricMatch = (row.fabric ?? "").toLowerCase().includes(q);
         const reasonMatch = getDisplayReason(row.reason_code, row.reason_label).toLowerCase().includes(q);
@@ -216,12 +217,16 @@ const Details = ({ details, stats, isLoading, period, onPeriodChange, onRefresh 
             <div className={style.reason_wrapper} ref={reasonRef}>
               <button
                 type="button"
-                className={`${style.reason_btn} ${reasonFilter !== "All" ? style.reason_btn_active : ""}`}
+                className={`${style.reason_btn} ${reasonFilter.length > 0 ? style.reason_btn_active : ""}`}
                 onClick={() => setReasonOpen((v) => !v)}
               >
                 <span className={style.reason_btn_label}>
                   <LuFilter size={14} />
-                  {uniqueReasons.find((r) => r.code === reasonFilter)?.label ?? "All reasons"}
+                  {reasonFilter.length === 0
+                    ? "All reasons"
+                    : reasonFilter.length === 1
+                      ? (uniqueReasons.find((r) => r.code === reasonFilter[0])?.label ?? "All reasons")
+                      : `${reasonFilter.length} reasons`}
                 </span>
                 <span className={style.reason_chevron}>
                   {reasonOpen ? <LuChevronUp size={13} /> : <LuChevronDown size={13} />}
@@ -229,19 +234,38 @@ const Details = ({ details, stats, isLoading, period, onPeriodChange, onRefresh 
               </button>
               {reasonOpen && (
                 <div className={style.reason_dropdown}>
-                  {uniqueReasons.map(({ code, label }) => (
-                    <button
-                      key={code}
-                      type="button"
-                      className={`${style.reason_option} ${reasonFilter === code ? style.reason_option_active : ""}`}
-                      onClick={() => {
-                        setReasonFilter(code);
-                        setReasonOpen(false);
-                      }}
-                    >
-                      {label}
-                    </button>
-                  ))}
+                  <button
+                    type="button"
+                    className={`${style.reason_option} ${reasonFilter.length === 0 ? style.reason_option_active : ""}`}
+                    onClick={() => { setReasonFilter([]); setReasonOpen(false); }}
+                  >
+                    <span className={style.reason_option_check}>
+                      <LuFilter size={12} />
+                    </span>
+                    All reasons
+                  </button>
+                  {uniqueReasons.map(({ code, label }) => {
+                    const isSelected = reasonFilter.includes(code);
+                    const ReasonIcon = reasonIconMap?.[code];
+                    return (
+                      <button
+                        key={code}
+                        type="button"
+                        className={`${style.reason_option} ${isSelected ? style.reason_option_active : ""}`}
+                        onClick={() =>
+                          setReasonFilter((prev) =>
+                            prev.includes(code) ? prev.filter((c) => c !== code) : [...prev, code]
+                          )
+                        }
+                      >
+                        <span className={style.reason_option_check}>
+                          {isSelected ? <HiCheck /> : <LuCircle size={12} style={{ opacity: 0.25 }} />}
+                        </span>
+                        {ReasonIcon && <ReasonIcon size={13} className={style.reason_option_icon} />}
+                        {label}
+                      </button>
+                    );
+                  })}
                 </div>
               )}
             </div>

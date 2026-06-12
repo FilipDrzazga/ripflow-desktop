@@ -1,5 +1,15 @@
 [
   {
+    "version": "1.0.4",
+    "date": "2026-06-12",
+    "changes": [
+      { "text": "Redesigned the production UI with an updated layout and visual improvements", "clients": ["all"] },
+      { "text": "Added multiple selection support for rollback reason buttons in Analytics", "clients": ["all"] },
+      { "text": "Reorganised the production view into logical groups for better clarity", "clients": ["all"] },
+      { "text": "Added event listeners to detect missing updates and handle them gracefully", "clients": ["all"] }
+    ]
+  },
+  {
     "version": "1.0.3",
     "date": "2025-06-11",
     "changes": [{ "text": "Improved Analytics UI layout and readability", "clients": ["all"] }]

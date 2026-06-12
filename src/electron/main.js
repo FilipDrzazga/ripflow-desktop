@@ -79,6 +79,9 @@ app.whenReady().then(() => {
   autoUpdater.on("update-downloaded", () => {
     win?.webContents.send("update:ready");
   });
+  autoUpdater.on("update-not-available", () => {
+    win?.webContents.send("update:not-available");
+  });
   autoUpdater.on("error", (err) => {
     win?.webContents.send("update:error", err.message);
   });
@@ -88,7 +91,12 @@ app.whenReady().then(() => {
   }
 
   ipcMain.handle("app:getVersion", () => app.getVersion());
-  ipcMain.handle("update:check", () => autoUpdater.checkForUpdates());
+  ipcMain.handle("update:check", () => {
+    const timeout = setTimeout(() => {
+      win?.webContents.send("update:error", "Update check timed out. Check your internet connection.");
+    }, 12000);
+    return autoUpdater.checkForUpdates().finally(() => clearTimeout(timeout));
+  });
   ipcMain.handle("update:install", () => autoUpdater.quitAndInstall());
 });
 

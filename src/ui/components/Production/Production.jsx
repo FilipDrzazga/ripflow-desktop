@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { HiMagnifyingGlass } from "react-icons/hi2";
 import { LuArrowRight, LuArrowLeft, LuScissors, LuRefreshCw, LuCornerUpLeft, LuEye } from "react-icons/lu";
 import { useStore } from "../../store/useStore";
-import { STAGE_LABEL, STAGE_NEXT, STAGE_PREV, PRODUCTION_STAGE, QC_ACTION } from "../../../shared/constants";
+import { STAGE_LABEL, STAGE_NEXT, STAGE_PREV, PRODUCTION_STAGE, QC_ACTION, STAGE_COLOR } from "../../../shared/constants";
 import {
   advanceStage,
   setSewingSent,
@@ -35,6 +35,52 @@ const FILTER_TABS = [
 ];
 
 const POLL_INTERVAL = 15_000;
+
+const BATCH_SHORT_LABEL = {
+  [PRODUCTION_STAGE.PRINTED]:     "Print",
+  [PRODUCTION_STAGE.HEATPRESS]:   "Press",
+  [PRODUCTION_STAGE.QC]:          "QC",
+  [PRODUCTION_STAGE.TO_SEWING]:   "Sew Out",
+  [PRODUCTION_STAGE.FROM_SEWING]: "Sew In",
+  [PRODUCTION_STAGE.PACKED]:      "Pack",
+  [PRODUCTION_STAGE.SHIPPED]:     "Ship",
+};
+
+const STAGE_PIPELINE_ORDER = [
+  PRODUCTION_STAGE.PRINTED, PRODUCTION_STAGE.HEATPRESS, PRODUCTION_STAGE.QC,
+  PRODUCTION_STAGE.TO_SEWING, PRODUCTION_STAGE.FROM_SEWING, PRODUCTION_STAGE.PACKED, PRODUCTION_STAGE.SHIPPED,
+];
+
+const BatchGroupHeader = ({ batchPath, rows, selectedFileIds, onSelectAll }) => {
+  const batchName = batchPath?.split(/[/\\]/).pop() ?? "Unknown";
+  const printerMatch = batchName.match(/-(DGEN|YOKO|YUMI)$/i);
+  const printer = printerMatch ? printerMatch[1].toUpperCase() : null;
+  const pc = printer ? (PRINTER_COLORS[printer] ?? { bg: "#f0f0f0", color: "#616161" }) : null;
+  const stageCounts = {};
+  for (const r of rows) stageCounts[r.stage] = (stageCounts[r.stage] ?? 0) + 1;
+  const allSelected = rows.length > 0 && rows.every((r) => selectedFileIds.has(r.file_id));
+  return (
+    <div className={style.batch_group_header}>
+      <span className={style.batch_group_name}>{batchName}</span>
+      {pc && <span className={style.batch_group_printer} style={{ backgroundColor: pc.bg, color: pc.color }}>{printer}</span>}
+      <span className={style.batch_group_count}>{rows.length} file{rows.length !== 1 ? "s" : ""}</span>
+      <span className={style.batch_group_sep} />
+      <div className={style.batch_group_stages}>
+        {STAGE_PIPELINE_ORDER.filter((s) => stageCounts[s] > 0).map((s) => {
+          const sc = STAGE_COLOR[s];
+          return (
+            <span key={s} className={style.batch_group_stage_pill} style={{ backgroundColor: sc?.bg, color: sc?.color }}>
+              {stageCounts[s]} {BATCH_SHORT_LABEL[s]}
+            </span>
+          );
+        })}
+      </div>
+      <button type="button" className={style.batch_group_select_btn} onClick={() => onSelectAll(rows)}>
+        {allSelected ? "Deselect" : "Select All"}
+      </button>
+    </div>
+  );
+};
 
 const Production = () => {
   const productionStages    = useStore((s) => s.productionStages);
@@ -301,6 +347,19 @@ const Production = () => {
   }, []);
 
   const clearProductionSelection = useCallback(() => setSelectedFileIds(new Set()), []);
+
+  const [groupingEnabled, setGroupingEnabled] = useState(true);
+
+  const handleSelectBatch = useCallback((rows) => {
+    const ids = rows.map((r) => r.file_id);
+    setSelectedFileIds((prev) => {
+      const next = new Set(prev);
+      const allAlreadySelected = ids.every((id) => next.has(id));
+      if (allAlreadySelected) ids.forEach((id) => next.delete(id));
+      else ids.forEach((id) => next.add(id));
+      return next;
+    });
+  }, []);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -582,16 +641,6 @@ const Production = () => {
     return true;
   });
 
-  const allFilteredSelected = filtered.length > 0 && filtered.every((r) => selectedFileIds.has(r.file_id));
-
-  const handleSelectAll = () => {
-    if (allFilteredSelected) {
-      setSelectedFileIds(new Set());
-    } else {
-      setSelectedFileIds(new Set(filtered.map((r) => r.file_id)));
-    }
-  };
-
   // Tab counts reflect the current batch filter when active
   const countableRows = batchFilter ? allRows.filter((r) => r.batch_path === batchFilter) : allRows;
   const counts = Object.fromEntries(
@@ -600,6 +649,18 @@ const Production = () => {
       tab.key === "all" ? countableRows.length : countableRows.filter((r) => r.stage === tab.key).length,
     ]),
   );
+  const isGrouped = groupingEnabled && (stageFilter === "all" || batchFilter !== null);
+
+  const groupedBatches = useMemo(() => {
+    const map = new Map();
+    for (const row of filtered) {
+      const key = row.batch_path ?? "__no_batch__";
+      if (!map.has(key)) map.set(key, []);
+      map.get(key).push(row);
+    }
+    return [...map.entries()];
+  }, [filtered]);
+
   // ─── Context menu options (memoized) ─────────────────────────────────────
 
   const contextMenuOptions = useMemo(() => {
@@ -735,6 +796,7 @@ const Production = () => {
   return (
     <div className={style.container}>
 
+      <div className={style.top_section}>
       <div className={style.topbar}>
         <h2 className={style.title}>Production</h2>
         <div className={style.tabs}>
@@ -752,6 +814,16 @@ const Production = () => {
         </div>
 
         <div className={style.topbar_right}>
+          <label className={style.group_toggle}>
+            <input
+              type="checkbox"
+              checked={groupingEnabled}
+              onChange={(e) => setGroupingEnabled(e.target.checked)}
+              className={style.group_toggle_checkbox}
+            />
+            Groups
+          </label>
+          <div className={style.topbar_right_sep} />
           <div className={style.search_wrapper}>
             <HiMagnifyingGlass className={style.search_icon} />
             <input
@@ -787,15 +859,11 @@ const Production = () => {
           <button type="button" className={style.batch_chip} onClick={() => setBatchFilter(null)}>
             {batchFilter.split(/[/\\]/).pop()} ×
           </button>
-          {filtered.length > 0 && (
-            <button type="button" className={style.select_all_btn} onClick={handleSelectAll}>
-              {allFilteredSelected ? "Deselect All" : `Select All (${filtered.length})`}
-            </button>
-          )}
         </div>
       )}
+      </div>
 
-<div className={style.cards_wrapper}>
+      <div className={style.cards_wrapper}>
         {isLoading && allRows.length === 0 ? (
           <div className={style.loading_state}>
             <div className={style.loading_spinner} />
@@ -804,6 +872,27 @@ const Production = () => {
           <div className={style.empty_state}>
             <span className={style.empty_text}>No jobs match the current filter.</span>
           </div>
+        ) : isGrouped ? (
+          groupedBatches.map(([batchPath, rows]) => (
+            <div key={batchPath} className={style.batch_group}>
+              <BatchGroupHeader
+                batchPath={batchPath}
+                rows={rows}
+                selectedFileIds={selectedFileIds}
+                onSelectAll={handleSelectBatch}
+              />
+              {rows.map((row) => (
+                <ProductionCard
+                  key={row.file_id}
+                  stage={row}
+                  highlighted={highlightedId === row.file_id}
+                  selected={selectedFileIds.has(row.file_id)}
+                  onSelect={toggleProductionSelect}
+                  onContextMenu={(r, x, y) => setContextMenu({ row: r, x, y })}
+                />
+              ))}
+            </div>
+          ))
         ) : (
           filtered.map((row) => (
             <ProductionCard
