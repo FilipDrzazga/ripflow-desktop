@@ -277,17 +277,30 @@ export const regenerateXmlForBatch = async (batchPath) => {
       });
     }
 
+    let batchOverrides = {};
+    try {
+      const raw = await fs.promises.readFile(path.join(validatedBatchPath, "_batch_info.json"), "utf8");
+      const info = JSON.parse(raw);
+      batchOverrides = info.overrides ?? {};
+    } catch {
+      // no _batch_info.json or no overrides field — safe to ignore
+    }
+
     const batchItems = pdfs
       .map((pdf) => {
         const fullPath = path.join(validatedBatchPath, pdf.name);
         const parsed = parsePrintFileName(pdf.name, { fullPath, dir: validatedBatchPath });
         const materialType = getMaterialType(parsed?.material);
+        const stem = path.parse(pdf.name).name;
+        const ov = batchOverrides[stem];
         return {
           file: { name: pdf.name, fullPath },
           printGroup: meta.group,
           printer: meta.printer,
           materialType,
           ...(parsed || {}),
+          ...(ov?.qty != null ? { qty: ov.qty } : {}),
+          ...(ov?.meters != null ? { height: Math.round(ov.meters * 1000) } : {}),
         };
       })
       .filter((item) => item.printTypeCode && item.printTypeCode !== "UNKNOWN");
