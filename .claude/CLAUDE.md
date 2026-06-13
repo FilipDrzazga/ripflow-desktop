@@ -29,7 +29,7 @@ src/electron/
     parseFileName.js       # CORE LOGIC 600+ lines — change with extreme care
     getMaterialType.js     # material → "Cottons" | "Polyesters" | "Unknown"
                            # Uses fabricCache as primary; falls back to static sets if cache not loaded
-    getSettings.js         # electron-store: storagePath, xmlPath, workstationName, customOrderFolderPath, workstationRole, labelPrinterName
+    getSettings.js         # electron-store: storagePath, xmlPath, workstationName, customOrderFolderPath, workstationRole, labelPrinterName, shippedRetentionDays, labelPrintMode, clientId
                            # NO longer stores reasonDefinitions (migrated to DB on first run)
     getRootPath.js         # Derives all paths from getSettings() — no hardcoded values
     db.js                  # SQLite: all tables; all fns guarded if(!db)
@@ -93,12 +93,15 @@ src/ui/
     RollbackModal/         # Portal modal; reason pills from store.reasonDefinitions; OTHER → text input
     ErrorBoundary/         # Class component — wraps DataList, BatchHistory, Analytics in App.jsx
     Settings/              # Left-sidebar + content layout
-      Settings.jsx         # Sidebar nav (General, Paths, Fabrics, Rollback Reasons)
+      Settings.jsx         # Sidebar nav (General, Paths, Fabrics, Rollback Reasons, Database, Maintenance, Updates)
       views/
-        GeneralView.jsx    # workstationName only
+        GeneralView.jsx    # workstationName, workstationRole, shippedRetentionDays
         PathsView.jsx      # storagePath, xmlPath, customOrderFolderPath
         FabricsView.jsx    # GlobalParams (margins+defaults) + Materials CRUD table
         RollbackReasonsView.jsx # reason label+icon editor; add new reasons
+        DatabaseView.jsx   # manual DB backup (+ auto-backup on startup)
+        MaintenanceView.jsx # clear rollback / custom-order history, clear all production stages
+        UpdatesView.jsx    # auto-updater UI (check/install, changelog, clientId channel)
 
 src/shared/
   estimatePrintLength.js        # Used in both electron and UI
@@ -129,7 +132,7 @@ INBOX → PARSE FILENAME → UI → SELECT FILES+PRINTER → CREATE BATCH+XML �
 | `"batch"` | BatchHistory (wrapped in ErrorBoundary) |
 | `"analytics"` | Analytics (wrapped in ErrorBoundary) |
 | `"logs"` | SessionLogs |
-| `"settings"` | Settings (sidebar: General / Paths / Fabrics / Rollback Reasons) |
+| `"settings"` | Settings (sidebar: General / Paths / Fabrics / Rollback Reasons / Database / Maintenance / Updates) |
 | `"customOrder"` | CustomOrder (CustomOrderCard + CustomOrderHistory) |
 | `"production"` | Production (ProductionCard + QCModal) |
 
@@ -154,7 +157,7 @@ Tokenize by `_`, detect CUSHION/TEA_TOWEL by keyword, others by XWD hex token.
 ## Storage — Two-tier config
 
 **electron-store** (per-machine, `%APPDATA%\ripflow-desktop\config.json`):
-- `storagePath`, `xmlPath`, `workstationName`, `customOrderFolderPath`, `workstationRole`, `labelPrinterName`
+- `storagePath`, `xmlPath`, `workstationName`, `customOrderFolderPath`, `workstationRole`, `labelPrinterName`, `shippedRetentionDays`, `labelPrintMode`, `clientId`
 
 **ripflow.db** (shared across all PCs via network `storagePath`):
 - Operational: `logs`, `held_files`, `rollback_reasons`, `custom_order_history`
@@ -176,12 +179,13 @@ Tables: `logs`, `held_files`, `rollback_reasons`, `custom_order_history`, `reaso
 
 - `rollback_reasons.file_id = null` → whole batch reason; `= filename-without-ext` → single file
 - `logs.workstation` can be NULL in old records — render conditionally
+- `held_files` is keyed `(file_id, workstation)` with an optional `reason` column — holds are per-workstation
 - Indexes: `rollback_reasons(batch_path)`, `rollback_reasons(file_id)`, `logs(timestamp DESC)`
 - `getAllLogs` is capped at 500 rows; `addLog` in store trims to 500 entries
 - `fabric_globals` and `fabrics` are seeded from `defaultFabrics.js` on first run if tables empty
 - `reason_definitions` is populated via one-time migration from electron-store on first run
 
-**All DB functions:** `initDb`, `insertLog`, `getAllLogs`, `clearAllLogs`, `holdFile`, `unholdFile`, `getHeldFiles`, `insertRollbackReason`, `getRollbackReasonsByBatch`, `getRollbackReasonsByFile`, `insertCustomOrder`, `getAllCustomOrders`, `clearCustomOrders`, `getReasonDefinitions`, `setReasonDefinitions`, `migrateReasonDefinitions`, `getFabricGlobals`, `setFabricGlobals`, `getAllFabrics`, `saveFabric`, `deleteFabric`, `setAllFabrics`, `insertReprintRequest`, `getOpenReprintRequests`, `getOpenReprintRequestsByFileIds`, `fulfillReprintRequests`, `getReprintRequests`, `clearAllReprintRequests`
+**All DB functions:** `initDb`, `insertLog`, `getAllLogs`, `clearAllLogs`, `holdFile`, `unholdFile`, `getHeldFiles`, `insertRollbackReason`, `getRollbackReasonsByBatch`, `getRollbackReasonsByFile`, `insertCustomOrder`, `getAllCustomOrders`, `clearCustomOrders`, `getReasonDefinitions`, `setReasonDefinitions`, `migrateReasonDefinitions`, `getFabricGlobals`, `setFabricGlobals`, `getAllFabrics`, `saveFabric`, `deleteFabric`, `setAllFabrics`, `insertReprintRequest`, `getOpenReprintRequests`, `getOpenReprintRequestsByFileIds`, `fulfillReprintRequests`, `getReprintRequests`, `clearAllReprintRequests`, `clearAllRollbackReasons`, `getRollbackStats`, `getRollbackDetails`, `getLatestRollbackReasonsForFileIds`, `clearAllFileStages`, `backupDb`, `cleanupShippedStages`
 
 **`reprint_requests`** (partial reprint tracking): one row per rollback-from-Production event. `qty_affected` REAL — meters for LM, piece count otherwise; `qty_original` = full qty at rollback time. Open = `fulfilled_at IS NULL AND superseded_at IS NULL`. A new rollback of the same file **supersedes** prior open rows (history kept for analytics). `stage:advance` to `packed` calls `fulfillReprintRequests(fileId)`. Index: `reprint_requests(file_id)`. When a Production rollback registers a qty, `rollback_reasons.meters` is estimated from **qty_affected** (LM: meters→height; others: pieces→qty), so Analytics waste (byFabric, Details) is partial-aware with no Analytics-side changes; BatchHistory rollbacks keep full-file meters. `readFolders` and `readSingleBatch` attach `reprintQty`/`reprintQtyOriginal` to file objects from open requests (matched by filename stem) → persistent blue "Reprint" badge in DataList and BatchHistory FileRow. `refreshFiles` seeds `selectedOverrides` from `reprintQty` (operator-set entries are never overwritten; cleared entries re-seed on next refresh) so the existing submit-override pipeline applies the partial qty to XML, `_batch_info.json`, and `file_stages` — `createXML.js` needs no reprint logic. DataList hides the orange Override badge while it equals `reprintQty`.
 
@@ -204,13 +208,17 @@ getCachedGlobals()       // → { marginCotton, marginPoly, defaultXmlWidthCotto
 2. Cache not loaded (before initDb) → fall back to static COTTON_MATERIALS / POLY_MATERIALS sets
 
 **Fallback chain (parseFileName.js `applyLmDimensions`):**
-1. `getXmlWidthFromCache(material, isPoly)` → per-material DB value
-2. Cache not loaded → `getXmlWidthFromCache` returns global default → falls back to hardcoded `LM_XML_POLY` / `LM_XML_COTTON_DEFAULT`
+1. `getXmlWidthFromCache(material, isPoly)` → per-material `fabric.xmlWidth` from the cache
+2. No per-material match (or cache not loaded) → global default from `getCachedGlobals()` (`defaultXmlWidthPoly` / `defaultXmlWidthCotton`), which falls back to `DEFAULT_FABRIC_GLOBALS` (`defaultFabrics.js`) when the cache is empty, with a final `?? 1420`. parseFileName.js no longer imports `printWidths.js` `LM_XML_*` constants (removed in lint cleanup).
 
 ## Atomic File Move (`createBatch.js`)
 VALIDATE → LOCK (`.lock` file) → DESTINATION_STRUCTURE → COPY (pdf-lib p.1) → VERIFY → COMMIT (rename + write `_batch_info.json { originalGroup }`) → DELETE_SOURCE → ROLLBACK on fail
 
+**COPY is page 1 only — intentional.** `pdf-lib` copies only the first page of each source PDF; pages 2+ are deliberately not preserved (PrintFactory needs only page 1). A rolled-back or regenerated file therefore never carries pages 2+ — by design, not data loss.
+
 `_batch_info.json`: stores full inbox folder name (`originalGroup`). Used by `batchHistoryHandlers` to find correct rollback target. Without it, falls back to GROUP_NAME_OVERRIDES_REVERSE.
+
+`_rollback_snapshot.json`: written in the batch folder on rollback (`{ rolledBackAt, type: "batch"|"file", files: [] }`). `readSingleBatch` reads it so already-`rolled_back` files still render (with reason badges) even after their PDF has moved back to the inbox.
 
 ## IPC API (`window.api`)
 ```js
@@ -244,8 +252,8 @@ deleteFabric(name)                     // → { success }
 setAllFabrics(fabrics)                 // → { success } — bulk replace
 
 // Settings — ALWAYS spread allSettings before overriding individual fields to avoid null overwrite
-getSettings()  // → { success, settings: { storagePath, xmlPath, workstationName, customOrderFolderPath, workstationRole, labelPrinterName } }
-setSettings({ storagePath, xmlPath, workstationName, customOrderFolderPath, workstationRole, labelPrinterName })
+getSettings()  // → { success, settings: { storagePath, xmlPath, workstationName, customOrderFolderPath, workstationRole, labelPrinterName, shippedRetentionDays, labelPrintMode, clientId } }
+setSettings({ storagePath, xmlPath, workstationName, customOrderFolderPath, workstationRole, labelPrinterName, shippedRetentionDays, labelPrintMode, clientId })
 selectFolder() // → { success, canceled, path }
 
 // Logs / Held files
@@ -279,7 +287,15 @@ stage.getAllHistory()                                   // → { success, data: 
 stage.clearAll()                                       // → { success }
 
 // Label printing
-label.printBatch({ batchPath, batchName, printer, fileCount, material, totalMeters }) // → { success }
+label.printBatch({ batchName, totalMeters }) // → { success } — labelPrinter.js uses only batchName + totalMeters
+
+// System
+getAppVersion()  // → version string ("app:getVersion")
+backupDb()       // → { success, path, skipped } ("db:backup") — manual; also auto-runs on each startup
+
+// Auto-updater (electron-updater) — use updateService, never window.api.update directly
+update.check() / update.install()
+update.onAvailable(cb) / update.onProgress(cb) / update.onReady(cb) / update.onNotAvailable(cb) / update.onError(cb)
 ```
 
 ## Zustand Store (`useStore.jsx`)
@@ -404,10 +420,13 @@ Left-sidebar + content-area layout. `Settings.jsx` routes via `SECTIONS` array +
 
 | Section | View | Notes |
 |---|---|---|
-| General | `GeneralView` | workstationName only |
+| General | `GeneralView` | workstationName, workstationRole, shippedRetentionDays (per-machine) |
 | Paths | `PathsView` | storagePath, xmlPath, customOrderFolderPath |
 | Fabrics | `FabricsView` | Global params + Materials CRUD (DB-backed, shared) |
 | Rollback Reasons | `RollbackReasonsView` | label+icon per reason; add/edit; DB-backed, shared |
+| Database | `DatabaseView` | manual `backupDb`; auto-backup on startup, last 7 days kept |
+| Maintenance | `MaintenanceView` | clear rollback history / custom-order history / all production stages (destructive) |
+| Updates | `UpdatesView` | auto-updater: check/install, progress, changelog, app version, `clientId` release channel |
 
 All views share `SettingsView.module.css` for base layout (`.view`, `.view_header`, etc.).
 
@@ -442,13 +461,12 @@ npm run test:watch # Vitest watch mode
 6. `ripflow.db` lives in `storagePath` — fails if network unavailable; app continues (all db fns guarded)
 7. pdfjs-dist **must stay v4** — v5 incompatible with Electron 40 Chromium
 8. Load PDF via IPC `readFileBuffer` → base64 → Uint8Array → `pdfjsLib.getDocument({ data })` — NOT `file://`
-9. `Badge` component exists but is **unused** in DataList (inline icon tags used instead)
-10. `DataDaysCounter` was removed — age rendered inline in DataList; do not recreate
-11. **Never call `window.api` directly in components** — always import from `src/ui/services/`
-12. **Use constants from `src/shared/constants.js`** — never compare against raw strings. Covers: `BATCH_STATUS`, `FILE_STATUS`, `PRINTER`, `CUSTOM_ORDER_STATUS`, `PRODUCTION_STAGE`, `STAGE_NEXT`, `STAGE_PREV`, `STAGE_LABEL`, `STAGE_COLOR`, `QC_ACTION`, `SEWING_SUGGESTED_TYPES`
-13. **All file IPC handlers** use `assertStorageFilePath` — prevents path traversal outside storagePath
-14. Vitest tests exist in `src/shared/` — run `npm run test` before shipping changes to `estimatePrintLength.js`
-15. **Custom Order CSV import**: `customOrder:importCSV` was removed — use `selectCSV()` (returns `files: [{name, content}]`) then `importCSVContent(content)`. Never pass file paths from renderer to main for reading.
-16. **Rollback reason rows**: both batch and single-file rollbacks insert **one row per PDF** with `fileId = filename-stem`. Never use `fileId: null` for new rows — it breaks DataList inbox badges. Existing null rows in DB are handled by the `?? batch.rollbackReasons?.[0]` fallback in BatchRow and FileRow.
-17. **Fabric/reason config is DB-backed and shared** — electron-store holds ONLY machine-specific settings (paths, workstation name). Do NOT store shared config back in electron-store.
-18. **fabricCache must be loaded before getMaterialType/parseFileName are called** — `loadFabricCache()` is called in `ipc/index.js` right after `initDb()`. Both functions have static-set fallbacks for the window before DB is ready.
+9. `DataDaysCounter` was removed — age rendered inline in DataList; do not recreate
+10. **Never call `window.api` directly in components** — always import from `src/ui/services/`
+11. **Use constants from `src/shared/constants.js`** — never compare against raw strings. Covers: `BATCH_STATUS`, `FILE_STATUS`, `PRINTER`, `CUSTOM_ORDER_STATUS`, `PRODUCTION_STAGE`, `STAGE_NEXT`, `STAGE_PREV`, `STAGE_LABEL`, `STAGE_COLOR`, `QC_ACTION`, `SEWING_SUGGESTED_TYPES`
+12. **All file IPC handlers** use `assertStorageFilePath` — prevents path traversal outside storagePath
+13. Vitest tests exist in `src/shared/` — run `npm run test` before shipping changes to `estimatePrintLength.js`
+14. **Custom Order CSV import**: `customOrder:importCSV` was removed — use `selectCSV()` (returns `files: [{name, content}]`) then `importCSVContent(content)`. Never pass file paths from renderer to main for reading.
+15. **Rollback reason rows**: both batch and single-file rollbacks insert **one row per PDF** with `fileId = filename-stem`. Never use `fileId: null` for new rows — it breaks DataList inbox badges. Existing null rows in DB are handled by the `?? batch.rollbackReasons?.[0]` fallback in BatchRow and FileRow.
+16. **Fabric/reason config is DB-backed and shared** — electron-store holds ONLY machine-specific settings (paths, workstation name). Do NOT store shared config back in electron-store.
+17. **fabricCache must be loaded before getMaterialType/parseFileName are called** — `loadFabricCache()` is called in `ipc/index.js` right after `initDb()`. Both functions have static-set fallbacks for the window before DB is ready.
