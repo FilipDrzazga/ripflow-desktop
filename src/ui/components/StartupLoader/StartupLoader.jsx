@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { onReadFoldersProgress } from "../../services/fileService";
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
-import style from "./StartapLoader.module.css";
+import style from "./StartupLoader.module.css";
 import MaakeLogo from "@/assets/image/Maake_Logo.webp";
 
 const StartupLoader = ({ onDone }) => {

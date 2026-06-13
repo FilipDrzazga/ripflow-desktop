@@ -145,7 +145,6 @@ const api = Object.freeze({
   backupDb: () => ipcRenderer.invoke("db:backup"),
   selectFolder: () => ipcRenderer.invoke("dialog:select-folder"),
   minimizeWindow: () => ipcRenderer.send("window:minimize"),
-  maximizeWindow: () => ipcRenderer.send("window:maximize"),
   closeWindow: () => ipcRenderer.send("window:close"),
 
   customOrder: Object.freeze({
@@ -168,13 +167,10 @@ const api = Object.freeze({
     getAll:                 ()                             => ipcRenderer.invoke("stage:getAll"),
     getAfter:               (since)                        => ipcRenderer.invoke("stage:getAfter", since),
     advance:                (fileId, newStage, expectedStage) => ipcRenderer.invoke("stage:advance", { fileId, newStage, expectedStage: expectedStage ?? null }),
-    reject:                 (fileId, reason, expectedStage)   => ipcRenderer.invoke("stage:reject", { fileId, reason, expectedStage: expectedStage ?? null }),
-    override:               (fileId)                       => ipcRenderer.invoke("stage:override", { fileId }),
     clearFile:              (fileId)                       => ipcRenderer.invoke("stage:clearFile", fileId),
     clearBatch:             (batchPath)                    => ipcRenderer.invoke("stage:clearBatch", batchPath),
     setSewingSent:          (fileId, expectedStage, sewingCompany) => ipcRenderer.invoke("stage:setSewingSent", { fileId, expectedStage: expectedStage ?? null, sewingCompany: sewingCompany ?? null }),
     setSewingReceived:      (fileId, expectedStage)        => ipcRenderer.invoke("stage:setSewingReceived", { fileId, expectedStage: expectedStage ?? null }),
-    insertRollbackReason:   (data)                         => ipcRenderer.invoke("stage:insertRollbackReason", data),
     getAllHistory:           ()                             => ipcRenderer.invoke("stage:getAllHistory"),
     clearAll:               ()                             => ipcRenderer.invoke("stage:clearAll"),
   }),

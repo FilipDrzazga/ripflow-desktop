@@ -33,10 +33,6 @@ const createWindow = () => {
   });
 
   ipcMain.on("window:minimize", () => win.minimize());
-  ipcMain.on("window:maximize", () => {
-    if (win.isMaximized()) win.unmaximize();
-    else win.maximize();
-  });
   ipcMain.on("window:close", () => win.close());
 
   ipcMain.handle("dialog:confirm", async (_event, message) => {

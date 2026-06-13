@@ -41,6 +41,4 @@ export const setSettings = ({ storagePath, xmlPath, workstationName, customOrder
 
 export const getRollbackDefinitions = () => store.get("reasonDefinitions", null);
 
-export const setRollbackDefinitions = (definitions) => store.set("reasonDefinitions", definitions);
-
 export const clearRollbackDefinitions = () => store.delete("reasonDefinitions");

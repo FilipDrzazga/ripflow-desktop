@@ -22,12 +22,9 @@ let stmtInsertCustomOrder = null;
 let stmtGetAllCustomOrders = null;
 let stmtClearCustomOrders = null;
 let stmtInsertFileStage = null;
-let stmtGetFileStage = null;
 let stmtGetFileStagesByBatch = null;
 let stmtGetAllFileStages = null;
 let stmtAdvanceFileStage = null;
-let stmtRejectFileStage = null;
-let stmtOverrideFileStage = null;
 let stmtClearFileStage = null;
 let stmtClearFileStagesByBatch = null;
 let stmtSetSewingSent = null;
@@ -37,7 +34,6 @@ let stmtGetAllStageHistory = null;
 let stmtClearStageHistoryByFileId = null;
 let stmtClearStageHistoryByBatch = null;
 let stmtAdvanceFileStageGuarded = null;
-let stmtRejectFileStageGuarded = null;
 let stmtSetSewingSentGuarded = null;
 let stmtSetSewingReceivedGuarded = null;
 let stmtGetFileStagesAfter = null;
@@ -257,12 +253,9 @@ export const initDb = () => {
     stmtInsertFileStage = db.prepare(
       "INSERT OR REPLACE INTO file_stages (file_id, batch_path, print_type, customer_name, order_id, material, meters, qty, qty_override, meters_override, stage, prev_stage, updated_at, updated_by, sewing_sent_at, sewing_received_at, sewing_company) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
     );
-    stmtGetFileStage = db.prepare("SELECT * FROM file_stages WHERE file_id = ?");
     stmtGetFileStagesByBatch = db.prepare("SELECT * FROM file_stages WHERE batch_path = ?");
     stmtGetAllFileStages = db.prepare("SELECT * FROM file_stages ORDER BY updated_at DESC");
     stmtAdvanceFileStage = db.prepare("UPDATE file_stages SET stage = ?, updated_at = ?, updated_by = ? WHERE file_id = ?");
-    stmtRejectFileStage = db.prepare("UPDATE file_stages SET prev_stage = stage, stage = 'rejected', updated_at = ?, updated_by = ? WHERE file_id = ?");
-    stmtOverrideFileStage = db.prepare("UPDATE file_stages SET stage = 'overridden', updated_at = ?, updated_by = ? WHERE file_id = ?");
     stmtClearFileStage = db.prepare("DELETE FROM file_stages WHERE file_id = ?");
     stmtClearFileStagesByBatch = db.prepare("DELETE FROM file_stages WHERE batch_path = ?");
     stmtSetSewingSent = db.prepare("UPDATE file_stages SET stage = 'to_sewing', sewing_sent_at = ?, sewing_company = ?, updated_at = ?, updated_by = ? WHERE file_id = ?");
@@ -283,7 +276,6 @@ export const initDb = () => {
     stmtClearStageHistoryByFileId = db.prepare("DELETE FROM file_stage_history WHERE file_id = ?");
     stmtClearStageHistoryByBatch  = db.prepare("DELETE FROM file_stage_history WHERE file_id IN (SELECT file_id FROM file_stages WHERE batch_path = ?)");
     stmtAdvanceFileStageGuarded  = db.prepare("UPDATE file_stages SET stage = ?, updated_at = ?, updated_by = ? WHERE file_id = ? AND stage = ?");
-    stmtRejectFileStageGuarded   = db.prepare("UPDATE file_stages SET prev_stage = stage, stage = 'rejected', updated_at = ?, updated_by = ? WHERE file_id = ? AND stage = ?");
     stmtSetSewingSentGuarded     = db.prepare("UPDATE file_stages SET stage = 'to_sewing', sewing_sent_at = ?, sewing_company = ?, updated_at = ?, updated_by = ? WHERE file_id = ? AND stage = ?");
     stmtSetSewingReceivedGuarded = db.prepare("UPDATE file_stages SET stage = 'from_sewing', sewing_received_at = ?, updated_at = ?, updated_by = ? WHERE file_id = ? AND stage = ?");
     stmtGetFileStagesAfter       = db.prepare("SELECT * FROM file_stages WHERE updated_at > ? ORDER BY updated_at ASC");
@@ -325,12 +317,9 @@ export const initDb = () => {
     stmtGetAllCustomOrders = null;
     stmtClearCustomOrders = null;
     stmtInsertFileStage = null;
-    stmtGetFileStage = null;
     stmtGetFileStagesByBatch = null;
     stmtGetAllFileStages = null;
     stmtAdvanceFileStage = null;
-    stmtRejectFileStage = null;
-    stmtOverrideFileStage = null;
     stmtClearFileStage = null;
     stmtClearFileStagesByBatch = null;
     stmtSetSewingSent = null;
@@ -340,7 +329,6 @@ export const initDb = () => {
     stmtClearStageHistoryByFileId = null;
     stmtClearStageHistoryByBatch = null;
     stmtAdvanceFileStageGuarded = null;
-    stmtRejectFileStageGuarded = null;
     stmtSetSewingSentGuarded = null;
     stmtSetSewingReceivedGuarded = null;
     stmtGetFileStagesAfter = null;
@@ -745,16 +733,6 @@ export const insertFileStage = (row) => {
   }
 };
 
-export const getFileStage = (fileId) => {
-  if (!stmtGetFileStage) return null;
-  try {
-    return stmtGetFileStage.get(fileId) ?? null;
-  } catch (err) {
-    console.error("[db] getFileStage failed:", err);
-    return null;
-  }
-};
-
 export const getFileStagesByBatch = (batchPath) => {
   if (!stmtGetFileStagesByBatch) return [];
   try {
@@ -802,31 +780,6 @@ export const advanceFileStage = (fileId, newStage, updatedBy, expectedStage) => 
     return { updated: result.changes > 0 };
   } catch (err) {
     console.error("[db] advanceFileStage failed:", err);
-  }
-};
-
-export const rejectFileStage = (fileId, updatedBy, expectedStage) => {
-  if (!stmtRejectFileStage) return null;
-  try {
-    const now = new Date().toISOString();
-    const result = expectedStage
-      ? stmtRejectFileStageGuarded.run(now, updatedBy ?? null, fileId, expectedStage)
-      : stmtRejectFileStage.run(now, updatedBy ?? null, fileId);
-    if (result.changes > 0) _insertStageHistory(fileId, "rejected", now);
-    return { updated: result.changes > 0 };
-  } catch (err) {
-    console.error("[db] rejectFileStage failed:", err);
-  }
-};
-
-export const overrideFileStage = (fileId, updatedBy) => {
-  if (!stmtOverrideFileStage) return null;
-  try {
-    const now = new Date().toISOString();
-    stmtOverrideFileStage.run(now, updatedBy ?? null, fileId);
-    _insertStageHistory(fileId, "overridden", now);
-  } catch (err) {
-    console.error("[db] overrideFileStage failed:", err);
   }
 };
 
@@ -911,9 +864,14 @@ export const cleanupShippedStages = (days) => {
   if (!db) return;
   try {
     const safeDays = Math.max(1, Math.floor(Number(days) || 30));
-    const info = db.prepare(
-      `DELETE FROM file_stages WHERE stage = 'shipped' AND updated_at < datetime('now', '-${safeDays} days')`
-    ).run();
+    const where = `stage = 'shipped' AND datetime(updated_at) < datetime('now', '-${safeDays} days')`;
+    const purge = db.transaction(() => {
+      // history first — the subquery needs the file_stages rows to still exist
+      db.prepare(`DELETE FROM file_stage_history WHERE file_id IN (SELECT file_id FROM file_stages WHERE ${where})`).run();
+      // then the stages themselves
+      return db.prepare(`DELETE FROM file_stages WHERE ${where}`).run();
+    });
+    const info = purge();
     if (info.changes > 0) console.log(`[db] cleanupShippedStages: removed ${info.changes} records older than ${safeDays} days`);
   } catch (err) {
     console.error("[db] cleanupShippedStages failed:", err);
