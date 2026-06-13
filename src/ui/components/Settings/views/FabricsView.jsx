@@ -255,11 +255,6 @@ const MaterialsCard = () => {
     polyesters: fabrics.filter((f) => f.type === "Polyesters").length,
   }), [fabrics]);
 
-  const editingFabric = useMemo(
-    () => editingName !== null ? fabrics.find((f) => f.name === editingName) : null,
-    [editingName, fabrics],
-  );
-
   const handleSave = async (oldName, fabric) => {
     setIsSaving(true);
     try {

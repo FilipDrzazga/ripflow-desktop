@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PRINTER_COLORS } from "@/constants/printerColors";
 import { PRINT_TYPE_MAP } from "@/constants/printTypeMap";
 import { useStore } from "@/store/useStore";
@@ -98,10 +98,10 @@ const Details = ({ details, stats, isLoading, period, onPeriodChange, onRefresh 
     () => Object.fromEntries(reasonDefinitions.map((r) => [r.code, resolveIcon(r.iconName)])),
     [reasonDefinitions],
   );
-  const getDisplayReason = (code, label) => {
+  const getDisplayReason = useCallback((code, label) => {
     if (code === "OTHER") return label || "Other...";
     return reasonLabels[code] || label || code;
-  };
+  }, [reasonLabels]);
   const [processFilter, setProcessFilter] = useState("All");
   const [printerFilter, setPrinterFilter] = useState("All");
   const [reasonFilter, setReasonFilter] = useState([]);
@@ -147,7 +147,7 @@ const Details = ({ details, stats, isLoading, period, onPeriodChange, onRefresh 
       }
       return true;
     });
-  }, [details, processFilter, printerFilter, reasonFilter, searchQuery]);
+  }, [details, processFilter, printerFilter, reasonFilter, searchQuery, getDisplayReason]);
 
   const handleExportCsv = () => {
     const header = ["Date", "OrderID", "Customer", "Fabric", "Process", "Printer", "Reason", "Type", "Meters"];

@@ -24,7 +24,7 @@ import {
   deleteBatch as deleteBatchApi,
   regenerateXml as regenerateXmlApi,
 } from "../../services/batchService";
-import { openPreview as openPreviewApi, openInFolder as openInFolderApi, openInShopify as openInShopifyApi } from "../../services/fileService";
+import { openInFolder as openInFolderApi, openInShopify as openInShopifyApi } from "../../services/fileService";
 import { showConfirm } from "../../services/systemService";
 import { getSettings } from "../../services/settingsService";
 import { printBatchLabel } from "../../services/productionService";
@@ -387,29 +387,6 @@ const BatchHistory = () => {
       })
       .filter((day) => day.batches.length > 0);
   }, [dayGroups, searchQuery, activePrinters]);
-
-  const handleOpenPreview = useCallback(async (filePath) => {
-    try {
-      const res = await openPreviewApi(filePath);
-      if (!res?.success) {
-        const err = res?.errors?.[0];
-        throw {
-          type: err?.type || "Error",
-          title: err?.title || "Preview failed",
-          message: err?.message || "Could not open file.",
-        };
-      }
-    } catch (err) {
-      notify(
-        {
-          type: err?.type || "Error",
-          title: err?.title || "Preview failed",
-          message: err?.message || "Could not open file.",
-        },
-        { stage: "app", code: "OPEN_PREVIEW_FAILED" },
-      );
-    }
-  }, []);
 
   const handleOpenInFolder = useCallback(async (filePath) => {
     try {

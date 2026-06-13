@@ -161,7 +161,9 @@ export const createBatch = async (batch) => {
         if (Date.now() - lockStat.mtimeMs > 60 * 1000) {
           await fs.promises.unlink(lockPath);
         }
-      } catch {} // no lock file — proceed normally
+      } catch {
+        // no lock file — proceed normally
+      }
 
       try {
         const handle = await fs.promises.open(lockPath, "wx");

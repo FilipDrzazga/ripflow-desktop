@@ -108,8 +108,6 @@ export function registerIpcHandlers() {
 
   backupDb(false).catch((err) => console.error("[backup] startup backup failed:", err));
 
-  backupDb(false).catch((err) => console.error("[backup] startup backup failed:", err));
-
   ipcMain.handle("logs:getAll", () => {
     return { success: true, data: getAllLogs() };
   });

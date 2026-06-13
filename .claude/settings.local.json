@@ -43,7 +43,10 @@
       "PowerShell(npx eslint src/ui/components/Production/ src/electron/ipc/batchHistoryHandlers.js src/electron/helpers/db.js)",
       "Read(//o/SPPrintReadyArtwork/**)",
       "Bash(python *)",
-      "Bash(npm test *)"
+      "Bash(npm test *)",
+      "Bash(echo \"---EXIT:$?---\")",
+      "Bash(echo \"===LINT EXIT:$?===\")",
+      "Bash(echo \"===TEST EXIT:$?===\")"
     ]
   }
 }

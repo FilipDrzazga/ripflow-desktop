@@ -2,9 +2,6 @@
 import { POLY_MATERIALS } from "./getMaterialType.js";
 import { getXmlWidthFromCache } from "./fabricCache.js";
 import {
-  LM_XML_POLY,
-  LM_XML_COTTON,
-  LM_XML_COTTON_DEFAULT,
   DIMS_SAMPLE,
   DIMS_FQ,
   DIMS_TEA_TOWEL,
