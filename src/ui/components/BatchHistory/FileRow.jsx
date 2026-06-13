@@ -53,6 +53,11 @@ const FileRow = ({ file, batch, stageRow, activeContextFilePath, onContextMenu, 
             {file.metersOverride != null ? `${file.metersOverride}m` : `x${file.qtyOverride}`}
           </span>
         )}
+        {file.reprintQty != null && (
+          <span className={style.reprint_badge}>
+            Reprint {file.type === "LM" ? `${file.reprintQty}m` : `x${file.reprintQty}`}
+          </span>
+        )}
       </span>
       {isFileRolledBack && file.rolledBackAt && (
         <span className={style.file_rolled_back_label}>

@@ -37,7 +37,13 @@
       "PowerShell(npm list *)",
       "PowerShell(npm install *)",
       "Bash(xargs grep -l \"Refresh\\\\|refresh_btn\\\\|HiArrowPath\")",
-      "Skill(run)"
+      "Skill(run)",
+      "PowerShell(npm run *)",
+      "PowerShell(\\(Get-Content \"F:\\\\ripflow-desktop\\\\src\\\\ui\\\\components\\\\Production\\\\Production.module.css\" | Measure-Object -Line\\).Lines)",
+      "PowerShell(npx eslint src/ui/components/Production/ src/electron/ipc/batchHistoryHandlers.js src/electron/helpers/db.js)",
+      "Read(//o/SPPrintReadyArtwork/**)",
+      "Bash(python *)",
+      "Bash(npm test *)"
     ]
   }
 }

@@ -87,6 +87,8 @@ src/ui/
       Production.jsx       # filters, scanner, bulk-select, context menu, polling, QCModal trigger
       ProductionCard.jsx   # single file card: stage pills pipeline, GSAP highlight on scan
       QCModal.jsx          # two-phase QC modal (sewing_return → qc); context menu per file
+      ProductionRollbackModal.jsx # rollback modal: per-file reason dropdown + qty_affected input
+                           # returns decisions [{fileId, reason, override}]; override = {qty}|{meters}
     ContextMenu/           # Portal popup; supports submenu (children field) with hover delay 150ms
     RollbackModal/         # Portal modal; reason pills from store.reasonDefinitions; OTHER → text input
     ErrorBoundary/         # Class component — wraps DataList, BatchHistory, Analytics in App.jsx
@@ -170,7 +172,7 @@ Derived paths:
 ```
 
 ## SQLite (`helpers/db.js`)
-Tables: `logs`, `held_files`, `rollback_reasons`, `custom_order_history`, `reason_definitions`, `fabric_globals`, `fabrics`, `file_stages`, `file_stage_history`
+Tables: `logs`, `held_files`, `rollback_reasons`, `custom_order_history`, `reason_definitions`, `fabric_globals`, `fabrics`, `file_stages`, `file_stage_history`, `reprint_requests`
 
 - `rollback_reasons.file_id = null` → whole batch reason; `= filename-without-ext` → single file
 - `logs.workstation` can be NULL in old records — render conditionally
@@ -179,7 +181,9 @@ Tables: `logs`, `held_files`, `rollback_reasons`, `custom_order_history`, `reaso
 - `fabric_globals` and `fabrics` are seeded from `defaultFabrics.js` on first run if tables empty
 - `reason_definitions` is populated via one-time migration from electron-store on first run
 
-**All DB functions:** `initDb`, `insertLog`, `getAllLogs`, `clearAllLogs`, `holdFile`, `unholdFile`, `getHeldFiles`, `insertRollbackReason`, `getRollbackReasonsByBatch`, `getRollbackReasonsByFile`, `insertCustomOrder`, `getAllCustomOrders`, `clearCustomOrders`, `getReasonDefinitions`, `setReasonDefinitions`, `migrateReasonDefinitions`, `getFabricGlobals`, `setFabricGlobals`, `getAllFabrics`, `saveFabric`, `deleteFabric`, `setAllFabrics`
+**All DB functions:** `initDb`, `insertLog`, `getAllLogs`, `clearAllLogs`, `holdFile`, `unholdFile`, `getHeldFiles`, `insertRollbackReason`, `getRollbackReasonsByBatch`, `getRollbackReasonsByFile`, `insertCustomOrder`, `getAllCustomOrders`, `clearCustomOrders`, `getReasonDefinitions`, `setReasonDefinitions`, `migrateReasonDefinitions`, `getFabricGlobals`, `setFabricGlobals`, `getAllFabrics`, `saveFabric`, `deleteFabric`, `setAllFabrics`, `insertReprintRequest`, `getOpenReprintRequests`, `getOpenReprintRequestsByFileIds`, `fulfillReprintRequests`, `getReprintRequests`, `clearAllReprintRequests`
+
+**`reprint_requests`** (partial reprint tracking): one row per rollback-from-Production event. `qty_affected` REAL — meters for LM, piece count otherwise; `qty_original` = full qty at rollback time. Open = `fulfilled_at IS NULL AND superseded_at IS NULL`. A new rollback of the same file **supersedes** prior open rows (history kept for analytics). `stage:advance` to `packed` calls `fulfillReprintRequests(fileId)`. Index: `reprint_requests(file_id)`. When a Production rollback registers a qty, `rollback_reasons.meters` is estimated from **qty_affected** (LM: meters→height; others: pieces→qty), so Analytics waste (byFabric, Details) is partial-aware with no Analytics-side changes; BatchHistory rollbacks keep full-file meters. `readFolders` and `readSingleBatch` attach `reprintQty`/`reprintQtyOriginal` to file objects from open requests (matched by filename stem) → persistent blue "Reprint" badge in DataList and BatchHistory FileRow. `refreshFiles` seeds `selectedOverrides` from `reprintQty` (operator-set entries are never overwritten; cleared entries re-seed on next refresh) so the existing submit-override pipeline applies the partial qty to XML, `_batch_info.json`, and `file_stages` — `createXML.js` needs no reprint logic. DataList hides the orange Override badge while it equals `reprintQty`.
 
 ## Fabric Config (`fabricCache.js`)
 In-memory cache loaded at startup (`loadFabricCache()` called in `ipc/index.js` after `initDb()`).
@@ -217,7 +221,9 @@ readFolders() / onReadFoldersProgress(cb) / submitBatch(batch)
 readPrintedFolder()
 regenerateXml(batchPath)
 rollbackBatch({ batchPath, reason: { code, label } })          // object arg, NOT positional
-rollbackFile({ filePath, batchPath, reason: { code, label } }) // object arg, NOT positional
+rollbackFile({ filePath, batchPath, reason: { code, label }, reprint? }) // object arg, NOT positional
+//   reprint: { qtyAffected, qtyOriginal } — Production rollbacks only; inserts a reprint_requests
+//   row (meters for LM, pieces otherwise). BatchHistory rollbacks never pass it.
 deleteBatch(batchPath)
 startBatchWatcher() / stopBatchWatcher() / onBatchUpdate(cb)
 
@@ -359,7 +365,9 @@ DB tables: `file_stages` (one row per active file), `file_stage_history` (append
 - Phase 2 `qc`: per-file action = PASS (→ packed) | SEWING (→ to_sewing, pick company) | PENDING (stay at QC) | REJECT (rollback to inbox). SEWING hint icon shown for `SEWING_SUGGESTED_TYPES` (CUSHION, TEA_TOWEL).
 - Both phases support multi-select via left-click + context menu bulk actions.
 
-**Multi-select & bulk actions** — click card to toggle select; `BatchGroupHeader` "Select All" toggles whole batch. Bulk context menu: advance all, go back all, rollback all (with reason submenu). Selection cleared on filter/batch change.
+**Multi-select & bulk actions** — click card to toggle select; `BatchGroupHeader` "Select All" toggles whole batch. Bulk context menu: advance all, go back all, rollback all. Selection cleared on filter/batch change.
+
+**Rollback collects qty_affected** — context-menu rollback (single + bulk) opens `ProductionRollbackModal` (reason dropdown + qty input per file, defaults to full qty; OTHER → inline text). QCModal REJECT shows the same qty input next to the reject badge. Both paths pass `reprint: { qtyAffected, qtyOriginal }` to `rollbackFile` → `insertReprintRequest` in `batchHistoryHandlers.js` (new request supersedes prior open ones for the file).
 
 **Grouping** — `groupingEnabled` toggle (default on). When on and `stageFilter === "all"` or `batchFilter` active: cards grouped by `batch_path` under `BatchGroupHeader` showing stage-count pills and printer badge.
 

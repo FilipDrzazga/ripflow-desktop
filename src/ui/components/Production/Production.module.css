@@ -1209,3 +1209,102 @@
 .batch_group .card:last-child {
   margin-bottom: 12px;
 }
+
+/* ===== ROLLBACK MODAL ===== */
+
+.reason_dropdown_trigger {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 170px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border-grey);
+  background: var(--bg-white);
+  color: var(--text-primary);
+  font-size: 12px;
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+
+.reason_dropdown_trigger:hover {
+  border-color: var(--border-black);
+}
+
+.reason_dropdown_icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  flex-shrink: 0;
+  color: var(--text-secondary);
+}
+
+.reason_dropdown_label {
+  white-space: nowrap;
+}
+
+.reason_dropdown_placeholder {
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+/* Portaled to body — must stack above .modal (3101) and QC context menu (3200) */
+.reason_dropdown_menu {
+  position: fixed;
+  z-index: 3400;
+  min-width: 190px;
+  max-height: 260px;
+  overflow-y: auto;
+  padding: 4px;
+  border-radius: 10px;
+  border: 1px solid var(--border-grey);
+  background: var(--bg-white);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.14);
+}
+
+.reason_dropdown_item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 10px;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.reason_dropdown_item:hover {
+  background: var(--bg-grey);
+}
+
+.reason_dropdown_item_active {
+  background: #ffe7e5;
+  color: #e63641;
+}
+
+.qc_override_input {
+  width: 86px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  border: 1px solid var(--border-grey);
+  background: var(--bg-white);
+  color: var(--text-primary);
+  font-size: 12px;
+  outline: none;
+  flex-shrink: 0;
+  transition: border-color 0.15s ease;
+}
+
+.qc_override_input:focus {
+  border-color: var(--border-black);
+}
+
+.qc_override_input::placeholder {
+  color: var(--text-secondary);
+}

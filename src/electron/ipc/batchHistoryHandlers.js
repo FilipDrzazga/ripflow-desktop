@@ -7,7 +7,7 @@ import { parsePrintFileName } from "../helpers/parseFileName.js";
 import { getMaterialType } from "../helpers/getMaterialType.js";
 import { submitBatchToPrintFactory } from "./createXML.js";
 import { parseBatchFolderName } from "./readPrintedFolder.js";
-import { insertRollbackReason, clearFileStagesByBatch, clearFileStage } from "../helpers/db.js";
+import { insertRollbackReason, insertReprintRequest, clearFileStagesByBatch, clearFileStage } from "../helpers/db.js";
 import { getSettings } from "../helpers/getSettings.js";
 import { GROUP_NAME_OVERRIDES_REVERSE } from "../helpers/createBatchIds.js";
 import { getCachedFabrics, getCachedGlobals } from "../helpers/fabricCache.js";
@@ -99,7 +99,7 @@ export const rollbackBatchFromHistory = async ({ batchPath, reason } = {}) => {
           orderId: parsed?.orderId ?? null,
           customer: parsed?.customerName ?? null,
           fabric: fileFabric,
-          process: fileFabric ? getMaterialType(fileFabric) : null,
+          process: getMaterialType(fileFabric),
           printType: parsed?.printTypeCode ?? null,
           meters: metersResult?.fixedTotalLengthM ?? null,
         });
@@ -112,7 +112,9 @@ export const rollbackBatchFromHistory = async ({ batchPath, reason } = {}) => {
   return result;
 };
 
-export const rollbackFileFromHistory = async ({ filePath, batchPath, reason } = {}) => {
+// reprint: { qtyAffected, qtyOriginal } — passed only by Production rollbacks;
+// unit follows print type (meters for LM, piece count otherwise).
+export const rollbackFileFromHistory = async ({ filePath, batchPath, reason, reprint } = {}) => {
   const result = { success: false, errors: [] };
 
   try {
@@ -159,13 +161,26 @@ export const rollbackFileFromHistory = async ({ filePath, batchPath, reason } = 
     result.success = true;
     clearFileStage(fileId);
 
+    const parsed = parsePrintFileName(path.basename(validatedFilePath));
+
+    const qtyAffected = Number(reprint?.qtyAffected);
+    const hasReprint = Number.isFinite(qtyAffected) && qtyAffected > 0;
+
     if (reason) {
-      const parsed = parsePrintFileName(path.basename(validatedFilePath));
       const fabric = parsed?.material ?? null;
       const materialType = fabric ? getMaterialType(fabric) : "Unknown";
-      const metersResult = parsed
+      // Waste meters reflect the affected quantity when a reprint qty was
+      // registered (LM: qtyAffected is meters → height; others: piece count → qty)
+      const forLength = parsed
+        ? hasReprint
+          ? (parsed.printTypeCode === "LM"
+              ? { ...parsed, materialType, height: qtyAffected * 1000 }
+              : { ...parsed, materialType, qty: qtyAffected })
+          : { ...parsed, materialType }
+        : null;
+      const metersResult = forLength
         ? estimatePrintLength(
-            [{ ...parsed, materialType }],
+            [forLength],
             { globals: getCachedGlobals(), fabrics: getCachedFabrics() },
           )
         : null;
@@ -179,9 +194,22 @@ export const rollbackFileFromHistory = async ({ filePath, batchPath, reason } = 
         orderId: parsed?.orderId ?? null,
         customer: parsed?.customerName ?? null,
         fabric,
-        process: fabric ? getMaterialType(fabric) : null,
+        process: getMaterialType(fabric),
         printType: parsed?.printTypeCode ?? null,
         meters: metersResult?.fixedTotalLengthM ?? null,
+      });
+    }
+
+    if (hasReprint) {
+      const qtyOriginal = Number(reprint?.qtyOriginal);
+      insertReprintRequest({
+        id: crypto.randomUUID(),
+        fileId,
+        batchPath: validatedBatchPath,
+        printType: parsed?.printTypeCode ?? null,
+        qtyAffected,
+        qtyOriginal: Number.isFinite(qtyOriginal) && qtyOriginal > 0 ? qtyOriginal : null,
+        workstation: getSettings().workstationName,
       });
     }
   } catch (err) {

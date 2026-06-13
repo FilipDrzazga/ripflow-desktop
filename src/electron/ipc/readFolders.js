@@ -5,6 +5,7 @@ import { isPDF } from "../helpers/isPDF.js";
 import { parsePrintFileName } from "../helpers/parseFileName.js";
 import { getMaterialType } from "../helpers/getMaterialType.js";
 import { getFileAgeInDays } from "../helpers/getFileAgeInDays.js";
+import { getOpenReprintRequestsByFileIds } from "../helpers/db.js";
 
 const STAGES = {
   INIT: "init",
@@ -107,6 +108,20 @@ export const readFolders = async ({ onProgress } = {}) => {
 
     const nested = await Promise.all(readSubFolders);
     const files = nested.flat();
+
+    // Attach open reprint request quantities (unit follows print type: meters for LM, pieces otherwise)
+    const stems = files.map((f) => path.parse(f.file.name).name);
+    const reprintRows = getOpenReprintRequestsByFileIds(stems);
+    if (reprintRows.length > 0) {
+      const reprintByStem = new Map(reprintRows.map((r) => [r.file_id, r]));
+      for (const f of files) {
+        const req = reprintByStem.get(path.parse(f.file.name).name);
+        if (req) {
+          f.reprintQty = req.qty_affected;
+          f.reprintQtyOriginal = req.qty_original;
+        }
+      }
+    }
 
     progress("Grouping files...", 80);
     stage = STAGES.GROUP;

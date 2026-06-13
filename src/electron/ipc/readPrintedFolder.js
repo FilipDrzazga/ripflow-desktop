@@ -4,6 +4,7 @@ import { getStorageRootPath } from "../helpers/getRootPath.js";
 import { parsePrintFileName } from "../helpers/parseFileName.js";
 import { getMaterialType } from "../helpers/getMaterialType.js";
 import { estimatePrintLength } from "../../shared/estimatePrintLength.js";
+import { getOpenReprintRequestsByFileIds } from "../helpers/db.js";
 import { BATCH_STATUS, FILE_STATUS } from "../../shared/constants.js";
 
 const getPrintedRootPath = () => path.join(getStorageRootPath(), "PRINTED");
@@ -93,6 +94,20 @@ export const readSingleBatch = async (batchPath, meta) => {
     }
   } catch {
     // no snapshot or invalid — nothing to merge
+  }
+
+  // Attach open reprint request quantities (covers both the batch a file was
+  // rolled back from and the new batch the reprint was submitted into)
+  const reprintRows = getOpenReprintRequestsByFileIds(files.map((f) => path.parse(f.name).name));
+  if (reprintRows.length > 0) {
+    const reprintByStem = new Map(reprintRows.map((r) => [r.file_id, r]));
+    for (const f of files) {
+      const req = reprintByStem.get(path.parse(f.name).name);
+      if (req) {
+        f.reprintQty = req.qty_affected;
+        f.reprintQtyOriginal = req.qty_original;
+      }
+    }
   }
 
   const { fixedTotalLengthM } = estimatePrintLength(parsedForLength);

@@ -14,9 +14,11 @@ import {
   setSewingReceived,
   insertRollbackReason,
   getAllStageHistory,
+  fulfillReprintRequests,
 } from "../helpers/db.js";
 import { getSettings } from "../helpers/getSettings.js";
 import { printBatchLabel } from "../helpers/labelPrinter.js";
+import { PRODUCTION_STAGE } from "../../shared/constants.js";
 
 export function registerProductionHandlers() {
   ipcMain.handle("stage:getByBatch", (_event, batchPath) => {
@@ -39,6 +41,10 @@ export function registerProductionHandlers() {
     try {
       const { workstationName } = getSettings();
       const result = advanceFileStage(fileId, newStage, workstationName, expectedStage ?? null);
+      // Reaching "packed" completes any open reprint request for the file
+      if ((result?.updated ?? true) && newStage === PRODUCTION_STAGE.PACKED) {
+        fulfillReprintRequests(fileId);
+      }
       return { success: true, updated: result?.updated ?? true };
     } catch (err) {
       return { success: false, error: err.message };

@@ -416,12 +416,27 @@ export const useStore = create(
         const res = await readFolders();
 
         if (res.success) {
-          set((state) => ({
-            files: res.data,
-            filteredFiles: applyFilters(res.data, state.activeTab, state.searchQuery, state.sortOrder, state.printTypeFilter),
-            selectedIds: clearSelection ? new Set() : state.selectedIds,
-            lastFilesRefreshAt: new Date().toISOString(),
-          }));
+          set((state) => {
+            // Seed quantity overrides from open reprint requests so the existing
+            // submit-override pipeline prints qty_affected instead of the original
+            // quantity. Operator-set entries are never overwritten; the operator
+            // can still adjust or clear the override before submit.
+            let overrides = state.selectedOverrides;
+            for (const group of res.data) {
+              for (const item of group.items) {
+                if (item.reprintQty == null || overrides.has(item.id)) continue;
+                if (overrides === state.selectedOverrides) overrides = new Map(overrides);
+                overrides.set(item.id, item.printTypeCode === "LM" ? { meters: item.reprintQty } : { qty: item.reprintQty });
+              }
+            }
+            return {
+              files: res.data,
+              filteredFiles: applyFilters(res.data, state.activeTab, state.searchQuery, state.sortOrder, state.printTypeFilter),
+              selectedIds: clearSelection ? new Set() : state.selectedIds,
+              selectedOverrides: overrides,
+              lastFilesRefreshAt: new Date().toISOString(),
+            };
+          });
 
           if (showSuccessAlert) {
             get().setAlert({

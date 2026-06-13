@@ -21,6 +21,7 @@ import {
   LuTriangleAlert,
   LuEye,
   LuPencil,
+  LuRotateCcw,
 } from "react-icons/lu";
 import { PiPolygon } from "react-icons/pi";
 import { PRINT_TYPE_MAP } from "@/constants/printTypeMap";
@@ -288,9 +289,22 @@ const DataList = () => {
                         {(() => {
                           const ov = selectedOverrides.get(item.id);
                           if (!ov) return null;
+                          // Seeded from a reprint request and unmodified — the Reprint badge already shows it
+                          if (item.reprintQty != null && (ov.meters ?? ov.qty) === item.reprintQty) return null;
                           const label = ov.meters != null ? `${ov.meters}m` : `x${ov.qty}`;
                           return <span className={style.override_badge}>Override: {label}</span>;
                         })()}
+                        {item.reprintQty != null &&
+                          (() => {
+                            const fmt = (v) => (item.printTypeCode === "LM" ? `${v}m` : `x${v}`);
+                            const partial = item.reprintQtyOriginal != null && item.reprintQtyOriginal !== item.reprintQty;
+                            return (
+                              <span className={style.reprint_badge}>
+                                <LuRotateCcw className={style.rollback_badge_icon} />
+                                Reprint: {fmt(item.reprintQty)}{partial ? ` of ${fmt(item.reprintQtyOriginal)}` : ""}
+                              </span>
+                            );
+                          })()}
                         {isHeld && <FiLock className={style.hold_icon} />}
                       </label>
                     </div>

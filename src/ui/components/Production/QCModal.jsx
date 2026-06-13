@@ -9,6 +9,17 @@ import { resolveIcon } from "../../constants/rollbackReasonIcons";
 import ContextMenu from "../ContextMenu/ContextMenu";
 import style from "./Production.module.css";
 
+// Quantity of the current print run: a reprint run's qty_override/meters_override
+// takes precedence over the file's original qty/meters.
+const runQty = (f) => (f.print_type === "LM" ? f.meters_override ?? f.meters : f.qty_override ?? f.qty);
+
+// Default reprint override = full run quantity (meters for LM, pieces otherwise)
+const defaultOverride = (f) => {
+  const v = runQty(f);
+  if (v == null) return null;
+  return f.print_type === "LM" ? { meters: v } : { qty: v };
+};
+
 const QCModal = ({ batchPath, files, onConfirm, onClose }) => {
   const reasonDefinitions = useStore((s) => s.reasonDefinitions);
 
@@ -18,17 +29,17 @@ const QCModal = ({ batchPath, files, onConfirm, onClose }) => {
 
   const [phase, setPhase] = useState(hasSewingReturn ? "sewing_return" : "qc");
 
-  // fileId → { action, rejectReason }  (sewing_return phase)
+  // fileId → { action, rejectReason, sewingCompany, override }  (sewing_return phase)
   const [sewingChoices, setSewingChoices] = useState(() => {
     const m = new Map();
-    sewingFiles.forEach((f) => m.set(f.file_id, { action: QC_ACTION.PASS, rejectReason: null, sewingCompany: null }));
+    sewingFiles.forEach((f) => m.set(f.file_id, { action: QC_ACTION.PASS, rejectReason: null, sewingCompany: null, override: defaultOverride(f) }));
     return m;
   });
 
-  // fileId → { action, rejectReason, sewingCompany }  (qc phase)
+  // fileId → { action, rejectReason, sewingCompany, override }  (qc phase)
   const [qcChoices, setQcChoices] = useState(() => {
     const m = new Map();
-    qcFiles.forEach((f) => m.set(f.file_id, { action: QC_ACTION.PASS, rejectReason: null, sewingCompany: null }));
+    qcFiles.forEach((f) => m.set(f.file_id, { action: QC_ACTION.PASS, rejectReason: null, sewingCompany: null, override: defaultOverride(f) }));
     return m;
   });
 
@@ -69,6 +80,16 @@ const QCModal = ({ batchPath, files, onConfirm, onClose }) => {
     });
     clearSelect();
     closeContextMenu();
+  };
+
+  const setOverride = (fileId, override) => {
+    const setter = phase === "sewing_return" ? setSewingChoices : setQcChoices;
+    setter((prev) => {
+      const next = new Map(prev);
+      const cur = next.get(fileId);
+      if (cur) next.set(fileId, { ...cur, override });
+      return next;
+    });
   };
 
   const applyRollback = (triggerId, reason) => {
@@ -131,8 +152,8 @@ const QCModal = ({ batchPath, files, onConfirm, onClose }) => {
     setSelectedIds(new Set());
     if (qcFiles.length === 0) {
       const decisions = [];
-      sewingChoices.forEach(({ action, rejectReason, sewingCompany }, fileId) => {
-        decisions.push({ fileId, action, fromSewing: true, reason: rejectReason ?? null, sewingCompany: sewingCompany ?? null });
+      sewingChoices.forEach(({ action, rejectReason, sewingCompany, override }, fileId) => {
+        decisions.push({ fileId, action, fromSewing: true, reason: rejectReason ?? null, sewingCompany: sewingCompany ?? null, override: override ?? null });
       });
       onConfirm(decisions);
     } else {
@@ -142,11 +163,11 @@ const QCModal = ({ batchPath, files, onConfirm, onClose }) => {
 
   const handleConfirmQC = () => {
     const decisions = [];
-    sewingChoices.forEach(({ action, rejectReason, sewingCompany }, fileId) => {
-      decisions.push({ fileId, action, fromSewing: true, reason: rejectReason ?? null, sewingCompany: sewingCompany ?? null });
+    sewingChoices.forEach(({ action, rejectReason, sewingCompany, override }, fileId) => {
+      decisions.push({ fileId, action, fromSewing: true, reason: rejectReason ?? null, sewingCompany: sewingCompany ?? null, override: override ?? null });
     });
-    qcChoices.forEach(({ action, rejectReason, sewingCompany }, fileId) => {
-      decisions.push({ fileId, action, fromSewing: false, reason: rejectReason ?? null, sewingCompany: sewingCompany ?? null });
+    qcChoices.forEach(({ action, rejectReason, sewingCompany, override }, fileId) => {
+      decisions.push({ fileId, action, fromSewing: false, reason: rejectReason ?? null, sewingCompany: sewingCompany ?? null, override: override ?? null });
     });
     onConfirm(decisions);
   };
@@ -184,8 +205,11 @@ const QCModal = ({ batchPath, files, onConfirm, onClose }) => {
 
   const renderFileCards = (displayFiles, choicesMap) =>
     displayFiles.map((file) => {
-      const { action, rejectReason, sewingCompany } = choicesMap.get(file.file_id) ?? { action: QC_ACTION.PASS };
+      const { action, rejectReason, sewingCompany, override } = choicesMap.get(file.file_id) ?? { action: QC_ACTION.PASS };
       const isSelected = selectedIds.has(file.file_id);
+      const isLm = file.print_type === "LM";
+      const originalVal = runQty(file);
+      const overrideVal = override != null ? (override.meters ?? override.qty ?? "") : "";
       return (
         <div
           key={file.file_id}
@@ -203,9 +227,29 @@ const QCModal = ({ batchPath, files, onConfirm, onClose }) => {
           {action === QC_ACTION.SEWING  && <span className={`${style.qc_action_badge} ${style.qc_action_badge_sewing}`}>✂ {sewingCompany ?? "Sewing"}</span>}
           {action === QC_ACTION.PENDING && <span className={`${style.qc_action_badge} ${style.qc_action_badge_pending}`}>… Pending</span>}
           {action === QC_ACTION.REJECT  && (
-            <span className={`${style.qc_action_badge} ${style.qc_action_badge_reject}`}>
-              {rejectReason ? rejectReason.label : "…"}
-            </span>
+            <>
+              <span className={`${style.qc_action_badge} ${style.qc_action_badge_reject}`}>
+                {rejectReason ? rejectReason.label : "…"}
+              </span>
+              {originalVal != null && (
+                <input
+                  type="number"
+                  className={style.qc_override_input}
+                  min={1}
+                  max={originalVal}
+                  placeholder={isLm ? `Max ${originalVal}m` : `Max ${originalVal}`}
+                  value={overrideVal}
+                  onClick={(e) => e.stopPropagation()}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (!val) { setOverride(file.file_id, defaultOverride(file)); return; }
+                    const num = Number(val);
+                    if (num > originalVal) return;
+                    setOverride(file.file_id, isLm ? { meters: num } : { qty: num });
+                  }}
+                />
+              )}
+            </>
           )}
           {SEWING_SUGGESTED_TYPES.includes(file.print_type) && action !== QC_ACTION.SEWING && (
             <span className={style.qc_sewing_end}><LuScissors size={15} /></span>

@@ -56,7 +56,6 @@ const BatchHistory = () => {
 
   // Multi-file selection for bulk rollback
   const [selectedFiles, setSelectedFiles] = useState(new Map()); // Map<filePath, batchPath>
-  const [bulkRollbackPending, setBulkRollbackPending] = useState(false);
 
   const pendingAnimationsRef = useRef(new Set());
   const elementRefsRef = useRef(new Map());
@@ -92,9 +91,11 @@ const BatchHistory = () => {
 
   const clearFileSelection = useCallback(() => setSelectedFiles(new Map()), []);
 
+  // entries: [filePath, batchPath][] — snapshot taken at menu-click time, before
+  // ContextMenu onClose clears selectedFiles (state is empty by the time the
+  // OTHER modal confirms)
   const handleBulkRollback = useCallback(
-    async (reason) => {
-      const entries = [...selectedFiles.entries()];
+    async (reason, entries) => {
       setSelectedFiles(new Map());
       let successCount = 0;
       let failCount = 0;
@@ -158,7 +159,7 @@ const BatchHistory = () => {
         );
       }
     },
-    [selectedFiles, refreshFiles],
+    [refreshFiles],
   );
 
   const loadData = useCallback(async () => {
@@ -820,13 +821,18 @@ const BatchHistory = () => {
                           icon: Icon ? <Icon size={14} /> : null,
                           onClick: async () => {
                             const { file, batch } = contextMenu;
+                            // Snapshot now — ContextMenu calls onClose() (which clears
+                            // selectedFiles) before this onClick runs its async work
+                            const entries = isBulkContext ? [...selectedFiles.entries()] : null;
                             if (reason.code === "OTHER") {
                               setOtherReasonText("");
-                              setOtherReasonTarget(isBulkContext ? { action: "bulk-rollback" } : { file, batch });
+                              setOtherReasonTarget(
+                                isBulkContext ? { action: "bulk-rollback", entries } : { file, batch },
+                              );
                               return;
                             }
                             if (isBulkContext) {
-                              await handleBulkRollback({ code: reason.code, label: reason.label });
+                              await handleBulkRollback({ code: reason.code, label: reason.label }, entries);
                             } else {
                               await handleRollbackFile(file.path, batch.path, { code: reason.code, label: reason.label });
                             }
@@ -865,16 +871,6 @@ const BatchHistory = () => {
           onCancel={() => setRollbackModal(null)}
         />
       )}
-      {bulkRollbackPending && (
-        <RollbackModal
-          batchName={`${selectedFiles.size} selected ${selectedFiles.size === 1 ? "file" : "files"}`}
-          onConfirm={(reason) => {
-            setBulkRollbackPending(false);
-            handleBulkRollback(reason);
-          }}
-          onCancel={() => setBulkRollbackPending(false)}
-        />
-      )}
       {otherReasonTarget &&
         createPortal(
           <>
@@ -893,10 +889,10 @@ const BatchHistory = () => {
                 onKeyDown={(e) => {
                   if (e.key === "Escape") setOtherReasonTarget(null);
                   if (e.key === "Enter" && otherReasonText.trim()) {
-                    const { file, batch, action } = otherReasonTarget;
+                    const { file, batch, action, entries } = otherReasonTarget;
                     const reason = { code: "OTHER", label: otherReasonText.trim() };
                     setOtherReasonTarget(null);
-                    if (action === "bulk-rollback") handleBulkRollback(reason);
+                    if (action === "bulk-rollback") handleBulkRollback(reason, entries);
                     else handleRollbackFile(file.path, batch.path, reason);
                   }
                 }}
@@ -916,10 +912,10 @@ const BatchHistory = () => {
                   className={style.other_reason_confirm}
                   disabled={!otherReasonText.trim()}
                   onClick={() => {
-                    const { file, batch, action } = otherReasonTarget;
+                    const { file, batch, action, entries } = otherReasonTarget;
                     const reason = { code: "OTHER", label: otherReasonText.trim() };
                     setOtherReasonTarget(null);
-                    if (action === "bulk-rollback") handleBulkRollback(reason);
+                    if (action === "bulk-rollback") handleBulkRollback(reason, entries);
                     else handleRollbackFile(file.path, batch.path, reason);
                   }}
                 >

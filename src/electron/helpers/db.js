@@ -48,6 +48,9 @@ export const initDb = () => {
   try {
     const dbPath = join(getStorageRootPath(), "ripflow.db");
     db = new Database(dbPath);
+    // Wait up to 5s for a concurrent writer's lock (default 0 = instant SQLITE_BUSY,
+    // which the guarded db fns would swallow as a silent write loss)
+    db.pragma("busy_timeout = 5000");
 
     db.exec(`
       CREATE TABLE IF NOT EXISTS logs (
@@ -147,17 +150,6 @@ export const initDb = () => {
 
     try { db.exec("ALTER TABLE rollback_reasons ADD COLUMN print_type TEXT"); } catch { /* already exists */ }
     try { db.exec("ALTER TABLE rollback_reasons ADD COLUMN meters REAL"); } catch { /* already exists */ }
-
-    const needsProcessCleanup = (() => {
-      try { return db.prepare("SELECT 1 FROM rollback_reasons WHERE process IS NULL OR process = '' LIMIT 1").get() != null; } catch { return false; }
-    })();
-    if (needsProcessCleanup) {
-      try {
-        db.exec("DELETE FROM rollback_reasons WHERE process IS NULL OR process = ''");
-      } catch (err) {
-        console.error("[db] cleanup rollback_reasons without process failed:", err);
-      }
-    }
 
     stmtInsert = db.prepare(
       "INSERT OR IGNORE INTO logs (id, timestamp, type, stage, code, message, detail, workstation) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
@@ -295,6 +287,26 @@ export const initDb = () => {
     stmtSetSewingSentGuarded     = db.prepare("UPDATE file_stages SET stage = 'to_sewing', sewing_sent_at = ?, sewing_company = ?, updated_at = ?, updated_by = ? WHERE file_id = ? AND stage = ?");
     stmtSetSewingReceivedGuarded = db.prepare("UPDATE file_stages SET stage = 'from_sewing', sewing_received_at = ?, updated_at = ?, updated_by = ? WHERE file_id = ? AND stage = ?");
     stmtGetFileStagesAfter       = db.prepare("SELECT * FROM file_stages WHERE updated_at > ? ORDER BY updated_at ASC");
+
+    // ── reprint_requests ──────────────────────────────────────────────────────
+    // One row per rollback-from-Production event. qty_affected unit follows
+    // print_type: meters for LM, piece count otherwise. A request is "open"
+    // while fulfilled_at and superseded_at are both NULL.
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS reprint_requests (
+        id            TEXT PRIMARY KEY,
+        file_id       TEXT NOT NULL,
+        batch_path    TEXT,
+        print_type    TEXT,
+        qty_affected  REAL NOT NULL,
+        qty_original  REAL,
+        workstation   TEXT,
+        created_at    TEXT NOT NULL,
+        fulfilled_at  TEXT,
+        superseded_at TEXT
+      )
+    `);
+    db.exec("CREATE INDEX IF NOT EXISTS idx_reprint_requests_file ON reprint_requests(file_id)");
   } catch (err) {
     console.error("[db] initDb failed:", err);
     db = null;
@@ -905,6 +917,85 @@ export const cleanupShippedStages = (days) => {
     if (info.changes > 0) console.log(`[db] cleanupShippedStages: removed ${info.changes} records older than ${safeDays} days`);
   } catch (err) {
     console.error("[db] cleanupShippedStages failed:", err);
+  }
+};
+
+// ── reprint_requests ─────────────────────────────────────────────────────────
+
+const OPEN_REPRINT_FILTER = "fulfilled_at IS NULL AND superseded_at IS NULL";
+
+// A new rollback supersedes any still-open request for the same file: the new
+// qty reflects what actually needs reprinting now (the prior reprint never
+// completed). Superseded rows are kept for per-event waste analytics.
+export const insertReprintRequest = ({ id, fileId, batchPath, printType, qtyAffected, qtyOriginal, workstation }) => {
+  if (!db) return;
+  try {
+    const now = new Date().toISOString();
+    db.transaction(() => {
+      db.prepare(
+        `UPDATE reprint_requests SET superseded_at = ? WHERE file_id = ? AND ${OPEN_REPRINT_FILTER}`,
+      ).run(now, fileId);
+      db.prepare(
+        "INSERT INTO reprint_requests (id, file_id, batch_path, print_type, qty_affected, qty_original, workstation, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+      ).run(id, fileId, batchPath ?? null, printType ?? null, qtyAffected, qtyOriginal ?? null, workstation ?? null, now);
+    })();
+  } catch (err) {
+    console.error("[db] insertReprintRequest failed:", err);
+  }
+};
+
+export const getOpenReprintRequests = () => {
+  if (!db) return [];
+  try {
+    return db.prepare(`SELECT * FROM reprint_requests WHERE ${OPEN_REPRINT_FILTER} ORDER BY created_at DESC`).all();
+  } catch (err) {
+    console.error("[db] getOpenReprintRequests failed:", err);
+    return [];
+  }
+};
+
+export const getOpenReprintRequestsByFileIds = (fileIds) => {
+  if (!db || !fileIds.length) return [];
+  try {
+    const placeholders = fileIds.map(() => "?").join(",");
+    return db
+      .prepare(`SELECT * FROM reprint_requests WHERE file_id IN (${placeholders}) AND ${OPEN_REPRINT_FILTER}`)
+      .all(...fileIds);
+  } catch (err) {
+    console.error("[db] getOpenReprintRequestsByFileIds failed:", err);
+    return [];
+  }
+};
+
+export const fulfillReprintRequests = (fileId) => {
+  if (!db) return;
+  try {
+    db.prepare(
+      `UPDATE reprint_requests SET fulfilled_at = ? WHERE file_id = ? AND ${OPEN_REPRINT_FILTER}`,
+    ).run(new Date().toISOString(), fileId);
+  } catch (err) {
+    console.error("[db] fulfillReprintRequests failed:", err);
+  }
+};
+
+export const getReprintRequests = (since) => {
+  if (!db) return [];
+  try {
+    return since
+      ? db.prepare("SELECT * FROM reprint_requests WHERE created_at >= ? ORDER BY created_at DESC").all(since)
+      : db.prepare("SELECT * FROM reprint_requests ORDER BY created_at DESC").all();
+  } catch (err) {
+    console.error("[db] getReprintRequests failed:", err);
+    return [];
+  }
+};
+
+export const clearAllReprintRequests = () => {
+  if (!db) return;
+  try {
+    db.prepare("DELETE FROM reprint_requests").run();
+  } catch (err) {
+    console.error("[db] clearAllReprintRequests failed:", err);
   }
 };
 

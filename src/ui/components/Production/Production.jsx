@@ -15,12 +15,12 @@ import { openInFolder as openInFolderApi, openInShopify as openInShopifyApi } fr
 import { getSettings } from "../../services/settingsService";
 import { notify } from "@/utils/notify";
 import { usePdfPreview } from "../../hooks/usePdfPreview";
-import { resolveIcon } from "../../constants/rollbackReasonIcons";
 import { PRINTER_COLORS } from "../../constants/printerColors";
 import ContextMenu from "../ContextMenu/ContextMenu";
 import PdfPreviewModal from "../PdfPreviewModal/PdfPreviewModal";
 import ProductionCard from "./ProductionCard";
 import QCModal from "./QCModal";
+import ProductionRollbackModal from "./ProductionRollbackModal";
 import style from "./Production.module.css";
 
 const FILTER_TABS = [
@@ -88,7 +88,6 @@ const Production = () => {
   const loadStagesAfter     = useStore((s) => s.loadStagesAfter);
   const updateStageInStore  = useStore((s) => s.updateStageInStore);
   const removeStageFromStore = useStore((s) => s.removeStageFromStore);
-  const reasonDefinitions   = useStore((s) => s.reasonDefinitions);
   const refreshFiles        = useStore((s) => s.refreshFiles);
   const loadAllStageHistory  = useStore((s) => s.loadAllStageHistory);
   const addStageHistoryEntry = useStore((s) => s.addStageHistoryEntry);
@@ -113,8 +112,7 @@ const Production = () => {
   const [selectedFileIds, setSelectedFileIds] = useState(new Set());
 
   const [contextMenu, setContextMenu] = useState(null);
-  const [otherReasonTarget, setOtherReasonTarget] = useState(null);
-  const [otherReasonText, setOtherReasonText] = useState("");
+  const [rollbackTargets, setRollbackTargets] = useState(null); // stageRow[] → ProductionRollbackModal
 
   useEffect(() => {
     let cancelled = false;
@@ -206,16 +204,43 @@ const Production = () => {
     }
   };
 
-  const handleRollbackWithReason = async (fileId, batchPath, reason) => {
-    const filePath = `${batchPath}\\${fileId}.pdf`;
-    const res = await rollbackFile({ filePath, batchPath, reason });
-    if (res?.success) {
-      removeStageFromStore(fileId);
-      notify({ type: "Success", title: "Rolled back", message: "File returned to inbox." });
-      refreshFiles();
-    } else {
-      notify({ type: "Error", title: "Rollback failed", message: res?.errors?.[0]?.message ?? "Unknown error" });
+  // decisions: [{ fileId, reason, override }] from ProductionRollbackModal.
+  // override ({ qty } | { meters }) becomes the reprint request's qty_affected.
+  const handleRollbackDecisions = async (decisions) => {
+    setRollbackTargets(null);
+    let successCount = 0;
+    let failCount = 0;
+    for (const { fileId, reason, override } of decisions) {
+      const row = useStore.getState().productionStages[fileId];
+      if (!row?.batch_path) { failCount++; continue; }
+      const filePath = `${row.batch_path}\\${fileId}.pdf`;
+      const qtyAffected = override?.meters ?? override?.qty ?? null;
+      // qtyOriginal must match qtyAffected's unit: this run's meters for LM, pieces otherwise
+      const qtyOriginal = override?.meters != null
+        ? (row.meters_override ?? row.meters ?? null)
+        : (row.qty_override ?? row.qty ?? null);
+      const res = await rollbackFile({
+        filePath,
+        batchPath: row.batch_path,
+        reason,
+        ...(qtyAffected != null ? { reprint: { qtyAffected, qtyOriginal } } : {}),
+      });
+      if (res?.success) {
+        removeStageFromStore(fileId);
+        successCount++;
+      } else {
+        failCount++;
+      }
     }
+    setSelectedFileIds(new Set());
+    if (failCount === 0) {
+      notify({ type: "Success", title: "Rolled back", message: `${successCount} file(s) returned to inbox.` });
+    } else if (successCount > 0) {
+      notify({ type: "Warning", title: "Partially rolled back", message: `${successCount} succeeded, ${failCount} failed.` });
+    } else {
+      notify({ type: "Error", title: "Rollback failed", message: `${failCount} file(s) could not be rolled back.` });
+    }
+    if (successCount > 0) refreshFiles();
   };
 
   const {
@@ -267,7 +292,7 @@ const Production = () => {
     let failCount = 0;
 
     let pendingCount = 0;
-    for (const { fileId, action, fromSewing, reason, sewingCompany } of decisions) {
+    for (const { fileId, action, fromSewing, reason, sewingCompany, override } of decisions) {
       if (action === QC_ACTION.PENDING || (fromSewing && action === QC_ACTION.SEWING)) { pendingCount++; continue; }
       try {
         if (fromSewing) {
@@ -310,7 +335,16 @@ const Production = () => {
           const row = productionStages[fileId];
           if (!row?.batch_path) { failCount++; continue; }
           const filePath = `${row.batch_path}\\${fileId}.pdf`;
-          const res = await rollbackFile({ filePath, batchPath: row.batch_path, reason });
+          const qtyAffected = override?.meters ?? override?.qty ?? null;
+          const qtyOriginal = override?.meters != null
+            ? (row.meters_override ?? row.meters ?? null)
+            : (row.qty_override ?? row.qty ?? null);
+          const res = await rollbackFile({
+            filePath,
+            batchPath: row.batch_path,
+            reason,
+            ...(qtyAffected != null ? { reprint: { qtyAffected, qtyOriginal } } : {}),
+          });
           if (res?.success) {
             removeStageFromStore(fileId);
             successCount++;
@@ -409,33 +443,6 @@ const Production = () => {
     }
     setSelectedFileIds(new Set());
     if (count > 0) notify({ type: "Success", title: `${count} file${count > 1 ? "s" : ""} moved`, message: "Moved to next stage." });
-  };
-
-  const handleBulkRollback = async (reason) => {
-    const ids = [...selectedFileIds];
-    let successCount = 0;
-    let failCount = 0;
-    for (const fileId of ids) {
-      const row = productionStages[fileId];
-      if (!row?.batch_path) { failCount++; continue; }
-      const filePath = `${row.batch_path}\\${fileId}.pdf`;
-      const res = await rollbackFile({ filePath, batchPath: row.batch_path, reason });
-      if (res?.success) {
-        removeStageFromStore(fileId);
-        successCount++;
-      } else {
-        failCount++;
-      }
-    }
-    setSelectedFileIds(new Set());
-    if (failCount === 0) {
-      notify({ type: "Success", title: "Rolled back", message: `${successCount} file(s) returned to inbox.` });
-    } else if (successCount > 0) {
-      notify({ type: "Warning", title: "Partially rolled back", message: `${successCount} succeeded, ${failCount} failed.` });
-    } else {
-      notify({ type: "Error", title: "Rollback failed", message: `${failCount} file(s) could not be rolled back.` });
-    }
-    if (successCount > 0) refreshFiles();
   };
 
   // Clear selection when filter changes
@@ -742,39 +749,13 @@ const Production = () => {
         label: isBulk ? (selectedFileIds.size === 1 ? "Rollback this file" : `Rollback ${selectedFileIds.size} files`) : "Rollback this file",
         icon: <LuCornerUpLeft size={14} />,
         danger: true,
-        children: (() => {
-          const makeItem = (reason) => {
-            const Icon = resolveIcon(reason.iconName);
-            return {
-              id: `rollback-${reason.code}`,
-              label: reason.label,
-              icon: Icon ? <Icon size={14} /> : null,
-              onClick: async () => {
-                if (isBulk) {
-                  if (reason.code === "OTHER") {
-                    setOtherReasonText("");
-                    setOtherReasonTarget({ action: "bulk-rollback" });
-                    return;
-                  }
-                  await handleBulkRollback({ code: reason.code, label: reason.label });
-                } else {
-                  if (reason.code === "OTHER") {
-                    setOtherReasonText("");
-                    setOtherReasonTarget({ fileId, batchPath, action: "rollback" });
-                    return;
-                  }
-                  await handleRollbackWithReason(fileId, batchPath, { code: reason.code, label: reason.label });
-                }
-              },
-            };
-          };
-          const others = reasonDefinitions.filter((r) => r.code === "OTHER");
-          const rest = reasonDefinitions.filter((r) => r.code !== "OTHER");
-          return [
-            ...rest.map(makeItem),
-            ...(others.length > 0 ? [{ id: "sep-other", separator: true }, ...others.map(makeItem)] : []),
-          ];
-        })(),
+        onClick: () => {
+          setContextMenu(null);
+          const rows = isBulk
+            ? [...selectedFileIds].map((id) => productionStages[id]).filter((r) => r?.batch_path)
+            : [row];
+          if (rows.length > 0) setRollbackTargets(rows);
+        },
       });
     }
 
@@ -791,7 +772,7 @@ const Production = () => {
     }
 
     return items;
-  }, [contextMenu, selectedFileIds, reasonDefinitions, productionStages]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [contextMenu, selectedFileIds, productionStages]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className={style.container}>
@@ -941,51 +922,13 @@ const Production = () => {
         document.body,
       )}
 
-      {/* Other reason modal */}
-      {otherReasonTarget && createPortal(
-        <>
-          <div className={style.backdrop} onClick={() => setOtherReasonTarget(null)} />
-          <div className={style.modal}>
-            <h3 className={style.modal_title}>Describe the issue:</h3>
-            <input
-              className={style.other_input}
-              placeholder="Enter reason..."
-              value={otherReasonText}
-              onChange={(e) => setOtherReasonText(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Escape") setOtherReasonTarget(null);
-                if (e.key === "Enter" && otherReasonText.trim()) {
-                  const { fileId, batchPath, action } = otherReasonTarget;
-                  const reason = { code: "OTHER", label: otherReasonText.trim() };
-                  setOtherReasonTarget(null);
-                  if (action === "bulk-rollback") handleBulkRollback(reason);
-                  else handleRollbackWithReason(fileId, batchPath, reason);
-                }
-              }}
-              autoFocus
-            />
-            <div className={style.modal_footer}>
-              <button type="button" className={style.modal_cancel} onClick={() => setOtherReasonTarget(null)}>
-                Cancel
-              </button>
-              <button
-                type="button"
-                className={style.modal_confirm}
-                disabled={!otherReasonText.trim()}
-                onClick={() => {
-                  const { fileId, batchPath, action } = otherReasonTarget;
-                  const reason = { code: "OTHER", label: otherReasonText.trim() };
-                  setOtherReasonTarget(null);
-                  if (action === "bulk-rollback") handleBulkRollback(reason);
-                  else handleRollbackWithReason(fileId, batchPath, reason);
-                }}
-              >
-                Confirm
-              </button>
-            </div>
-          </div>
-        </>,
-        document.body,
+      {/* Rollback modal (reason + qty affected) */}
+      {rollbackTargets && (
+        <ProductionRollbackModal
+          rows={rollbackTargets}
+          onConfirm={handleRollbackDecisions}
+          onCancel={() => setRollbackTargets(null)}
+        />
       )}
 
     </div>
