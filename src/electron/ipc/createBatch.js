@@ -5,6 +5,9 @@ import { createBatchIds } from "../helpers/createBatchIds.js";
 import { getStorageRootPath } from "../helpers/getRootPath.js";
 import { toIpcError } from "../helpers/ipcError.js";
 
+const LOCK_HEARTBEAT_MS = 10 * 1000;   // odświeżanie mtime locka w trakcie COPY
+const STALE_LOCK_MS = 90 * 1000;       // brak heartbeatu dłużej niż to = lock martwy
+
 const STAGES = {
   INIT: "init",
   VALIDATE: "validate",
@@ -73,6 +76,7 @@ export const createBatch = async (batch) => {
 
   let stage = STAGES.INIT;
   const lockRecords = [];
+  let lockHeartbeat = null;
   const copiedFiles = [];
   const deletedSourceFiles = [];
 
@@ -152,14 +156,41 @@ export const createBatch = async (batch) => {
     }
 
     stage = STAGES.LOCK;
+    let staleLockRemoved = false;
     for (const sourceFolderPath of [...new Set(sourceEntries.map((entry) => entry.sourceDir))]) {
       const lockPath = path.join(sourceFolderPath, ".lock");
 
-      // Remove stale lock left by a previous crash (older than 60 seconds)
+      // Remove stale lock left by a previous crash. Age is measured against the NAS
+      // clock (probe file mtime), not Date.now(), so PC↔NAS skew cannot make a live
+      // lock look stale (premature delete → double print) or a dead lock look live.
       try {
         const lockStat = await fs.promises.stat(lockPath);
-        if (Date.now() - lockStat.mtimeMs > 60 * 1000) {
-          await fs.promises.unlink(lockPath);
+
+        let nowOnServer = null;
+        const probePath = path.join(sourceFolderPath, `.lockprobe-${process.pid}-${Date.now()}`);
+        try {
+          await fs.promises.writeFile(probePath, "");
+          nowOnServer = (await fs.promises.stat(probePath)).mtimeMs; // "now" per NAS clock
+        } catch {
+          nowOnServer = null; // probe failed — fall back conservatively below
+        } finally {
+          await fs.promises.unlink(probePath).catch(() => {});
+        }
+
+        if (nowOnServer != null) {
+          if (nowOnServer - lockStat.mtimeMs > STALE_LOCK_MS) {
+            await fs.promises.unlink(lockPath);
+            staleLockRemoved = true;
+          }
+        } else {
+          // No NAS reference available. Do NOT delete on a small Date.now() threshold —
+          // skew could make a live lock look stale and cause a double print. Only clear
+          // a lock that is conservatively old by the local clock (5 min), and warn.
+          result.warnings.push(`NAS lock probe failed in ${sourceFolderPath}; using conservative 5min fallback`);
+          if (Date.now() - lockStat.mtimeMs > 5 * 60 * 1000) {
+            await fs.promises.unlink(lockPath);
+            staleLockRemoved = true;
+          }
         }
       } catch {
         // no lock file — proceed normally
@@ -184,6 +215,43 @@ export const createBatch = async (batch) => {
           });
         }
         throw err;
+      }
+    }
+
+    // Keep our locks "alive" during a long COPY by refreshing their mtime. A station
+    // that finds our lock will measure its age from the last heartbeat, not from when
+    // it was first created — so a slow copy can never make a live lock look stale.
+    lockHeartbeat = setInterval(() => {
+      const t = new Date();
+      for (const { lockPath } of lockRecords) {
+        fs.promises.utimes(lockPath, t, t).catch(() => {});
+      }
+    }, LOCK_HEARTBEAT_MS);
+
+    // If we removed another station's stale lock, that station may have been mid-move.
+    // Re-stat the sources before copying: if any vanished (ENOENT), it was already moved
+    // — abort cleanly rather than copy a file that is being relocated by someone else.
+    if (staleLockRemoved) {
+      for (const entry of sourceEntries) {
+        try {
+          const stat = await fs.promises.stat(entry.sourcePath);
+          if (!stat.isFile()) {
+            throw Object.assign(new Error(`Source path is no longer a file: ${entry.sourcePath}`), {
+              code: "EISDIR",
+              stage,
+              title: "Source changed during lock",
+            });
+          }
+        } catch (err) {
+          if (err.code === "ENOENT") {
+            throw Object.assign(new Error(`Source file was moved by another station: ${entry.sourcePath}`), {
+              code: "ENOENT",
+              stage,
+              title: "Source changed during lock",
+            });
+          }
+          throw err;
+        }
       }
     }
 
@@ -309,6 +377,13 @@ export const createBatch = async (batch) => {
       result.warnings.push(`Rollback cleanup failed: ${rollbackErr.message}`);
     }
   } finally {
+    // CRITICAL: stop the heartbeat before releasing locks — otherwise the interval
+    // leaks past every batch and keeps calling utimes() on already-deleted lock files.
+    if (lockHeartbeat) {
+      clearInterval(lockHeartbeat);
+      lockHeartbeat = null;
+    }
+
     for (const lockRecord of lockRecords) {
       try {
         await lockRecord.handle.close();
