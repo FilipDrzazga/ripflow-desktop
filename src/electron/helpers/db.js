@@ -718,7 +718,7 @@ export const getAllStageHistory = () => {
 // ── file_stages ───────────────────────────────────────────────────────────────
 
 export const insertFileStage = (row) => {
-  if (!stmtInsertFileStage) return null;
+  if (!stmtInsertFileStage) return false; // DB down — caller can surface a tracking warning
   try {
     stmtInsertFileStage.run(
       row.file_id, row.batch_path, row.print_type ?? null, row.customer_name ?? null,
@@ -728,8 +728,10 @@ export const insertFileStage = (row) => {
       row.updated_at, row.updated_by ?? null, row.sewing_sent_at ?? null, row.sewing_received_at ?? null, row.sewing_company ?? null,
     );
     _insertStageHistory(row.file_id, row.stage ?? "printed", row.updated_at);
+    return true;
   } catch (err) {
     console.error("[db] insertFileStage failed:", err);
+    return false;
   }
 };
 

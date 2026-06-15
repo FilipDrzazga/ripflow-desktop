@@ -145,6 +145,23 @@ const DataPrintSelection = () => {
           }
         );
 
+        // Batch printed, but something downstream warned (e.g. tracking incomplete —
+        // files won't appear in Production). The operator must see this despite success.
+        if (submitBatchResponse.warnings?.length) {
+          notify(
+            {
+              type: "Warning",
+              title: "Batch printed with warnings",
+              message: submitBatchResponse.warnings.join(" "),
+            },
+            {
+              stage: "createBatch",
+              code: "BATCH_SUBMIT_WARNING",
+              detail: { warnings: submitBatchResponse.warnings },
+            }
+          );
+        }
+
         clearAllOverrides();
         await refreshFiles({ clearSelection: true });
         await refreshBatchDays();

@@ -96,11 +96,12 @@ export const submitBatch = async (batch) => {
       }).catch((err) => console.error("[submitBatch] printBatchLabel failed:", err));
     }
 
+    let trackingFailed = 0;
     for (const item of batch) {
       const sourceHeight = item._heightOverridden ? item._originalHeight : item.height;
       const meters = sourceHeight != null ? Math.round(sourceHeight) / 1000 : null;
       const qty = item._qtyOverridden ? (item._originalQty ?? null) : (item.qty ?? null);
-      insertFileStage({
+      const ok = insertFileStage({
         file_id:         path.parse(item.file.name).name,
         batch_path:      batchPath,
         print_type:      item.printTypeCode ?? null,
@@ -118,7 +119,14 @@ export const submitBatch = async (batch) => {
         sewing_sent_at:     null,
         sewing_received_at: null,
       });
+      if (!ok) trackingFailed++;
     }
+
+    // Batch already printed (XML sent) — a tracking failure is a warning, not an error.
+    // Surface it so the operator knows the batch won't appear in Production.
+    const trackingWarnings = trackingFailed > 0
+      ? [`Batch printed, tracking incomplete — ${trackingFailed}/${batch.length} file(s) not registered in Production`]
+      : [];
 
     return {
       ...result,
@@ -126,7 +134,7 @@ export const submitBatch = async (batch) => {
       batchId: createdBatchResult.batchId,
       finalXmlPath: xmlResult.finalXmlPath,
       localXmlPath: xmlResult.localXmlPath,
-      warnings: [...createdBatchResult.warnings, ...(xmlResult.warnings || [])],
+      warnings: [...createdBatchResult.warnings, ...(xmlResult.warnings || []), ...trackingWarnings],
     };
   } catch (error) {
     result.errors = [toSubmitBatchError(error, "submit")];
