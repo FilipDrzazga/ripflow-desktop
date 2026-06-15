@@ -24,6 +24,13 @@ let batchWatcher = null;
 let watcherSender = null;
 const debounceMap = new Map();
 
+// Watcher restart with exponential backoff — fs.watch dies on a dead SMB mount and must
+// be revived without hammering the network. One pending restart timer at a time.
+let watcherRestartTimer = null;
+const WATCHER_RESTART_MIN_MS = 5000;
+const WATCHER_RESTART_MAX_MS = 60000;
+let watcherRestartDelay = WATCHER_RESTART_MIN_MS;
+
 const getPrintedRootPath = () => path.join(getStorageRootPath(), "PRINTED");
 
 const processWatchEvent = async (relativePath) => {
@@ -89,6 +96,60 @@ const processWatchEvent = async (relativePath) => {
     } catch {
       watcherSender.send("batch:update", { type: "removed", batchPath });
     }
+  }
+};
+
+// Schedule a single backoff-delayed restart. Guarded so a storm of 'error' events (a
+// flapping mount) can never stack multiple timers. Backoff grows up to the cap.
+const scheduleWatcherRestart = () => {
+  if (watcherRestartTimer) return;
+  watcherRestartTimer = setTimeout(() => {
+    watcherRestartTimer = null;
+    startWatcher();
+  }, watcherRestartDelay);
+  watcherRestartDelay = Math.min(watcherRestartDelay * 2, WATCHER_RESTART_MAX_MS);
+};
+
+const handleWatcherError = () => {
+  // Tell the renderer the live feed is down so it can switch to polling-fallback.
+  if (watcherSender && !watcherSender.isDestroyed()) {
+    watcherSender.send("batch:update", { type: "watcher-error" });
+  }
+  if (batchWatcher) {
+    try { batchWatcher.close(); } catch { /* already gone */ }
+    batchWatcher = null; // zero it so the restart path doesn't bounce off the guard
+  }
+  scheduleWatcherRestart();
+};
+
+const startWatcher = () => {
+  if (batchWatcher) return { success: true }; // already running — don't double-watch
+
+  try {
+    const printedRoot = getPrintedRootPath();
+    fs.mkdirSync(printedRoot, { recursive: true });
+
+    batchWatcher = fs.watch(printedRoot, { recursive: true }, (eventType, filename) => {
+      if (!filename) return;
+
+      clearTimeout(debounceMap.get(filename));
+      debounceMap.set(
+        filename,
+        setTimeout(() => {
+          debounceMap.delete(filename);
+          processWatchEvent(filename).catch(() => {});
+        }, 200),
+      );
+    });
+
+    batchWatcher.on("error", handleWatcherError);
+
+    watcherRestartDelay = WATCHER_RESTART_MIN_MS; // healthy (re)start — reset backoff
+    return { success: true };
+  } catch (err) {
+    // Couldn't create the watcher (e.g. mount still dead) — retry later with backoff.
+    scheduleWatcherRestart();
+    return { success: false, error: err.message };
   }
 };
 
@@ -306,45 +367,20 @@ export function registerIpcHandlers() {
 
   ipcMain.handle("start-batch-watcher", (event) => {
     watcherSender = event.sender;
-
-    if (batchWatcher) return { success: true };
-
-    try {
-      const printedRoot = getPrintedRootPath();
-      fs.mkdirSync(printedRoot, { recursive: true });
-
-      batchWatcher = fs.watch(printedRoot, { recursive: true }, (eventType, filename) => {
-        if (!filename) return;
-
-        clearTimeout(debounceMap.get(filename));
-        debounceMap.set(
-          filename,
-          setTimeout(() => {
-            debounceMap.delete(filename);
-            processWatchEvent(filename).catch(() => {});
-          }, 200),
-        );
-      });
-
-      batchWatcher.on("error", () => {
-        if (batchWatcher) {
-          batchWatcher.close();
-          batchWatcher = null;
-        }
-      });
-
-      return { success: true };
-    } catch (err) {
-      return { success: false, error: err.message };
-    }
+    return startWatcher();
   });
 
   ipcMain.handle("stop-batch-watcher", () => {
+    if (watcherRestartTimer) {
+      clearTimeout(watcherRestartTimer);
+      watcherRestartTimer = null;
+    }
     if (batchWatcher) {
       batchWatcher.close();
       batchWatcher = null;
     }
     watcherSender = null;
+    watcherRestartDelay = WATCHER_RESTART_MIN_MS; // reset for the next mount
     return { success: true };
   });
 

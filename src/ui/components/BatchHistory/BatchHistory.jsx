@@ -61,6 +61,7 @@ const BatchHistory = () => {
   const elementRefsRef = useRef(new Map());
   const isInitialLoadRef = useRef(true);
   const searchInputRef = useRef(null);
+  const pollFallbackRef = useRef(null); // setInterval id — only set while in degraded (watcher-down) mode
 
   useEffect(() => {
     getSettings().then((res) => {
@@ -217,6 +218,34 @@ const BatchHistory = () => {
   const handleBatchUpdate = useCallback(async (payload) => {
     const { type, batch, batchPath, file } = payload;
 
+    if (type === "watcher-error") {
+      if (pollFallbackRef.current) return; // already degraded — don't stack notify/interval
+      notify(
+        {
+          type: "Warning",
+          title: "Live updates paused",
+          message: "Lost the real-time connection — refreshing periodically until it recovers.",
+        },
+        { stage: "watcher", code: "WATCHER_DEGRADED" },
+      );
+      pollFallbackRef.current = setInterval(() => { loadData(); }, 20000);
+      return;
+    }
+
+    // Any healthy event means the watcher is alive again — leave degraded mode.
+    if (pollFallbackRef.current) {
+      clearInterval(pollFallbackRef.current);
+      pollFallbackRef.current = null;
+      notify(
+        {
+          type: "Success",
+          title: "Live updates resumed",
+          message: "Real-time batch updates are back.",
+        },
+        { stage: "watcher", code: "WATCHER_RECOVERED" },
+      );
+    }
+
     if (type === "new-batch") {
       let resolvedBatch = batch;
       if (batch.files?.some((f) => f.status === FILE_STATUS.ROLLED_BACK)) {
@@ -304,7 +333,7 @@ const BatchHistory = () => {
         })),
       );
     }
-  }, []);
+  }, [loadData]);
 
   useEffect(() => {
     loadData();
@@ -313,6 +342,10 @@ const BatchHistory = () => {
     return () => {
       stopBatchWatcher();
       cleanup();
+      if (pollFallbackRef.current) {
+        clearInterval(pollFallbackRef.current);
+        pollFallbackRef.current = null;
+      }
     };
   }, [loadData, handleBatchUpdate]);
 
