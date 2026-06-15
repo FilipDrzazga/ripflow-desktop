@@ -475,6 +475,28 @@ export const useStore = create(
             });
           });
 
+          // Files/folders skipped by the defensive scan — the operator must know the
+          // inbox is partial. One summary alert + a log entry per skipped entry.
+          if (Array.isArray(res.warnings) && res.warnings.length > 0) {
+            get().setAlert({
+              id: crypto.randomUUID(),
+              type: "Warning",
+              title: "Some items skipped during scan",
+              message: `${res.warnings.length} file(s)/folder(s) could not be read and were skipped.`,
+            });
+            res.warnings.forEach((w) => {
+              get().addLog({
+                id: crypto.randomUUID(),
+                timestamp: new Date().toISOString(),
+                type: "warning",
+                stage: "readFolders",
+                code: "SCAN_SKIPPED",
+                message: w,
+                detail: null,
+              });
+            });
+          }
+
           return res;
         }
 

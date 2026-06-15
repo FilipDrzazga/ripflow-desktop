@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useStore } from "./store/useStore";
 import "./styles/global.css";
 import styles from "./App.module.css";
@@ -27,8 +27,24 @@ const App = () => {
   const loadFabricConfig = useStore((state) => state.loadFabricConfig);
   const [isLoading, setIsLoading] = useState(true);
   const [activeView, setActiveView] = useState("print");
+  const startupFinishedRef = useRef(false);
+  const safetyTimerRef = useRef(null);
+
+  // Idempotent startup teardown. Normal path: StartupLoader animates to 100% and calls
+  // this via onDone. Safety net: the 30s timer below calls it if readFolders hangs on a
+  // dead network mount (where progress=100 never fires). Whichever runs first wins.
+  const finishStartup = useCallback(() => {
+    if (startupFinishedRef.current) return;
+    startupFinishedRef.current = true;
+    clearTimeout(safetyTimerRef.current);
+    setIsLoading(false);
+  }, []);
 
   useEffect(() => {
+    // Hard safety net ONLY for a hung scan (dead O: mount). Generous 30s so a slow-but-
+    // alive scan is never cut short. The happy path closes via StartupLoader → onDone.
+    safetyTimerRef.current = setTimeout(finishStartup, 30000);
+
     const fetchFolders = async () => {
       loadLogsFromDb();
       loadReasonDefinitions();
@@ -41,13 +57,15 @@ const App = () => {
       refreshBatchDays();
     };
     fetchFolders();
-  }, [refreshFiles, refreshBatchDays, loadLogsFromDb, loadHeldFiles, loadReasonDefinitions, loadFabricConfig]);
+
+    return () => clearTimeout(safetyTimerRef.current);
+  }, [refreshFiles, refreshBatchDays, loadLogsFromDb, loadHeldFiles, loadReasonDefinitions, loadFabricConfig, finishStartup]);
 
   return (
     <div className={styles.app}>
       <TitleBar />
       <AlertsHost />
-      {isLoading && <StartupLoader onDone={() => setIsLoading(false)} />}
+      {isLoading && <StartupLoader onDone={finishStartup} />}
       {!isLoading && (
         <div className={styles.body}>
           <NavBar activeView={activeView} onViewChange={setActiveView} />

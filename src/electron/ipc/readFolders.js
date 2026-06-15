@@ -69,38 +69,55 @@ export const readFolders = async ({ onProgress } = {}) => {
 
     progress("Reading and parsing files...", 30);
     stage = STAGES.READ_SUBFOLDERS;
+    // Defensive scan: a single unreadable file/folder must never zero the whole inbox.
+    // Skipped entries are collected here and surfaced to the operator via result.warnings.
+    const warnings = [];
     const readSubFolders = readMainFolder.map(async (folder) => {
       if (!folder.isDirectory()) return [];
       const folderPath = path.join(PATH, folder.name);
-      const getJobsInside = await fs.promises.readdir(folderPath, { withFileTypes: true });
+
+      let getJobsInside;
+      try {
+        getJobsInside = await fs.promises.readdir(folderPath, { withFileTypes: true });
+      } catch (err) {
+        // Folder vanished / permission error — skip it, keep scanning the rest.
+        warnings.push(`Skipped folder "${folder.name}" (${err.code || "ERROR"})`);
+        return [];
+      }
 
       const jobs = getJobsInside.map(async (job) => {
-        if (!job.isFile()) return null;
-        const fullPath = path.join(folderPath, job.name);
-        let fileStats;
         try {
-          fileStats = await fs.promises.stat(fullPath);
+          if (!job.isFile()) return null;
+          const fullPath = path.join(folderPath, job.name);
+          let fileStats;
+          try {
+            fileStats = await fs.promises.stat(fullPath);
+          } catch (err) {
+            if (err.code === "ENOENT") return null;
+            throw err;
+          }
+          if (fileStats.size === 0) return null;
+          const ispdf = await isPDF(fullPath);
+          if (!ispdf) return null;
+          const meta = parsePrintFileName(job.name, {
+            fullPath,
+            dir: folderPath,
+          });
+          if (!meta) return null;
+          return {
+            id: `${folder.name}_${job.name}`,
+            printGroup: folder.name,
+            materialType: getMaterialType(meta.material),
+            createdAt: fileStats.birthtime,
+            diffDays: getFileAgeInDays(fileStats),
+            fileSizeBytes: fileStats.size,
+            ...meta,
+          };
         } catch (err) {
-          if (err.code === "ENOENT") return null;
-          throw err;
+          // Unreadable / unparseable file — skip it, keep the rest of the folder.
+          warnings.push(`Skipped file "${folder.name}/${job.name}" (${err.code || "ERROR"})`);
+          return null;
         }
-        if (fileStats.size === 0) return null;
-        const ispdf = await isPDF(fullPath);
-        if (!ispdf) return null;
-        const meta = parsePrintFileName(job.name, {
-          fullPath,
-          dir: folderPath,
-        });
-        if (!meta) return null;
-        return {
-          id: `${folder.name}_${job.name}`,
-          printGroup: folder.name,
-          materialType: getMaterialType(meta.material),
-          createdAt: fileStats.birthtime,
-          diffDays: getFileAgeInDays(fileStats),
-          fileSizeBytes: fileStats.size,
-          ...meta,
-        };
       });
       const res = await Promise.all(jobs);
       return res.filter(Boolean);
@@ -108,6 +125,7 @@ export const readFolders = async ({ onProgress } = {}) => {
 
     const nested = await Promise.all(readSubFolders);
     const files = nested.flat();
+    result.warnings = warnings;
 
     // Attach open reprint request quantities (unit follows print type: meters for LM, pieces otherwise)
     const stems = files.map((f) => path.parse(f.file.name).name);
