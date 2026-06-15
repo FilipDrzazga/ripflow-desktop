@@ -7,6 +7,7 @@ import { openPreview } from "./openPreview.js";
 import { openInFolder } from "./openInFolder.js";
 import { openInShopify } from "./openInShopify.js";
 import { readPrintedFolder, readSingleBatch, parseBatchFolderName } from "./readPrintedFolder.js";
+import { sweepOrphanTemps } from "./createBatch.js";
 import { rollbackBatchFromHistory, rollbackFileFromHistory, regenerateXmlForBatch, deleteBatchFolder } from "./batchHistoryHandlers.js";
 import { registerCustomOrderHandlers } from "./customOrderHandlers.js";
 import { registerProductionHandlers } from "./productionHandlers.js";
@@ -105,6 +106,8 @@ export function registerIpcHandlers() {
   registerCustomOrderHandlers();
   registerProductionHandlers();
   cleanupShippedStages(getSettings().shippedRetentionDays ?? 30);
+
+  sweepOrphanTemps().catch(() => {});
 
   backupDb(false).catch((err) => console.error("[backup] startup backup failed:", err));
 

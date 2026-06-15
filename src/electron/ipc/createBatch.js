@@ -45,6 +45,54 @@ const getBatchFolderPath = (batchId) => {
   return path.join(getPrintedRootPath(), batchId);
 };
 
+const DAY_FOLDER_RE = /^\d{2}-\d{2}-\d{4}$/;
+const TEMP_DIR_PREFIX = ".tmp-";
+const ORPHAN_TEMP_MS = 60 * 60 * 1000; // 1h — a live temp only exists for the duration of one COPY
+
+// Startup sweep for .tmp-* batch folders left behind by a hard crash during COPY (before
+// COMMIT rename or ROLLBACK cleanup). Scans only PRINTED\DD-MM-YYYY\* and removes ONLY
+// directories named ".tmp-*" older than 1h. Best-effort: never throws, never blocks startup.
+export const sweepOrphanTemps = async () => {
+  const printedRoot = getPrintedRootPath();
+  let removed = 0;
+
+  let dayFolders;
+  try {
+    dayFolders = await fs.promises.readdir(printedRoot, { withFileTypes: true });
+  } catch {
+    return removed; // PRINTED missing / unreadable — nothing to sweep
+  }
+
+  for (const dayEntry of dayFolders) {
+    if (!dayEntry.isDirectory() || !DAY_FOLDER_RE.test(dayEntry.name)) continue;
+
+    const dayPath = path.join(printedRoot, dayEntry.name);
+    let entries;
+    try {
+      entries = await fs.promises.readdir(dayPath, { withFileTypes: true });
+    } catch {
+      continue;
+    }
+
+    for (const entry of entries) {
+      if (!entry.isDirectory() || !entry.name.startsWith(TEMP_DIR_PREFIX)) continue;
+
+      const tempPath = path.join(dayPath, entry.name);
+      try {
+        const stat = await fs.promises.stat(tempPath);
+        if (Date.now() - stat.mtimeMs <= ORPHAN_TEMP_MS) continue;
+        await fs.promises.rm(tempPath, { recursive: true, force: true });
+        removed += 1;
+      } catch (err) {
+        console.error(`[sweep] failed to remove orphan temp ${tempPath}:`, err);
+      }
+    }
+  }
+
+  if (removed > 0) console.log(`[sweep] removed ${removed} orphan temp folder(s)`);
+  return removed;
+};
+
 const copyPdfFirstPage = async (srcPath, destPath) => {
   const srcBytes = await fs.promises.readFile(srcPath);
   const srcDoc = await PDFDocument.load(srcBytes);
