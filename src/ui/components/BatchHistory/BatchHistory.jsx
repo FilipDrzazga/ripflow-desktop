@@ -101,15 +101,22 @@ const BatchHistory = () => {
       setSelectedFiles(new Map());
       let successCount = 0;
       let failCount = 0;
+      let timedOut = 0;
       const succeededFiles = [];
 
       for (const [filePath, batchPath] of entries) {
-        const res = await rollbackFileApi({ filePath, batchPath, reason });
-        if (res?.success) {
-          succeededFiles.push({ filePath, batchPath });
-          successCount++;
-        } else {
-          failCount++;
+        try {
+          const res = await rollbackFileApi({ filePath, batchPath, reason });
+          if (res?.success) {
+            succeededFiles.push({ filePath, batchPath });
+            successCount++;
+          } else {
+            failCount++;
+          }
+        } catch (err) {
+          // Timeout means the op keeps running in main — count it apart, never fail the loop.
+          if (err?.timedOut) timedOut++;
+          else failCount++;
         }
       }
 
@@ -144,7 +151,17 @@ const BatchHistory = () => {
         refreshFiles();
       }
 
-      if (failCount === 0) {
+      // Once, after the loop: in-progress ops get a single warning + one state refresh.
+      if (timedOut > 0) {
+        notify(
+          { type: "Warning", title: "Operations still in progress", message: `${timedOut} operation(s) taking longer than expected — refreshing state.` },
+          { stage: "rollback", code: "FILES_ROLLBACK_TIMEOUT" },
+        );
+        await refreshFiles();
+        loadData();
+      }
+
+      if (failCount === 0 && successCount > 0) {
         notify(
           { type: "Success", title: "Files rolled back", message: `${successCount} file(s) returned to inbox.` },
           { stage: "rollback", code: "FILES_ROLLED_BACK" },
@@ -154,14 +171,14 @@ const BatchHistory = () => {
           { type: "Warning", title: "Partially rolled back", message: `${successCount} succeeded, ${failCount} failed.` },
           { stage: "rollback", code: "FILES_ROLLBACK_PARTIAL" },
         );
-      } else {
+      } else if (failCount > 0) {
         notify(
           { type: "Error", title: "Rollback failed", message: `${failCount} file(s) could not be rolled back.` },
           { stage: "rollback", code: "FILES_ROLLBACK_FAILED" },
         );
       }
     },
-    [refreshFiles],
+    [refreshFiles, loadData, removeStageFromStore],
   );
 
   const loadData = useCallback(async () => {

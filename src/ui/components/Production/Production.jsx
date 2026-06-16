@@ -210,6 +210,7 @@ const Production = () => {
     setRollbackTargets(null);
     let successCount = 0;
     let failCount = 0;
+    let timedOut = 0;
     for (const { fileId, reason, override } of decisions) {
       const row = useStore.getState().productionStages[fileId];
       if (!row?.batch_path) { failCount++; continue; }
@@ -219,25 +220,39 @@ const Production = () => {
       const qtyOriginal = override?.meters != null
         ? (row.meters_override ?? row.meters ?? null)
         : (row.qty_override ?? row.qty ?? null);
-      const res = await rollbackFile({
-        filePath,
-        batchPath: row.batch_path,
-        reason,
-        ...(qtyAffected != null ? { reprint: { qtyAffected, qtyOriginal } } : {}),
-      });
-      if (res?.success) {
-        removeStageFromStore(fileId);
-        successCount++;
-      } else {
-        failCount++;
+      try {
+        const res = await rollbackFile({
+          filePath,
+          batchPath: row.batch_path,
+          reason,
+          ...(qtyAffected != null ? { reprint: { qtyAffected, qtyOriginal } } : {}),
+        });
+        if (res?.success) {
+          removeStageFromStore(fileId);
+          successCount++;
+        } else {
+          failCount++;
+        }
+      } catch (err) {
+        // Timeout means the op keeps running in main — count it apart, never fail the loop.
+        if (err?.timedOut) timedOut++;
+        else failCount++;
       }
     }
     setSelectedFileIds(new Set());
-    if (failCount === 0) {
+
+    // Once, after the loop: in-progress ops get a single warning + one state refresh.
+    if (timedOut > 0) {
+      notify({ type: "Warning", title: "Operations still in progress", message: `${timedOut} operation(s) taking longer than expected — refreshing state.` });
+      await refreshFiles();
+      loadAllStages();
+    }
+
+    if (failCount === 0 && successCount > 0) {
       notify({ type: "Success", title: "Rolled back", message: `${successCount} file(s) returned to inbox.` });
     } else if (successCount > 0) {
       notify({ type: "Warning", title: "Partially rolled back", message: `${successCount} succeeded, ${failCount} failed.` });
-    } else {
+    } else if (failCount > 0) {
       notify({ type: "Error", title: "Rollback failed", message: `${failCount} file(s) could not be rolled back.` });
     }
     if (successCount > 0) refreshFiles();
@@ -290,6 +305,7 @@ const Production = () => {
   const handleQcConfirm = async (decisions) => {
     let successCount = 0;
     let failCount = 0;
+    let timedOut = 0;
 
     let pendingCount = 0;
     for (const { fileId, action, fromSewing, reason, sewingCompany, override } of decisions) {
@@ -352,19 +368,28 @@ const Production = () => {
             failCount++;
           }
         }
-      } catch {
-        failCount++;
+      } catch (err) {
+        // Timeout means the op keeps running in main — count it apart, never fail the loop.
+        if (err?.timedOut) timedOut++;
+        else failCount++;
       }
     }
 
     setQcModalOpen(false);
 
+    // Once, after the loop: in-progress ops get a single warning + one state refresh.
+    if (timedOut > 0) {
+      notify({ type: "Warning", title: "Operations still in progress", message: `${timedOut} operation(s) taking longer than expected — refreshing state.` });
+      await refreshFiles();
+      loadAllStages();
+    }
+
     const pendingNote = pendingCount > 0 ? ` (${pendingCount} pending)` : "";
-    if (failCount === 0) {
+    if (failCount === 0 && timedOut === 0) {
       notify({ type: "Success", title: "QC complete", message: `${successCount} file(s) processed${pendingNote}` });
     } else if (successCount > 0) {
       notify({ type: "Warning", title: "QC partially done", message: `${successCount} succeeded, ${failCount} failed${pendingNote}.` });
-    } else {
+    } else if (failCount > 0) {
       notify({ type: "Error", title: "QC failed", message: `${failCount} file(s) could not be processed.` });
     }
   };
