@@ -1,4 +1,4 @@
-import { withTimeout } from "@/utils/ipcWithTimeout";
+import { withTimeout, MUTATING_TIMEOUT_MS } from "@/utils/ipcWithTimeout";
 
 export const readPrintedFolder = () =>
   withTimeout(window.api.readPrintedFolder(), 15_000, "readPrintedFolder");
@@ -10,10 +10,10 @@ export const stopBatchWatcher = () =>
   withTimeout(window.api.stopBatchWatcher(), 5_000, "stopBatchWatcher");
 export const onBatchUpdate = (cb) => window.api.onBatchUpdate(cb);
 export const rollbackFile = (args) =>
-  withTimeout(window.api.rollbackFile(args), 30_000, "rollbackFile");
+  withTimeout(window.api.rollbackFile(args), MUTATING_TIMEOUT_MS, "rollbackFile");
 export const rollbackBatch = (args) =>
-  withTimeout(window.api.rollbackBatch(args), 30_000, "rollbackBatch");
+  withTimeout(window.api.rollbackBatch(args), MUTATING_TIMEOUT_MS, "rollbackBatch");
 export const deleteBatch = (batchPath) =>
-  withTimeout(window.api.deleteBatch(batchPath), 30_000, "deleteBatch");
+  withTimeout(window.api.deleteBatch(batchPath), MUTATING_TIMEOUT_MS, "deleteBatch");
 export const regenerateXml = (batchPath) =>
-  withTimeout(window.api.regenerateXml(batchPath), 30_000, "regenerateXml");
+  withTimeout(window.api.regenerateXml(batchPath), MUTATING_TIMEOUT_MS, "regenerateXml");

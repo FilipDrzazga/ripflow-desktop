@@ -1,4 +1,4 @@
-import { withTimeout } from "@/utils/ipcWithTimeout";
+import { withTimeout, MUTATING_TIMEOUT_MS } from "@/utils/ipcWithTimeout";
 
 export const readFolders = () =>
   withTimeout(window.api.readFolders(), 15_000, "readFolders");
@@ -15,7 +15,7 @@ export const submitBatch = (batch, overrides) => {
         };
       })
     : batch;
-  return withTimeout(window.api.submitBatch(enriched), 30_000, "submitBatch");
+  return withTimeout(window.api.submitBatch(enriched), MUTATING_TIMEOUT_MS, "submitBatch");
 };
 export const openPreview = (filePath) =>
   withTimeout(window.api.openPreview(filePath), 5_000, "openPreview");
