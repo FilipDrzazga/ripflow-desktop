@@ -585,15 +585,17 @@ export const getReasonDefinitions = () => {
 };
 
 export const setReasonDefinitions = (defs) => {
-  if (!db) return;
+  if (!db) return false;
   try {
     db.transaction(() => {
       db.prepare("DELETE FROM reason_definitions").run();
       const stmt = db.prepare("INSERT INTO reason_definitions (code, label, icon_name, sort_order) VALUES (?, ?, ?, ?)");
       defs.forEach((d, i) => stmt.run(d.code, d.label, d.iconName, i));
     })();
+    return true;
   } catch (err) {
     console.error("[db] setReasonDefinitions failed:", err);
+    return false;
   }
 };
 
@@ -627,14 +629,16 @@ export const getFabricGlobals = () => {
 };
 
 export const setFabricGlobals = (globals) => {
-  if (!db) return;
+  if (!db) return false;
   try {
     const stmt = db.prepare("INSERT OR REPLACE INTO fabric_globals (key, value) VALUES (?, ?)");
     db.transaction(() => {
       for (const [key, value] of Object.entries(globals)) stmt.run(key, Number(value));
     })();
+    return true;
   } catch (err) {
     console.error("[db] setFabricGlobals failed:", err);
+    return false;
   }
 };
 
@@ -651,8 +655,9 @@ export const getAllFabrics = () => {
 };
 
 export const saveFabric = (oldName, fabric) => {
-  if (!db) return;
+  if (!db) return false;
   try {
+    // delete (on rename) + insert run in one transaction — true only if all of it commits
     db.transaction(() => {
       if (oldName && oldName !== fabric.name) {
         db.prepare("DELETE FROM fabrics WHERE name = ?").run(oldName);
@@ -661,22 +666,26 @@ export const saveFabric = (oldName, fabric) => {
         "INSERT OR REPLACE INTO fabrics (name, type, xml_width, roll_width, is_velvet, is_linen, is_blossom) VALUES (?, ?, ?, ?, ?, ?, ?)",
       ).run(fabric.name, fabric.type, fabric.xmlWidth, fabric.rollWidth, fabric.isVelvet ? 1 : 0, fabric.isLinen ? 1 : 0, fabric.isBlossom ? 1 : 0);
     })();
+    return true;
   } catch (err) {
     console.error("[db] saveFabric failed:", err);
+    return false;
   }
 };
 
 export const deleteFabric = (name) => {
-  if (!db) return;
+  if (!db) return false;
   try {
     db.prepare("DELETE FROM fabrics WHERE name = ?").run(name);
+    return true;
   } catch (err) {
     console.error("[db] deleteFabric failed:", err);
+    return false;
   }
 };
 
 export const setAllFabrics = (fabrics) => {
-  if (!db) return;
+  if (!db) return false;
   try {
     db.transaction(() => {
       db.prepare("DELETE FROM fabrics").run();
@@ -687,8 +696,10 @@ export const setAllFabrics = (fabrics) => {
         stmt.run(f.name, f.type, f.xmlWidth, f.rollWidth, f.isVelvet ? 1 : 0, f.isLinen ? 1 : 0, f.isBlossom ? 1 : 0);
       }
     })();
+    return true;
   } catch (err) {
     console.error("[db] setAllFabrics failed:", err);
+    return false;
   }
 };
 

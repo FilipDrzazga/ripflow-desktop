@@ -67,7 +67,7 @@ const GlobalParamsCard = () => {
         await loadFabricConfig();
         notify({ type: "Success", title: "Saved", message: "Global fabric parameters updated." });
       } else {
-        notify({ type: "Error", title: "Save failed", message: res?.error || "Could not save." });
+        notify({ type: "Error", title: "Save failed", message: res?.error || "Could not save — check the database connection." });
       }
     } finally {
       setIsSaving(false);
@@ -273,7 +273,7 @@ const MaterialsCard = () => {
         setIsAdding(false);
         notify({ type: "Success", title: "Saved", message: `Material "${fabric.name}" saved.` });
       } else {
-        notify({ type: "Error", title: "Save failed", message: res?.error || "Could not save." });
+        notify({ type: "Error", title: "Save failed", message: res?.error || "Could not save — check the database connection." });
       }
     } finally {
       setIsSaving(false);
@@ -290,7 +290,7 @@ const MaterialsCard = () => {
       if (editingName === name) setEditingName(null);
       notify({ type: "Success", title: "Deleted", message: `Material "${name}" removed.` });
     } else {
-      notify({ type: "Error", title: "Delete failed", message: res?.error || "Could not delete." });
+      notify({ type: "Error", title: "Delete failed", message: res?.error || "Could not delete — check the database connection." });
     }
   };
 

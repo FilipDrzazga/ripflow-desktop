@@ -66,7 +66,7 @@ const RollbackReasonsView = () => {
         setIconPickerOpen(false);
         notify({ type: "Success", title: "Saved", message: "Rollback reasons updated." });
       } else {
-        notify({ type: "Error", title: "Save failed", message: res.error || "Could not save." });
+        notify({ type: "Error", title: "Save failed", message: res.error || "Could not save — check the database connection." });
       }
     } finally {
       setIsSaving(false);

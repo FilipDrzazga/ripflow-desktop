@@ -390,8 +390,7 @@ export function registerIpcHandlers() {
 
   ipcMain.handle("reasonDefs:set", (_event, definitions) => {
     if (!Array.isArray(definitions)) return { success: false, error: "Definitions must be an array." };
-    setReasonDefinitionsDb(definitions);
-    return { success: true };
+    return { success: setReasonDefinitionsDb(definitions) };
   });
 
   ipcMain.handle("fabricGlobals:get", () => {
@@ -400,10 +399,10 @@ export function registerIpcHandlers() {
 
   ipcMain.handle("fabricGlobals:set", (_event, globals) => {
     if (!globals || typeof globals !== "object") return { success: false, error: "Globals must be an object." };
-    setFabricGlobals(globals);
+    const ok = setFabricGlobals(globals);
     invalidateFabricCache();
     loadFabricCache();
-    return { success: true };
+    return { success: ok };
   });
 
   ipcMain.handle("fabrics:getAll", () => {
@@ -412,26 +411,26 @@ export function registerIpcHandlers() {
 
   ipcMain.handle("fabrics:save", (_event, { oldName, fabric }) => {
     if (!fabric?.name?.trim()) return { success: false, error: "Fabric name is required." };
-    saveFabric(oldName ?? fabric.name, fabric);
+    const ok = saveFabric(oldName ?? fabric.name, fabric);
     invalidateFabricCache();
     loadFabricCache();
-    return { success: true };
+    return { success: ok };
   });
 
   ipcMain.handle("fabrics:delete", (_event, name) => {
     if (!name?.trim()) return { success: false, error: "Fabric name is required." };
-    deleteFabricDb(name);
+    const ok = deleteFabricDb(name);
     invalidateFabricCache();
     loadFabricCache();
-    return { success: true };
+    return { success: ok };
   });
 
   ipcMain.handle("fabrics:setAll", (_event, fabrics) => {
     if (!Array.isArray(fabrics)) return { success: false, error: "Fabrics must be an array." };
-    setAllFabrics(fabrics);
+    const ok = setAllFabrics(fabrics);
     invalidateFabricCache();
     loadFabricCache();
-    return { success: true };
+    return { success: ok };
   });
 
   ipcMain.handle("db:backup", async () => {
