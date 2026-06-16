@@ -17,6 +17,7 @@ import Analytics from "./components/Analytics/Analytics";
 import ErrorBoundary from "./components/ErrorBoundary/ErrorBoundary";
 import CustomOrder from "./components/CustomOrder/CustomOrder";
 import Production from "./components/Production/Production";
+import { onDbError, onDbRecovered } from "./services/systemService";
 
 const App = () => {
   const refreshFiles = useStore((state) => state.refreshFiles);
@@ -25,6 +26,8 @@ const App = () => {
   const loadHeldFiles = useStore((state) => state.loadHeldFiles);
   const loadReasonDefinitions = useStore((state) => state.loadReasonDefinitions);
   const loadFabricConfig = useStore((state) => state.loadFabricConfig);
+  const dbDegraded = useStore((state) => state.dbDegraded);
+  const setDbDegraded = useStore((state) => state.setDbDegraded);
   const [isLoading, setIsLoading] = useState(true);
   const [activeView, setActiveView] = useState("print");
   const startupFinishedRef = useRef(false);
@@ -61,10 +64,22 @@ const App = () => {
     return () => clearTimeout(safetyTimerRef.current);
   }, [refreshFiles, refreshBatchDays, loadLogsFromDb, loadHeldFiles, loadReasonDefinitions, loadFabricConfig, finishStartup]);
 
+  // DB degraded banner: main emits db:error/db:recovered only on state transition.
+  useEffect(() => {
+    const offError = onDbError(() => setDbDegraded(true));
+    const offRecovered = onDbRecovered(() => setDbDegraded(false));
+    return () => { offError?.(); offRecovered?.(); };
+  }, [setDbDegraded]);
+
   return (
     <div className={styles.app}>
       <TitleBar />
       <AlertsHost />
+      {dbDegraded && (
+        <div className={styles.db_banner} role="alert">
+          Database unavailable — changes may not be saved. Check the network connection.
+        </div>
+      )}
       {isLoading && <StartupLoader onDone={finishStartup} />}
       {!isLoading && (
         <div className={styles.body}>

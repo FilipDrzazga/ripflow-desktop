@@ -4,6 +4,7 @@ import { fileURLToPath } from "url";
 import { createRequire } from "module";
 import process from "process";
 import { registerIpcHandlers } from "./ipc/index.js";
+import { setDbErrorSink } from "./helpers/db.js";
 const require = createRequire(import.meta.url);
 const { autoUpdater } = require("electron-updater");
 
@@ -62,6 +63,10 @@ const createWindow = () => {
 app.whenReady().then(() => {
   registerIpcHandlers();
   createWindow();
+
+  // Bridge critical-DB-write signals to the renderer (one degraded banner). Same
+  // win?.webContents.send pattern as the auto-updater events below.
+  setDbErrorSink((channel, payload) => win?.webContents.send(channel, payload));
 
   autoUpdater.autoDownload = true;
   autoUpdater.autoInstallOnAppQuit = true;

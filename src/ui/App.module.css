@@ -26,6 +26,19 @@
   min-width: 0;
 }
 
+.db_banner {
+  flex: 0 0 auto;
+  width: 100%;
+  padding: 8px 20px;
+  background-color: #b91c1c;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: center;
+  letter-spacing: 0.2px;
+  z-index: 50;
+}
+
 .placeholder {
   display: flex;
   flex-direction: column;

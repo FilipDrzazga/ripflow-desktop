@@ -40,6 +40,40 @@ let stmtGetFileStagesAfter = null;
 
 const PRINTER_RE = /-(DGEN|YOKO|YUMI)$/i;
 
+// ── DB error signalling (critical writes only) ──────────────────────────────────
+// Transient errors are already retried by busy_timeout (#1) — never alarm on them.
+// A permanent write failure flips a "degraded" state and emits ONCE on transition;
+// the first successful write afterwards emits "recovered" once. Keeps the UI to one banner.
+const isTransientDbError = (err) =>
+  ["SQLITE_BUSY", "SQLITE_BUSY_SNAPSHOT", "SQLITE_LOCKED"].includes(err?.code);
+
+let dbErrorSink = null;          // wired from main via setDbErrorSink
+let dbDegradedInternal = false;
+export const setDbErrorSink = (fn) => { dbErrorSink = fn; };
+
+const signalPermanent = (label) => {
+  if (!dbDegradedInternal) { dbDegradedInternal = true; dbErrorSink?.("db:error", { label }); }
+};
+const signalRecovered = () => {
+  if (dbDegradedInternal) { dbDegradedInternal = false; dbErrorSink?.("db:recovered", {}); }
+};
+
+// Runs a critical write; returns bool. Transient → console.warn, no UI. Permanent
+// (DB down / IO / full / corrupt) → flips degraded + emits once on transition.
+const runWrite = (label, fn) => {
+  if (!db) { signalPermanent(label); return false; }
+  try {
+    fn();
+    signalRecovered();
+    return true;
+  } catch (err) {
+    if (isTransientDbError(err)) { console.warn(`[db] transient (${label}):`, err.code); return false; }
+    console.error(`[db] write failed (${label}):`, err);
+    signalPermanent(label);
+    return false;
+  }
+};
+
 export const initDb = () => {
   try {
     const dbPath = join(getStorageRootPath(), "ripflow.db");
@@ -366,33 +400,17 @@ export const getAllLogs = () => {
   }
 };
 
-export const clearAllLogs = (workstation) => {
-  if (workstation) {
-    if (!stmtClearByWorkstation) return;
-    try { stmtClearByWorkstation.run(workstation); } catch (err) { console.error("[db] clearAllLogs (by workstation) failed:", err); }
-  } else {
-    if (!stmtClear) return;
-    try { stmtClear.run(); } catch (err) { console.error("[db] clearAllLogs failed:", err); }
-  }
-};
+export const clearAllLogs = (workstation) =>
+  runWrite("clearAllLogs", () => {
+    if (workstation) stmtClearByWorkstation.run(workstation);
+    else stmtClear.run();
+  });
 
-export const holdFile = (fileId, workstation = "", reason = "") => {
-  if (!stmtHoldFile) return;
-  try {
-    stmtHoldFile.run(fileId, workstation, reason || null);
-  } catch (err) {
-    console.error("[db] holdFile failed:", err);
-  }
-};
+export const holdFile = (fileId, workstation = "", reason = "") =>
+  runWrite("holdFile", () => stmtHoldFile.run(fileId, workstation, reason || null));
 
-export const unholdFile = (fileId) => {
-  if (!stmtUnholdFile) return;
-  try {
-    stmtUnholdFile.run(fileId);
-  } catch (err) {
-    console.error("[db] unholdFile failed:", err);
-  }
-};
+export const unholdFile = (fileId) =>
+  runWrite("unholdFile", () => stmtUnholdFile.run(fileId));
 
 export const getHeldFiles = () => {
   if (!stmtGetHeldFiles) return [];
@@ -417,9 +435,8 @@ export const insertRollbackReason = ({
   process,
   printType,
   meters,
-}) => {
-  if (!stmtInsertRollbackReason) return;
-  try {
+}) =>
+  runWrite("insertRollbackReason", () => {
     stmtInsertRollbackReason.run(
       id,
       fileId ?? null,
@@ -435,10 +452,7 @@ export const insertRollbackReason = ({
       printType ?? null,
       meters ?? null,
     );
-  } catch (err) {
-    console.error("[db] insertRollbackReason failed:", err);
-  }
-};
+  });
 
 export const getRollbackReasonsByBatch = (batchPath) => {
   if (!stmtGetRollbackReasonsByBatch) return [];
@@ -450,10 +464,8 @@ export const getRollbackReasonsByBatch = (batchPath) => {
   }
 };
 
-export const clearAllRollbackReasons = () => {
-  if (!stmtClearRollbackReasons) return;
-  try { stmtClearRollbackReasons.run(); } catch (err) { console.error("[db] clearAllRollbackReasons failed:", err); }
-};
+export const clearAllRollbackReasons = () =>
+  runWrite("clearAllRollbackReasons", () => stmtClearRollbackReasons.run());
 
 export const getRollbackReasonsByFile = (fileId) => {
   if (!stmtGetRollbackReasonsByFile) return null;
@@ -534,23 +546,13 @@ export const getLatestRollbackReasonsForFileIds = (fileIds) => {
   }
 };
 
-export const insertCustomOrder = ({ poNumber, materialName, printer, date, totalFiles, missingFiles, totalMeters, status, files }) => {
-  if (!stmtInsertCustomOrder) return;
-  try {
-    stmtInsertCustomOrder.run(poNumber, materialName, printer, date, totalFiles, missingFiles, totalMeters, status, JSON.stringify(files ?? []));
-  } catch (err) {
-    console.error("[db] insertCustomOrder failed:", err);
-  }
-};
+export const insertCustomOrder = ({ poNumber, materialName, printer, date, totalFiles, missingFiles, totalMeters, status, files }) =>
+  runWrite("insertCustomOrder", () =>
+    stmtInsertCustomOrder.run(poNumber, materialName, printer, date, totalFiles, missingFiles, totalMeters, status, JSON.stringify(files ?? [])),
+  );
 
-export const clearCustomOrders = () => {
-  if (!stmtClearCustomOrders) return;
-  try {
-    stmtClearCustomOrders.run();
-  } catch (err) {
-    console.error("[db] clearCustomOrders failed:", err);
-  }
-};
+export const clearCustomOrders = () =>
+  runWrite("clearCustomOrders", () => stmtClearCustomOrders.run());
 
 export const getAllCustomOrders = () => {
   if (!stmtGetAllCustomOrders) return [];
@@ -710,11 +712,11 @@ const _insertStageHistory = (fileId, stage, enteredAt) => {
   stmtInsertStageHistory.run(fileId, stage, enteredAt);
 };
 
-export const clearAllFileStages = () => {
-  if (!db) return;
-  db.exec("DELETE FROM file_stage_history");
-  db.exec("DELETE FROM file_stages");
-};
+export const clearAllFileStages = () =>
+  runWrite("clearAllFileStages", () => {
+    db.exec("DELETE FROM file_stage_history");
+    db.exec("DELETE FROM file_stages");
+  });
 
 export const getAllStageHistory = () => {
   if (!stmtGetAllStageHistory) return [];
@@ -796,25 +798,17 @@ export const advanceFileStage = (fileId, newStage, updatedBy, expectedStage) => 
   }
 };
 
-export const clearFileStage = (fileId) => {
-  if (!stmtClearFileStage) return null;
-  try {
+export const clearFileStage = (fileId) =>
+  runWrite("clearFileStage", () => {
     if (stmtClearStageHistoryByFileId) stmtClearStageHistoryByFileId.run(fileId);
     stmtClearFileStage.run(fileId);
-  } catch (err) {
-    console.error("[db] clearFileStage failed:", err);
-  }
-};
+  });
 
-export const clearFileStagesByBatch = (batchPath) => {
-  if (!stmtClearFileStagesByBatch) return null;
-  try {
+export const clearFileStagesByBatch = (batchPath) =>
+  runWrite("clearFileStagesByBatch", () => {
     if (stmtClearStageHistoryByBatch) stmtClearStageHistoryByBatch.run(batchPath);
     stmtClearFileStagesByBatch.run(batchPath);
-  } catch (err) {
-    console.error("[db] clearFileStagesByBatch failed:", err);
-  }
-};
+  });
 
 export const setSewingSent = (fileId, updatedBy, expectedStage, sewingCompany) => {
   if (!stmtSetSewingSent) return null;
@@ -873,9 +867,8 @@ export const backupDb = async (force = false) => {
   }
 };
 
-export const cleanupShippedStages = (days) => {
-  if (!db) return;
-  try {
+export const cleanupShippedStages = (days) =>
+  runWrite("cleanupShippedStages", () => {
     const safeDays = Math.max(1, Math.floor(Number(days) || 30));
     const where = `stage = 'shipped' AND datetime(updated_at) < datetime('now', '-${safeDays} days')`;
     const purge = db.transaction(() => {
@@ -886,10 +879,7 @@ export const cleanupShippedStages = (days) => {
     });
     const info = purge();
     if (info.changes > 0) console.log(`[db] cleanupShippedStages: removed ${info.changes} records older than ${safeDays} days`);
-  } catch (err) {
-    console.error("[db] cleanupShippedStages failed:", err);
-  }
-};
+  });
 
 // ── reprint_requests ─────────────────────────────────────────────────────────
 
@@ -898,9 +888,8 @@ const OPEN_REPRINT_FILTER = "fulfilled_at IS NULL AND superseded_at IS NULL";
 // A new rollback supersedes any still-open request for the same file: the new
 // qty reflects what actually needs reprinting now (the prior reprint never
 // completed). Superseded rows are kept for per-event waste analytics.
-export const insertReprintRequest = ({ id, fileId, batchPath, printType, qtyAffected, qtyOriginal, workstation }) => {
-  if (!db) return;
-  try {
+export const insertReprintRequest = ({ id, fileId, batchPath, printType, qtyAffected, qtyOriginal, workstation }) =>
+  runWrite("insertReprintRequest", () => {
     const now = new Date().toISOString();
     db.transaction(() => {
       db.prepare(
@@ -910,10 +899,7 @@ export const insertReprintRequest = ({ id, fileId, batchPath, printType, qtyAffe
         "INSERT INTO reprint_requests (id, file_id, batch_path, print_type, qty_affected, qty_original, workstation, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
       ).run(id, fileId, batchPath ?? null, printType ?? null, qtyAffected, qtyOriginal ?? null, workstation ?? null, now);
     })();
-  } catch (err) {
-    console.error("[db] insertReprintRequest failed:", err);
-  }
-};
+  });
 
 export const getOpenReprintRequests = () => {
   if (!db) return [];
@@ -938,16 +924,12 @@ export const getOpenReprintRequestsByFileIds = (fileIds) => {
   }
 };
 
-export const fulfillReprintRequests = (fileId) => {
-  if (!db) return;
-  try {
+export const fulfillReprintRequests = (fileId) =>
+  runWrite("fulfillReprintRequests", () =>
     db.prepare(
       `UPDATE reprint_requests SET fulfilled_at = ? WHERE file_id = ? AND ${OPEN_REPRINT_FILTER}`,
-    ).run(new Date().toISOString(), fileId);
-  } catch (err) {
-    console.error("[db] fulfillReprintRequests failed:", err);
-  }
-};
+    ).run(new Date().toISOString(), fileId),
+  );
 
 export const getReprintRequests = (since) => {
   if (!db) return [];
@@ -961,14 +943,8 @@ export const getReprintRequests = (since) => {
   }
 };
 
-export const clearAllReprintRequests = () => {
-  if (!db) return;
-  try {
-    db.prepare("DELETE FROM reprint_requests").run();
-  } catch (err) {
-    console.error("[db] clearAllReprintRequests failed:", err);
-  }
-};
+export const clearAllReprintRequests = () =>
+  runWrite("clearAllReprintRequests", () => db.prepare("DELETE FROM reprint_requests").run());
 
 export const getRollbackDetails = (since) => {
   if (!db) return [];

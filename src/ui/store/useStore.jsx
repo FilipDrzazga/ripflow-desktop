@@ -109,6 +109,10 @@ export const useStore = create(
     isBatchSubmitting: false,
     setIsBatchSubmitting: (val) => set({ isBatchSubmitting: val }),
 
+    // Set by main-process db:error / db:recovered signals — drives the degraded banner
+    dbDegraded: false,
+    setDbDegraded: (val) => set({ dbDegraded: val }),
+
     batchDays: [],
     setBatchDays: (days) => set({ batchDays: days }),
     refreshBatchDays: async () => {

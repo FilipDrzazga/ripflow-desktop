@@ -83,6 +83,22 @@ const api = Object.freeze({
     ipcRenderer.on("batch:update", handler);
     return () => ipcRenderer.removeListener("batch:update", handler);
   },
+  onDbError: (callback) => {
+    if (typeof callback !== "function") {
+      throw new TypeError("DB error callback must be a function.");
+    }
+    const handler = (_event, payload) => callback(payload);
+    ipcRenderer.on("db:error", handler);
+    return () => ipcRenderer.removeListener("db:error", handler);
+  },
+  onDbRecovered: (callback) => {
+    if (typeof callback !== "function") {
+      throw new TypeError("DB recovered callback must be a function.");
+    }
+    const handler = (_event, payload) => callback(payload);
+    ipcRenderer.on("db:recovered", handler);
+    return () => ipcRenderer.removeListener("db:recovered", handler);
+  },
   getRollbackDefinitions: () => ipcRenderer.invoke("reasonDefs:get"),
   setReasonDefinitions: (defs) => {
     if (!Array.isArray(defs)) throw new TypeError("Definitions must be an array.");

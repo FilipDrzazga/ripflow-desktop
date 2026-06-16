@@ -15,3 +15,6 @@ export const minimizeWindow = () => window.api.minimizeWindow();
 export const closeWindow = () => window.api.closeWindow();
 // no timeout — user drives the dialog
 export const showConfirm = (message) => window.api.showConfirm(message);
+// DB degraded signals — event subscriptions, return an unsubscribe fn (like onBatchUpdate)
+export const onDbError = (cb) => window.api.onDbError(cb);
+export const onDbRecovered = (cb) => window.api.onDbRecovered(cb);
