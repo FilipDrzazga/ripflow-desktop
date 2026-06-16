@@ -93,6 +93,60 @@ const BatchHistory = () => {
 
   const clearFileSelection = useCallback(() => setSelectedFiles(new Map()), []);
 
+  // Declared before the handlers below — several of them list loadData in their deps
+  // array, which is evaluated at render time (TDZ if loadData were declared later).
+  const loadData = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const res = await readPrintedFolder();
+      if (res.success) {
+        const daysWithReasons = await Promise.all(
+          res.data.map(async (day) => ({
+            ...day,
+            batches: await Promise.all(
+              day.batches.map(async (batch) => {
+                const needsReasons =
+                  batch.status === BATCH_STATUS.ROLLED_BACK || batch.files?.some((f) => f.status === FILE_STATUS.ROLLED_BACK);
+                if (!needsReasons) return batch;
+                const reasonsRes = await getRollbackReasonsByBatch(batch.path);
+                return { ...batch, rollbackReasons: reasonsRes?.data ?? [] };
+              }),
+            ),
+          })),
+        );
+        setDayGroups(daysWithReasons);
+        if (isInitialLoadRef.current) {
+          const todayGroup = daysWithReasons.find((d) => d.label === "Today");
+          if (todayGroup) {
+            setExpandedDays(new Set([todayGroup.date]));
+          }
+          isInitialLoadRef.current = false;
+        }
+      } else {
+        const err = res.errors?.[0];
+        notify(
+          {
+            type: err?.type || "Error",
+            title: err?.title || "Failed to load batch history",
+            message: err?.message || "Could not read the PRINTED folder.",
+          },
+          { stage: "readFolders", code: "READ_BATCH_HISTORY_FAILED" },
+        );
+      }
+    } catch (err) {
+      notify(
+        {
+          type: "Error",
+          title: "Failed to load batch history",
+          message: err?.message || "An unexpected error occurred.",
+        },
+        { stage: "readFolders", code: "READ_BATCH_HISTORY_EXCEPTION" },
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
   // entries: [filePath, batchPath][] — snapshot taken at menu-click time, before
   // ContextMenu onClose clears selectedFiles (state is empty by the time the
   // OTHER modal confirms)
@@ -180,58 +234,6 @@ const BatchHistory = () => {
     },
     [refreshFiles, loadData, removeStageFromStore],
   );
-
-  const loadData = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const res = await readPrintedFolder();
-      if (res.success) {
-        const daysWithReasons = await Promise.all(
-          res.data.map(async (day) => ({
-            ...day,
-            batches: await Promise.all(
-              day.batches.map(async (batch) => {
-                const needsReasons =
-                  batch.status === BATCH_STATUS.ROLLED_BACK || batch.files?.some((f) => f.status === FILE_STATUS.ROLLED_BACK);
-                if (!needsReasons) return batch;
-                const reasonsRes = await getRollbackReasonsByBatch(batch.path);
-                return { ...batch, rollbackReasons: reasonsRes?.data ?? [] };
-              }),
-            ),
-          })),
-        );
-        setDayGroups(daysWithReasons);
-        if (isInitialLoadRef.current) {
-          const todayGroup = daysWithReasons.find((d) => d.label === "Today");
-          if (todayGroup) {
-            setExpandedDays(new Set([todayGroup.date]));
-          }
-          isInitialLoadRef.current = false;
-        }
-      } else {
-        const err = res.errors?.[0];
-        notify(
-          {
-            type: err?.type || "Error",
-            title: err?.title || "Failed to load batch history",
-            message: err?.message || "Could not read the PRINTED folder.",
-          },
-          { stage: "readFolders", code: "READ_BATCH_HISTORY_FAILED" },
-        );
-      }
-    } catch (err) {
-      notify(
-        {
-          type: "Error",
-          title: "Failed to load batch history",
-          message: err?.message || "An unexpected error occurred.",
-        },
-        { stage: "readFolders", code: "READ_BATCH_HISTORY_EXCEPTION" },
-      );
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
 
   const handleBatchUpdate = useCallback(async (payload) => {
     const { type, batch, batchPath, file } = payload;
