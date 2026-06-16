@@ -5,7 +5,7 @@ import { BATCH_STATUS, FILE_STATUS } from "../../shared/constants";
 import { ROLLBACK_REASONS } from "../constants/rollbackReasons";
 import { readFolders } from "../services/fileService";
 import { readPrintedFolder } from "../services/batchService";
-import { getLogs, clearLogs as clearLogsApi, getHeldFiles, holdFile as holdFileApi, unholdFile as unholdFileApi } from "../services/systemService";
+import { getLogs, clearLogs as clearLogsApi, getHeldFiles, holdFile as holdFileApi, unholdFile as unholdFileApi, getDbDegraded } from "../services/systemService";
 import { getRollbackReasonsForFiles as getRollbackReasonsForFilesApi } from "../services/analyticsService";
 import { getRollbackDefinitions as getRollbackDefinitionsApi } from "../services/reasonDefsService";
 import { getFabricGlobals as getFabricGlobalsApi, getFabrics as getFabricsApi } from "../services/fabricService";
@@ -112,6 +112,13 @@ export const useStore = create(
     // Set by main-process db:error / db:recovered signals — drives the degraded banner
     dbDegraded: false,
     setDbDegraded: (val) => set({ dbDegraded: val }),
+    // Initial snapshot pull on startup — only sets true; recovery comes via db:recovered
+    checkDbDegraded: async () => {
+      try {
+        const res = await getDbDegraded();
+        if (res?.degraded) set({ dbDegraded: true });
+      } catch (err) { console.error("[store] checkDbDegraded failed:", err); }
+    },
 
     batchDays: [],
     setBatchDays: (days) => set({ batchDays: days }),

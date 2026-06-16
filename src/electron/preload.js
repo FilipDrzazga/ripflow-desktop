@@ -99,6 +99,7 @@ const api = Object.freeze({
     ipcRenderer.on("db:recovered", handler);
     return () => ipcRenderer.removeListener("db:recovered", handler);
   },
+  getDbDegraded: () => ipcRenderer.invoke("db:get-degraded"),
   getRollbackDefinitions: () => ipcRenderer.invoke("reasonDefs:get"),
   setReasonDefinitions: (defs) => {
     if (!Array.isArray(defs)) throw new TypeError("Definitions must be an array.");

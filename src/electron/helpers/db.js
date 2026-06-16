@@ -50,6 +50,9 @@ const isTransientDbError = (err) =>
 let dbErrorSink = null;          // wired from main via setDbErrorSink
 let dbDegradedInternal = false;
 export const setDbErrorSink = (fn) => { dbErrorSink = fn; };
+// Initial snapshot for the renderer — covers a boot-time DB failure whose db:error
+// emit was lost because the sink/renderer did not exist yet.
+export const getDbDegraded = () => dbDegradedInternal;
 
 const signalPermanent = (label) => {
   if (!dbDegradedInternal) { dbDegradedInternal = true; dbErrorSink?.("db:error", { label }); }

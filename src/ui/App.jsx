@@ -28,6 +28,7 @@ const App = () => {
   const loadFabricConfig = useStore((state) => state.loadFabricConfig);
   const dbDegraded = useStore((state) => state.dbDegraded);
   const setDbDegraded = useStore((state) => state.setDbDegraded);
+  const checkDbDegraded = useStore((state) => state.checkDbDegraded);
   const [isLoading, setIsLoading] = useState(true);
   const [activeView, setActiveView] = useState("print");
   const startupFinishedRef = useRef(false);
@@ -52,6 +53,7 @@ const App = () => {
       loadLogsFromDb();
       loadReasonDefinitions();
       loadFabricConfig();
+      checkDbDegraded();
       await loadHeldFiles();
       await refreshFiles({
         successTitle: "Folders loaded",
@@ -62,7 +64,7 @@ const App = () => {
     fetchFolders();
 
     return () => clearTimeout(safetyTimerRef.current);
-  }, [refreshFiles, refreshBatchDays, loadLogsFromDb, loadHeldFiles, loadReasonDefinitions, loadFabricConfig, finishStartup]);
+  }, [refreshFiles, refreshBatchDays, loadLogsFromDb, loadHeldFiles, loadReasonDefinitions, loadFabricConfig, finishStartup, checkDbDegraded]);
 
   // DB degraded banner: main emits db:error/db:recovered only on state transition.
   useEffect(() => {

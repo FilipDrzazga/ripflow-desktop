@@ -18,3 +18,5 @@ export const showConfirm = (message) => window.api.showConfirm(message);
 // DB degraded signals — event subscriptions, return an unsubscribe fn (like onBatchUpdate)
 export const onDbError = (cb) => window.api.onDbError(cb);
 export const onDbRecovered = (cb) => window.api.onDbRecovered(cb);
+// Initial degraded snapshot on startup (covers a DB dead since boot) — returns { degraded }
+export const getDbDegraded = () => window.api.getDbDegraded();
