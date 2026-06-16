@@ -4,6 +4,7 @@ import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
 import { useStore } from "../../store/useStore";
 import { notify } from "../../utils/notify";
+import { runMutation } from "../../utils/runMutation";
 import style from "./DataPrintSelection.module.css";
 import { PRINTER } from "../../../shared/constants";
 
@@ -100,7 +101,10 @@ const DataPrintSelection = () => {
       setIsSubmitting(true);
       setIsBatchSubmitting(true);
       try {
-        const submitBatchResponse = await submitBatch(print, selectedOverrides);
+        const submitBatchResponse = await runMutation(() => submitBatch(print, selectedOverrides), {
+          refresh: async () => { await refreshFiles({ clearSelection: true }); refreshBatchDays(); },
+        });
+        if (submitBatchResponse?.timedOut) return;
 
         if (!submitBatchResponse.success) {
           const firstError = submitBatchResponse.errors?.[0];

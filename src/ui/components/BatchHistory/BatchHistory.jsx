@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { notify } from "../../utils/notify";
+import { runMutation } from "../../utils/runMutation";
 import { useStore } from "../../store/useStore";
 import ContextMenu from "../ContextMenu/ContextMenu";
 import PdfPreviewModal from "../PdfPreviewModal/PdfPreviewModal";
@@ -470,7 +471,10 @@ const BatchHistory = () => {
   const handleRollbackFile = useCallback(
     async (filePath, batchPath, reason) => {
       try {
-        const res = await rollbackFileApi({ filePath, batchPath, reason });
+        const res = await runMutation(() => rollbackFileApi({ filePath, batchPath, reason }), {
+          refresh: async () => { await refreshFiles(); loadData(); },
+        });
+        if (res?.timedOut) return;
         if (res?.success) {
           notify(
             { type: "Success", title: "File rolled back", message: "The file has been moved back to the inbox." },
@@ -520,7 +524,7 @@ const BatchHistory = () => {
         );
       }
     },
-    [],
+    [refreshFiles, loadData, removeStageFromStore],
   );
 
   const handleConfirmRollbackBatch = useCallback(
@@ -529,7 +533,10 @@ const BatchHistory = () => {
       const { batchPath } = rollbackModal;
       setRollbackModal(null);
       try {
-        const res = await rollbackBatchApi({ batchPath, reason });
+        const res = await runMutation(() => rollbackBatchApi({ batchPath, reason }), {
+          refresh: async () => { await refreshFiles(); loadData(); },
+        });
+        if (res?.timedOut) return;
         if (res?.success) {
           notify(
             { type: "Success", title: "Batch rolled back", message: "All files have been moved back to the inbox." },
@@ -576,13 +583,16 @@ const BatchHistory = () => {
         );
       }
     },
-    [rollbackModal],
+    [rollbackModal, refreshFiles, loadData, removeStageFromStore],
   );
 
   const handleDeleteBatch = useCallback(async (batchPath) => {
     if (!(await showConfirm("Permanently delete this empty batch folder? This cannot be undone."))) return;
     try {
-      const res = await deleteBatchApi(batchPath);
+      const res = await runMutation(() => deleteBatchApi(batchPath), {
+        refresh: async () => { loadData(); },
+      });
+      if (res?.timedOut) return;
       if (res?.success) {
         notify(
           { type: "Success", title: "Batch deleted", message: "The empty batch folder has been deleted." },
@@ -612,11 +622,12 @@ const BatchHistory = () => {
         { stage: "app", code: "BATCH_DELETE_FAILED" },
       );
     }
-  }, []);
+  }, [loadData]);
 
   const handleRegenerateXml = useCallback(async (batchPath) => {
     try {
-      const res = await regenerateXmlApi(batchPath);
+      const res = await runMutation(() => regenerateXmlApi(batchPath));
+      if (res?.timedOut) return;
       if (res?.success) {
         notify(
           { type: "Success", title: "XML regenerated", message: "The batch XML has been regenerated." },
