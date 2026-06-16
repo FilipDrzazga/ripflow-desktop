@@ -47,7 +47,10 @@
       "Bash(echo \"---EXIT:$?---\")",
       "Bash(echo \"===LINT EXIT:$?===\")",
       "Bash(echo \"===TEST EXIT:$?===\")",
-      "PowerShell(Stop-Process *)"
+      "PowerShell(Stop-Process *)",
+      "Bash(sqlite3 -readonly ripflow.db \"SELECT 'file_stages', COUNT\\(*\\) FROM file_stages UNION ALL SELECT 'rollback_reasons', COUNT\\(*\\) FROM rollback_reasons UNION ALL SELECT 'reprint_requests', COUNT\\(*\\) FROM reprint_requests UNION ALL SELECT 'held_files', COUNT\\(*\\) FROM held_files;\")",
+      "Bash(sqlite3 -readonly ripflow.db \"SELECT DISTINCT file_id FROM file_stages LIMIT 15;\")",
+      "Bash(npx vitest *)"
     ]
   }
 }
