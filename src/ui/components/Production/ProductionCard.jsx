@@ -64,7 +64,7 @@ const StagePill = ({ stageKey, status, company }) => {
   );
 };
 
-const ProductionCard = ({ stage: row, highlighted, selected, onSelect, onContextMenu }) => {
+const ProductionCard = ({ stage: row, highlighted, selected, awaitingQc, onSelect, onContextMenu }) => {
   const cardRef  = useRef(null);
 
   useEffect(() => {
@@ -83,7 +83,7 @@ const ProductionCard = ({ stage: row, highlighted, selected, onSelect, onContext
 
   return (
     <div
-      className={`${style.card} ${selected ? style.card_selected : ""}`}
+      className={`${style.card} ${selected ? style.card_selected : ""} ${awaitingQc ? style.card_awaiting : ""}`}
       ref={cardRef}
       data-file-id={row.file_id}
       onClick={() => onSelect?.(row.file_id)}
@@ -129,6 +129,15 @@ const ProductionCard = ({ stage: row, highlighted, selected, onSelect, onContext
         {row.printer && (() => {
           const pc = PRINTER_COLORS[row.printer] ?? { bg: "#f0f0f0", color: "#616161" };
           return <span className={style.card_printer_badge} style={{ backgroundColor: pc.bg, color: pc.color }}>{row.printer}</span>;
+        })()}
+        {awaitingQc && (() => {
+          const hc = STAGE_COLOR[PRODUCTION_STAGE.HEATPRESS] ?? { bg: "#fff3cd", color: "#856404" };
+          return (
+            <span className={style.card_awaiting_badge} style={{ backgroundColor: hc.bg, color: hc.color }}>
+              <LuSearch size={12} />
+              Awaiting QC
+            </span>
+          );
         })()}
       </div>
 

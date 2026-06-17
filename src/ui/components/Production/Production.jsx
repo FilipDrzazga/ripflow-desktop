@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { HiMagnifyingGlass } from "react-icons/hi2";
 import { LuArrowRight, LuArrowLeft, LuScissors, LuRefreshCw, LuCornerUpLeft, LuEye } from "react-icons/lu";
 import { useStore } from "../../store/useStore";
-import { STAGE_LABEL, STAGE_NEXT, STAGE_PREV, PRODUCTION_STAGE, QC_ACTION, STAGE_COLOR } from "../../../shared/constants";
+import { STAGE_LABEL, STAGE_NEXT, STAGE_PREV, PRODUCTION_STAGE, STAGE_COLOR } from "../../../shared/constants";
 import {
   advanceStage,
   setSewingSent,
@@ -19,7 +19,6 @@ import { PRINTER_COLORS } from "../../constants/printerColors";
 import ContextMenu from "../ContextMenu/ContextMenu";
 import PdfPreviewModal from "../PdfPreviewModal/PdfPreviewModal";
 import ProductionCard from "./ProductionCard";
-import QCModal from "./QCModal";
 import ProductionRollbackModal from "./ProductionRollbackModal";
 import style from "./Production.module.css";
 
@@ -99,10 +98,6 @@ const Production = () => {
   const [isLoading,      setIsLoading]      = useState(false);
 
   const lastPollAt = useRef(null);
-
-  // QC modal
-  const [qcModalOpen,  setQcModalOpen]  = useState(false);
-  const [qcModalBatch, setQcModalBatch] = useState(null);
 
   const [isRefreshing,  setIsRefreshing]  = useState(false);
   const [highlightedId, setHighlightedId] = useState(null);
@@ -308,100 +303,6 @@ const Production = () => {
         { type: err?.type || "Error", title: err?.title || "Open in Shopify failed", message: err?.message || "Could not open Shopify order." },
         { stage: "app", code: "OPEN_SHOPIFY_FAILED" },
       );
-    }
-  };
-
-  // ─── QC modal confirm ──────────────────────────────────────────────────────
-
-  const handleQcConfirm = async (decisions) => {
-    let successCount = 0;
-    let failCount = 0;
-    let timedOut = 0;
-
-    let pendingCount = 0;
-    for (const { fileId, action, fromSewing, reason, sewingCompany, override } of decisions) {
-      if (action === QC_ACTION.PENDING || (fromSewing && action === QC_ACTION.SEWING)) { pendingCount++; continue; }
-      try {
-        if (fromSewing) {
-          const currentStage = useStore.getState().productionStages[fileId]?.stage;
-          if (currentStage === PRODUCTION_STAGE.TO_SEWING) {
-            const srRes = await setSewingReceived(fileId, PRODUCTION_STAGE.TO_SEWING);
-            if (!srRes?.success) { failCount++; continue; }
-          }
-          // FROM_SEWING: already received, skip setSewingReceived
-        }
-
-        if (action === QC_ACTION.PASS) {
-          const expectedForPacked = fromSewing ? PRODUCTION_STAGE.FROM_SEWING : PRODUCTION_STAGE.QC;
-          const res = await advanceStage(fileId, PRODUCTION_STAGE.PACKED, expectedForPacked);
-          if (res?.success) {
-            const now = new Date().toISOString();
-            const row = productionStages[fileId];
-            if (row) {
-              updateStageInStore(fileId, { ...row, stage: PRODUCTION_STAGE.PACKED, updated_at: now });
-              addStageHistoryEntry(fileId, PRODUCTION_STAGE.PACKED, now);
-            }
-            successCount++;
-          } else {
-            failCount++;
-          }
-        } else if (action === QC_ACTION.SEWING) {
-          const res = await setSewingSent(fileId, PRODUCTION_STAGE.QC, sewingCompany ?? null);
-          if (res?.success) {
-            const now = new Date().toISOString();
-            const row = useStore.getState().productionStages[fileId];
-            if (row) {
-              updateStageInStore(fileId, { ...row, stage: PRODUCTION_STAGE.TO_SEWING, sewing_sent_at: now, sewing_company: sewingCompany ?? null, updated_at: now });
-              addStageHistoryEntry(fileId, PRODUCTION_STAGE.TO_SEWING, now);
-            }
-            successCount++;
-          } else {
-            failCount++;
-          }
-        } else if (action === QC_ACTION.REJECT) {
-          const row = productionStages[fileId];
-          if (!row?.batch_path) { failCount++; continue; }
-          const filePath = `${row.batch_path}\\${fileId}.pdf`;
-          const qtyAffected = override?.meters ?? override?.qty ?? null;
-          const qtyOriginal = override?.meters != null
-            ? (row.meters_override ?? row.meters ?? null)
-            : (row.qty_override ?? row.qty ?? null);
-          const res = await rollbackFile({
-            filePath,
-            batchPath: row.batch_path,
-            reason,
-            ...(qtyAffected != null ? { reprint: { qtyAffected, qtyOriginal } } : {}),
-          });
-          if (res?.success) {
-            removeStageFromStore(fileId);
-            successCount++;
-          } else {
-            failCount++;
-          }
-        }
-      } catch (err) {
-        // Timeout means the op keeps running in main — count it apart, never fail the loop.
-        if (err?.timedOut) timedOut++;
-        else failCount++;
-      }
-    }
-
-    setQcModalOpen(false);
-
-    // Once, after the loop: in-progress ops get a single warning + one state refresh.
-    if (timedOut > 0) {
-      notify({ type: "Warning", title: "Operations still in progress", message: `${timedOut} operation(s) taking longer than expected — refreshing state.` });
-      await refreshFiles();
-      loadAllStages();
-    }
-
-    const pendingNote = pendingCount > 0 ? ` (${pendingCount} pending)` : "";
-    if (failCount === 0 && timedOut === 0) {
-      notify({ type: "Success", title: "QC complete", message: `${successCount} file(s) processed${pendingNote}` });
-    } else if (successCount > 0) {
-      notify({ type: "Warning", title: "QC partially done", message: `${successCount} succeeded, ${failCount} failed${pendingNote}.` });
-    } else if (failCount > 0) {
-      notify({ type: "Error", title: "QC failed", message: `${failCount} file(s) could not be processed.` });
     }
   };
 
@@ -622,46 +523,8 @@ const Production = () => {
         return;
       }
 
-      if (workstationRole === "qc") {
-        const qcOrSewing = batchFiles.filter((f) =>
-          f.stage === PRODUCTION_STAGE.QC ||
-          f.stage === PRODUCTION_STAGE.TO_SEWING ||
-          f.stage === PRODUCTION_STAGE.FROM_SEWING,
-        );
-
-        if (qcOrSewing.length === 0) {
-          const heatpressFiles = batchFiles.filter((f) => f.stage === PRODUCTION_STAGE.HEATPRESS);
-          if (heatpressFiles.length === 0) {
-            notify({ type: "Warning", title: "Nothing to process", message: "No files awaiting QC in this batch." });
-            return;
-          }
-          const now = new Date().toISOString();
-          const advancedIds = new Set();
-          for (const f of heatpressFiles) {
-            const res = await advanceStage(f.file_id, PRODUCTION_STAGE.QC, f.stage);
-            if (res?.success) {
-              updateStageInStore(f.file_id, { ...f, stage: PRODUCTION_STAGE.QC, updated_at: now });
-              addStageHistoryEntry(f.file_id, PRODUCTION_STAGE.QC, now);
-              advancedIds.add(f.file_id);
-            }
-          }
-          if (advancedIds.size === 0) {
-            notify({ type: "Error", title: "Advance failed", message: "Could not advance files to QC." });
-            return;
-          }
-          const updatedBatchFiles = batchFiles.map((f) =>
-            advancedIds.has(f.file_id) ? { ...f, stage: PRODUCTION_STAGE.QC } : f,
-          );
-          setQcModalBatch({ batchPath: resolvedBatchPath, files: updatedBatchFiles });
-          setQcModalOpen(true);
-          return;
-        }
-
-        setQcModalBatch({ batchPath: resolvedBatchPath, files: batchFiles });
-        setQcModalOpen(true);
-        return;
-      }
-
+      // workstationRole === "qc": scan only filters the view to the batch (setBatchFilter
+      // above). No auto-advance, no modal — QC decisions are made via the context menu.
       return;
     }
 
@@ -966,6 +829,7 @@ const Production = () => {
                   stage={row}
                   highlighted={highlightedId === row.file_id}
                   selected={selectedFileIds.has(row.file_id)}
+                  awaitingQc={workstationRole === "qc" && row.stage === PRODUCTION_STAGE.HEATPRESS}
                   onSelect={toggleProductionSelect}
                   onContextMenu={(r, x, y) => setContextMenu({ row: r, x, y })}
                 />
@@ -979,22 +843,13 @@ const Production = () => {
               stage={row}
               highlighted={highlightedId === row.file_id}
               selected={selectedFileIds.has(row.file_id)}
+              awaitingQc={workstationRole === "qc" && row.stage === PRODUCTION_STAGE.HEATPRESS}
               onSelect={toggleProductionSelect}
               onContextMenu={(r, x, y) => setContextMenu({ row: r, x, y })}
             />
           ))
         )}
       </div>
-
-      {/* QC modal */}
-      {qcModalOpen && qcModalBatch && (
-        <QCModal
-          batchPath={qcModalBatch.batchPath}
-          files={qcModalBatch.files}
-          onConfirm={handleQcConfirm}
-          onClose={() => setQcModalOpen(false)}
-        />
-      )}
 
       <PdfPreviewModal
         isOpen={isPreviewOpen}
