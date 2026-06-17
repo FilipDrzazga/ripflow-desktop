@@ -84,9 +84,8 @@ src/ui/
       CustomOrderHistory.jsx # read-only history list from DB
     DataList/              # Inbox file list; own usePdfPreview instance; 5 fixed-width tag slots
     Production/            # Stage tracking board for in-progress batches
-      Production.jsx       # filters, scanner, bulk-select, context menu, polling, QCModal trigger
-      ProductionCard.jsx   # single file card: stage pills pipeline, GSAP highlight on scan
-      QCModal.jsx          # two-phase QC modal (sewing_return → qc); context menu per file
+      Production.jsx       # filters, scanner, bulk-select, stage-aware context menu, polling
+      ProductionCard.jsx   # single file card: stage pills pipeline, GSAP highlight on scan; dimmed "Awaiting QC" badge in qc view
       ProductionRollbackModal.jsx # rollback modal: per-file reason dropdown + qty_affected input
                            # returns decisions [{fileId, reason, override}]; override = {qty}|{meters}
     ContextMenu/           # Portal popup; supports submenu (children field) with hover delay 150ms
@@ -112,7 +111,7 @@ src/shared/
                                 # Fixed dims stay hardcoded: SAMPLE 220×200, FQ 670×480, TEA_TOWEL 700×500
   constants.js                  # BATCH_STATUS, FILE_STATUS, PRINTER, CUSTOM_ORDER_STATUS
                                # PRODUCTION_STAGE, STAGE_NEXT, STAGE_PREV, STAGE_LABEL, STAGE_COLOR
-                               # QC_ACTION, SEWING_SUGGESTED_TYPES (["CUSHION", "TEA_TOWEL"])
+                               # QC_ACTION, SEWING_SUGGESTED_TYPES (["CUSHION", "TEA_TOWEL"]) — kept for backward-compat; no longer used in UI after QCModal removal (like REJECTED/OVERRIDDEN)
 ```
 
 ## Workflow
@@ -134,7 +133,7 @@ INBOX → PARSE FILENAME → UI → SELECT FILES+PRINTER → CREATE BATCH+XML �
 | `"logs"` | SessionLogs |
 | `"settings"` | Settings (sidebar: General / Paths / Fabrics / Rollback Reasons / Database / Maintenance / Updates) |
 | `"customOrder"` | CustomOrder (CustomOrderCard + CustomOrderHistory) |
-| `"production"` | Production (ProductionCard + QCModal) |
+| `"production"` | Production (ProductionCard + ProductionRollbackModal) |
 
 ## File Types (`parseFileName.js`)
 - **LM** — Linear Meter | **FQ** — Fat Quarter | **SAMPLE** — Sample Print
@@ -371,19 +370,16 @@ DB tables: `file_stages` (one row per active file), `file_stage_history` (append
 - `"cotton"` — scanner advances `printed → heatpress → qc` in one scan (two sequential DB calls per file; cotton skips manual heatpress step)
 - `"polyester"` — scanner advances `printed → heatpress`
 - `"rollpress"` — scanner advances `heatpress → qc`
-- `"qc"` — scanner opens QCModal; if batch has no QC/sewing files but has heatpress files, auto-advances them to QC first, then opens modal. REJECT action in QCModal calls `rollbackFile` (file goes to inbox)
+- `"qc"` — scanner only filters/shows the scanned batch (behaves like the default role); **no** auto-advance heatpress→qc and **no** modal. The operator decides per file manually via selection + context menu (Pass/Receive/Send to Sewing/Go back/Rollback)
 - `""` (default) — scanner only filters view to scanned batch
 
 **Scanner input** — `e.ctrlKey || e.metaKey || e.altKey` keys ignored to avoid contaminating barcode buffer. Buffer flushed after 100ms idle; fires on Enter if buffer > 5 chars. Search box Enter key also routes to handleScan when value matches a batch name, file_id, or batch path. File-level scan (matching file_id) clears filters, scrolls to card, highlights it for 1.5s via GSAP.
 
-**QCModal phases:**
-- Phase 1 `sewing_return` (only if batch has `TO_SEWING` OR `FROM_SEWING` files): per-file action = PASS (receive) | PENDING (keep at sewing) | REJECT (rollback). Requires reason for every REJECT before "Confirm →" enables. If no QC files, skips phase 2 and calls onConfirm directly.
-- Phase 2 `qc`: per-file action = PASS (→ packed) | SEWING (→ to_sewing, pick company) | PENDING (stay at QC) | REJECT (rollback to inbox). SEWING hint icon shown for `SEWING_SUGGESTED_TYPES` (CUSHION, TEA_TOWEL).
-- Both phases support multi-select via left-click + context menu bulk actions.
+**"Awaiting QC" visual state** — in the `qc` role view, files still at the `heatpress` stage render dimmed (lowered opacity, dashed border) with an "Awaiting QC" badge (colored from `STAGE_COLOR[HEATPRESS]`). `heatpress` itself signals "not yet arrived at QC" — there is **no** separate DB stage/field for awaiting; `ProductionCard` receives an `awaitingQc` prop computed in `Production.jsx` as `workstationRole === "qc" && row.stage === HEATPRESS`.
 
-**Multi-select & bulk actions** — click card to toggle select; `BatchGroupHeader` "Select All" toggles whole batch. Bulk context menu: advance all, go back all, rollback all. Selection cleared on filter/batch change.
+**Multi-select & bulk actions** — click card to toggle select; `BatchGroupHeader` "Select All" toggles whole batch. The context menu drives all bulk actions (see Context menu below). Selection cleared on filter/batch change.
 
-**Rollback collects qty_affected** — context-menu rollback (single + bulk) opens `ProductionRollbackModal` (reason dropdown + qty input per file, defaults to full qty; OTHER → inline text). QCModal REJECT shows the same qty input next to the reject badge. Both paths pass `reprint: { qtyAffected, qtyOriginal }` to `rollbackFile` → `insertReprintRequest` in `batchHistoryHandlers.js` (new request supersedes prior open ones for the file).
+**Rollback collects qty_affected** — context-menu rollback (single + bulk) opens `ProductionRollbackModal` (reason dropdown + qty input per file, defaults to full qty; OTHER → inline text). It passes `reprint: { qtyAffected, qtyOriginal }` to `rollbackFile` → `insertReprintRequest` in `batchHistoryHandlers.js` (new request supersedes prior open ones for the file).
 
 **Reprint badge** — `productionHandlers.js` `withReprint(rows)` enriches stage rows with `reprint_qty`/`reprint_original` from open `reprint_requests` (matched by `file_id` = filename stem) on **all three return paths** (`stage:getAll`/`stage:getByBatch`/`stage:getAfter`), so polling keeps the badge alive. `ProductionCard` renders a blue Reprint badge (`Reprint: X of Y` when `reprint_original !== reprint_qty`); the Override badge stays **manual-only** (`meters_override`/`qty_override`, set only by manual overrides after the override/reprint split — a pure reprint no longer sets `*_override`, so no false Override badge). Both badges may coexist. The reprint badge disappears once the file reaches `packed` (`fulfillReprintRequests` → request no longer open). `FileRow` and `ProductionCard` Override badges carry the `Override: ` prefix.
 
@@ -393,7 +389,13 @@ DB tables: `file_stages` (one row per active file), `file_stage_history` (append
 
 **Stage counts in tabs** — when `batchFilter` is active, tab counts reflect only that batch's files.
 
-**Context menu extras** — "Reprint Label" calls `printBatchLabel` (aggregates batch material + total meters from store); "Open in Shopify" calls `openInShopify(orderId)` from fileService; "Send to Sewing" submenu: Olya | Vagabond.
+**Context menu** — stage-aware across the WHOLE selection (`selectedFileIds`; falls back to the clicked row when selection is empty). A stage action shows only when valid for EVERY target file (common availability). Order — stage actions first, then a separator, then tools:
+- **Pass** (advance per `STAGE_NEXT`; `from_sewing → packed`) — every file has `STAGE_NEXT[stage]` and `stage` ∉ {`TO_SEWING`, `SHIPPED`}. Label: "Pass to {STAGE_LABEL[next]}" when all on one stage, else "Pass to next stage". Single → `handleAdvance`, bulk → `handleBulkAdvance`.
+- **Receive from sewing** (`to_sewing → from_sewing`, `setSewingReceived`) — every file `stage === TO_SEWING`. Single → `handleReceive`, bulk → `handleBulkReceive`.
+- **Send to Sewing ▸** (submenu Olya | Vagabond, `setSewingSent`) — every file `stage === QC`. Single → `handleSewing`, bulk → `handleBulkSewing`.
+- **Go back** (per `STAGE_PREV`) — every file has `STAGE_PREV[stage]`.
+- **Rollback** — every file has `batch_path` and `stage !== SHIPPED`; opens `ProductionRollbackModal`.
+- ── separator ── then tools (always operate on the clicked row): **Reprint Label** (`printBatchLabel`, aggregates batch material + total meters from store), **Quick Preview**, **Open in Folder**, **Open in Shopify** (`openInShopify(orderId)` from fileService).
 
 ## BatchHistory — Key Behaviors
 - Call `stopBatchWatcher()` on unmount
