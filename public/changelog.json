@@ -4,7 +4,7 @@
     "date": "2026-06-17",
     "changes": [
       {
-        "text": "Reprint and Override badges are now shown separately — a file returned from Production shows a Reprint badge, while the Override badge only appears when an operator has deliberately changed the print quantity",
+        "text": "Reprint and Override badges are now shown separately - a file returned from Production shows a Reprint badge, while the Override badge only appears when an operator has deliberately changed the print quantity",
         "clients": ["all"]
       },
       {
@@ -12,7 +12,7 @@
         "clients": ["all"]
       },
       {
-        "text": "Overriding a quantity on a reprint file no longer requires clearing the reprint first — just set the new value directly",
+        "text": "Overriding a quantity on a reprint file no longer requires clearing the reprint first - just set the new value directly",
         "clients": ["all"]
       },
       {
@@ -34,7 +34,7 @@
     "date": "2026-06-16",
     "changes": [
       {
-        "text": "Added partial reprint support — when rolling back a file from Production you can now set how much needs reprinting (metres for linear, piece count otherwise) along with the reason",
+        "text": "Added partial reprint support - when rolling back a file from Production you can now set how much needs reprinting (metres for linear, piece count otherwise) along with the reason",
         "clients": ["all"]
       },
       {
@@ -42,7 +42,7 @@
         "clients": ["all"]
       },
       {
-        "text": "Reprint quantities flow automatically into the print job and batch info on resubmit — no manual re-entry",
+        "text": "Reprint quantities flow automatically into the print job and batch info on resubmit - no manual re-entry",
         "clients": ["all"]
       },
       { "text": "Reprint requests are cleared automatically once a file reaches the Packed stage", "clients": ["all"] },

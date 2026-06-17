@@ -184,6 +184,17 @@ const Production = () => {
     }
   };
 
+  const handleReceive = async (fileId) => {
+    const row = productionStages[fileId];
+    if (!row || row.stage !== PRODUCTION_STAGE.TO_SEWING) return;
+    const now = new Date().toISOString();
+    const res = await setSewingReceived(fileId, PRODUCTION_STAGE.TO_SEWING);
+    if (res?.success) {
+      updateStageInStore(fileId, { ...row, stage: PRODUCTION_STAGE.FROM_SEWING, sewing_received_at: now, updated_at: now });
+      addStageHistoryEntry(fileId, PRODUCTION_STAGE.FROM_SEWING, now);
+    }
+  };
+
   const handleReprintLabel = async (fileId) => {
     const row = productionStages[fileId];
     if (!row) return;
@@ -470,6 +481,42 @@ const Production = () => {
     if (count > 0) notify({ type: "Success", title: `${count} file${count > 1 ? "s" : ""} moved`, message: "Moved to next stage." });
   };
 
+  const handleBulkReceive = async () => {
+    const ids = [...selectedFileIds];
+    let count = 0;
+    for (const id of ids) {
+      const r = productionStages[id];
+      if (!r || r.stage !== PRODUCTION_STAGE.TO_SEWING) continue;
+      const now = new Date().toISOString();
+      const res = await setSewingReceived(id, PRODUCTION_STAGE.TO_SEWING);
+      if (res?.success) {
+        updateStageInStore(id, { ...r, stage: PRODUCTION_STAGE.FROM_SEWING, sewing_received_at: now, updated_at: now });
+        addStageHistoryEntry(id, PRODUCTION_STAGE.FROM_SEWING, now);
+        count++;
+      }
+    }
+    setSelectedFileIds(new Set());
+    if (count > 0) notify({ type: "Success", title: "Received from sewing", message: `${count} file(s) received.` });
+  };
+
+  const handleBulkSewing = async (sewingCompany) => {
+    const ids = [...selectedFileIds];
+    let count = 0;
+    for (const id of ids) {
+      const r = productionStages[id];
+      if (!r || r.stage !== PRODUCTION_STAGE.QC) continue;
+      const now = new Date().toISOString();
+      const res = await setSewingSent(id, PRODUCTION_STAGE.QC, sewingCompany ?? null);
+      if (res?.success) {
+        updateStageInStore(id, { ...r, stage: PRODUCTION_STAGE.TO_SEWING, sewing_sent_at: now, sewing_company: sewingCompany ?? null, updated_at: now });
+        addStageHistoryEntry(id, PRODUCTION_STAGE.TO_SEWING, now);
+        count++;
+      }
+    }
+    setSelectedFileIds(new Set());
+    if (count > 0) notify({ type: "Success", title: "Sent to sewing", message: `${count} file(s) sent to ${sewingCompany}.` });
+  };
+
   // Clear selection when filter changes
   useEffect(() => {
     setSelectedFileIds(new Set());
@@ -701,30 +748,35 @@ const Production = () => {
     const fileId = row.file_id;
     const batchPath = row.batch_path;
     const filePath = batchPath ? `${batchPath}\\${fileId}.pdf` : null;
-    const isShipped = row.stage === PRODUCTION_STAGE.SHIPPED;
-    const isAtQC = row.stage === PRODUCTION_STAGE.QC;
-    const canAdvance = !isShipped;
-    const nextStage = STAGE_NEXT[row.stage];
-    const prevStage = STAGE_PREV[row.stage];
+
+    // Stage-aware: when files are selected, the menu reflects the WHOLE selection;
+    // otherwise it falls back to the clicked row. An action shows only when it is
+    // valid for EVERY target file (common availability).
     const isBulk = selectedFileIds.size > 0 && selectedFileIds.has(fileId);
+    const targetRows = isBulk
+      ? [...selectedFileIds].map((id) => productionStages[id]).filter(Boolean)
+      : [row];
+    const count = targetRows.length;
+
+    const stages = new Set(targetRows.map((r) => r.stage));
+    const allSameStage = stages.size === 1;
+    const onlyStage = allSameStage ? [...stages][0] : null;
+
+    const canPass = count > 0 && targetRows.every(
+      (r) => STAGE_NEXT[r.stage] && r.stage !== PRODUCTION_STAGE.TO_SEWING && r.stage !== PRODUCTION_STAGE.SHIPPED,
+    );
+    const canReceive  = count > 0 && targetRows.every((r) => r.stage === PRODUCTION_STAGE.TO_SEWING);
+    const canSew      = count > 0 && targetRows.every((r) => r.stage === PRODUCTION_STAGE.QC);
+    const canGoBack   = count > 0 && targetRows.every((r) => STAGE_PREV[r.stage]);
+    const canRollback = count > 0 && targetRows.every((r) => r.batch_path && r.stage !== PRODUCTION_STAGE.SHIPPED);
+
     const items = [];
 
-    if (prevStage) {
-      items.push({
-        id: "go-back",
-        label: isBulk ? `${STAGE_LABEL[prevStage]} ${selectedFileIds.size} selected` : STAGE_LABEL[prevStage],
-        icon: <LuArrowLeft size={14} />,
-        onClick: () => {
-          setContextMenu(null);
-          if (isBulk) handleBulkGoBack();
-          else handleGoBack(fileId);
-        },
-      });
-    }
-    if (canAdvance && nextStage) {
+    // ── Stage actions ──
+    if (canPass) {
       items.push({
         id: "advance",
-        label: isBulk ? `${STAGE_LABEL[nextStage]} ${selectedFileIds.size} selected` : STAGE_LABEL[nextStage],
+        label: allSameStage ? `Pass to ${STAGE_LABEL[STAGE_NEXT[onlyStage]]}` : "Pass to next stage",
         icon: <LuArrowRight size={14} />,
         advance: true,
         onClick: () => {
@@ -734,6 +786,59 @@ const Production = () => {
         },
       });
     }
+    if (canReceive) {
+      items.push({
+        id: "receive",
+        label: "Receive from sewing",
+        icon: <LuArrowRight size={14} />,
+        advance: true,
+        onClick: () => {
+          setContextMenu(null);
+          if (isBulk) handleBulkReceive();
+          else handleReceive(fileId);
+        },
+      });
+    }
+    if (canSew) {
+      items.push({
+        id: "sewing",
+        label: "Send to Sewing",
+        icon: <LuScissors size={14} />,
+        children: [
+          { id: "sewing-olya",     label: "Olya",     onClick: () => { if (isBulk) handleBulkSewing("Olya"); else handleSewing(fileId, "Olya"); } },
+          { id: "sewing-vagabond", label: "Vagabond", onClick: () => { if (isBulk) handleBulkSewing("Vagabond"); else handleSewing(fileId, "Vagabond"); } },
+        ],
+      });
+    }
+    if (canGoBack) {
+      items.push({
+        id: "go-back",
+        label: allSameStage ? `Back to ${STAGE_LABEL[STAGE_PREV[onlyStage]]}` : "Go back",
+        icon: <LuArrowLeft size={14} />,
+        onClick: () => {
+          setContextMenu(null);
+          if (isBulk) handleBulkGoBack();
+          else handleGoBack(fileId);
+        },
+      });
+    }
+    if (canRollback) {
+      items.push({
+        id: "rollback",
+        label: count > 1 ? `Rollback ${count} files` : "Rollback this file",
+        icon: <LuCornerUpLeft size={14} />,
+        danger: true,
+        onClick: () => {
+          setContextMenu(null);
+          const rows = targetRows.filter((r) => r?.batch_path);
+          if (rows.length > 0) setRollbackTargets(rows);
+        },
+      });
+    }
+
+    if (items.length > 0) items.push({ id: "sep-tools", separator: true });
+
+    // ── Tools (always operate on the clicked row) ──
     if (batchPath) {
       items.push({
         id: "reprint-label",
@@ -743,8 +848,6 @@ const Production = () => {
         onClick: () => { setContextMenu(null); handleReprintLabel(fileId); },
       });
     }
-    if (items.length > 0) items.push({ id: "sep-top", separator: true });
-
     if (filePath) {
       items.push({
         id: "preview",
@@ -765,36 +868,6 @@ const Production = () => {
       label: "Open in Shopify",
       onClick: () => { setContextMenu(null); handleOpenInShopify(row.order_id); },
     });
-
-    items.push({ id: "sep-1", separator: true });
-
-    if (canAdvance && batchPath) {
-      items.push({
-        id: "rollback",
-        label: isBulk ? (selectedFileIds.size === 1 ? "Rollback this file" : `Rollback ${selectedFileIds.size} files`) : "Rollback this file",
-        icon: <LuCornerUpLeft size={14} />,
-        danger: true,
-        onClick: () => {
-          setContextMenu(null);
-          const rows = isBulk
-            ? [...selectedFileIds].map((id) => productionStages[id]).filter((r) => r?.batch_path)
-            : [row];
-          if (rows.length > 0) setRollbackTargets(rows);
-        },
-      });
-    }
-
-    if (canAdvance && isAtQC) {
-      items.push({
-        id: "sewing",
-        label: "Send to Sewing",
-        icon: <LuScissors size={14} />,
-        children: [
-          { id: "sewing-olya",     label: "Olya",     onClick: () => { setContextMenu(null); handleSewing(fileId, "Olya"); } },
-          { id: "sewing-vagabond", label: "Vagabond", onClick: () => { setContextMenu(null); handleSewing(fileId, "Vagabond"); } },
-        ],
-      });
-    }
 
     return items;
   }, [contextMenu, selectedFileIds, productionStages]); // eslint-disable-line react-hooks/exhaustive-deps
