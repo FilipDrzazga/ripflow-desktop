@@ -287,10 +287,10 @@ const DataList = () => {
                             );
                           })()}
                         {(() => {
+                          // Manual operator override — always shown when present.
+                          // Independent of the Reprint badge; both may appear together.
                           const ov = selectedOverrides.get(item.id);
                           if (!ov) return null;
-                          // Seeded from a reprint request and unmodified — the Reprint badge already shows it
-                          if (item.reprintQty != null && (ov.meters ?? ov.qty) === item.reprintQty) return null;
                           const label = ov.meters != null ? `${ov.meters}m` : `x${ov.qty}`;
                           return <span className={style.override_badge}>Override: {label}</span>;
                         })()}

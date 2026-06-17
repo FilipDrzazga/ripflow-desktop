@@ -1,5 +1,28 @@
 [
   {
+    "version": "1.0.5",
+    "date": "2026-06-16",
+    "changes": [
+      {
+        "text": "Added partial reprint support — when rolling back a file from Production you can now set how much needs reprinting (metres for linear, piece count otherwise) along with the reason",
+        "clients": ["all"]
+      },
+      {
+        "text": "Files awaiting a reprint now show a persistent Reprint badge in the inbox and batch history until the reprint is fulfilled",
+        "clients": ["all"]
+      },
+      {
+        "text": "Reprint quantities flow automatically into the print job and batch info on resubmit — no manual re-entry",
+        "clients": ["all"]
+      },
+      { "text": "Reprint requests are cleared automatically once a file reaches the Packed stage", "clients": ["all"] },
+      {
+        "text": "Analytics waste figures now reflect partial reprint quantities for more accurate per-fabric reporting",
+        "clients": ["all"]
+      }
+    ]
+  },
+  {
     "version": "1.0.4",
     "date": "2026-06-12",
     "changes": [

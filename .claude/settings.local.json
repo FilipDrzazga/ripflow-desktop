@@ -50,7 +50,9 @@
       "PowerShell(Stop-Process *)",
       "Bash(sqlite3 -readonly ripflow.db \"SELECT 'file_stages', COUNT\\(*\\) FROM file_stages UNION ALL SELECT 'rollback_reasons', COUNT\\(*\\) FROM rollback_reasons UNION ALL SELECT 'reprint_requests', COUNT\\(*\\) FROM reprint_requests UNION ALL SELECT 'held_files', COUNT\\(*\\) FROM held_files;\")",
       "Bash(sqlite3 -readonly ripflow.db \"SELECT DISTINCT file_id FROM file_stages LIMIT 15;\")",
-      "Bash(npx vitest *)"
+      "Bash(npx vitest *)",
+      "PowerShell(npx vitest run --config vitest.proof.config.js > proof_out.txt 2>&1; Get-Content proof_out.txt | Select-Object -First 120)",
+      "PowerShell(npx vitest run --config vitest.proof.config.js --disableConsoleIntercept > proof_out.txt 2>&1; Get-Content proof_out.txt)"
     ]
   }
 }

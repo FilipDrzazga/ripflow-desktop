@@ -3,7 +3,7 @@ import gsap from "gsap";
 import {
   LuScissors,
   LuPrinter, LuThermometer, LuSearch, LuPackage, LuTruck,
-  LuFileText, LuCheck,
+  LuFileText, LuCheck, LuRotateCcw,
 } from "react-icons/lu";
 import {
   PRODUCTION_STAGE, STAGE_LABEL, STAGE_COLOR,
@@ -116,6 +116,15 @@ const ProductionCard = ({ stage: row, highlighted, selected, onSelect, onContext
               <span className={style.card_type_badge_override}>Override: x{row.qty_override}</span>
             )
         }
+        {row.reprint_qty != null && (
+          <span className={style.card_type_badge_reprint}>
+            <LuRotateCcw size={12} />
+            Reprint: {row.print_type === "LM" ? `${row.reprint_qty}m` : `x${row.reprint_qty}`}
+            {row.reprint_original != null && row.reprint_original !== row.reprint_qty
+              ? ` of ${row.print_type === "LM" ? `${row.reprint_original}m` : `x${row.reprint_original}`}`
+              : ""}
+          </span>
+        )}
         {row.material && <span className={style.card_material}>{row.material}</span>}
         {row.printer && (() => {
           const pc = PRINTER_COLORS[row.printer] ?? { bg: "#f0f0f0", color: "#616161" };

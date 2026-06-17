@@ -48,14 +48,17 @@ const FileRow = ({ file, batch, stageRow, activeContextFilePath, onContextMenu, 
         <span className={style.file_name} title={file.name}>
           {file.name}
         </span>
-        {(file.qtyOverride != null || file.metersOverride != null) && (
+        {file.manualOverride != null && (
           <span className={style.override_badge}>
-            {file.metersOverride != null ? `${file.metersOverride}m` : `x${file.qtyOverride}`}
+            Override: {file.manualOverride.meters != null ? `${file.manualOverride.meters}m` : `x${file.manualOverride.qty}`}
           </span>
         )}
         {file.reprintQty != null && (
           <span className={style.reprint_badge}>
-            Reprint {file.type === "LM" ? `${file.reprintQty}m` : `x${file.reprintQty}`}
+            Reprint: {file.type === "LM" ? `${file.reprintQty}m` : `x${file.reprintQty}`}
+            {file.reprintQtyOriginal != null && file.reprintQtyOriginal !== file.reprintQty
+              ? ` of ${file.type === "LM" ? `${file.reprintQtyOriginal}m` : `x${file.reprintQtyOriginal}`}`
+              : ""}
           </span>
         )}
       </span>

@@ -366,11 +366,19 @@ export const createBatch = async (batch) => {
     committed = true;
 
     try {
+      // Persistent provenance (Etap 2): one entry per file that has an effective
+      // printed amount (manual override OR reprint). Shape:
+      //   { printed: { meters }|{ qty }, manual: bool, reprintQty, reprintOriginal }
       const overridesMap = {};
       for (const item of batch) {
+        if (item._printed == null) continue;
         const stem = path.parse(item.file?.name ?? "").name;
-        if (item.qtyOverride != null) overridesMap[stem] = { qty: item.qtyOverride };
-        if (item.metersOverride != null) overridesMap[stem] = { meters: item.metersOverride };
+        overridesMap[stem] = {
+          printed: item._printed,
+          manual: item._manual === true,
+          reprintQty: item._reprintQty ?? null,
+          reprintOriginal: item._reprintOriginal ?? null,
+        };
       }
       await fs.promises.writeFile(
         path.join(finalBatchFolderPath, "_batch_info.json"),

@@ -18,6 +18,31 @@ export const parseBatchFolderName = (name) => {
   return { group: m[1], printer: m[2] };
 };
 
+// Normalize a _batch_info.overrides[stem] entry to the Etap-2 provenance shape.
+// New shape: { printed:{meters}|{qty}, manual:bool, reprintQty, reprintOriginal }.
+// Legacy shape ({ qty }|{ meters }) is read defensively and treated as a manual
+// override with no reprint provenance (legacy reprints were stored as overrides).
+const normalizeOverrideEntry = (entry) => {
+  if (!entry) return null;
+  if (entry.printed) {
+    return {
+      printed: entry.printed,
+      manual: entry.manual === true,
+      reprintQty: entry.reprintQty ?? null,
+      reprintOriginal: entry.reprintOriginal ?? null,
+    };
+  }
+  if (entry.qty != null || entry.meters != null) {
+    return {
+      printed: entry.meters != null ? { meters: entry.meters } : { qty: entry.qty },
+      manual: true,
+      reprintQty: null,
+      reprintOriginal: null,
+    };
+  }
+  return null;
+};
+
 const getDayLabel = (dateStr) => {
   const [d, mo, y] = dateStr.split("-").map(Number);
   const date = new Date(y, mo - 1, d);
@@ -58,16 +83,25 @@ export const readSingleBatch = async (batchPath, meta) => {
       const filePath = path.join(batchPath, f.name);
       const parsed = parsePrintFileName(f.name, { fullPath: filePath, dir: batchPath });
       const stem = path.parse(f.name).name;
+      const prov = normalizeOverrideEntry(batchOverrides[stem]);
       activeFiles.push({
         name: f.name,
         path: filePath,
         type: parsed?.printTypeCode || "UNKNOWN",
         orderId: parsed?.orderId || null,
-        qtyOverride: batchOverrides[stem]?.qty ?? null,
-        metersOverride: batchOverrides[stem]?.meters ?? null,
+        // Manual override value shown only when the operator actually overrode.
+        manualOverride: prov?.manual ? prov.printed : null,
+        // Reprint provenance from _batch_info (preferred over open requests below).
+        reprintQty: prov?.reprintQty ?? null,
+        reprintQtyOriginal: prov?.reprintOriginal ?? null,
       });
       if (parsed?.status === FILE_STATUS.READY) {
-        parsedForLength.push({ ...parsed, materialType: getMaterialType(parsed.material) });
+        // Group metres must reflect the effective printed amount, not the parsed
+        // original — overlay printed (override or reprint) before estimating.
+        const forLength = { ...parsed, materialType: getMaterialType(parsed.material) };
+        if (prov?.printed?.meters != null) forLength.height = Math.round(prov.printed.meters * 1000);
+        else if (prov?.printed?.qty != null) forLength.qty = prov.printed.qty;
+        parsedForLength.push(forLength);
       }
     }
   }
@@ -81,6 +115,7 @@ export const readSingleBatch = async (batchPath, meta) => {
       if (activeNames.has(fname)) continue;
       const parsed = parsePrintFileName(fname, { fullPath: path.join(batchPath, fname), dir: batchPath });
       const fstem = path.parse(fname).name;
+      const prov = normalizeOverrideEntry(batchOverrides[fstem]);
       files.push({
         name: fname,
         path: path.join(batchPath, fname),
@@ -88,20 +123,23 @@ export const readSingleBatch = async (batchPath, meta) => {
         orderId: parsed?.orderId || null,
         status: FILE_STATUS.ROLLED_BACK,
         rolledBackAt: snapshot.rolledBackAt || null,
-        qtyOverride: batchOverrides[fstem]?.qty ?? null,
-        metersOverride: batchOverrides[fstem]?.meters ?? null,
+        manualOverride: prov?.manual ? prov.printed : null,
+        reprintQty: prov?.reprintQty ?? null,
+        reprintQtyOriginal: prov?.reprintOriginal ?? null,
       });
     }
   } catch {
     // no snapshot or invalid — nothing to merge
   }
 
-  // Attach open reprint request quantities (covers both the batch a file was
-  // rolled back from and the new batch the reprint was submitted into)
+  // Attach open reprint request quantities ONLY where _batch_info has no reprint
+  // provenance — _batch_info is preferred because BatchHistory is a historical
+  // view of this submit and must stay correct even after the request is fulfilled.
   const reprintRows = getOpenReprintRequestsByFileIds(files.map((f) => path.parse(f.name).name));
   if (reprintRows.length > 0) {
     const reprintByStem = new Map(reprintRows.map((r) => [r.file_id, r]));
     for (const f of files) {
+      if (f.reprintQty != null) continue;
       const req = reprintByStem.get(path.parse(f.name).name);
       if (req) {
         f.reprintQty = req.qty_affected;
