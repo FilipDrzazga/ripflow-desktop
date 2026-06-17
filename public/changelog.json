@@ -1,5 +1,35 @@
 [
   {
+    "version": "1.0.6",
+    "date": "2026-06-17",
+    "changes": [
+      {
+        "text": "Reprint and Override badges are now shown separately — a file returned from Production shows a Reprint badge, while the Override badge only appears when an operator has deliberately changed the print quantity",
+        "clients": ["all"]
+      },
+      {
+        "text": "Both badges are shown at the same time when a reprint quantity has also been manually overridden, so the full picture is always visible",
+        "clients": ["all"]
+      },
+      {
+        "text": "Overriding a quantity on a reprint file no longer requires clearing the reprint first — just set the new value directly",
+        "clients": ["all"]
+      },
+      {
+        "text": "Batch totals in Batch History now reflect the quantity actually printed (including partial reprints and overrides), not the original quantity from the filename",
+        "clients": ["all"]
+      },
+      {
+        "text": "The Reprint badge in Production disappears automatically once the job reaches the Packed stage",
+        "clients": ["all"]
+      },
+      {
+        "text": "Fixed: the quantity field in the Rollback modal could not be cleared and retyped using the keyboard",
+        "clients": ["all"]
+      }
+    ]
+  },
+  {
     "version": "1.0.5",
     "date": "2026-06-16",
     "changes": [

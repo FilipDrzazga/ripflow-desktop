@@ -101,6 +101,10 @@ const defaultOverride = (r) => {
   return r.print_type === "LM" ? { meters: v } : { qty: v };
 };
 
+// Raw-input string for the qty field (separate from the numeric submit value so
+// the operator can clear it from the keyboard while editing).
+const overrideToStr = (ov) => (ov == null ? "" : String(ov.meters ?? ov.qty));
+
 // rows: stageRow[] from productionStages
 const ProductionRollbackModal = ({ rows, onConfirm, onCancel }) => {
   const reasonDefinitions = useStore((s) => s.reasonDefinitions);
@@ -109,7 +113,8 @@ const ProductionRollbackModal = ({ rows, onConfirm, onCancel }) => {
   const [choices, setChoices] = useState(() => {
     const m = new Map();
     rows.forEach((r) => {
-      m.set(r.file_id, { reason: null, otherText: "", override: defaultOverride(r) });
+      const ov = defaultOverride(r);
+      m.set(r.file_id, { reason: null, otherText: "", override: ov, overrideInput: overrideToStr(ov) });
     });
     return m;
   });
@@ -132,13 +137,40 @@ const ProductionRollbackModal = ({ rows, onConfirm, onCancel }) => {
     });
   };
 
-  const setOverride = (fileId, override) => {
+  // Update only the raw string while typing (no parse/clamp — allows empty).
+  const setOverrideInput = (fileId, overrideInput) => {
     setChoices((prev) => {
       const next = new Map(prev);
       const cur = next.get(fileId);
-      if (cur) next.set(fileId, { ...cur, override });
+      if (cur) next.set(fileId, { ...cur, overrideInput });
       return next;
     });
+  };
+
+  // Commit the numeric submit value + normalized string (on blur / from default).
+  const commitOverride = (fileId, override, overrideInput) => {
+    setChoices((prev) => {
+      const next = new Map(prev);
+      const cur = next.get(fileId);
+      if (cur) next.set(fileId, { ...cur, override, overrideInput });
+      return next;
+    });
+  };
+
+  // Parse the raw input; reset to the full run quantity when empty / invalid / <= 0,
+  // otherwise clamp to (0, originalVal].
+  const commitOverrideFromInput = (row) => {
+    const isLm = row.print_type === "LM";
+    const originalVal = runQty(row);
+    const raw = (choices.get(row.file_id)?.overrideInput ?? "").trim();
+    const num = isLm ? parseFloat(raw) : parseInt(raw, 10);
+    if (!Number.isFinite(num) || num <= 0) {
+      const dv = defaultOverride(row);
+      commitOverride(row.file_id, dv, overrideToStr(dv));
+      return;
+    }
+    const clamped = originalVal != null && num > originalVal ? originalVal : num;
+    commitOverride(row.file_id, isLm ? { meters: clamped } : { qty: clamped }, String(clamped));
   };
 
   const canConfirm = [...choices.values()].every(
@@ -191,11 +223,10 @@ const ProductionRollbackModal = ({ rows, onConfirm, onCancel }) => {
 
         <div className={style.qc_file_list}>
           {rows.map((row) => {
-            const { reason, otherText, override } = choices.get(row.file_id) ?? {};
+            const { reason, otherText, overrideInput } = choices.get(row.file_id) ?? {};
             const printTypeDef = PRINT_TYPE_MAP[row.print_type];
             const isLm = row.print_type === "LM";
             const originalVal = runQty(row);
-            const overrideVal = override != null ? (override.meters ?? override.qty ?? "") : "";
 
             return (
               <div
@@ -235,24 +266,19 @@ const ProductionRollbackModal = ({ rows, onConfirm, onCancel }) => {
                   <input
                     type="number"
                     className={style.qc_override_input}
-                    min={1}
+                    min={isLm ? 0.1 : 1}
+                    step={isLm ? 0.1 : 1}
                     max={originalVal ?? undefined}
                     placeholder={isLm
                       ? (originalVal != null ? `Max ${originalVal}m` : "m")
                       : (originalVal != null ? `Max ${originalVal}` : "qty")}
-                    value={overrideVal}
+                    value={overrideInput ?? ""}
                     onChange={(e) => {
                       const val = e.target.value;
-                      if (!val) {
-                        setOverride(row.file_id, defaultOverride(row));
-                        return;
-                      }
-                      const num = Number(val);
-                      if (originalVal != null && num > originalVal) return;
-                      setOverride(row.file_id,
-                        isLm ? { meters: num } : { qty: num },
-                      );
+                      const re = isLm ? /^\d*\.?\d*$/ : /^\d*$/;
+                      if (val === "" || re.test(val)) setOverrideInput(row.file_id, val);
                     }}
+                    onBlur={() => commitOverrideFromInput(row)}
                     style={{ borderRadius: 8 }}
                   />
                 </div>

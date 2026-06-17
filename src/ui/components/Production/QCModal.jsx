@@ -20,6 +20,10 @@ const defaultOverride = (f) => {
   return f.print_type === "LM" ? { meters: v } : { qty: v };
 };
 
+// Raw-input string for the qty field (separate from the numeric submit value so
+// the operator can clear it from the keyboard while editing).
+const overrideToStr = (ov) => (ov == null ? "" : String(ov.meters ?? ov.qty));
+
 const QCModal = ({ batchPath, files, onConfirm, onClose }) => {
   const reasonDefinitions = useStore((s) => s.reasonDefinitions);
 
@@ -32,14 +36,14 @@ const QCModal = ({ batchPath, files, onConfirm, onClose }) => {
   // fileId → { action, rejectReason, sewingCompany, override }  (sewing_return phase)
   const [sewingChoices, setSewingChoices] = useState(() => {
     const m = new Map();
-    sewingFiles.forEach((f) => m.set(f.file_id, { action: QC_ACTION.PASS, rejectReason: null, sewingCompany: null, override: defaultOverride(f) }));
+    sewingFiles.forEach((f) => { const ov = defaultOverride(f); m.set(f.file_id, { action: QC_ACTION.PASS, rejectReason: null, sewingCompany: null, override: ov, overrideInput: overrideToStr(ov) }); });
     return m;
   });
 
   // fileId → { action, rejectReason, sewingCompany, override }  (qc phase)
   const [qcChoices, setQcChoices] = useState(() => {
     const m = new Map();
-    qcFiles.forEach((f) => m.set(f.file_id, { action: QC_ACTION.PASS, rejectReason: null, sewingCompany: null, override: defaultOverride(f) }));
+    qcFiles.forEach((f) => { const ov = defaultOverride(f); m.set(f.file_id, { action: QC_ACTION.PASS, rejectReason: null, sewingCompany: null, override: ov, overrideInput: overrideToStr(ov) }); });
     return m;
   });
 
@@ -82,14 +86,43 @@ const QCModal = ({ batchPath, files, onConfirm, onClose }) => {
     closeContextMenu();
   };
 
-  const setOverride = (fileId, override) => {
+  // Update only the raw string while typing (no parse/clamp — allows empty).
+  const setOverrideInput = (fileId, overrideInput) => {
     const setter = phase === "sewing_return" ? setSewingChoices : setQcChoices;
     setter((prev) => {
       const next = new Map(prev);
       const cur = next.get(fileId);
-      if (cur) next.set(fileId, { ...cur, override });
+      if (cur) next.set(fileId, { ...cur, overrideInput });
       return next;
     });
+  };
+
+  // Commit the numeric submit value + normalized string (on blur / from default).
+  const commitOverride = (fileId, override, overrideInput) => {
+    const setter = phase === "sewing_return" ? setSewingChoices : setQcChoices;
+    setter((prev) => {
+      const next = new Map(prev);
+      const cur = next.get(fileId);
+      if (cur) next.set(fileId, { ...cur, override, overrideInput });
+      return next;
+    });
+  };
+
+  // Parse the raw input; reset to the full run quantity when empty / invalid / <= 0,
+  // otherwise clamp to (0, originalVal].
+  const commitOverrideFromInput = (file) => {
+    const isLm = file.print_type === "LM";
+    const originalVal = runQty(file);
+    const map = phase === "sewing_return" ? sewingChoices : qcChoices;
+    const raw = (map.get(file.file_id)?.overrideInput ?? "").trim();
+    const num = isLm ? parseFloat(raw) : parseInt(raw, 10);
+    if (!Number.isFinite(num) || num <= 0) {
+      const dv = defaultOverride(file);
+      commitOverride(file.file_id, dv, overrideToStr(dv));
+      return;
+    }
+    const clamped = originalVal != null && num > originalVal ? originalVal : num;
+    commitOverride(file.file_id, isLm ? { meters: clamped } : { qty: clamped }, String(clamped));
   };
 
   const applyRollback = (triggerId, reason) => {
@@ -205,11 +238,10 @@ const QCModal = ({ batchPath, files, onConfirm, onClose }) => {
 
   const renderFileCards = (displayFiles, choicesMap) =>
     displayFiles.map((file) => {
-      const { action, rejectReason, sewingCompany, override } = choicesMap.get(file.file_id) ?? { action: QC_ACTION.PASS };
+      const { action, rejectReason, sewingCompany, overrideInput } = choicesMap.get(file.file_id) ?? { action: QC_ACTION.PASS };
       const isSelected = selectedIds.has(file.file_id);
       const isLm = file.print_type === "LM";
       const originalVal = runQty(file);
-      const overrideVal = override != null ? (override.meters ?? override.qty ?? "") : "";
       return (
         <div
           key={file.file_id}
@@ -235,18 +267,18 @@ const QCModal = ({ batchPath, files, onConfirm, onClose }) => {
                 <input
                   type="number"
                   className={style.qc_override_input}
-                  min={1}
+                  min={isLm ? 0.1 : 1}
+                  step={isLm ? 0.1 : 1}
                   max={originalVal}
                   placeholder={isLm ? `Max ${originalVal}m` : `Max ${originalVal}`}
-                  value={overrideVal}
+                  value={overrideInput ?? ""}
                   onClick={(e) => e.stopPropagation()}
                   onChange={(e) => {
                     const val = e.target.value;
-                    if (!val) { setOverride(file.file_id, defaultOverride(file)); return; }
-                    const num = Number(val);
-                    if (num > originalVal) return;
-                    setOverride(file.file_id, isLm ? { meters: num } : { qty: num });
+                    const re = isLm ? /^\d*\.?\d*$/ : /^\d*$/;
+                    if (val === "" || re.test(val)) setOverrideInput(file.file_id, val);
                   }}
+                  onBlur={() => commitOverrideFromInput(file)}
                 />
               )}
             </>
