@@ -52,7 +52,14 @@
       "Bash(sqlite3 -readonly ripflow.db \"SELECT DISTINCT file_id FROM file_stages LIMIT 15;\")",
       "Bash(npx vitest *)",
       "PowerShell(npx vitest run --config vitest.proof.config.js > proof_out.txt 2>&1; Get-Content proof_out.txt | Select-Object -First 120)",
-      "PowerShell(npx vitest run --config vitest.proof.config.js --disableConsoleIntercept > proof_out.txt 2>&1; Get-Content proof_out.txt)"
+      "PowerShell(npx vitest run --config vitest.proof.config.js --disableConsoleIntercept > proof_out.txt 2>&1; Get-Content proof_out.txt)",
+      "Bash(cp /tmp/inspect_held.cjs /f/ripflow-desktop/_tmp_inspect_held.cjs)",
+      "Bash(rm -f /f/ripflow-desktop/_tmp_inspect_held.cjs)",
+      "Bash(cat)",
+      "Bash(py /tmp/inspect.py)",
+      "Bash(python3 /tmp/inspect.py)",
+      "Bash(command -v sqlite3)",
+      "Bash(ELECTRON_RUN_AS_NODE=1 /f/ripflow-desktop/node_modules/electron/dist/electron.exe /f/ripflow-desktop/_tmp_inspect_held.cjs)"
     ]
   }
 }

@@ -276,18 +276,11 @@ export const useStore = create(
       try {
         const res = await getHeldFiles();
         if (res?.success && Array.isArray(res.data)) {
-          const grouped = new Map();
-          for (const r of res.data) {
-            if (!grouped.has(r.file_id)) grouped.set(r.file_id, []);
-            grouped.get(r.file_id).push({ workstation: r.workstation, reason: r.reason });
-          }
-          const heldIds = new Set(grouped.keys());
+          const heldIds = new Set();
           const heldReasons = new Map();
-          for (const [fileId, holders] of grouped) {
-            const label = holders
-              .map(({ workstation, reason }) => (reason ? `${workstation}: ${reason}` : workstation))
-              .join(", ");
-            heldReasons.set(fileId, label);
+          for (const r of res.data) {
+            heldIds.add(r.file_id);
+            if (r.reason) heldReasons.set(r.file_id, r.reason);
           }
           set({ heldIds, heldReasons });
         }

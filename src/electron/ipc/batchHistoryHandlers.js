@@ -15,15 +15,26 @@ import { estimatePrintLength } from "../../shared/estimatePrintLength.js";
 
 const toError = (err, title = "Operation failed") => toIpcError(err, "unknown", title);
 
-const resolveOriginalGroup = async (batchPath, shortGroup) => {
+// Pure resolution (no I/O): pick the inbox group a file should roll back to.
+// Order: per-file map → batch-level originalGroup → REVERSE override → shortGroup.
+// `info` may be null (missing/corrupt _batch_info.json) → drops straight to fallbacks.
+const resolveGroupFromInfo = (info, shortGroup, stem = null) => {
+  if (stem && info?.fileGroups?.[stem]) return info.fileGroups[stem];
+  if (info?.originalGroup) return info.originalGroup;
+  return GROUP_NAME_OVERRIDES_REVERSE[shortGroup] ?? shortGroup;
+};
+
+// Async wrapper: read _batch_info.json ONCE, then resolve. Used by the single-file
+// path (one read either way).
+const resolveOriginalGroup = async (batchPath, shortGroup, stem = null) => {
+  let info = null;
   try {
     const raw = await fs.promises.readFile(path.join(batchPath, "_batch_info.json"), "utf8");
-    const info = JSON.parse(raw);
-    if (info.originalGroup) return info.originalGroup;
+    info = JSON.parse(raw);
   } catch {
-    // no metadata file
+    // no/corrupt metadata file → resolveGroupFromInfo handles null via fallbacks
   }
-  return GROUP_NAME_OVERRIDES_REVERSE[shortGroup] ?? shortGroup;
+  return resolveGroupFromInfo(info, shortGroup, stem);
 };
 
 export const rollbackBatchFromHistory = async ({ batchPath, reason } = {}) => {
@@ -41,9 +52,15 @@ export const rollbackBatchFromHistory = async ({ batchPath, reason } = {}) => {
       throw Object.assign(new Error("Invalid batch folder name."), { code: "EINVAL" });
     }
 
-    const originalGroup = await resolveOriginalGroup(validatedBatchPath, meta.group);
-    const destDir = path.join(getStorageRootPath(), originalGroup);
-    await fs.promises.mkdir(destDir, { recursive: true });
+    // Read provenance ONCE; each file resolves its own group from this in the loop.
+    let batchInfo = null;
+    try {
+      const raw = await fs.promises.readFile(path.join(validatedBatchPath, "_batch_info.json"), "utf8");
+      batchInfo = JSON.parse(raw);
+    } catch {
+      // no/corrupt _batch_info.json → resolveGroupFromInfo falls back per file
+    }
+    const storageRoot = getStorageRootPath();
 
     const entries = await fs.promises.readdir(validatedBatchPath, { withFileTypes: true });
     // PO
@@ -70,6 +87,10 @@ export const rollbackBatchFromHistory = async ({ batchPath, reason } = {}) => {
     }
     for (const f of entries) {
       if (!f.isFile() || !f.name.toLowerCase().endsWith(".pdf")) continue;
+      const stem = f.name.replace(/\.[^.]+$/, "");
+      const group = resolveGroupFromInfo(batchInfo, meta.group, stem);
+      const destDir = path.join(storageRoot, group);
+      await fs.promises.mkdir(destDir, { recursive: true });
       const src = path.join(validatedBatchPath, f.name);
       const dest = path.join(destDir, f.name);
       await fs.promises.rename(src, dest);
@@ -133,11 +154,15 @@ export const rollbackFileFromHistory = async ({ filePath, batchPath, reason, rep
       throw Object.assign(new Error("Invalid batch folder name."), { code: "EINVAL" });
     }
 
-    const originalGroup = await resolveOriginalGroup(validatedBatchPath, meta.group);
+    const filename = path.basename(validatedFilePath);
+    const originalGroup = await resolveOriginalGroup(
+      validatedBatchPath,
+      meta.group,
+      path.parse(filename).name,
+    );
     const destDir = path.join(getStorageRootPath(), originalGroup);
     await fs.promises.mkdir(destDir, { recursive: true });
 
-    const filename = path.basename(validatedFilePath);
     const snapshotPath = path.join(validatedBatchPath, "_rollback_snapshot.json");
     try {
       let snapshot = { rolledBackAt: new Date().toISOString(), type: "file", files: [] };

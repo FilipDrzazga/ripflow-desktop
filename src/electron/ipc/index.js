@@ -186,7 +186,7 @@ export function registerIpcHandlers() {
   });
 
   ipcMain.handle("hold:set", (_event, fileId, reason) => {
-    holdFile(fileId, getSettings().workstationName ?? "", reason ?? "");
+    holdFile(fileId, reason ?? "");
     return { success: true };
   });
 

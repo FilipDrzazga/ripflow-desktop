@@ -3,7 +3,6 @@ import { mkdirSync, existsSync, readdirSync, unlinkSync, statSync } from "fs";
 import { app } from "electron";
 import Database from "better-sqlite3";
 import { getStorageRootPath } from "./getRootPath.js";
-import { getSettings } from "./getSettings.js";
 import { DEFAULT_FABRICS, DEFAULT_FABRIC_GLOBALS } from "./defaultFabrics.js";
 
 let db = null;
@@ -111,41 +110,36 @@ export const initDb = () => {
       for (const row of nullIdLogs) fixStmt.run(crypto.randomUUID(), row.rowid);
     }
 
-    // Migrate held_files: add workstation column if missing (per-PC holds)
-    let heldFilesNeedsMigration = false;
-    try {
-      db.prepare("SELECT workstation FROM held_files LIMIT 0").all();
-    } catch {
-      heldFilesNeedsMigration = true;
-    }
-    if (heldFilesNeedsMigration) {
-      const ws = getSettings().workstationName ?? "";
-      const oldRows = (() => { try { return db.prepare("SELECT file_id FROM held_files").all(); } catch { return []; } })();
-      db.exec("DROP TABLE IF EXISTS held_files");
-      db.exec(`
-        CREATE TABLE held_files (
-          file_id     TEXT NOT NULL,
-          workstation TEXT NOT NULL DEFAULT '',
-          reason      TEXT,
-          PRIMARY KEY (file_id, workstation)
-        )
-      `);
-      const migrateStmt = db.prepare("INSERT OR IGNORE INTO held_files (file_id, workstation) VALUES (?, ?)");
-      for (const row of oldRows) migrateStmt.run(row.file_id, ws);
-    } else {
-      db.exec(`
-        CREATE TABLE IF NOT EXISTS held_files (
-          file_id     TEXT NOT NULL,
-          workstation TEXT NOT NULL DEFAULT '',
-          reason      TEXT,
-          PRIMARY KEY (file_id, workstation)
-        )
-      `);
-      try {
-        db.prepare("SELECT reason FROM held_files LIMIT 0").all();
-      } catch {
-        db.exec("ALTER TABLE held_files ADD COLUMN reason TEXT");
-      }
+    // held_files is a GLOBAL hold model: one operator holds a file, everyone sees it.
+    // Fresh DBs get the global shape directly (file_id PRIMARY KEY, reason).
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS held_files (
+        file_id TEXT PRIMARY KEY,
+        reason  TEXT
+      )
+    `);
+
+    // Migrate legacy per-workstation holds (composite PK file_id+workstation) → global.
+    // Detect the old `workstation` column and rebuild deduplicated by file_id,
+    // preserving any non-empty reason (MAX ignores NULLs).
+    const heldFilesIsLegacy = db
+      .prepare("PRAGMA table_info(held_files)")
+      .all()
+      .some((col) => col.name === "workstation");
+    if (heldFilesIsLegacy) {
+      db.transaction(() => {
+        db.exec(`
+          CREATE TABLE held_files_new (
+            file_id TEXT PRIMARY KEY,
+            reason  TEXT
+          )
+        `);
+        db.exec(
+          "INSERT INTO held_files_new (file_id, reason) SELECT file_id, MAX(reason) FROM held_files GROUP BY file_id",
+        );
+        db.exec("DROP TABLE held_files");
+        db.exec("ALTER TABLE held_files_new RENAME TO held_files");
+      })();
     }
 
     db.exec(`
@@ -190,9 +184,9 @@ export const initDb = () => {
     stmtGetAll = db.prepare("SELECT * FROM logs ORDER BY timestamp DESC LIMIT 500");
     stmtClear = db.prepare("DELETE FROM logs");
     stmtClearByWorkstation = db.prepare("DELETE FROM logs WHERE workstation = ?");
-    stmtHoldFile = db.prepare("INSERT OR REPLACE INTO held_files (file_id, workstation, reason) VALUES (?, ?, ?)");
+    stmtHoldFile = db.prepare("INSERT OR REPLACE INTO held_files (file_id, reason) VALUES (?, ?)");
     stmtUnholdFile = db.prepare("DELETE FROM held_files WHERE file_id = ?");
-    stmtGetHeldFiles = db.prepare("SELECT file_id, workstation, reason FROM held_files");
+    stmtGetHeldFiles = db.prepare("SELECT file_id, reason FROM held_files");
     db.exec("CREATE INDEX IF NOT EXISTS idx_rr_batch_path ON rollback_reasons(batch_path)");
     db.exec("CREATE INDEX IF NOT EXISTS idx_rr_file_id ON rollback_reasons(file_id)");
     db.exec("CREATE INDEX IF NOT EXISTS idx_logs_timestamp ON logs(timestamp DESC)");
@@ -409,8 +403,8 @@ export const clearAllLogs = (workstation) =>
     else stmtClear.run();
   });
 
-export const holdFile = (fileId, workstation = "", reason = "") =>
-  runWrite("holdFile", () => stmtHoldFile.run(fileId, workstation, reason || null));
+export const holdFile = (fileId, reason = "") =>
+  runWrite("holdFile", () => stmtHoldFile.run(fileId, reason || null));
 
 export const unholdFile = (fileId) =>
   runWrite("unholdFile", () => stmtUnholdFile.run(fileId));

@@ -380,10 +380,17 @@ export const createBatch = async (batch) => {
           reprintOriginal: item._reprintOriginal ?? null,
         };
       }
+      // Per-file source group map (stem → inbox folder name) so a mixed-group batch
+      // can roll each file back to ITS original group, not the first file's group.
+      const fileGroups = {};
+      for (const entry of sourceEntries) {
+        fileGroups[path.parse(entry.fileName).name] = path.basename(entry.sourceDir);
+      }
       await fs.promises.writeFile(
         path.join(finalBatchFolderPath, "_batch_info.json"),
         JSON.stringify({
           originalGroup: path.basename(sourceEntries[0].sourceDir),
+          fileGroups,
           ...(Object.keys(overridesMap).length > 0 ? { overrides: overridesMap } : {}),
         }, null, 2),
         "utf8",
