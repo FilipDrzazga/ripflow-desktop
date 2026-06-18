@@ -20,6 +20,7 @@ import ContextMenu from "../ContextMenu/ContextMenu";
 import PdfPreviewModal from "../PdfPreviewModal/PdfPreviewModal";
 import ProductionCard from "./ProductionCard";
 import ProductionRollbackModal from "./ProductionRollbackModal";
+import OrderView from "./OrderView";
 import style from "./Production.module.css";
 
 const FILTER_TABS = [
@@ -91,6 +92,8 @@ const Production = () => {
   const loadAllStageHistory  = useStore((s) => s.loadAllStageHistory);
   const addStageHistoryEntry = useStore((s) => s.addStageHistoryEntry);
 
+  // "batches" = stage/batch lens (default); "orders" = order-centric read-only lens
+  const [viewMode,       setViewMode]       = useState("batches");
   const [stageFilter,    setStageFilter]    = useState("all");
   const [search,         setSearch]         = useState("");
   const [batchFilter,    setBatchFilter]    = useState(null);
@@ -426,6 +429,11 @@ const Production = () => {
   // ─── Scanner ───────────────────────────────────────────────────────────────
 
   const handleScan = useCallback(async (value) => {
+    // A scan acts on the Batches lens (filter/scroll/highlight). If we're on the
+    // Orders lens, flip back first so the result is actually visible instead of
+    // silently mutating the hidden Batches state. Idempotent when already on Batches.
+    setViewMode("batches");
+
     const isBatchPath = value.includes("\\") || value.includes("/");
 
     let resolvedBatchPath = null;
@@ -468,14 +476,9 @@ const Production = () => {
           if (!r1?.success) continue;
           updateStageInStore(f.file_id, { ...f, stage: PRODUCTION_STAGE.HEATPRESS, updated_at: now });
           addStageHistoryEntry(f.file_id, PRODUCTION_STAGE.HEATPRESS, now);
-          const r2 = await advanceStage(f.file_id, PRODUCTION_STAGE.QC, PRODUCTION_STAGE.HEATPRESS);
-          if (r2?.success) {
-            updateStageInStore(f.file_id, { ...f, stage: PRODUCTION_STAGE.QC, updated_at: now });
-            addStageHistoryEntry(f.file_id, PRODUCTION_STAGE.QC, now);
-            count++;
-          }
+          count++;
         }
-        if (count > 0) notify({ type: "Success", title: `${count} file${count > 1 ? "s" : ""} moved`, message: "Moved to QC" });
+        if (count > 0) notify({ type: "Success", title: `${count} file${count > 1 ? "s" : ""} moved`, message: "Moved to Heat Press" });
         return;
       }
 
@@ -523,8 +526,28 @@ const Production = () => {
         return;
       }
 
-      // workstationRole === "qc": scan only filters the view to the batch (setBatchFilter
-      // above). No auto-advance, no modal — QC decisions are made via the context menu.
+      if (workstationRole === "qc") {
+        // Cotton roll heat-press has no scanner — the QC station completes the
+        // heatpress → qc transition for the whole batch on scan. Manual
+        // Pass/Rollback via the context menu still applies per file.
+        const targets = batchFiles.filter((f) => f.stage === PRODUCTION_STAGE.HEATPRESS);
+        if (targets.length === 0) return; // scan only filters the view to the batch
+        const now = new Date().toISOString();
+        let count = 0;
+        for (const f of targets) {
+          const res = await advanceStage(f.file_id, PRODUCTION_STAGE.QC, PRODUCTION_STAGE.HEATPRESS);
+          if (res?.success) {
+            updateStageInStore(f.file_id, { ...f, stage: PRODUCTION_STAGE.QC, updated_at: now });
+            addStageHistoryEntry(f.file_id, PRODUCTION_STAGE.QC, now);
+            count++;
+          }
+        }
+        if (count > 0) notify({ type: "Success", title: `${count} file${count > 1 ? "s" : ""} moved`, message: "Moved to QC" });
+        return;
+      }
+
+      // workstationRole === "" (default): scan only filters the view to the batch
+      // (setBatchFilter above). No auto-advance, no modal.
       return;
     }
 
@@ -741,31 +764,56 @@ const Production = () => {
       <div className={style.top_section}>
       <div className={style.topbar}>
         <h2 className={style.title}>Production</h2>
+
+        {/* Lens toggle: batch/stage view vs read-only order-centric view */}
         <div className={style.tabs}>
-          {FILTER_TABS.map((tab) => (
-            <button
-              key={tab.key}
-              type="button"
-              className={`${style.tab} ${stageFilter === tab.key ? style.tab_active : ""}`}
-              onClick={() => setStageFilter(tab.key)}
-            >
-              {tab.label}
-              {counts[tab.key] > 0 && <span className={style.tab_count}>{counts[tab.key]}</span>}
-            </button>
-          ))}
+          <button
+            type="button"
+            className={`${style.tab} ${viewMode === "batches" ? style.tab_active : ""}`}
+            onClick={() => setViewMode("batches")}
+          >
+            Batches
+          </button>
+          <button
+            type="button"
+            className={`${style.tab} ${viewMode === "orders" ? style.tab_active : ""}`}
+            onClick={() => setViewMode("orders")}
+          >
+            Orders
+          </button>
         </div>
 
+        {viewMode === "batches" && (
+          <div className={style.tabs}>
+            {FILTER_TABS.map((tab) => (
+              <button
+                key={tab.key}
+                type="button"
+                className={`${style.tab} ${stageFilter === tab.key ? style.tab_active : ""}`}
+                onClick={() => setStageFilter(tab.key)}
+              >
+                {tab.label}
+                {counts[tab.key] > 0 && <span className={style.tab_count}>{counts[tab.key]}</span>}
+              </button>
+            ))}
+          </div>
+        )}
+
         <div className={style.topbar_right}>
-          <label className={style.group_toggle}>
-            <input
-              type="checkbox"
-              checked={groupingEnabled}
-              onChange={(e) => setGroupingEnabled(e.target.checked)}
-              className={style.group_toggle_checkbox}
-            />
-            Groups
-          </label>
-          <div className={style.topbar_right_sep} />
+          {viewMode === "batches" && (
+            <>
+              <label className={style.group_toggle}>
+                <input
+                  type="checkbox"
+                  checked={groupingEnabled}
+                  onChange={(e) => setGroupingEnabled(e.target.checked)}
+                  className={style.group_toggle_checkbox}
+                />
+                Groups
+              </label>
+              <div className={style.topbar_right_sep} />
+            </>
+          )}
           <div className={style.search_wrapper}>
             <HiMagnifyingGlass className={style.search_icon} />
             <input
@@ -775,6 +823,7 @@ const Production = () => {
               onChange={(e) => setSearch(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key !== "Enter") return;
+                if (viewMode !== "batches") return; // scan-to-filter is a batch-lens action
                 const val = search.trim();
                 if (val.length <= 5) return;
                 const isBatchName = Object.values(productionStages).some(
@@ -795,7 +844,7 @@ const Production = () => {
         </div>
       </div>
 
-      {batchFilter && (
+      {viewMode === "batches" && batchFilter && (
         <div className={style.filter_bar}>
           <span className={style.filter_bar_label}>Batch:</span>
           <button type="button" className={style.batch_chip} onClick={() => setBatchFilter(null)}>
@@ -806,7 +855,9 @@ const Production = () => {
       </div>
 
       <div className={style.cards_wrapper}>
-        {isLoading && allRows.length === 0 ? (
+        {viewMode === "orders" ? (
+          <OrderView searchQuery={search} />
+        ) : isLoading && allRows.length === 0 ? (
           <div className={style.loading_state}>
             <div className={style.loading_spinner} />
           </div>

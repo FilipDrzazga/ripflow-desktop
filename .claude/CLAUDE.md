@@ -367,15 +367,15 @@ DB tables: `file_stages` (one row per active file), `file_stage_history` (append
 **Polling** — `POLL_INTERVAL = 15s`; `loadStagesAfter(since)` returns `{ success: bool }`. Update `lastPollAt` only on success so a network failure retries the same window on the next tick.
 
 **Workstation roles** (`workstationRole` in electron-store, per-machine):
-- `"cotton"` — scanner advances `printed → heatpress → qc` in one scan (two sequential DB calls per file; cotton skips manual heatpress step)
+- `"cotton"` — scanner advances `printed → heatpress` (stops at `heatpress`, like polyester; the cotton roll heat-press has no scanner, so the QC station completes `heatpress → qc`)
 - `"polyester"` — scanner advances `printed → heatpress`
 - `"rollpress"` — scanner advances `heatpress → qc`
-- `"qc"` — scanner only filters/shows the scanned batch (behaves like the default role); **no** auto-advance heatpress→qc and **no** modal. The operator decides per file manually via selection + context menu (Pass/Receive/Send to Sewing/Go back/Rollback)
+- `"qc"` — scanning a batch code advances **all** of that batch's `heatpress` files to `qc` (batch-level `heatpress → qc`; no modal). If no files are at `heatpress`, the scan only filters the view to the batch. Manual per-file Pass/Receive/Send to Sewing/Go back/Rollback via selection + context menu still applies.
 - `""` (default) — scanner only filters view to scanned batch
 
 **Scanner input** — `e.ctrlKey || e.metaKey || e.altKey` keys ignored to avoid contaminating barcode buffer. Buffer flushed after 100ms idle; fires on Enter if buffer > 5 chars. Search box Enter key also routes to handleScan when value matches a batch name, file_id, or batch path. File-level scan (matching file_id) clears filters, scrolls to card, highlights it for 1.5s via GSAP.
 
-**"Awaiting QC" visual state** — in the `qc` role view, files still at the `heatpress` stage render dimmed (lowered opacity, dashed border) with an "Awaiting QC" badge (colored from `STAGE_COLOR[HEATPRESS]`). `heatpress` itself signals "not yet arrived at QC" — there is **no** separate DB stage/field for awaiting; `ProductionCard` receives an `awaitingQc` prop computed in `Production.jsx` as `workstationRole === "qc" && row.stage === HEATPRESS`.
+**"Awaiting QC" visual state** — in the `qc` role view, files still at the `heatpress` stage render dimmed (lowered opacity, dashed border) with an "Awaiting QC" badge (colored from `STAGE_COLOR[HEATPRESS]`). `heatpress` itself signals "not yet arrived at QC" — there is **no** separate DB stage/field for awaiting; `ProductionCard` receives an `awaitingQc` prop computed in `Production.jsx` as `workstationRole === "qc" && row.stage === HEATPRESS`. Scanning the batch code at the QC station advances these `heatpress` files to `qc` (clearing the "Awaiting QC" state).
 
 **Multi-select & bulk actions** — click card to toggle select; `BatchGroupHeader` "Select All" toggles whole batch. The context menu drives all bulk actions (see Context menu below). Selection cleared on filter/batch change.
 

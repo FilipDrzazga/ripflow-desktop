@@ -59,7 +59,8 @@
       "Bash(py /tmp/inspect.py)",
       "Bash(python3 /tmp/inspect.py)",
       "Bash(command -v sqlite3)",
-      "Bash(ELECTRON_RUN_AS_NODE=1 /f/ripflow-desktop/node_modules/electron/dist/electron.exe /f/ripflow-desktop/_tmp_inspect_held.cjs)"
+      "Bash(ELECTRON_RUN_AS_NODE=1 /f/ripflow-desktop/node_modules/electron/dist/electron.exe /f/ripflow-desktop/_tmp_inspect_held.cjs)",
+      "PowerShell(npx eslint src/ui/components/Production/Production.jsx)"
     ]
   }
 }

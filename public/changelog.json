@@ -1,5 +1,45 @@
 [
   {
+    "version": "1.0.8",
+    "date": "2026-06-18",
+    "changes": [
+      {
+        "text": "Cotton workstation now leaves files at the Heat Press stage after scanning, instead of advancing straight to QC - matching the polyester flow. Files show as \"Awaiting QC\" at the QC station until they are picked up",
+        "clients": ["all"]
+      },
+      {
+        "text": "Scanning a batch barcode at the QC workstation now moves that batch's Heat Press files into QC in one step (the cotton roll heat press has no scanner, so QC completes this step). Per-file actions via select and right-click still work as before",
+        "clients": ["all"]
+      }
+    ]
+  },
+  {
+    "version": "1.0.7",
+    "date": "2026-06-18",
+    "changes": [
+      {
+        "text": "Holds are now shared across all workstations - when one operator puts a file on hold, everyone sees it immediately with no more holds that only appear on the PC that set them",
+        "clients": ["all"]
+      },
+      {
+        "text": "Rollback now returns every file to its correct folder - when a batch mixes files from different groups, rolling it back (whole batch or a single file) sends each file back to its own original folder instead of lumping them all together",
+        "clients": ["all"]
+      },
+      {
+        "text": "Scanning a batch at the QC workstation no longer opens a popup window with a file list - you now see all batch files directly on the production screen and decide what to do with them yourself by selecting files with the mouse and right-clicking",
+        "clients": ["all"]
+      },
+      {
+        "text": "The context menu shows only the actions that make sense for all currently selected files - Pass, Receive from sewing, Send to Sewing, Go back, or Rollback to inbox - and you can select multiple files at once and perform an action on all of them simultaneously",
+        "clients": ["all"]
+      },
+      {
+        "text": "Files that haven't physically arrived at the QC station yet are visible on screen as dimmed with an \"Awaiting QC\" label, so you can move only the files you have in hand while the rest wait",
+        "clients": ["all"]
+      }
+    ]
+  },
+  {
     "version": "1.0.6",
     "date": "2026-06-17",
     "changes": [

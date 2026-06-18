@@ -1,0 +1,180 @@
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 0 40px;
+}
+
+/* ===== ORDER ROW ===== */
+
+.order {
+  border-radius: 10px;
+  background: var(--bg-white);
+  box-shadow: var(--card-shadow);
+  overflow: hidden;
+}
+
+.order_header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 16px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  transition: background-color 0.12s ease;
+}
+
+.order_header:hover {
+  background-color: var(--bg-grey-light);
+}
+
+.chevron {
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.order_id {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.order_id_unknown {
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+.order_customer {
+  font-size: 14px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 220px;
+}
+
+.order_count {
+  font-size: 12px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.order_sep {
+  width: 1px;
+  height: 16px;
+  background: var(--border-grey);
+  flex-shrink: 0;
+}
+
+.order_spacer {
+  margin-left: auto;
+}
+
+.shipped_badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: 7px;
+  background: #dcfce7;
+  color: #3b6d11;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* ===== EXPANDED FILE LIST ===== */
+
+.file_list {
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--border-grey);
+  background: var(--bg-grey-light);
+  padding: 6px 16px 10px 38px;
+  gap: 2px;
+}
+
+.file_row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--bg-grey);
+}
+
+.file_row:last-child {
+  border-bottom: none;
+}
+
+.file_icon {
+  font-size: 15px;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+  width: 15px;
+  height: 15px;
+}
+
+.file_name {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 320px;
+}
+
+.file_qty {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.file_material {
+  font-size: 11px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.file_batch {
+  font-size: 11px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px;
+}
+
+.file_printer {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 7px;
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.file_stage {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 9px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
