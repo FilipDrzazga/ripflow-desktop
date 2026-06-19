@@ -53,6 +53,11 @@ const api = Object.freeze({
     return ipcRenderer.invoke("open-in-shopify", orderName);
   },
   readPrintedFolder: () => ipcRenderer.invoke("read-printed-folder"),
+  readPrintedDays: () => ipcRenderer.invoke("read-printed-days"),
+  readPrintedDay: (dayFolder) => {
+    if (!isNonEmptyString(dayFolder)) throw new TypeError("Day folder must be a non-empty string.");
+    return ipcRenderer.invoke("read-printed-day", dayFolder);
+  },
   regenerateXml: (batchPath) => {
     assertPath(batchPath);
     return ipcRenderer.invoke("regenerate-xml", batchPath);

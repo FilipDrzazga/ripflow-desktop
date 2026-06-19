@@ -4,7 +4,7 @@ import { estimatePrintLength } from "../../shared/estimatePrintLength";
 import { BATCH_STATUS, FILE_STATUS } from "../../shared/constants";
 import { ROLLBACK_REASONS } from "../constants/rollbackReasons";
 import { readFolders } from "../services/fileService";
-import { readPrintedFolder } from "../services/batchService";
+import { readPrintedDays, readPrintedDay } from "../services/batchService";
 import { getLogs, clearLogs as clearLogsApi, getHeldFiles, holdFile as holdFileApi, unholdFile as unholdFileApi, getDbDegraded } from "../services/systemService";
 import { getRollbackReasonsForFiles as getRollbackReasonsForFilesApi } from "../services/analyticsService";
 import { getRollbackDefinitions as getRollbackDefinitionsApi } from "../services/reasonDefsService";
@@ -122,10 +122,18 @@ export const useStore = create(
 
     batchDays: [],
     setBatchDays: (days) => set({ batchDays: days }),
+    // Lazy: load ONLY the newest day's content (the sole consumer of batchDays
+    // outside BatchHistory is LastBatchCard/getLastBatch, which reads only the
+    // newest active batch). Avoids the full PRINTED scan at startup + after submit.
     refreshBatchDays: async () => {
       try {
-        const res = await readPrintedFolder();
-        if (res.success) set({ batchDays: res.data });
+        const daysRes = await readPrintedDays();
+        if (!daysRes.success || daysRes.data.length === 0) {
+          set({ batchDays: [] });
+          return;
+        }
+        const dayRes = await readPrintedDay(daysRes.data[0].dayFolder);
+        set({ batchDays: dayRes.success && dayRes.data ? [dayRes.data] : [] });
       } catch (err) { console.error("[store] refreshBatchDays failed:", err); }
     },
 

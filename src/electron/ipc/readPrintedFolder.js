@@ -171,6 +171,43 @@ const sortDaysDesc = (days) => {
   });
 };
 
+const makeReadError = (err) => ({
+  code: err.code || "UNKNOWN_ERROR",
+  message: err.message || "Failed to read printed folder.",
+  stage: "read_printed",
+  type: "Error",
+  title: "Failed to load batch history",
+});
+
+// Read one day's FULL content (every batch via readSingleBatch). Shared by
+// readPrintedFolder and readPrintedDay. Throws on I/O error — callers wrap it.
+const buildDayGroup = async (dayFolder) => {
+  const dayPath = path.join(getPrintedRootPath(), dayFolder);
+  const batchEntries = await fs.promises.readdir(dayPath, { withFileTypes: true });
+
+  const batches = (
+    await Promise.all(
+      batchEntries
+        .filter((e) => e.isDirectory())
+        .map(async (batchEntry) => {
+          const meta = parseBatchFolderName(batchEntry.name);
+          if (!meta) return null;
+          return readSingleBatch(path.join(dayPath, batchEntry.name), meta);
+        }),
+    )
+  ).filter(Boolean);
+
+  return {
+    dayFolder,
+    date: dayFolder,
+    label: getDayLabel(dayFolder),
+    totalBatches: batches.length,
+    totalFiles: batches.reduce((s, b) => s + b.fileCount, 0),
+    batches,
+    loaded: true,
+  };
+};
+
 export const readPrintedFolder = async () => {
   const result = { success: false, data: [], errors: [] };
 
@@ -189,45 +226,81 @@ export const readPrintedFolder = async () => {
     const dayGroups = await Promise.all(
       dayEntries
         .filter((e) => e.isDirectory() && DAY_FOLDER_RE.test(e.name))
-        .map(async (dayEntry) => {
-          const dayPath = path.join(printedRoot, dayEntry.name);
-          const batchEntries = await fs.promises.readdir(dayPath, { withFileTypes: true });
-
-          const batches = (
-            await Promise.all(
-              batchEntries
-                .filter((e) => e.isDirectory())
-                .map(async (batchEntry) => {
-                  const meta = parseBatchFolderName(batchEntry.name);
-                  if (!meta) return null;
-                  const batchPath = path.join(dayPath, batchEntry.name);
-                  return readSingleBatch(batchPath, meta);
-                }),
-            )
-          ).filter(Boolean);
-
-          return {
-            date: dayEntry.name,
-            label: getDayLabel(dayEntry.name),
-            totalBatches: batches.length,
-            totalFiles: batches.reduce((s, b) => s + b.fileCount, 0),
-            batches,
-          };
-        }),
+        .map((dayEntry) => buildDayGroup(dayEntry.name)),
     );
 
     result.success = true;
     result.data = sortDaysDesc(dayGroups);
   } catch (err) {
-    result.errors = [
-      {
-        code: err.code || "UNKNOWN_ERROR",
-        message: err.message || "Failed to read printed folder.",
-        stage: "read_printed",
-        type: "Error",
-        title: "Failed to load batch history",
-      },
-    ];
+    result.errors = [makeReadError(err)];
+  }
+
+  return result;
+};
+
+// Lazy-load step 1: enumerate days only — ZERO readFile/DB. Returns sorted-desc
+// skeletons; per-batch content is fetched on demand via readPrintedDay.
+export const readPrintedDays = async () => {
+  const result = { success: false, data: [], errors: [] };
+
+  try {
+    const printedRoot = getPrintedRootPath();
+
+    try {
+      await fs.promises.access(printedRoot);
+    } catch {
+      result.success = true;
+      return result;
+    }
+
+    const dayEntries = await fs.promises.readdir(printedRoot, { withFileTypes: true });
+
+    const days = await Promise.all(
+      dayEntries
+        .filter((e) => e.isDirectory() && DAY_FOLDER_RE.test(e.name))
+        .map(async (dayEntry) => {
+          // dayFolder/date/label come from the folder name — no I/O, always safe.
+          const skeleton = {
+            dayFolder: dayEntry.name,
+            date: dayEntry.name,
+            label: getDayLabel(dayEntry.name),
+            totalBatches: 0,
+            totalFiles: null,
+            batches: [],
+            loaded: false,
+          };
+          try {
+            const dayPath = path.join(printedRoot, dayEntry.name);
+            const batchEntries = await fs.promises.readdir(dayPath, { withFileTypes: true });
+            skeleton.totalBatches = batchEntries.filter(
+              (e) => e.isDirectory() && parseBatchFolderName(e.name),
+            ).length;
+          } catch {
+            // One day unreadable (ENOENT/EPERM/EBUSY/EACCES — removed mid-scan or SMB
+            // lock) must not sink the whole enumeration: keep it as a 0-batch skeleton.
+          }
+          return skeleton;
+        }),
+    );
+
+    result.success = true;
+    result.data = sortDaysDesc(days);
+  } catch (err) {
+    result.errors = [makeReadError(err)];
+  }
+
+  return result;
+};
+
+// Lazy-load step 2: full content of ONE day (reuses readSingleBatch via buildDayGroup).
+export const readPrintedDay = async (dayFolder) => {
+  const result = { success: false, data: null, errors: [] };
+
+  try {
+    result.data = await buildDayGroup(dayFolder);
+    result.success = true;
+  } catch (err) {
+    result.errors = [makeReadError(err)];
   }
 
   return result;

@@ -2,6 +2,10 @@ import { withTimeout, MUTATING_TIMEOUT_MS } from "@/utils/ipcWithTimeout";
 
 export const readPrintedFolder = () =>
   withTimeout(window.api.readPrintedFolder(), 15_000, "readPrintedFolder");
+export const readPrintedDays = () =>
+  withTimeout(window.api.readPrintedDays(), 15_000, "readPrintedDays");
+export const readPrintedDay = (dayFolder) =>
+  withTimeout(window.api.readPrintedDay(dayFolder), 15_000, "readPrintedDay");
 export const getRollbackReasonsByBatch = (batchPath) =>
   withTimeout(window.api.getRollbackReasonsByBatch(batchPath), 5_000, "getRollbackReasonsByBatch");
 export const startBatchWatcher = () =>
