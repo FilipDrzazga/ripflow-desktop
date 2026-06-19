@@ -91,6 +91,7 @@ const GeneralView = () => {
   const [workstationName, setWorkstationName] = useState("");
   const [workstationRole, setWorkstationRole] = useState("");
   const [shippedRetentionDays, setShippedRetentionDays] = useState(30);
+  const [batchHistoryEagerDays, setBatchHistoryEagerDays] = useState(7);
   const [clientId, setClientId] = useState("all");
   const [isSaving, setIsSaving] = useState(false);
 
@@ -101,6 +102,7 @@ const GeneralView = () => {
         setWorkstationName(res.settings.workstationName ?? "");
         setWorkstationRole(res.settings.workstationRole ?? "");
         setShippedRetentionDays(res.settings.shippedRetentionDays ?? 30);
+        setBatchHistoryEagerDays(res.settings.batchHistoryEagerDays ?? 7);
         setClientId(res.settings.clientId ?? "all");
       }
     });
@@ -109,9 +111,9 @@ const GeneralView = () => {
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      const res = await setSettings({ ...allSettings, workstationName, workstationRole, shippedRetentionDays, clientId });
+      const res = await setSettings({ ...allSettings, workstationName, workstationRole, shippedRetentionDays, batchHistoryEagerDays, clientId });
       if (res.success) {
-        setAllSettings((s) => ({ ...s, workstationName, workstationRole, shippedRetentionDays, clientId }));
+        setAllSettings((s) => ({ ...s, workstationName, workstationRole, shippedRetentionDays, batchHistoryEagerDays, clientId }));
         notify({ type: "Success", title: "Settings saved", message: "General settings updated." });
       } else {
         notify({ type: "Error", title: "Save failed", message: res.error || "Could not save settings." });
@@ -161,6 +163,21 @@ const GeneralView = () => {
             />
           </div>
           <p className={styles.hint}>Production stage records for shipped files are deleted after this many days on startup.</p>
+        </div>
+        <div className={styles.field}>
+          <label className={styles.label}>Batch history eager-load (days)</label>
+          <div className={styles.input_row}>
+            <input
+              className={styles.input}
+              type="number"
+              min="1"
+              max="365"
+              value={batchHistoryEagerDays}
+              onChange={(e) => setBatchHistoryEagerDays(Math.max(1, Math.floor(Number(e.target.value) || 7)))}
+              style={{ maxWidth: 100 }}
+            />
+          </div>
+          <p className={styles.hint}>Batch history loads the most recent N days upfront; older days load on demand when expanded.</p>
         </div>
       </div>
       <div className={styles.view_footer}>

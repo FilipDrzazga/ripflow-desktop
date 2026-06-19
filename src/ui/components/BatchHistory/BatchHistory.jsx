@@ -15,7 +15,8 @@ import { HiMagnifyingGlass, HiXMark } from "react-icons/hi2";
 import style from "./BatchHistory.module.css";
 import { BATCH_STATUS, FILE_STATUS, PRINTER } from "../../../shared/constants";
 import {
-  readPrintedFolder,
+  readPrintedDays,
+  readPrintedDay,
   getRollbackReasonsByBatch,
   startBatchWatcher,
   stopBatchWatcher,
@@ -37,6 +38,21 @@ const parseDayFromBatchPath = (batchPath) => {
   return parts.length >= 2 ? parts[parts.length - 2] : null;
 };
 
+// Doczytuje rollbackReasons do batchy dnia (rolled_back batch lub batch z plikiem
+// rolled_back). Wydzielone z loadData — reużywane przy lazy-load pojedynczego dnia.
+const attachReasonsToDay = async (day) => ({
+  ...day,
+  batches: await Promise.all(
+    day.batches.map(async (batch) => {
+      const needsReasons =
+        batch.status === BATCH_STATUS.ROLLED_BACK || batch.files?.some((f) => f.status === FILE_STATUS.ROLLED_BACK);
+      if (!needsReasons) return batch;
+      const reasonsRes = await getRollbackReasonsByBatch(batch.path);
+      return { ...batch, rollbackReasons: reasonsRes?.data ?? [] };
+    }),
+  ),
+});
+
 const BatchHistory = () => {
   const setBatchDays = useStore((state) => state.setBatchDays);
   const reasonDefinitions = useStore((state) => state.reasonDefinitions);
@@ -48,6 +64,7 @@ const BatchHistory = () => {
   const [activePrinters, setActivePrinters] = useState(new Set());
   const [expandedDays, setExpandedDays] = useState(new Set());
   const [expandedBatches, setExpandedBatches] = useState(new Set());
+  const [loadingDays, setLoadingDays] = useState(new Set()); // dayFolder set — lazy-load in flight
   const [contextMenu, setContextMenu] = useState(null);
   const [rollbackModal, setRollbackModal] = useState(null);
   const [otherReasonTarget, setOtherReasonTarget] = useState(null);
@@ -63,6 +80,7 @@ const BatchHistory = () => {
   const isInitialLoadRef = useRef(true);
   const searchInputRef = useRef(null);
   const pollFallbackRef = useRef(null); // setInterval id — only set while in degraded (watcher-down) mode
+  const dayGroupsRef = useRef([]); // mirror of dayGroups for stale-free reads in degraded poll
 
   useEffect(() => {
     getSettings().then((res) => {
@@ -98,32 +116,38 @@ const BatchHistory = () => {
   const loadData = useCallback(async () => {
     setIsLoading(true);
     try {
-      const res = await readPrintedFolder();
-      if (res.success) {
-        const daysWithReasons = await Promise.all(
-          res.data.map(async (day) => ({
-            ...day,
-            batches: await Promise.all(
-              day.batches.map(async (batch) => {
-                const needsReasons =
-                  batch.status === BATCH_STATUS.ROLLED_BACK || batch.files?.some((f) => f.status === FILE_STATUS.ROLLED_BACK);
-                if (!needsReasons) return batch;
-                const reasonsRes = await getRollbackReasonsByBatch(batch.path);
-                return { ...batch, rollbackReasons: reasonsRes?.data ?? [] };
-              }),
-            ),
-          })),
+      const daysRes = await readPrintedDays();
+      if (daysRes.success) {
+        const skeletons = daysRes.data;
+
+        // Eager-load only the most recent N days (search is mostly the last week);
+        // older days stay as skeletons and load on demand when expanded.
+        let eagerDays = 7;
+        try {
+          const s = await getSettings();
+          const n = s.success ? Math.floor(Number(s.settings.batchHistoryEagerDays)) : NaN;
+          if (Number.isFinite(n) && n >= 1) eagerDays = n;
+        } catch { /* keep default 7 */ }
+
+        const loadedHead = await Promise.all(
+          skeletons.slice(0, eagerDays).map(async (sk) => {
+            const dayRes = await readPrintedDay(sk.dayFolder);
+            if (!dayRes.success || !dayRes.data) return sk; // I/O fail → keep skeleton, reloadable on expand
+            return attachReasonsToDay(dayRes.data);
+          }),
         );
-        setDayGroups(daysWithReasons);
+
+        const merged = [...loadedHead, ...skeletons.slice(eagerDays)];
+        setDayGroups(merged);
         if (isInitialLoadRef.current) {
-          const todayGroup = daysWithReasons.find((d) => d.label === "Today");
+          const todayGroup = merged.find((d) => d.label === "Today");
           if (todayGroup) {
             setExpandedDays(new Set([todayGroup.date]));
           }
           isInitialLoadRef.current = false;
         }
       } else {
-        const err = res.errors?.[0];
+        const err = daysRes.errors?.[0];
         notify(
           {
             type: err?.type || "Error",
@@ -235,6 +259,23 @@ const BatchHistory = () => {
     [refreshFiles, loadData, removeStageFromStore],
   );
 
+  // Degraded-mode refresh: re-read ONLY already-loaded days (skeletons reload on
+  // expand). Never falls back to the full PRINTED scan — that would undo lazy-load.
+  const reloadLoadedDays = useCallback(async () => {
+    const loaded = dayGroupsRef.current.filter((d) => d.loaded === true);
+    for (const day of loaded) {
+      try {
+        const dayRes = await readPrintedDay(day.dayFolder);
+        if (dayRes.success && dayRes.data) {
+          const withReasons = await attachReasonsToDay(dayRes.data);
+          setDayGroups((prev) => prev.map((d) => (d.dayFolder === day.dayFolder ? withReasons : d)));
+        }
+      } catch (err) {
+        console.error("[BatchHistory] reloadLoadedDays failed:", err);
+      }
+    }
+  }, []);
+
   const handleBatchUpdate = useCallback(async (payload) => {
     const { type, batch, batchPath, file } = payload;
 
@@ -248,7 +289,7 @@ const BatchHistory = () => {
         },
         { stage: "watcher", code: "WATCHER_DEGRADED" },
       );
-      pollFallbackRef.current = setInterval(() => { loadData(); }, 20000);
+      pollFallbackRef.current = setInterval(() => { reloadLoadedDays(); }, 20000);
       return;
     }
 
@@ -277,11 +318,16 @@ const BatchHistory = () => {
       pendingAnimationsRef.current.add(`batch:${resolvedBatch.path}`);
       setDayGroups((prev) => {
         const dayFolder = parseDayFromBatchPath(resolvedBatch.path);
-        const existingDayIdx = prev.findIndex((d) => d.date === dayFolder);
+        const existingDayIdx = prev.findIndex((d) => d.dayFolder === dayFolder);
 
         if (existingDayIdx >= 0) {
+          const day = prev[existingDayIdx];
+          // Skeleton (loaded:false) — don't graft a partial batch over its empty
+          // array or recompute counts from it; enumeration metadata stays intact.
+          // Full content arrives on expand via readPrintedDay.
+          if (day.loaded !== true) return prev;
+
           const updated = [...prev];
-          const day = updated[existingDayIdx];
           const existsBatch = day.batches.find((b) => b.path === resolvedBatch.path);
           const newBatches = existsBatch
             ? day.batches.map((b) => {
@@ -312,7 +358,7 @@ const BatchHistory = () => {
           else if (date.getTime() === yesterday.getTime()) label = "Yesterday";
         }
 
-        const newDay = { date: dayFolder, label, totalBatches: 1, totalFiles: resolvedBatch.fileCount, batches: [resolvedBatch] };
+        const newDay = { dayFolder, date: dayFolder, label, totalBatches: 1, totalFiles: resolvedBatch.fileCount, batches: [resolvedBatch], loaded: true };
         return [newDay, ...prev].sort((a, b) => {
           const [ad, am, ay] = a.date.split("-").map(Number);
           const [bd, bm, by] = b.date.split("-").map(Number);
@@ -322,20 +368,23 @@ const BatchHistory = () => {
     } else if (type === "new-file") {
       pendingAnimationsRef.current.add(`file:${file.path}`);
       setDayGroups((prev) =>
-        prev.map((day) => ({
-          ...day,
-          batches: day.batches.map((b) => {
-            if (b.path !== batchPath) return b;
-            if (b.files.some((f) => f.path === file.path)) return b;
-            const newFiles = [...b.files, file];
-            return { ...b, files: newFiles, fileCount: newFiles.length, status: BATCH_STATUS.ACTIVE };
-          }),
-          totalFiles: day.batches.reduce((s, b) => {
-            if (b.path !== batchPath) return s + b.fileCount;
-            const already = b.files.some((f) => f.path === file.path);
-            return s + (already ? b.fileCount : b.fileCount + 1);
-          }, 0),
-        })),
+        prev.map((day) => {
+          if (day.loaded !== true) return day; // skeleton has no batches — leave counts intact
+          return {
+            ...day,
+            batches: day.batches.map((b) => {
+              if (b.path !== batchPath) return b;
+              if (b.files.some((f) => f.path === file.path)) return b;
+              const newFiles = [...b.files, file];
+              return { ...b, files: newFiles, fileCount: newFiles.length, status: BATCH_STATUS.ACTIVE };
+            }),
+            totalFiles: day.batches.reduce((s, b) => {
+              if (b.path !== batchPath) return s + b.fileCount;
+              const already = b.files.some((f) => f.path === file.path);
+              return s + (already ? b.fileCount : b.fileCount + 1);
+            }, 0),
+          };
+        }),
       );
     } else if (type === "removed") {
       let rollbackReasons = [];
@@ -344,16 +393,19 @@ const BatchHistory = () => {
         rollbackReasons = reasonsRes?.data ?? [];
       } catch (err) { console.error("[BatchHistory] getRollbackReasonsByBatch failed:", err); }
       setDayGroups((prev) =>
-        prev.map((day) => ({
-          ...day,
-          batches: day.batches.map((b) =>
-            b.path === batchPath ? { ...b, status: BATCH_STATUS.ROLLED_BACK, fileCount: 0, files: [], rollbackReasons } : b,
-          ),
-          totalFiles: day.batches.reduce((s, b) => s + (b.path === batchPath ? 0 : b.fileCount), 0),
-        })),
+        prev.map((day) => {
+          if (day.loaded !== true) return day; // skeleton has no batches — leave counts intact
+          return {
+            ...day,
+            batches: day.batches.map((b) =>
+              b.path === batchPath ? { ...b, status: BATCH_STATUS.ROLLED_BACK, fileCount: 0, files: [], rollbackReasons } : b,
+            ),
+            totalFiles: day.batches.reduce((s, b) => s + (b.path === batchPath ? 0 : b.fileCount), 0),
+          };
+        }),
       );
     }
-  }, [loadData]);
+  }, [reloadLoadedDays]);
 
   useEffect(() => {
     loadData();
@@ -370,6 +422,7 @@ const BatchHistory = () => {
   }, [loadData, handleBatchUpdate]);
 
   useEffect(() => {
+    dayGroupsRef.current = dayGroups;
     setBatchDays(dayGroups);
   }, [dayGroups, setBatchDays]);
 
@@ -395,13 +448,57 @@ const BatchHistory = () => {
     });
   };
 
-  const toggleDay = (date) => {
+  // Lazy-load one skeleton day's full content (+ reasons) on first expand.
+  const loadDayContent = useCallback(async (dayFolder) => {
+    setLoadingDays((prev) => new Set(prev).add(dayFolder));
+    try {
+      const dayRes = await readPrintedDay(dayFolder);
+      if (dayRes.success && dayRes.data) {
+        const withReasons = await attachReasonsToDay(dayRes.data);
+        setDayGroups((prev) => prev.map((d) => (d.dayFolder === dayFolder ? withReasons : d)));
+      } else {
+        const err = dayRes.errors?.[0];
+        notify(
+          {
+            type: err?.type || "Error",
+            title: err?.title || "Failed to load day",
+            message: err?.message || "Could not load this day's batches.",
+          },
+          { stage: "readFolders", code: "READ_BATCH_DAY_FAILED" },
+        );
+      }
+    } catch (err) {
+      notify(
+        {
+          type: "Error",
+          title: "Failed to load day",
+          message: err?.message || "An unexpected error occurred.",
+        },
+        { stage: "readFolders", code: "READ_BATCH_DAY_EXCEPTION" },
+      );
+    } finally {
+      setLoadingDays((prev) => {
+        const next = new Set(prev);
+        next.delete(dayFolder);
+        return next;
+      });
+    }
+  }, []);
+
+  const toggleDay = (day) => {
+    const { date, dayFolder } = day;
+    const willExpand = !expandedDays.has(date);
     setExpandedDays((prev) => {
       const next = new Set(prev);
       if (next.has(date)) next.delete(date);
       else next.add(date);
       return next;
     });
+    // First expand of an unloaded skeleton → fetch its content. Idempotent:
+    // skip if already loaded or a fetch is already in flight for this day.
+    if (willExpand && day.loaded === false && dayFolder && !loadingDays.has(dayFolder)) {
+      loadDayContent(dayFolder);
+    }
   };
 
   const toggleBatch = (batchPath) => {
@@ -438,7 +535,9 @@ const BatchHistory = () => {
 
         return { ...day, batches: filteredBatches };
       })
-      .filter((day) => day.batches.length > 0);
+      // Keep unloaded skeleton days always visible; a loaded day emptied by the
+      // search filter is dropped as before.
+      .filter((day) => day.loaded === false || day.batches.length > 0);
   }, [dayGroups, searchQuery, activePrinters]);
 
   const handleOpenInFolder = useCallback(async (filePath) => {
@@ -761,41 +860,53 @@ const BatchHistory = () => {
 
         {filteredDayGroups.map((day) => {
           const isDayExpanded = expandedDays.has(day.date);
+          const isSkeleton = day.loaded === false;
+          const isDayLoading = loadingDays.has(day.dayFolder);
 
           return (
             <div key={day.date} className={style.day_group}>
-              <button type="button" className={style.day_row} onClick={() => toggleDay(day.date)}>
+              <button type="button" className={style.day_row} onClick={() => toggleDay(day)}>
                 <span className={style.chevron}>
                   {isDayExpanded ? <LuChevronDown size={18} /> : <LuChevronRight size={18} />}
                 </span>
                 <span className={style.day_date}>{day.date}</span>
                 {day.label && <span className={style.day_label}>{day.label}</span>}
-                <span className={style.day_pill}>
-                  {day.totalBatches} {day.totalBatches === 1 ? "batch" : "batches"} · {day.totalFiles} files
+                <span className={`${style.day_pill} ${isSkeleton ? style.day_pill_skeleton : ""}`}>
+                  {day.totalBatches} {day.totalBatches === 1 ? "batch" : "batches"}
+                  {!isSkeleton && day.totalFiles != null ? ` · ${day.totalFiles} files` : ""}
                 </span>
+                {isSkeleton && searchQuery.trim() !== "" && (
+                  <span className={style.day_skeleton_hint}>expand to search</span>
+                )}
               </button>
 
               {isDayExpanded && (
                 <div className={style.day_batches}>
-                  {day.batches.map((batch) => (
-                    <BatchRow
-                      key={batch.path}
-                      batch={batch}
-                      isBatchExpanded={expandedBatches.has(batch.path)}
-                      onToggle={toggleBatch}
-                      onRegenerateXml={handleRegenerateXml}
-                      onOpenInFolder={handleOpenInFolder}
-                      onSetRollbackModal={setRollbackModal}
-                      onDeleteBatch={handleDeleteBatch}
-                      onContextMenu={(file, batch, x, y) => setContextMenu({ file, batch, x, y })}
-                      elementRefsRef={elementRefsRef}
-                      activeContextFilePath={activeContextFilePath}
-                      canPrintLabel={canPrintLabel}
-                      onPrintLabel={handlePrintLabel}
-                      selectedFilePaths={selectedFiles}
-                      onToggleFileSelect={toggleFileSelect}
-                    />
-                  ))}
+                  {isDayLoading && day.batches.length === 0 ? (
+                    <div className={style.day_loading}>
+                      <div className={style.loading_spinner} />
+                    </div>
+                  ) : (
+                    day.batches.map((batch) => (
+                      <BatchRow
+                        key={batch.path}
+                        batch={batch}
+                        isBatchExpanded={expandedBatches.has(batch.path)}
+                        onToggle={toggleBatch}
+                        onRegenerateXml={handleRegenerateXml}
+                        onOpenInFolder={handleOpenInFolder}
+                        onSetRollbackModal={setRollbackModal}
+                        onDeleteBatch={handleDeleteBatch}
+                        onContextMenu={(file, batch, x, y) => setContextMenu({ file, batch, x, y })}
+                        elementRefsRef={elementRefsRef}
+                        activeContextFilePath={activeContextFilePath}
+                        canPrintLabel={canPrintLabel}
+                        onPrintLabel={handlePrintLabel}
+                        selectedFilePaths={selectedFiles}
+                        onToggleFileSelect={toggleFileSelect}
+                      />
+                    ))
+                  )}
                 </div>
               )}
             </div>

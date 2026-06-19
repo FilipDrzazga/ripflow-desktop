@@ -299,6 +299,25 @@
   white-space: nowrap;
 }
 
+/* Unloaded (skeleton) day — dimmed pill, content fetched on expand */
+.day_pill_skeleton {
+  opacity: 0.55;
+  border-style: dashed;
+}
+
+.day_skeleton_hint {
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-style: italic;
+  opacity: 0.7;
+}
+
+.day_loading {
+  display: flex;
+  justify-content: center;
+  padding: 16px 0;
+}
+
 .day_batches {
   display: flex;
   flex-direction: column;

@@ -10,6 +10,7 @@ const store = new Store({
     labelPrinterName: "",
     workstationRole: "",
     shippedRetentionDays: 30,
+    batchHistoryEagerDays: 7,
     labelPrintMode: "automatic",
     clientId: "all",
   },
@@ -23,11 +24,12 @@ export const getSettings = () => ({
   labelPrinterName: store.get("labelPrinterName"),
   workstationRole: store.get("workstationRole"),
   shippedRetentionDays: store.get("shippedRetentionDays"),
+  batchHistoryEagerDays: store.get("batchHistoryEagerDays"),
   labelPrintMode: store.get("labelPrintMode"),
   clientId: store.get("clientId"),
 });
 
-export const setSettings = ({ storagePath, xmlPath, workstationName, customOrderFolderPath, labelPrinterName, workstationRole, shippedRetentionDays, labelPrintMode, clientId }) => {
+export const setSettings = ({ storagePath, xmlPath, workstationName, customOrderFolderPath, labelPrinterName, workstationRole, shippedRetentionDays, batchHistoryEagerDays, labelPrintMode, clientId }) => {
   if (storagePath !== undefined) store.set("storagePath", storagePath);
   if (xmlPath !== undefined) store.set("xmlPath", xmlPath);
   if (workstationName !== undefined) store.set("workstationName", workstationName);
@@ -35,6 +37,7 @@ export const setSettings = ({ storagePath, xmlPath, workstationName, customOrder
   if (labelPrinterName !== undefined) store.set("labelPrinterName", labelPrinterName);
   if (workstationRole !== undefined) store.set("workstationRole", workstationRole);
   if (shippedRetentionDays !== undefined) store.set("shippedRetentionDays", Math.max(1, Math.floor(Number(shippedRetentionDays) || 30)));
+  if (batchHistoryEagerDays !== undefined) store.set("batchHistoryEagerDays", Math.max(1, Math.floor(Number(batchHistoryEagerDays) || 7)));
   if (labelPrintMode !== undefined) store.set("labelPrintMode", labelPrintMode === "manual" ? "manual" : "automatic");
   if (clientId !== undefined) store.set("clientId", clientId);
 };

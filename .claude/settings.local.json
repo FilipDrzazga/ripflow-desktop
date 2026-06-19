@@ -60,7 +60,14 @@
       "Bash(python3 /tmp/inspect.py)",
       "Bash(command -v sqlite3)",
       "Bash(ELECTRON_RUN_AS_NODE=1 /f/ripflow-desktop/node_modules/electron/dist/electron.exe /f/ripflow-desktop/_tmp_inspect_held.cjs)",
-      "PowerShell(npx eslint src/ui/components/Production/Production.jsx)"
+      "PowerShell(npx eslint src/ui/components/Production/Production.jsx)",
+      "PowerShell($env:NODE_OPTIONS = \"--max-old-space-size=4096\"; npx eslint . 2>&1 | Select-Object -Last 30)",
+      "PowerShell(Get-Process *)",
+      "PowerShell(npx eslint src/electron/helpers/getSettings.js src/electron/ipc/index.js src/ui/components/Settings/views/GeneralView.jsx src/ui/components/BatchHistory/BatchHistory.jsx; \"EXIT=$LASTEXITCODE\")",
+      "PowerShell(npx vitest run --pool=forks --poolOptions.forks.singleFork=true 2>&1 | Select-Object -Last 14)",
+      "PowerShell(npx vitest run --no-file-parallelism 2>&1 | Select-Object -Last 14)",
+      "PowerShell($env:NODE_OPTIONS = \"--max-old-space-size=8192\"; npx eslint .; \"FULL_ESLINT_EXIT=$LASTEXITCODE\")",
+      "PowerShell(npx vitest run --no-file-parallelism 2>&1 | Select-Object -Last 8)"
     ]
   }
 }
