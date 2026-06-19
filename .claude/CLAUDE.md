@@ -36,6 +36,7 @@ src/electron/
                            # DB errors log via console.error — silent catches removed
     defaultFabrics.js      # Default seed data: 33 cotton + 87 poly materials with widths/flags
     fabricCache.js         # In-memory cache of fabrics+globals; load on startup, invalidate on save
+    fabricCache.test.js    # Vitest — getAliasFromCache sanitization (mocks ./db.js)
     createBatchIds.js      # GROUP_NAME_OVERRIDES + GROUP_NAME_OVERRIDES_REVERSE (both exported)
     ipcError.js            # toIpcError(err, stage, title)
     validateStoragePath.js # assertStorageFilePath — validate batchPath/filePath before file ops
@@ -182,9 +183,10 @@ Tables: `logs`, `held_files`, `rollback_reasons`, `custom_order_history`, `reaso
 - Indexes: `rollback_reasons(batch_path)`, `rollback_reasons(file_id)`, `logs(timestamp DESC)`
 - `getAllLogs` is capped at 500 rows; `addLog` in store trims to 500 entries
 - `fabric_globals` and `fabrics` are seeded from `defaultFabrics.js` on first run if tables empty
+- `fabrics` has an `alias` column (TEXT, nullable) — short path-safe name for the PRINTED folder / XML; empty/NULL alias = full `name` is used
 - `reason_definitions` is populated via one-time migration from electron-store on first run
 
-**All DB functions:** `initDb`, `insertLog`, `getAllLogs`, `clearAllLogs`, `holdFile`, `unholdFile`, `getHeldFiles`, `insertRollbackReason`, `getRollbackReasonsByBatch`, `getRollbackReasonsByFile`, `insertCustomOrder`, `getAllCustomOrders`, `clearCustomOrders`, `getReasonDefinitions`, `setReasonDefinitions`, `migrateReasonDefinitions`, `getFabricGlobals`, `setFabricGlobals`, `getAllFabrics`, `saveFabric`, `deleteFabric`, `setAllFabrics`, `insertReprintRequest`, `getOpenReprintRequests`, `getOpenReprintRequestsByFileIds`, `fulfillReprintRequests`, `getReprintRequests`, `clearAllReprintRequests`, `clearAllRollbackReasons`, `getRollbackStats`, `getRollbackDetails`, `getLatestRollbackReasonsForFileIds`, `clearAllFileStages`, `backupDb`, `cleanupShippedStages`
+**All DB functions:** `initDb`, `insertLog`, `getAllLogs`, `clearAllLogs`, `holdFile`, `unholdFile`, `getHeldFiles`, `insertRollbackReason`, `getRollbackReasonsByBatch`, `getRollbackReasonsByFile`, `insertCustomOrder`, `getAllCustomOrders`, `clearCustomOrders`, `getReasonDefinitions`, `setReasonDefinitions`, `migrateReasonDefinitions`, `getFabricGlobals`, `setFabricGlobals`, `getAllFabrics`, `saveFabric`, `deleteFabric`, `setAllFabrics`, `ensureFabricAliasColumn` (idempotent `ALTER TABLE fabrics ADD COLUMN alias` in `initDb`, wrapped in try/catch — safe when several PCs start against the shared DB), `insertReprintRequest`, `getOpenReprintRequests`, `getOpenReprintRequestsByFileIds`, `fulfillReprintRequests`, `getReprintRequests`, `clearAllReprintRequests`, `clearAllRollbackReasons`, `getRollbackStats`, `getRollbackDetails`, `getLatestRollbackReasonsForFileIds`, `clearAllFileStages`, `backupDb`, `cleanupShippedStages`
 
 **`reprint_requests`** (partial reprint tracking): one row per rollback-from-Production event. `qty_affected` REAL — meters for LM, piece count otherwise; `qty_original` = full qty at rollback time. Open = `fulfilled_at IS NULL AND superseded_at IS NULL`. A new rollback of the same file **supersedes** prior open rows (history kept for analytics). `stage:advance` to `packed` calls `fulfillReprintRequests(fileId)`. Index: `reprint_requests(file_id)`. When a Production rollback registers a qty, `rollback_reasons.meters` is estimated from **qty_affected** (LM: meters→height; others: pieces→qty), so Analytics waste (byFabric, Details) is partial-aware with no Analytics-side changes; BatchHistory rollbacks keep full-file meters. `readFolders` attaches `reprintQty`/`reprintQtyOriginal` to inbox file objects from open requests (matched by filename stem); `readSingleBatch` (BatchHistory) **prefers the persisted provenance in `_batch_info`** for reprint, falling back to open requests only when `_batch_info` has none → persistent blue "Reprint" badge in DataList and BatchHistory `FileRow`. **`selectedOverrides` holds ONLY manual operator overrides — it is no longer seeded from reprint** (the old seeding loop in `refreshFiles` was removed). At submit, `fileService.submitBatch` computes `effectiveQty = manualOverride ?? reprintQty ?? parsed`, and only the effective amount drives the printed output (XML `<Copies>`/`<Height>`) and the `_batch_info.json` provenance — `createXML.js` still needs no reprint logic. The Override and Reprint badges are independent and may coexist (Override from `selectedOverrides`, Reprint from open requests / `_batch_info`); the old masking that hid the Override badge while it equalled `reprintQty` was removed.
 
@@ -198,6 +200,7 @@ invalidateFabricCache()  // clear cache (call before reloading)
 getFabricByName(name)    // → fabric object | null
 getFabricTypeFromCache(name) // → "Cottons" | "Polyesters" | "Unknown" | null (null = cache not loaded)
 getXmlWidthFromCache(name, isPoly) // → number (per-material or global default)
+getAliasFromCache(name)  // → short path-safe alias | null (null = no/unusable alias or cache not loaded)
 getCachedFabrics()       // → fabric[]
 getCachedGlobals()       // → { marginCotton, marginPoly, defaultXmlWidthCotton, ... }
 ```
@@ -205,6 +208,8 @@ getCachedGlobals()       // → { marginCotton, marginPoly, defaultXmlWidthCotto
 **Fallback chain (getMaterialType.js):**
 1. fabricCache loaded → use DB result
 2. Cache not loaded (before initDb) → fall back to static COTTON_MATERIALS / POLY_MATERIALS sets
+
+**Alias sanitization — single gate:** `getAliasFromCache` strips everything outside `[a-zA-Z0-9_-]` (and trims) at the point of use, returning `null` if nothing usable remains. This is the ONE gate, independent of the UI `onChange` — so a dirty alias entering via `setAllFabrics`/import or a hand-edited `ripflow.db` can never reach the PRINTED folder name / `<Path>`.
 
 **Fallback chain (parseFileName.js `applyLmDimensions`):**
 1. `getXmlWidthFromCache(material, isPoly)` → per-material `fabric.xmlWidth` from the cache
@@ -245,7 +250,7 @@ setReasonDefinitions(defs)             // → { success }
 // Fabric config (DB-backed, shared across PCs)
 getFabricGlobals()                     // → { success, data: { marginCotton, marginPoly, defaultXmlWidthCotton, defaultXmlWidthPoly, defaultRollWidthCotton, defaultRollWidthPoly } }
 setFabricGlobals(globals)              // → { success }
-getFabrics()                           // → { success, data: fabric[] }
+getFabrics()                           // → { success, data: fabric[] } — fabric = { name, type, xmlWidth, rollWidth, isVelvet, isLinen, isBlossom, alias }
 saveFabric(oldName, fabric)            // → { success } — handles rename (delete+insert) if name changed
 deleteFabric(name)                     // → { success }
 setAllFabrics(fabrics)                 // → { success } — bulk replace
@@ -426,7 +431,7 @@ Left-sidebar + content-area layout. `Settings.jsx` routes via `SECTIONS` array +
 |---|---|---|
 | General | `GeneralView` | workstationName, workstationRole, shippedRetentionDays (per-machine) |
 | Paths | `PathsView` | storagePath, xmlPath, customOrderFolderPath |
-| Fabrics | `FabricsView` | Global params + Materials CRUD (DB-backed, shared) |
+| Fabrics | `FabricsView` | Global params + Materials CRUD (DB-backed, shared); per-material "Alias (skrót w ścieżce XML)" field with `onChange` sanitization (`[a-zA-Z0-9_-]`) — empty = full name |
 | Rollback Reasons | `RollbackReasonsView` | label+icon per reason; add/edit; DB-backed, shared |
 | Database | `DatabaseView` | manual `backupDb`; auto-backup on startup, last 7 days kept |
 | Maintenance | `MaintenanceView` | clear rollback history / custom-order history / all production stages (destructive) |
@@ -439,6 +444,8 @@ Maps long group names → short folder names. `resolveOriginalGroup(batchPath, s
 1. Read `_batch_info.json` from batch folder
 2. Fallback: `GROUP_NAME_OVERRIDES_REVERSE[shortGroup]`
 3. Last fallback: `shortGroup` unchanged
+
+**printGroup resolution (single group)** — `getAliasFromCache(group) ?? GROUP_NAME_OVERRIDES[group] ?? group`. The per-material DB `alias` is **primary**; `GROUP_NAME_OVERRIDES` is the **fallback** (legacy "Neraki" / old batches); raw group name is last. `printGroup` = inbox folder name = material `fabrics.name`. Multi-group batches stay `"SAMPLES"` (unchanged). **The alias shortens only the PRINTED folder + `.xml` filename + `<PhysicalGroup>`/`<Path>` — NOT the PDF filename (intentional).** It is a MAX_PATH mitigation, not elimination.
 
 ## usePdfPreview Hook
 - Module-level LRU Map cache (key: filePath) — capped at 30 entries; instant on repeat opens

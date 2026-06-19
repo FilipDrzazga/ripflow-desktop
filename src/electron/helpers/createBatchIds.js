@@ -1,3 +1,5 @@
+import { getAliasFromCache } from "./fabricCache.js";
+
 export const GROUP_NAME_OVERRIDES = {
   "Neraki Waterproof Canvas FR (Water Repellant)": "Neraki",
 };
@@ -10,8 +12,10 @@ export const createBatchIds = (batchInfo) => {
   const getPrintGroupArr = batchInfo.map((item) => item.printGroup);
   const uniquePrintGroups = [...new Set(getPrintGroupArr)];
 
+  // Per-material alias (DB, shared) shortens the path member; falls back to the
+  // hardcoded override map, then to the raw group name when neither applies.
   const printGroup = uniquePrintGroups.length === 1
-    ? (GROUP_NAME_OVERRIDES[uniquePrintGroups[0]] ?? uniquePrintGroups[0])
+    ? (getAliasFromCache(uniquePrintGroups[0]) ?? GROUP_NAME_OVERRIDES[uniquePrintGroups[0]] ?? uniquePrintGroups[0])
     : "SAMPLES";
 
   const now = new Date();

@@ -29,7 +29,7 @@ const DEFAULT_GLOBALS = {
 
 const DEFAULT_NEW_FABRIC = {
   name: "", type: "Cottons", xmlWidth: 1420, rollWidth: 1420,
-  isVelvet: false, isLinen: false, isBlossom: false,
+  isVelvet: false, isLinen: false, isBlossom: false, alias: "",
 };
 
 const FLAG_DEFS = [
@@ -141,6 +141,17 @@ const EditPanel = ({ fabric, title, onSave, onCancel, isSaving }) => {
             onChange={(e) => set("name", e.target.value)}
             placeholder="Material name…"
             autoFocus
+            spellCheck={false}
+          />
+        </div>
+
+        <div className={styles.edit_name_wrap}>
+          <span className={styles.edit_field_label}>Alias (skrót w ścieżce XML)</span>
+          <input
+            className={styles.edit_name}
+            value={draft.alias ?? ""}
+            onChange={(e) => set("alias", e.target.value.replace(/[^a-zA-Z0-9_-]/g, ""))}
+            placeholder="np. Neraki — puste = pełna nazwa"
             spellCheck={false}
           />
         </div>
@@ -265,6 +276,7 @@ const MaterialsCard = () => {
         isVelvet: fabric.isVelvet ? 1 : 0,
         isLinen: fabric.isLinen ? 1 : 0,
         isBlossom: fabric.isBlossom ? 1 : 0,
+        alias: (fabric.alias || "").trim() || null,
       });
       if (res?.success) {
         await loadFabrics();
@@ -358,6 +370,9 @@ const MaterialsCard = () => {
                   <React.Fragment key={fabric.name}>
                     <div className={`${styles.mat_row} ${isEditing ? styles.mat_row_editing : ""}`}>
                       <span className={styles.mat_row_name}>{fabric.name}</span>
+                      {fabric.alias ? (
+                        <span className={styles.mat_flag} title="Path alias">{`→ ${fabric.alias}`}</span>
+                      ) : null}
                       <div className={styles.mat_row_badges}>
                         <span className={`${styles.mat_type_badge} ${fabric.type === "Cottons" ? styles.mat_type_cottons : styles.mat_type_polyesters}`}>
                           {fabric.type === "Cottons" ? "Cotton" : "Poly"}

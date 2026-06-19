@@ -76,6 +76,23 @@ const runWrite = (label, fn) => {
   }
 };
 
+// Idempotent: add the `alias` column to an existing `fabrics` table if missing.
+// Safe to call on every startup — a second run finds the column and does nothing.
+const ensureFabricAliasColumn = () => {
+  if (!db) return;
+  try {
+    const hasAlias = db
+      .prepare("PRAGMA table_info(fabrics)")
+      .all()
+      .some((col) => col.name === "alias");
+    if (!hasAlias) {
+      db.exec("ALTER TABLE fabrics ADD COLUMN alias TEXT");
+    }
+  } catch (err) {
+    console.error("[db] ensureFabricAliasColumn failed:", err);
+  }
+};
+
 export const initDb = () => {
   try {
     const dbPath = join(getStorageRootPath(), "ripflow.db");
@@ -243,9 +260,12 @@ export const initDb = () => {
         roll_width INTEGER NOT NULL,
         is_velvet  INTEGER NOT NULL DEFAULT 0,
         is_linen   INTEGER NOT NULL DEFAULT 0,
-        is_blossom INTEGER NOT NULL DEFAULT 0
+        is_blossom INTEGER NOT NULL DEFAULT 0,
+        alias      TEXT
       )
     `);
+    // Backfill the alias column on existing DBs created before it was introduced.
+    ensureFabricAliasColumn();
     // Insert OR IGNORE — seeds on first run, backfills new defaults on existing DBs without overwriting user edits
     const stmtF = db.prepare(
       "INSERT OR IGNORE INTO fabrics (name, type, xml_width, roll_width, is_velvet, is_linen, is_blossom) VALUES (?, ?, ?, ?, ?, ?, ?)",
@@ -646,7 +666,7 @@ export const setFabricGlobals = (globals) => {
 export const getAllFabrics = () => {
   if (!db) return DEFAULT_FABRICS.map((f) => ({ ...f }));
   try {
-    return db.prepare("SELECT name, type, xml_width AS xmlWidth, roll_width AS rollWidth, is_velvet AS isVelvet, is_linen AS isLinen, is_blossom AS isBlossom FROM fabrics ORDER BY type ASC, name ASC").all();
+    return db.prepare("SELECT name, type, xml_width AS xmlWidth, roll_width AS rollWidth, is_velvet AS isVelvet, is_linen AS isLinen, is_blossom AS isBlossom, alias FROM fabrics ORDER BY type ASC, name ASC").all();
   } catch (err) {
     console.error("[db] getAllFabrics failed:", err);
     return DEFAULT_FABRICS.map((f) => ({ ...f }));
@@ -662,8 +682,8 @@ export const saveFabric = (oldName, fabric) => {
         db.prepare("DELETE FROM fabrics WHERE name = ?").run(oldName);
       }
       db.prepare(
-        "INSERT OR REPLACE INTO fabrics (name, type, xml_width, roll_width, is_velvet, is_linen, is_blossom) VALUES (?, ?, ?, ?, ?, ?, ?)",
-      ).run(fabric.name, fabric.type, fabric.xmlWidth, fabric.rollWidth, fabric.isVelvet ? 1 : 0, fabric.isLinen ? 1 : 0, fabric.isBlossom ? 1 : 0);
+        "INSERT OR REPLACE INTO fabrics (name, type, xml_width, roll_width, is_velvet, is_linen, is_blossom, alias) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+      ).run(fabric.name, fabric.type, fabric.xmlWidth, fabric.rollWidth, fabric.isVelvet ? 1 : 0, fabric.isLinen ? 1 : 0, fabric.isBlossom ? 1 : 0, fabric.alias || null);
     })();
     return true;
   } catch (err) {
@@ -689,10 +709,10 @@ export const setAllFabrics = (fabrics) => {
     db.transaction(() => {
       db.prepare("DELETE FROM fabrics").run();
       const stmt = db.prepare(
-        "INSERT INTO fabrics (name, type, xml_width, roll_width, is_velvet, is_linen, is_blossom) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        "INSERT INTO fabrics (name, type, xml_width, roll_width, is_velvet, is_linen, is_blossom, alias) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
       );
       for (const f of fabrics) {
-        stmt.run(f.name, f.type, f.xmlWidth, f.rollWidth, f.isVelvet ? 1 : 0, f.isLinen ? 1 : 0, f.isBlossom ? 1 : 0);
+        stmt.run(f.name, f.type, f.xmlWidth, f.rollWidth, f.isVelvet ? 1 : 0, f.isLinen ? 1 : 0, f.isBlossom ? 1 : 0, f.alias || null);
       }
     })();
     return true;

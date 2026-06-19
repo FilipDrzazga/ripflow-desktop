@@ -37,6 +37,19 @@ export const getFabricTypeFromCache = (name) => {
   return f ? f.type : "Unknown";
 };
 
+// Single gate that strips any character illegal in a Windows folder name / XML
+// path member. Keeps sanitization at the point of use so dirty aliases entering
+// via setAllFabrics/import or a hand-edited ripflow.db can never reach the path.
+const sanitizeAlias = (s) => (s ?? "").trim().replace(/[^a-zA-Z0-9_-]/g, "");
+
+// Returns the sanitized path alias for a material, or null when the cache is not
+// loaded, the material is unknown, or no (usable) alias is set.
+export const getAliasFromCache = (name) => {
+  const f = getFabricByName(name);
+  const alias = sanitizeAlias(f?.alias);
+  return alias ? alias : null;
+};
+
 export const getXmlWidthFromCache = (name, isPoly) => {
   const f = getFabricByName(name);
   if (f) return f.xmlWidth;
