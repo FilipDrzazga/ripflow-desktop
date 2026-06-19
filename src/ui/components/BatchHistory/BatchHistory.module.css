@@ -318,6 +318,14 @@
   padding: 16px 0;
 }
 
+.day_no_matches {
+  padding: 14px 20px;
+  font-size: 13px;
+  font-style: italic;
+  color: var(--text-secondary);
+  opacity: 0.7;
+}
+
 .day_batches {
   display: flex;
   flex-direction: column;

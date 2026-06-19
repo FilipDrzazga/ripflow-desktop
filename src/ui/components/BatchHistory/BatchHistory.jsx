@@ -398,7 +398,11 @@ const BatchHistory = () => {
           return {
             ...day,
             batches: day.batches.map((b) =>
-              b.path === batchPath ? { ...b, status: BATCH_STATUS.ROLLED_BACK, fileCount: 0, files: [], rollbackReasons } : b,
+              b.path === batchPath
+                // Keep files as ROLLED_BACK (not []) so live state matches readSingleBatch's
+                // snapshot reconstruction — search by file.name keeps the batch visible.
+                ? { ...b, status: BATCH_STATUS.ROLLED_BACK, fileCount: 0, files: b.files.map((f) => ({ ...f, status: FILE_STATUS.ROLLED_BACK })), rollbackReasons }
+                : b,
             ),
             totalFiles: day.batches.reduce((s, b) => s + (b.path === batchPath ? 0 : b.fileCount), 0),
           };
@@ -536,9 +540,11 @@ const BatchHistory = () => {
         return { ...day, batches: filteredBatches };
       })
       // Keep unloaded skeleton days always visible; a loaded day emptied by the
-      // search filter is dropped as before.
-      .filter((day) => day.loaded === false || day.batches.length > 0);
-  }, [dayGroups, searchQuery, activePrinters]);
+      // search filter is dropped as before — UNLESS the user explicitly expanded it
+      // (lazy-load flips loaded:false→true; without this an expanded no-match day
+      // would vanish instead of showing "No matches in this day").
+      .filter((day) => day.loaded === false || day.batches.length > 0 || expandedDays.has(day.date));
+  }, [dayGroups, searchQuery, activePrinters, expandedDays]);
 
   const handleOpenInFolder = useCallback(async (filePath) => {
     try {
@@ -669,7 +675,10 @@ const BatchHistory = () => {
                   ...b,
                   status: BATCH_STATUS.ROLLED_BACK,
                   fileCount: 0,
-                  files: [],
+                  // Keep the files (marked ROLLED_BACK) instead of clearing — mirrors
+                  // readSingleBatch's snapshot reconstruction so search (file.name) still
+                  // matches this batch and live state == reloaded state.
+                  files: b.files.map((f) => ({ ...f, status: FILE_STATUS.ROLLED_BACK })),
                   rollbackReasons: [{ file_id: null, reason_code: reason.code, reason_label: reason.label }],
                 };
               }),
@@ -886,6 +895,8 @@ const BatchHistory = () => {
                     <div className={style.day_loading}>
                       <div className={style.loading_spinner} />
                     </div>
+                  ) : day.loaded === true && day.batches.length === 0 && searchQuery.trim() !== "" ? (
+                    <div className={style.day_no_matches}>No matches in this day</div>
                   ) : (
                     day.batches.map((batch) => (
                       <BatchRow
