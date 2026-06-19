@@ -29,7 +29,7 @@ src/electron/
     parseFileName.js       # CORE LOGIC 600+ lines — change with extreme care
     getMaterialType.js     # material → "Cottons" | "Polyesters" | "Unknown"
                            # Uses fabricCache as primary; falls back to static sets if cache not loaded
-    getSettings.js         # electron-store: storagePath, xmlPath, workstationName, customOrderFolderPath, workstationRole, labelPrinterName, shippedRetentionDays, labelPrintMode, clientId
+    getSettings.js         # electron-store: storagePath, xmlPath, workstationName, customOrderFolderPath, workstationRole, labelPrinterName, shippedRetentionDays, batchHistoryEagerDays, labelPrintMode, clientId
                            # NO longer stores reasonDefinitions (migrated to DB on first run)
     getRootPath.js         # Derives all paths from getSettings() — no hardcoded values
     db.js                  # SQLite: all tables; all fns guarded if(!db)
@@ -47,7 +47,9 @@ src/electron/
                            # file:read-buffer uses assertStorageFilePath — no path traversal
     createBatch.js         # Atomic file move; stale lock timeout = 60s (not 5min)
     batchHistoryHandlers.js # rollback, regenerateXML, deleteBatch; uses resolveOriginalGroup()
-    readPrintedFolder.js   # Reads PRINTED/ tree
+    readPrintedFolder.js   # Reads PRINTED/ tree. Exports: readPrintedFolder (full scan, legacy),
+                           #   readPrintedDays (skeletons, enumeration only), readPrintedDay (one day),
+                           #   readSingleBatch (unchanged), buildDayGroup (shared per-day mapping)
     createXML.js           # isVelvet/isLinen/isBlossom read from fabricCache (fallback: string-contains)
 
 src/ui/
@@ -55,7 +57,7 @@ src/ui/
   hooks/usePdfPreview.js   # PDF → JPEG via pdfjs; module-level Map cache by filePath
   utils/notify.js          # ALWAYS use instead of setAlert() — adds toast + SessionLogs entry
   services/                # IPC abstraction layer — ALWAYS import from here, NOT window.api directly
-    batchService.js        # readPrintedFolder, rollback*, watcher, deleteBatch, regenerateXml
+    batchService.js        # readPrintedFolder, readPrintedDays, readPrintedDay, rollback*, watcher, deleteBatch, regenerateXml
     fileService.js         # readFolders, submitBatch, openPreview, openInFolder, openInShopify, readFileBuffer
     settingsService.js     # getSettings, setSettings, selectFolder
     analyticsService.js    # getRollbackStats, getRollbackDetails, clearRollbackReasons
@@ -95,7 +97,7 @@ src/ui/
     Settings/              # Left-sidebar + content layout
       Settings.jsx         # Sidebar nav (General, Paths, Fabrics, Rollback Reasons, Database, Maintenance, Updates)
       views/
-        GeneralView.jsx    # workstationName, workstationRole, shippedRetentionDays
+        GeneralView.jsx    # workstationName, workstationRole, shippedRetentionDays, batchHistoryEagerDays
         PathsView.jsx      # storagePath, xmlPath, customOrderFolderPath
         FabricsView.jsx    # GlobalParams (margins+defaults) + Materials CRUD table
         RollbackReasonsView.jsx # reason label+icon editor; add new reasons
@@ -157,7 +159,8 @@ Tokenize by `_`, detect CUSHION/TEA_TOWEL by keyword, others by XWD hex token.
 ## Storage — Two-tier config
 
 **electron-store** (per-machine, `%APPDATA%\ripflow-desktop\config.json`):
-- `storagePath`, `xmlPath`, `workstationName`, `customOrderFolderPath`, `workstationRole`, `labelPrinterName`, `shippedRetentionDays`, `labelPrintMode`, `clientId`
+- `storagePath`, `xmlPath`, `workstationName`, `customOrderFolderPath`, `workstationRole`, `labelPrinterName`, `shippedRetentionDays`, `batchHistoryEagerDays`, `labelPrintMode`, `clientId`
+- `batchHistoryEagerDays` — per-machine, default 7, min 1; how many most-recent days BatchHistory eager-loads (rest are lazy skeletons, loaded on expand)
 
 **ripflow.db** (shared across all PCs via network `storagePath`):
 - Operational: `logs`, `held_files`, `rollback_reasons`, `custom_order_history`
@@ -230,7 +233,9 @@ VALIDATE → LOCK (`.lock` file) → DESTINATION_STRUCTURE → COPY (pdf-lib p.1
 readFolders() / onReadFoldersProgress(cb) / submitBatch(batch)
 
 // Batch history
-readPrintedFolder()
+readPrintedFolder()          // full PRINTED tree (legacy full scan; BatchHistory now uses readPrintedDays + readPrintedDay — see BatchHistory lazy-load below)
+readPrintedDays()            // day skeletons: { dayFolder, date, label, totalBatches, totalFiles:null, batches:[], loaded:false } — enumeration only (readdir), ZERO readFile/DB; per-day try/catch (a bad day → skeleton totalBatches:0)
+readPrintedDay(dayFolder)    // one day's full content (loaded:true); reuses readSingleBatch via buildDayGroup
 regenerateXml(batchPath)
 rollbackBatch({ batchPath, reason: { code, label } })          // object arg, NOT positional
 rollbackFile({ filePath, batchPath, reason: { code, label }, reprint? }) // object arg, NOT positional
@@ -256,8 +261,9 @@ deleteFabric(name)                     // → { success }
 setAllFabrics(fabrics)                 // → { success } — bulk replace
 
 // Settings — ALWAYS spread allSettings before overriding individual fields to avoid null overwrite
-getSettings()  // → { success, settings: { storagePath, xmlPath, workstationName, customOrderFolderPath, workstationRole, labelPrinterName, shippedRetentionDays, labelPrintMode, clientId } }
-setSettings({ storagePath, xmlPath, workstationName, customOrderFolderPath, workstationRole, labelPrinterName, shippedRetentionDays, labelPrintMode, clientId })
+getSettings()  // → { success, settings: { storagePath, xmlPath, workstationName, customOrderFolderPath, workstationRole, labelPrinterName, shippedRetentionDays, batchHistoryEagerDays, labelPrintMode, clientId } }
+setSettings({ storagePath, xmlPath, workstationName, customOrderFolderPath, workstationRole, labelPrinterName, shippedRetentionDays, batchHistoryEagerDays, labelPrintMode, clientId })
+//   batchHistoryEagerDays — per-machine, default 7, min 1; BatchHistory eager-loads the last N days (rest lazy)
 selectFolder() // → { success, canceled, path }
 
 // Logs / Held files
@@ -415,6 +421,27 @@ DB tables: `file_stages` (one row per active file), `file_stage_history` (append
 - **Component split**: day-level rendering in `BatchHistory.jsx`; batch header+actions in `BatchRow.jsx`; file row in `FileRow.jsx` — both sub-components import `BatchHistory.module.css` directly
 - Watcher race condition handled: `readSingleBatch` wrapped in try/catch; `ENOENT` → sends `"removed"` event
 
+### Lazy-load (Phase 1 + 2)
+The full PRINTED scan (35 days / ~580 batches → ~2050 SMB roundtrips) used to run at startup, after every submit, and on every view entry. Lazy-load cuts it down.
+
+**`readPrintedFolder.js` structure** — `readSingleBatch` is **unchanged**. The per-day mapping is extracted into `buildDayGroup(dayFolder)` (readdir batches → `readSingleBatch` per batch). Three exports:
+- `readPrintedFolder()` — composed from `buildDayGroup`; **identical result** to before (+ additive `dayFolder`/`loaded:true` on each day object). Legacy full scan.
+- `readPrintedDays()` — enumeration only (`readdir` root + each day, ZERO `readFile`/DB); returns sorted-desc skeletons `{ dayFolder, date, label, totalBatches, totalFiles:null, batches:[], loaded:false }`. Each per-day `readdir` is wrapped in try/catch → a bad day (ENOENT/EPERM/…) becomes a `totalBatches:0` skeleton instead of sinking the whole enumeration.
+- `readPrintedDay(dayFolder)` — one day's full content via `buildDayGroup` (`loaded:true`).
+
+**`refreshBatchDays` (store; startup + after submit)** — loads ONLY the newest day (`readPrintedDays` → `readPrintedDay(days[0])`), sets `batchDays = [newestDay]`. Sole consumer outside BatchHistory's mirror is `LastBatchCard`/`getLastBatch`, which only needs the newest active batch. `getLastBatch` returns `null` gracefully when the newest day has no batches (option a — empty card, never descends to older days). No more full scan here.
+
+**`loadData`** — `readPrintedDays()` → skeletons; eager-loads the most-recent N days (`batchHistoryEagerDays`, default 7) via `readPrintedDay` → `attachReasonsToDay`; older days stay as skeletons. `attachReasonsToDay(day)` is the second-pass reasons fetch extracted from `loadData` (`needsReasons` = batch `ROLLED_BACK` or any file `ROLLED_BACK` → `getRollbackReasonsByBatch`), reused in `loadData`, `toggleDay`, and `reloadLoadedDays`.
+
+**`toggleDay`** — first expand of a skeleton (`loaded === false`) → `readPrintedDay(day.dayFolder)` → `attachReasonsToDay` → merge by `dayFolder` (`loaded:true`); per-day spinner while loading; idempotent (skips if already loaded or a fetch is in flight via `loadingDays`). The fetch is fired **outside** the `setExpandedDays` updater (StrictMode-safe — no double fetch).
+
+**`filteredDayGroups`** — keeps skeletons visible: `day.loaded === false || day.batches.length > 0` (a loaded day emptied by search is still dropped). `day_pill` is null-aware: a skeleton shows just the batch count (no `· N files`, no `null`), rendered dimmed/dashed; an "expand to search" hint shows on skeletons while a search is active.
+
+**Watcher loaded-aware (Phase 2b)** — day key unified on `dayFolder` (`date === dayFolder` by format):
+- `new-file` / `removed` skip days where `loaded !== true` (skeletons untouched — ends the global `totalFiles` zeroing).
+- `new-batch` on an existing skeleton is a no-op (content arrives on expand); on a loaded day it merges as before; a watcher-created new day is built with `dayFolder` + `loaded:true`.
+- **Degraded mode**: the fallback interval calls `reloadLoadedDays()` (re-reads only `loaded:true` days via `readPrintedDay` → merge), NOT the full `readPrintedFolder`. `dayGroupsRef` holds the current `dayGroups` so the interval reads a fresh list (stale-closure-safe).
+
 ## Rollback Reasons
 14 codes: `MISSING_JOB`, `PRINTER_LINES`, `WRONG_SIZE`, `WRONG_MATERIAL`, `FABRIC_FAULT`, `PRESSING_FAULT`, `FABRIC_CREASE`, `GHOSTING`, `LINT_MARK`, `WRONG_COLOURS`, `AUTOMATION_FAULT`, `RERUN`, `ARTWORK_ISSUE`, `OTHER`
 - Labels and icons are stored in `reason_definitions` DB table — **shared across all PCs**
@@ -429,7 +456,7 @@ Left-sidebar + content-area layout. `Settings.jsx` routes via `SECTIONS` array +
 
 | Section | View | Notes |
 |---|---|---|
-| General | `GeneralView` | workstationName, workstationRole, shippedRetentionDays (per-machine) |
+| General | `GeneralView` | workstationName, workstationRole, shippedRetentionDays, batchHistoryEagerDays (per-machine; eager-load days default 7, min 1) |
 | Paths | `PathsView` | storagePath, xmlPath, customOrderFolderPath |
 | Fabrics | `FabricsView` | Global params + Materials CRUD (DB-backed, shared); per-material "Alias (skrót w ścieżce XML)" field with `onChange` sanitization (`[a-zA-Z0-9_-]`) — empty = full name |
 | Rollback Reasons | `RollbackReasonsView` | label+icon per reason; add/edit; DB-backed, shared |
