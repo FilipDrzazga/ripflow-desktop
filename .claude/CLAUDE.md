@@ -411,7 +411,7 @@ DB tables: `file_stages` (one row per active file), `file_stage_history` (append
 ## BatchHistory — Key Behaviors
 - Call `stopBatchWatcher()` on unmount
 - Click anywhere on batch row to expand/collapse; action buttons use `e.stopPropagation()`
-- Whole batch rollback: watcher sends `"removed"` → no manual reload needed
+- Whole batch rollback: watcher sends `"removed"` → no manual reload needed. Both the optimistic update and the `"removed"` handler keep `files` in state as `ROLLED_BACK` (with `fileCount: 0`), NOT cleared to `files: []` — this matches `readSingleBatch` (live↔reload parity) so a rolled-back batch stays matchable by search (filter checks `file.name`). Do not revert to `files: []` — that re-breaks search after rollback.
 - Single file rollback: watcher fires but only sends event if batch has 0 PDFs left; optimistic update is sufficient for UI — do NOT call `loadData()` after single file rollback
 - `loadData` must fetch rollback reasons for: (a) `rolled_back` batches AND (b) `active` batches with any `file.status === "rolled_back"` — skipping (b) breaks file-level badges
 - Optimistic updates: set state immediately after `res?.success`, watcher syncs after
@@ -435,7 +435,7 @@ The full PRINTED scan (35 days / ~580 batches → ~2050 SMB roundtrips) used to 
 
 **`toggleDay`** — first expand of a skeleton (`loaded === false`) → `readPrintedDay(day.dayFolder)` → `attachReasonsToDay` → merge by `dayFolder` (`loaded:true`); per-day spinner while loading; idempotent (skips if already loaded or a fetch is in flight via `loadingDays`). The fetch is fired **outside** the `setExpandedDays` updater (StrictMode-safe — no double fetch).
 
-**`filteredDayGroups`** — keeps skeletons visible: `day.loaded === false || day.batches.length > 0` (a loaded day emptied by search is still dropped). `day_pill` is null-aware: a skeleton shows just the batch count (no `· N files`, no `null`), rendered dimmed/dashed; an "expand to search" hint shows on skeletons while a search is active.
+**`filteredDayGroups`** — keeps skeletons visible: `day.loaded === false || day.batches.length > 0 || expandedDays.has(day.date)` (a loaded, collapsed day emptied by search is still dropped). The `expandedDays.has(day.date)` clause means a day the user explicitly expanded does NOT vanish from the filtered list after lazy-load even with zero query matches (without it, expanding a skeleton under an active search made the day disappear). `expandedDays` MUST be in the `useMemo` deps of `filteredDayGroups`, otherwise the filter won't recompute on expand/collapse. When an expanded day is `loaded:true`, has 0 filtered batches, and a search is active, the render shows "No matches in this day" instead of an empty header. `day_pill` is null-aware: a skeleton shows just the batch count (no `· N files`, no `null`), rendered dimmed/dashed; an "expand to search" hint shows on skeletons while a search is active.
 
 **Watcher loaded-aware (Phase 2b)** — day key unified on `dayFolder` (`date === dayFolder` by format):
 - `new-file` / `removed` skip days where `loaded !== true` (skeletons untouched — ends the global `totalFiles` zeroing).
