@@ -235,12 +235,26 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 10px;
   height: 160px;
 }
 
 .empty_state_text {
   font-size: 16px;
   color: var(--text-secondary);
+}
+
+/* Progressive footer while load-all-on-search keeps loading older days */
+.search_loading_more {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 16px 0;
+  font-size: 13px;
+  font-style: italic;
+  color: var(--text-secondary);
+  opacity: 0.8;
 }
 
 /* ===== DAY GROUP ===== */

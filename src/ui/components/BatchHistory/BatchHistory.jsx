@@ -81,6 +81,7 @@ const BatchHistory = () => {
   const searchInputRef = useRef(null);
   const pollFallbackRef = useRef(null); // setInterval id — only set while in degraded (watcher-down) mode
   const dayGroupsRef = useRef([]); // mirror of dayGroups for stale-free reads in degraded poll
+  const loadAllRunningRef = useRef(false); // true while load-all-on-search is loading skeleton days
 
   useEffect(() => {
     getSettings().then((res) => {
@@ -489,6 +490,40 @@ const BatchHistory = () => {
     }
   }, []);
 
+  // Load-all-on-search: while the operator is actively searching and there are still
+  // unloaded skeleton days, load them sequentially + progressively so the search spans
+  // the WHOLE history (e.g. an order number living in an old day's filename), not just
+  // the eager-loaded head. Reuses loadDayContent — each merge flips loaded:false→true,
+  // and filteredDayGroups recomputes after every merge, so matches surface as they load.
+  useEffect(() => {
+    if (searchQuery.trim() === "") return; // browsing — keep older days lazy
+    let cancelled = false;
+
+    const runLoadAll = async () => {
+      if (loadAllRunningRef.current) return; // a previous run is still in flight
+      if (dayGroupsRef.current.every((d) => d.loaded === true)) return; // nothing left to load (cache)
+      loadAllRunningRef.current = true;
+      try {
+        // Snapshot the skeleton folders at start; loadDayContent flips each to loaded:true.
+        const pending = dayGroupsRef.current.filter((d) => d.loaded === false).map((d) => d.dayFolder);
+        for (const df of pending) {
+          if (cancelled) return; // search changed/cleared — stop loading the rest
+          await loadDayContent(df); // loadingDays guard inside avoids clashing with a manual expand
+          if (cancelled) return;
+        }
+      } finally {
+        loadAllRunningRef.current = false;
+      }
+    };
+
+    // Debounce so "3" → "3p" → "3pa" doesn't fire three separate load-all sweeps.
+    const timer = setTimeout(runLoadAll, 350);
+    return () => {
+      cancelled = true; // abort the in-flight sweep when the query changes/clears
+      clearTimeout(timer);
+    };
+  }, [searchQuery]); // eslint-disable-line react-hooks/exhaustive-deps -- loadDayContent is stable; only searchQuery should retrigger (NOT dayGroups, else every merge re-fires)
+
   const toggleDay = (day) => {
     const { date, dayFolder } = day;
     const willExpand = !expandedDays.has(date);
@@ -539,12 +574,20 @@ const BatchHistory = () => {
 
         return { ...day, batches: filteredBatches };
       })
-      // Keep unloaded skeleton days always visible; a loaded day emptied by the
-      // search filter is dropped as before — UNLESS the user explicitly expanded it
-      // (lazy-load flips loaded:false→true; without this an expanded no-match day
-      // would vanish instead of showing "No matches in this day").
-      .filter((day) => day.loaded === false || day.batches.length > 0 || expandedDays.has(day.date));
+      // Keep unloaded skeleton days visible ONLY while browsing (no active search):
+      // under an active query a skeleton's full totalBatches pill would masquerade as
+      // a match, so skeletons are hidden and the global empty-state explains the scope.
+      // A loaded day emptied by the search filter is dropped as before — UNLESS the
+      // user explicitly expanded it (lazy-load flips loaded:false→true; without this an
+      // expanded no-match day would vanish instead of showing "No matches in this day").
+      .filter((day) => (day.loaded === false && !q) || day.batches.length > 0 || expandedDays.has(day.date));
   }, [dayGroups, searchQuery, activePrinters, expandedDays]);
+
+  // True while a search is active AND the load-all sweep still has skeleton days to
+  // load (or a day fetch is in flight). Drives the empty-state spinner + the progressive
+  // footer, and lets the empty-state drop the scoped "in loaded days" wording.
+  const isSearchLoadingMore =
+    searchQuery.trim() !== "" && (dayGroups.some((d) => d.loaded !== true) || loadingDays.size > 0);
 
   const handleOpenInFolder = useCallback(async (filePath) => {
     try {
@@ -861,9 +904,16 @@ const BatchHistory = () => {
 
         {filteredDayGroups.length === 0 && !isLoading && (
           <div className={style.empty_state}>
-            <span className={style.empty_state_text}>
-              {searchQuery || activePrinters.size > 0 ? "No results found." : "No batches yet."}
-            </span>
+            {searchQuery.trim() && isSearchLoadingMore ? (
+              <>
+                <div className={style.loading_spinner} />
+                <span className={style.empty_state_text}>Searching older days…</span>
+              </>
+            ) : (
+              <span className={style.empty_state_text}>
+                {searchQuery.trim() || activePrinters.size > 0 ? "No results found." : "No batches yet."}
+              </span>
+            )}
           </div>
         )}
 
@@ -923,6 +973,15 @@ const BatchHistory = () => {
             </div>
           );
         })}
+
+        {/* Progressive footer: matches from loaded days are already visible above while
+            the sweep keeps loading the remaining skeleton days. */}
+        {isSearchLoadingMore && filteredDayGroups.length > 0 && (
+          <div className={style.search_loading_more}>
+            <div className={style.loading_spinner} />
+            <span>Searching older days…</span>
+          </div>
+        )}
       </div>
 
       {contextMenu &&
