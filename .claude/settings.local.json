@@ -68,7 +68,8 @@
       "PowerShell(npx vitest run --no-file-parallelism 2>&1 | Select-Object -Last 14)",
       "PowerShell($env:NODE_OPTIONS = \"--max-old-space-size=8192\"; npx eslint .; \"FULL_ESLINT_EXIT=$LASTEXITCODE\")",
       "PowerShell(npx vitest run --no-file-parallelism 2>&1 | Select-Object -Last 8)",
-      "PowerShell($env:NODE_OPTIONS = \"--max-old-space-size=8192\"; npx eslint .; \"FULL_ESLINT_EXIT=$LASTEXITCODE\"; npx vitest run --no-file-parallelism 2>&1 | Select-Object -Last 7)"
+      "PowerShell($env:NODE_OPTIONS = \"--max-old-space-size=8192\"; npx eslint .; \"FULL_ESLINT_EXIT=$LASTEXITCODE\"; npx vitest run --no-file-parallelism 2>&1 | Select-Object -Last 7)",
+      "PowerShell(git *)"
     ]
   }
 }
