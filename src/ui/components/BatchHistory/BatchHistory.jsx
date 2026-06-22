@@ -500,6 +500,11 @@ const BatchHistory = () => {
     let cancelled = false;
 
     const runLoadAll = async () => {
+      // Known edge (accepted): if the query changes while a sweep is mid-await on a slow SMB,
+      // the new trigger may hit running===true and skip — load-all won't finish for the new
+      // query until the next query change. Rare (debounce collapses typing), non-blocking
+      // (re-type resumes). Closing it cleanly needs reworking the cancelled/abort mechanism;
+      // not worth the risk for this edge. Revisit only if operators actually hit it.
       if (loadAllRunningRef.current) return; // a previous run is still in flight
       if (dayGroupsRef.current.every((d) => d.loaded === true)) return; // nothing left to load (cache)
       loadAllRunningRef.current = true;
