@@ -1,4 +1,4 @@
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useMemo } from "react";
 import gsap from "gsap";
 import {
   LuScissors,
@@ -24,6 +24,15 @@ const SEWING_PIPELINE = [
 
 const SEWING_STAGES = new Set([PRODUCTION_STAGE.TO_SEWING, PRODUCTION_STAGE.FROM_SEWING]);
 
+// Local time DD-MM-YYYY (NOT UTC) — entered_at is stored as ISO UTC string
+const formatStageDate = (iso) => {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  const dd = String(d.getDate()).padStart(2, "0");
+  const mo = String(d.getMonth() + 1).padStart(2, "0");
+  return `${dd}-${mo}-${d.getFullYear()}`;
+};
+
 const STAGE_ICON_MAP = {
   [PRODUCTION_STAGE.PRINTED]:     LuPrinter,
   [PRODUCTION_STAGE.HEATPRESS]:   LuThermometer,
@@ -35,7 +44,7 @@ const STAGE_ICON_MAP = {
 };
 
 
-const StagePill = ({ stageKey, status, company }) => {
+const StagePill = ({ stageKey, status, company, title }) => {
   const Icon    = STAGE_ICON_MAP[stageKey] ?? LuPrinter;
   const colors  = STAGE_COLOR[stageKey] ?? { bg: "#f0f0f0", color: "#616161" };
   const isDone    = status === "completed";
@@ -46,7 +55,7 @@ const StagePill = ({ stageKey, status, company }) => {
     <span
       className={`${style.stage_pill} ${isDone ? style.stage_pill_done : ""} ${isCurrent ? style.stage_pill_current : ""} ${isFuture ? style.stage_pill_future : ""}`}
       style={isCurrent ? { backgroundColor: colors.bg, color: colors.color } : undefined}
-      title={STAGE_LABEL[stageKey] ?? stageKey}
+      title={title || undefined}
     >
       <Icon size={11} />
       {company || STAGE_SHORT_LABEL[stageKey]}
@@ -54,8 +63,23 @@ const StagePill = ({ stageKey, status, company }) => {
   );
 };
 
-const ProductionCard = ({ stage: row, highlighted, selected, awaitingQc, onSelect, onContextMenu }) => {
+const ProductionCard = ({ stage: row, history = [], highlighted, selected, awaitingQc, onSelect, onContextMenu }) => {
   const cardRef  = useRef(null);
+
+  // stage -> formatted date of the LAST entry into that stage (max entered_at; ISO compares lexicographically)
+  const stageDates = useMemo(() => {
+    const latest = {};
+    for (const entry of history) {
+      if (!entry?.stage || !entry?.entered_at) continue;
+      if (!latest[entry.stage] || entry.entered_at > latest[entry.stage]) latest[entry.stage] = entry.entered_at;
+    }
+    const out = {};
+    for (const [stage, iso] of Object.entries(latest)) {
+      const formatted = formatStageDate(iso);
+      if (formatted) out[stage] = formatted;
+    }
+    return out;
+  }, [history]);
 
   useEffect(() => {
     if (!highlighted || !cardRef.current) return;
@@ -146,7 +170,9 @@ const ProductionCard = ({ stage: row, highlighted, selected, awaitingQc, onSelec
             if (!isSewing && SEWING_STAGES.has(stageKey)) return <StagePill key={stageKey} stageKey={stageKey} status="future" />;
             const status = i < currentIdx ? "completed" : i === currentIdx ? "current" : "future";
             const company = stageKey === "to_sewing" ? row.sewing_company : null;
-            return <StagePill key={stageKey} stageKey={stageKey} status={status} company={company} />;
+            // Date tooltip only on reached + current pills; future pills get no title
+            const title = status === "future" ? undefined : stageDates[stageKey];
+            return <StagePill key={stageKey} stageKey={stageKey} status={status} company={company} title={title} />;
           })
         )}
       </div>

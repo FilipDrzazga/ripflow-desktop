@@ -1,5 +1,43 @@
 [
   {
+    "version": "1.0.9",
+    "date": "2026-06-22",
+    "changes": [
+      {
+        "text": "Added short names for materials - you can now give any material a short name in Settings → Fabrics (e.g. \"Neraki\" instead of \"Neraki Waterproof Canvas FR (Water Repellant)\")",
+        "clients": ["all"]
+      },
+      {
+        "text": "The short name is used automatically when filing and printing, preventing the \"path too long\" issues Windows can throw on materials with very long names",
+        "clients": ["all"]
+      },
+      {
+        "text": "Short names are optional - leave the field blank and the full material name is used as before",
+        "clients": ["all"]
+      },
+      {
+        "text": "Reports, labels and the material list still show the full material name; only the behind-the-scenes file paths get shortened",
+        "clients": ["all"]
+      },
+      {
+        "text": "Batch History now opens much faster - it loads your most recent days right away instead of the entire print history, so the screen is ready almost instantly even with months of batches behind you",
+        "clients": ["all"]
+      },
+      {
+        "text": "Search now covers your whole history, including by order number - type an order number, file name, or material and find it anywhere in the history, not just in recent days",
+        "clients": ["all"]
+      },
+      {
+        "text": "Recent days show instantly; when searching further back, older days load automatically in the background (briefly showing \"Searching older days…\"), with matches appearing as they come in",
+        "clients": ["all"]
+      },
+      {
+        "text": "Fixed: a batch that has just been rolled back, or a day that has been opened, no longer disappears from search results",
+        "clients": ["all"]
+      }
+    ]
+  },
+  {
     "version": "1.0.8",
     "date": "2026-06-18",
     "changes": [

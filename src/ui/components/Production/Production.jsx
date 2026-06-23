@@ -81,6 +81,7 @@ const Production = () => {
   const refreshFiles        = useStore((s) => s.refreshFiles);
   const loadAllStageHistory  = useStore((s) => s.loadAllStageHistory);
   const addStageHistoryEntry = useStore((s) => s.addStageHistoryEntry);
+  const stageHistory         = useStore((s) => s.stageHistory);
 
   // "batches" = stage/batch lens (default); "orders" = order-centric read-only lens
   const [viewMode,       setViewMode]       = useState("batches");
@@ -868,6 +869,7 @@ const Production = () => {
                 <ProductionCard
                   key={row.file_id}
                   stage={row}
+                  history={stageHistory[row.file_id] ?? []}
                   highlighted={highlightedId === row.file_id}
                   selected={selectedFileIds.has(row.file_id)}
                   awaitingQc={workstationRole === "qc" && row.stage === PRODUCTION_STAGE.HEATPRESS}
@@ -882,6 +884,7 @@ const Production = () => {
             <ProductionCard
               key={row.file_id}
               stage={row}
+              history={stageHistory[row.file_id] ?? []}
               highlighted={highlightedId === row.file_id}
               selected={selectedFileIds.has(row.file_id)}
               awaitingQc={workstationRole === "qc" && row.stage === PRODUCTION_STAGE.HEATPRESS}
