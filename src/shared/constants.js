@@ -62,6 +62,16 @@ export const STAGE_LABEL = {
   overridden:  "Overridden",
 };
 
+export const STAGE_SHORT_LABEL = {
+  [PRODUCTION_STAGE.PRINTED]:     "Print",
+  [PRODUCTION_STAGE.HEATPRESS]:   "Press",
+  [PRODUCTION_STAGE.QC]:          "QC",
+  [PRODUCTION_STAGE.TO_SEWING]:   "Sew Out",
+  [PRODUCTION_STAGE.FROM_SEWING]: "Sew In",
+  [PRODUCTION_STAGE.PACKED]:      "Pack",
+  [PRODUCTION_STAGE.SHIPPED]:     "Ship",
+};
+
 export const STAGE_COLOR = {
   printed:     { bg: "#f0f0f0", color: "#616161" },
   heatpress:   { bg: "#fff3cd", color: "#856404" },

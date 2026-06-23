@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { HiMagnifyingGlass } from "react-icons/hi2";
 import { LuArrowRight, LuArrowLeft, LuScissors, LuRefreshCw, LuCornerUpLeft, LuEye } from "react-icons/lu";
 import { useStore } from "../../store/useStore";
-import { STAGE_LABEL, STAGE_NEXT, STAGE_PREV, PRODUCTION_STAGE, STAGE_COLOR } from "../../../shared/constants";
+import { STAGE_LABEL, STAGE_SHORT_LABEL, STAGE_NEXT, STAGE_PREV, PRODUCTION_STAGE, STAGE_COLOR } from "../../../shared/constants";
 import {
   advanceStage,
   setSewingSent,
@@ -36,16 +36,6 @@ const FILTER_TABS = [
 
 const POLL_INTERVAL = 15_000;
 
-const BATCH_SHORT_LABEL = {
-  [PRODUCTION_STAGE.PRINTED]:     "Print",
-  [PRODUCTION_STAGE.HEATPRESS]:   "Press",
-  [PRODUCTION_STAGE.QC]:          "QC",
-  [PRODUCTION_STAGE.TO_SEWING]:   "Sew Out",
-  [PRODUCTION_STAGE.FROM_SEWING]: "Sew In",
-  [PRODUCTION_STAGE.PACKED]:      "Pack",
-  [PRODUCTION_STAGE.SHIPPED]:     "Ship",
-};
-
 const STAGE_PIPELINE_ORDER = [
   PRODUCTION_STAGE.PRINTED, PRODUCTION_STAGE.HEATPRESS, PRODUCTION_STAGE.QC,
   PRODUCTION_STAGE.TO_SEWING, PRODUCTION_STAGE.FROM_SEWING, PRODUCTION_STAGE.PACKED, PRODUCTION_STAGE.SHIPPED,
@@ -70,7 +60,7 @@ const BatchGroupHeader = ({ batchPath, rows, selectedFileIds, onSelectAll }) => 
           const sc = STAGE_COLOR[s];
           return (
             <span key={s} className={style.batch_group_stage_pill} style={{ backgroundColor: sc?.bg, color: sc?.color }}>
-              {stageCounts[s]} {BATCH_SHORT_LABEL[s]}
+              {stageCounts[s]} {STAGE_SHORT_LABEL[s]}
             </span>
           );
         })}

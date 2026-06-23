@@ -1,23 +1,11 @@
 import { useMemo, useState } from "react";
 import { LuChevronRight, LuChevronDown, LuPackageCheck, LuFileText } from "react-icons/lu";
 import { useStore } from "../../store/useStore";
-import { PRODUCTION_STAGE, STAGE_LABEL, STAGE_COLOR } from "../../../shared/constants";
+import { STAGE_LABEL, STAGE_SHORT_LABEL, STAGE_COLOR } from "../../../shared/constants";
 import { groupByOrder, ORDER_STAGE_PIPELINE, UNKNOWN_ORDER_LABEL } from "../../utils/groupByOrder";
 import { PRINTER_COLORS } from "../../constants/printerColors";
 import style from "./Production.module.css";
 import ov from "./OrderView.module.css";
-
-// Short labels for stage-count pills — mirrors the Production batch view so the
-// two lenses look consistent. Keyed by PRODUCTION_STAGE, never raw strings.
-const SHORT_LABEL = {
-  [PRODUCTION_STAGE.PRINTED]:     "Print",
-  [PRODUCTION_STAGE.HEATPRESS]:   "Press",
-  [PRODUCTION_STAGE.QC]:          "QC",
-  [PRODUCTION_STAGE.TO_SEWING]:   "Sew Out",
-  [PRODUCTION_STAGE.FROM_SEWING]: "Sew In",
-  [PRODUCTION_STAGE.PACKED]:      "Pack",
-  [PRODUCTION_STAGE.SHIPPED]:     "Ship",
-};
 
 const batchNameOf = (batchPath) => batchPath?.split(/[/\\]/).pop() ?? "—";
 
@@ -31,7 +19,7 @@ const StageCountPills = ({ stageCounts }) => (
           className={style.batch_group_stage_pill}
           style={{ backgroundColor: sc?.bg, color: sc?.color }}
         >
-          {stageCounts[s]} {SHORT_LABEL[s]}
+          {stageCounts[s]} {STAGE_SHORT_LABEL[s]}
         </span>
       );
     })}
