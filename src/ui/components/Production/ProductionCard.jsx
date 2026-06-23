@@ -6,7 +6,7 @@ import {
   LuFileText, LuCheck, LuRotateCcw,
 } from "react-icons/lu";
 import {
-  PRODUCTION_STAGE, STAGE_LABEL, STAGE_COLOR,
+  PRODUCTION_STAGE, STAGE_LABEL, STAGE_SHORT_LABEL, STAGE_COLOR,
 } from "../../../shared/constants";
 import { PRINT_TYPE_MAP } from "@/constants/printTypeMap";
 import { PRINTER_COLORS } from "@/constants/printerColors";
@@ -21,16 +21,6 @@ const SEWING_PIPELINE = [
   PRODUCTION_STAGE.PACKED,
   PRODUCTION_STAGE.SHIPPED,
 ];
-
-const SHORT_LABEL = {
-  [PRODUCTION_STAGE.PRINTED]:     "Print",
-  [PRODUCTION_STAGE.HEATPRESS]:   "Press",
-  [PRODUCTION_STAGE.QC]:          "QC",
-  [PRODUCTION_STAGE.TO_SEWING]:   "Sew Out",
-  [PRODUCTION_STAGE.FROM_SEWING]: "Sew In",
-  [PRODUCTION_STAGE.PACKED]:      "Pack",
-  [PRODUCTION_STAGE.SHIPPED]:     "Ship",
-};
 
 const SEWING_STAGES = new Set([PRODUCTION_STAGE.TO_SEWING, PRODUCTION_STAGE.FROM_SEWING]);
 
@@ -59,7 +49,7 @@ const StagePill = ({ stageKey, status, company }) => {
       title={STAGE_LABEL[stageKey] ?? stageKey}
     >
       <Icon size={11} />
-      {SHORT_LABEL[stageKey]}{company ? ` · ${company}` : ""}
+      {company || STAGE_SHORT_LABEL[stageKey]}
     </span>
   );
 };
