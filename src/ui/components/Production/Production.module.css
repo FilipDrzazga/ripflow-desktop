@@ -700,6 +700,16 @@
   min-width: 0;
 }
 
+.card_filename {
+  font-size: 14px;
+  color: var(--text-primary);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
 .card_order {
   font-size: 15px;
   font-weight: 600;

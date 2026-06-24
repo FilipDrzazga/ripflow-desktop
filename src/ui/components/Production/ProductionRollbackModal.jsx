@@ -4,7 +4,6 @@ import { LuFileText } from "react-icons/lu";
 import { HiChevronDown } from "react-icons/hi2";
 import { useStore } from "../../store/useStore";
 import { resolveIcon } from "../../constants/rollbackReasonIcons";
-import { PRINT_TYPE_MAP } from "@/constants/printTypeMap";
 import { PRINTER_COLORS } from "@/constants/printerColors";
 import style from "./Production.module.css";
 
@@ -224,7 +223,6 @@ const ProductionRollbackModal = ({ rows, onConfirm, onCancel }) => {
         <div className={style.qc_file_list}>
           {rows.map((row) => {
             const { reason, otherText, overrideInput } = choices.get(row.file_id) ?? {};
-            const printTypeDef = PRINT_TYPE_MAP[row.print_type];
             const isLm = row.print_type === "LM";
             const originalVal = runQty(row);
 
@@ -236,21 +234,7 @@ const ProductionRollbackModal = ({ rows, onConfirm, onCancel }) => {
               >
                 <LuFileText className={style.card_file_icon} />
                 <div className={style.card_info}>
-                  <span className={style.card_order}>{row.order_id ?? "—"}</span>
-                  <span className={style.card_customer} style={{ maxWidth: "none" }}>{row.customer_name ?? "—"}</span>
-                  {printTypeDef ? (
-                    <span className={style.card_type_tag}>
-                      <printTypeDef.Icon size={16} style={{ color: printTypeDef.color }} />
-                      {printTypeDef.label}
-                    </span>
-                  ) : row.print_type ? (
-                    <span className={style.card_type_tag}>{row.print_type}</span>
-                  ) : null}
-                  {isLm
-                    ? row.meters != null && <span className={style.card_type_badge}>{row.meters}m</span>
-                    : row.qty    != null && <span className={style.card_type_badge}>x{row.qty}</span>
-                  }
-                  {row.material && <span className={style.card_material} title={row.material}>{row.material}</span>}
+                  <span className={style.card_filename} title={row.file_id}>{row.file_id}</span>
                   {row.printer && (() => {
                     const pc = PRINTER_COLORS[row.printer] ?? { bg: "#f0f0f0", color: "#616161" };
                     return <span className={style.card_printer_badge} style={{ backgroundColor: pc.bg, color: pc.color }}>{row.printer}</span>;
