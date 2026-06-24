@@ -407,6 +407,7 @@ DB tables: `file_stages` (one row per active file), `file_stage_history` (append
 - **Go back** (per `STAGE_PREV`) — every file has `STAGE_PREV[stage]`.
 - **Rollback** — every file has `batch_path` and `stage !== SHIPPED`; opens `ProductionRollbackModal`.
 - ── separator ── then tools (always operate on the clicked row): **Reprint Label** (`printBatchLabel`, aggregates batch material + total meters from store), **Quick Preview**, **Open in Folder**, **Open in Shopify** (`openInShopify(orderId)` from fileService).
+- **Show in Orders** — also in the tools group, but **consciously operates on the selection** (exception to the "tools always operate on the clicked row" rule above). Maps the target rows (selection when the clicked row is in it, else the clicked row) → `order_id` → order key, using the SAME logic as `groupByOrder.js` (the `"__UNKNOWN_ORDER__"` literal is **hardcoded and manually kept in sync** with `groupByOrder.js:41` — NOT an exported constant; only `UNKNOWN_ORDER_LABEL` is exported). Clears `search`, switches `viewMode → "orders"`, and signals `OrderView` via `focusOrders={ keys, nonce }` (the `nonce` makes a repeat click on the same order re-fire the effect). `OrderView` expands all keys and scroll+highlights the first one (`data-order-key` on the `OrderRow` root; amber `.order_highlight`, no GSAP). Scanner forcing `viewMode → "batches"` pulls the view back to Batches on the next scan — known interaction, not a bug.
 
 ## BatchHistory — Key Behaviors
 - Call `stopBatchWatcher()` on unmount
