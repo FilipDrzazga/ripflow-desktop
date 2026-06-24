@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { createPortal } from "react-dom";
-import { HiMagnifyingGlass } from "react-icons/hi2";
+import { HiMagnifyingGlass, HiXMark } from "react-icons/hi2";
 import { LuArrowRight, LuArrowLeft, LuScissors, LuRefreshCw, LuCornerUpLeft, LuEye } from "react-icons/lu";
 import { useStore } from "../../store/useStore";
 import { STAGE_LABEL, STAGE_SHORT_LABEL, STAGE_NEXT, STAGE_PREV, PRODUCTION_STAGE, STAGE_COLOR } from "../../../shared/constants";
@@ -87,6 +87,7 @@ const Production = () => {
   const [viewMode,       setViewMode]       = useState("batches");
   const [stageFilter,    setStageFilter]    = useState("all");
   const [search,         setSearch]         = useState("");
+  const searchInputRef = useRef(null);
   const [batchFilter,    setBatchFilter]    = useState(null);
   const [workstationRole, setWorkstationRole] = useState("");
   const [isLoading,      setIsLoading]      = useState(false);
@@ -808,6 +809,7 @@ const Production = () => {
           <div className={style.search_wrapper}>
             <HiMagnifyingGlass className={style.search_icon} />
             <input
+              ref={searchInputRef}
               className={style.search_input}
               placeholder="Search order ID or customer... (Enter to scan)"
               value={search}
@@ -828,6 +830,18 @@ const Production = () => {
                 }
               }}
             />
+            {search && (
+              <button
+                className={style.search_clear}
+                type="button"
+                onClick={() => {
+                  setSearch("");
+                  searchInputRef.current?.focus();
+                }}
+              >
+                <HiXMark />
+              </button>
+            )}
           </div>
           <button type="button" className={style.refresh_btn} onClick={handleRefresh} disabled={isRefreshing}>
             <LuRefreshCw size={15} className={isRefreshing ? style.spinning_icon : ""} />
