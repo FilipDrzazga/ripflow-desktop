@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { HiMagnifyingGlass, HiXMark } from "react-icons/hi2";
-import { LuArrowRight, LuArrowLeft, LuScissors, LuRefreshCw, LuCornerUpLeft, LuEye } from "react-icons/lu";
+import { LuArrowRight, LuArrowLeft, LuScissors, LuRefreshCw, LuCornerUpLeft, LuEye, LuListTree } from "react-icons/lu";
 import { useStore } from "../../store/useStore";
 import { STAGE_LABEL, STAGE_SHORT_LABEL, STAGE_NEXT, STAGE_PREV, PRODUCTION_STAGE, STAGE_COLOR } from "../../../shared/constants";
 import {
@@ -85,6 +85,9 @@ const Production = () => {
 
   // "batches" = stage/batch lens (default); "orders" = order-centric read-only lens
   const [viewMode,       setViewMode]       = useState("batches");
+  // Focus signal for the Orders lens: { keys, nonce } — "Show in Orders" sets it so
+  // OrderView expands + scrolls to those orders. nonce makes repeat clicks re-fire.
+  const [focusOrders,    setFocusOrders]    = useState(null);
   const [stageFilter,    setStageFilter]    = useState("all");
   const [search,         setSearch]         = useState("");
   const searchInputRef = useRef(null);
@@ -747,6 +750,34 @@ const Production = () => {
       onClick: () => { setContextMenu(null); handleOpenInShopify(row.order_id); },
     });
 
+    // "Show in Orders" deliberately operates on the SELECTION (like the stage
+    // actions above), not just the clicked row — the exception to the "tools
+    // operate on the clicked row" rule. It flips to the Orders lens and asks
+    // OrderView to expand + scroll to every selected file's order.
+    if (targetRows.length > 0) {
+      // Same key logic as groupByOrder: trimmed order_id, else the unknown bucket.
+      // The "__UNKNOWN_ORDER__" literal must stay in sync with groupByOrder.js
+      // (it is a bare literal there, not an exported constant).
+      const orderKeys = [...new Set(
+        targetRows.map((r) =>
+          (typeof r?.order_id === "string" && r.order_id.trim() !== "")
+            ? r.order_id.trim()
+            : "__UNKNOWN_ORDER__",
+        ),
+      )];
+      items.push({
+        id: "show-in-orders",
+        label: "Show in Orders",
+        icon: <LuListTree size={14} />,
+        onClick: () => {
+          setContextMenu(null);
+          setSearch(""); // clear search so the order isn't filtered out in OrderView
+          setViewMode("orders");
+          setFocusOrders({ keys: orderKeys, nonce: Date.now() });
+        },
+      });
+    }
+
     return items;
   }, [contextMenu, selectedFileIds, productionStages]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -861,7 +892,7 @@ const Production = () => {
 
       <div className={style.cards_wrapper}>
         {viewMode === "orders" ? (
-          <OrderView searchQuery={search} />
+          <OrderView searchQuery={search} focusOrders={focusOrders} />
         ) : isLoading && allRows.length === 0 ? (
           <div className={style.loading_state}>
             <div className={style.loading_spinner} />

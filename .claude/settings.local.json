@@ -72,7 +72,11 @@
       "PowerShell(git *)",
       "Bash([ -f \"$DB\" ])",
       "Read(//o//**)",
-      "Bash(ELECTRON_RUN_AS_NODE=1 ./node_modules/.bin/electron __recon_q.cjs)"
+      "Bash(ELECTRON_RUN_AS_NODE=1 ./node_modules/.bin/electron __recon_q.cjs)",
+      "Bash(ELECTRON_RUN_AS_NODE=1 \"F:/ripflow-desktop/node_modules/electron/dist/electron.exe\" \"F:/ripflow-desktop/__q_tmp.js\")",
+      "Bash(rm -f \"F:/ripflow-desktop/__q_tmp.js\")",
+      "Bash(ELECTRON_RUN_AS_NODE=1 \"F:/ripflow-desktop/node_modules/electron/dist/electron.exe\" \"F:/ripflow-desktop/__q_tmp.cjs\")",
+      "Bash(rm -f \"F:/ripflow-desktop/__q_tmp.cjs\")"
     ]
   }
 }

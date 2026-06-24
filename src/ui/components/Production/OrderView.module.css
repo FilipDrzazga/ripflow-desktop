@@ -12,6 +12,14 @@
   background: var(--bg-white);
   box-shadow: var(--card-shadow);
   overflow: hidden;
+  transition: background-color 0.4s ease, box-shadow 0.4s ease;
+}
+
+/* Brief accent when an order is focused via "Show in Orders". Matches the amber
+   scan-to-card highlight used in ProductionCard for the same "found it" feel. */
+.order_highlight {
+  background: #fff8e6;
+  box-shadow: 0 0 0 2px #f5d98b;
 }
 
 .order_header {

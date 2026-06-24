@@ -1,5 +1,23 @@
 [
   {
+    "version": "1.0.10",
+    "date": "2026-06-24",
+    "changes": [
+      {
+        "text": "Production cards and the rollback window now show the full file name, the same way Batch History does - making jobs easier to read at a glance and keeping the app consistent throughout",
+        "clients": ["all"]
+      },
+      {
+        "text": "Printer and status badges (Override, Reprint, Awaiting QC) moved to the right, next to the stage pipeline - everything else is now read straight from the file name",
+        "clients": ["all"]
+      },
+      {
+        "text": "Hovering over a stage in the production pipeline now shows the date that job passed through it (when it was scanned at that step), so you can see at a glance when each stage was completed",
+        "clients": ["all"]
+      }
+    ]
+  },
+  {
     "version": "1.0.9",
     "date": "2026-06-22",
     "changes": [

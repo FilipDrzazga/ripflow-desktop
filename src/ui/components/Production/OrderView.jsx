@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useRef, useEffect } from "react";
 import { LuChevronRight, LuChevronDown, LuPackageCheck, LuFileText } from "react-icons/lu";
 import { useStore } from "../../store/useStore";
 import { STAGE_LABEL, STAGE_SHORT_LABEL, STAGE_COLOR } from "../../../shared/constants";
@@ -48,10 +48,10 @@ const OrderFileRow = ({ row }) => {
   );
 };
 
-const OrderRow = ({ order, expanded, onToggle }) => {
+const OrderRow = ({ order, expanded, onToggle, domKey, highlighted }) => {
   const Chevron = expanded ? LuChevronDown : LuChevronRight;
   return (
-    <div className={ov.order}>
+    <div className={`${ov.order} ${highlighted ? ov.order_highlight : ""}`} data-order-key={domKey}>
       <button type="button" className={ov.order_header} onClick={onToggle}>
         <Chevron className={ov.chevron} size={16} />
         <span className={`${ov.order_id} ${order.isUnknown ? ov.order_id_unknown : ""}`}>
@@ -85,14 +85,33 @@ const OrderRow = ({ order, expanded, onToggle }) => {
   );
 };
 
-const OrderView = ({ searchQuery = "" }) => {
+const OrderView = ({ searchQuery = "", focusOrders = null }) => {
   const productionStages = useStore((s) => s.productionStages);
   const [expandedIds, setExpandedIds] = useState(() => new Set());
+  const [highlightKey, setHighlightKey] = useState(null);
+  const listRef = useRef(null);
 
   const orders = useMemo(
     () => groupByOrder(Object.values(productionStages)),
     [productionStages],
   );
+
+  // "Show in Orders" focus signal: expand the targeted orders, then scroll to +
+  // briefly highlight the first one. nonce in the deps re-fires on repeat clicks.
+  useEffect(() => {
+    const keys = focusOrders?.keys;
+    if (!keys?.length) return;
+    // Defer so we don't setState synchronously in the effect body (cascading
+    // renders) and the rows are settled in the DOM before we scroll.
+    const focusTimer = setTimeout(() => {
+      setExpandedIds((prev) => new Set([...prev, ...keys]));
+      setHighlightKey(keys[0]);
+      const el = listRef.current?.querySelector(`[data-order-key="${CSS.escape(keys[0])}"]`);
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 0);
+    const clearTimer = setTimeout(() => setHighlightKey(null), 1500);
+    return () => { clearTimeout(focusTimer); clearTimeout(clearTimer); };
+  }, [focusOrders?.nonce]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const filtered = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
@@ -121,13 +140,15 @@ const OrderView = ({ searchQuery = "" }) => {
   }
 
   return (
-    <div className={ov.list}>
+    <div className={ov.list} ref={listRef}>
       {filtered.map((order) => {
         const key = order.isUnknown ? "__UNKNOWN_ORDER__" : order.orderId;
         return (
           <OrderRow
             key={key}
             order={order}
+            domKey={key}
+            highlighted={key === highlightKey}
             expanded={expandedIds.has(key)}
             onToggle={() => toggle(key)}
           />
