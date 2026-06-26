@@ -10,6 +10,7 @@ import { getRollbackReasonsForFiles as getRollbackReasonsForFilesApi } from "../
 import { getRollbackDefinitions as getRollbackDefinitionsApi } from "../services/reasonDefsService";
 import { getFabricGlobals as getFabricGlobalsApi, getFabrics as getFabricsApi } from "../services/fabricService";
 import { getStagesByBatch as getStagesByBatchApi, getAllStages as getAllStagesApi, getStagesAfter as getStagesAfterApi, getAllStageHistory as getAllStageHistoryApi, clearAllProductionStages as clearAllProductionStagesApi } from "../services/productionService";
+import { scanRipErrors as scanRipErrorsApi } from "../services/ripErrorService";
 
 const applySort = (groups, sortOrder) => {
   if (!sortOrder) return groups;
@@ -267,6 +268,23 @@ export const useStore = create(
         delete nextHistory[fileId];
         return { productionStages: next, stageHistory: nextHistory };
       });
+    },
+
+    // RIP errors (open only), keyed file_id → error row. Populated by loadRipErrors, which
+    // triggers a main-process scan of WORKFLOW_ERROR/. No UI/polling wired yet (Phase 2/3).
+    ripErrors: {},
+    loadRipErrors: async () => {
+      try {
+        const res = await scanRipErrorsApi();
+        if (res?.success && Array.isArray(res.data)) {
+          set({ ripErrors: Object.fromEntries(res.data.map((r) => [r.file_id, r])) });
+          return { success: true };
+        }
+        return { success: false };
+      } catch (err) {
+        console.error("[store] loadRipErrors failed:", err);
+        return { success: false };
+      }
     },
 
     loadRollbackReasonsForInbox: async (fileIds) => {

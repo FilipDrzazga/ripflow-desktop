@@ -201,6 +201,11 @@ const api = Object.freeze({
     printBatch: (data) => ipcRenderer.invoke("label:printBatch", data),
   }),
 
+  ripErrors: Object.freeze({
+    scan: () => ipcRenderer.invoke("rip-errors:scan"),
+    get: () => ipcRenderer.invoke("rip-errors:get"),
+  }),
+
   update: Object.freeze({
     check: () => ipcRenderer.invoke("update:check"),
     install: () => ipcRenderer.invoke("update:install"),

@@ -36,6 +36,8 @@ let stmtAdvanceFileStageGuarded = null;
 let stmtSetSewingSentGuarded = null;
 let stmtSetSewingReceivedGuarded = null;
 let stmtGetFileStagesAfter = null;
+let stmtInsertRipError = null;
+let stmtGetOpenRipErrors = null;
 
 const PRINTER_RE = /-(DGEN|YOKO|YUMI)$/i;
 
@@ -350,6 +352,29 @@ export const initDb = () => {
       )
     `);
     db.exec("CREATE INDEX IF NOT EXISTS idx_reprint_requests_file ON reprint_requests(file_id)");
+
+    // ── rip_errors ─────────────────────────────────────────────────────────────
+    // One row per PrintFactory error xml (job_guid = dedup key). file_id = stem of the
+    // affected pdf. resolved_at NULL = open (resolve logic reserved for a later phase).
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS rip_errors (
+        job_guid      TEXT PRIMARY KEY,
+        file_id       TEXT NOT NULL,
+        batch_id      TEXT,
+        nesting_group TEXT,
+        failed_node   TEXT,
+        error_message TEXT,
+        document_id   TEXT,
+        detected_at   TEXT NOT NULL,
+        created_at    TEXT,
+        resolved_at   TEXT
+      )
+    `);
+    db.exec("CREATE INDEX IF NOT EXISTS idx_rip_errors_file ON rip_errors(file_id)");
+    stmtInsertRipError = db.prepare(
+      "INSERT OR IGNORE INTO rip_errors (job_guid, file_id, batch_id, nesting_group, failed_node, error_message, document_id, detected_at, created_at, resolved_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+    );
+    stmtGetOpenRipErrors = db.prepare("SELECT * FROM rip_errors WHERE resolved_at IS NULL ORDER BY detected_at DESC");
   } catch (err) {
     console.error("[db] initDb failed:", err);
     db = null;
@@ -383,6 +408,8 @@ export const initDb = () => {
     stmtSetSewingSentGuarded = null;
     stmtSetSewingReceivedGuarded = null;
     stmtGetFileStagesAfter = null;
+    stmtInsertRipError = null;
+    stmtGetOpenRipErrors = null;
   }
 };
 
@@ -962,6 +989,48 @@ export const getReprintRequests = (since) => {
 
 export const clearAllReprintRequests = () =>
   runWrite("clearAllReprintRequests", () => db.prepare("DELETE FROM reprint_requests").run());
+
+// ── rip_errors ─────────────────────────────────────────────────────────────
+
+// INSERT OR IGNORE dedups on job_guid — a re-scanned xml is a no-op.
+export const insertRipError = (row) =>
+  runWrite("insertRipError", () => {
+    stmtInsertRipError.run(
+      row.jobGuid,
+      row.fileId,
+      row.batchId ?? null,
+      row.nestingGroup ?? null,
+      row.failedNode ?? null,
+      row.errorMessage ?? null,
+      row.documentId ?? null,
+      row.detectedAt ?? new Date().toISOString(),
+      row.createdAt ?? null,
+      null,
+    );
+  });
+
+export const getOpenRipErrors = () => {
+  if (!stmtGetOpenRipErrors) return [];
+  try {
+    return stmtGetOpenRipErrors.all();
+  } catch (err) {
+    console.error("[db] getOpenRipErrors failed:", err);
+    return [];
+  }
+};
+
+export const getRipErrorsByFileIds = (fileIds) => {
+  if (!db || !fileIds.length) return [];
+  try {
+    const placeholders = fileIds.map(() => "?").join(",");
+    return db
+      .prepare(`SELECT * FROM rip_errors WHERE file_id IN (${placeholders}) AND resolved_at IS NULL`)
+      .all(...fileIds);
+  } catch (err) {
+    console.error("[db] getRipErrorsByFileIds failed:", err);
+    return [];
+  }
+};
 
 export const getRollbackDetails = (since) => {
   if (!db) return [];

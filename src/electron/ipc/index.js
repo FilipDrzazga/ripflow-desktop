@@ -11,6 +11,7 @@ import { sweepOrphanTemps } from "./createBatch.js";
 import { rollbackBatchFromHistory, rollbackFileFromHistory, regenerateXmlForBatch, deleteBatchFolder } from "./batchHistoryHandlers.js";
 import { registerCustomOrderHandlers } from "./customOrderHandlers.js";
 import { registerProductionHandlers } from "./productionHandlers.js";
+import { registerRipErrorHandlers } from "./ripErrorHandlers.js";
 import { getStorageRootPath } from "../helpers/getRootPath.js";
 import { assertStorageFilePath } from "../helpers/validateStoragePath.js";
 import { parsePrintFileName } from "../helpers/parseFileName.js";
@@ -166,6 +167,7 @@ export function registerIpcHandlers() {
   loadFabricCache();
   registerCustomOrderHandlers();
   registerProductionHandlers();
+  registerRipErrorHandlers();
   cleanupShippedStages(getSettings().shippedRetentionDays ?? 30);
 
   sweepOrphanTemps().catch(() => {});
