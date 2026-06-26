@@ -319,8 +319,6 @@ const Production = () => {
     });
   }, []);
 
-  const clearProductionSelection = useCallback(() => setSelectedFileIds(new Set()), []);
-
   const [groupingEnabled, setGroupingEnabled] = useState(true);
 
   const handleSelectBatch = useCallback((rows) => {
@@ -380,7 +378,13 @@ const Production = () => {
         count++;
       }
     }
-    setSelectedFileIds(new Set());
+    // Keep the selection on files that survive in the store (advanced files stay
+    // selected so the operator can act on them again); drop any that vanished.
+    setSelectedFileIds((prev) => {
+      const next = new Set();
+      for (const id of prev) if (productionStages[id]) next.add(id);
+      return next;
+    });
     if (count > 0) notify({ type: "Success", title: `${count} file${count > 1 ? "s" : ""} moved`, message: "Moved to next stage." });
   };
 
@@ -398,7 +402,12 @@ const Production = () => {
         count++;
       }
     }
-    setSelectedFileIds(new Set());
+    // Keep the selection on files that survive in the store; drop any that vanished.
+    setSelectedFileIds((prev) => {
+      const next = new Set();
+      for (const id of prev) if (productionStages[id]) next.add(id);
+      return next;
+    });
     if (count > 0) notify({ type: "Success", title: "Received from sewing", message: `${count} file(s) received.` });
   };
 
@@ -966,7 +975,7 @@ const Production = () => {
           id="production-context-menu"
           anchorX={contextMenu.x}
           anchorY={contextMenu.y}
-          onClose={() => { setContextMenu(null); clearProductionSelection(); }}
+          onClose={() => setContextMenu(null)}
           options={contextMenuOptions}
         />,
         document.body,
