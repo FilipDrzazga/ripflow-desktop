@@ -1,18 +1,15 @@
 import { ipcMain } from "electron";
 import fs from "fs";
 import path from "path";
-import { getStorageRootPath } from "../helpers/getRootPath.js";
+import { getRipErrorRootPath } from "../helpers/getRootPath.js";
 import { parseRipErrorXml } from "../helpers/parseRipErrorXml.js";
 import { insertRipError, getOpenRipErrors } from "../helpers/db.js";
 
-// WORKFLOW_ERROR/ is a sibling of PRINTED/ under storagePath (derived, never hardcoded).
-const getWorkflowErrorPath = () => path.join(getStorageRootPath(), "WORKFLOW_ERROR");
-
-// Scan WORKFLOW_ERROR/, parse each *.xml (ignore the paired .tif), persist any error rows
-// (INSERT OR IGNORE dedups already-seen job_guid), then return all open errors. One bad xml
-// can't sink the scan — each file is isolated in its own try/catch.
+// Scan AUTOMATION_WORKFLOW_ERROR/, parse each *.xml (ignore the paired .tif), persist any
+// error rows (INSERT OR IGNORE dedups the (job_guid, file_id) pair), then return all open
+// errors. One bad xml can't sink the scan — each file is isolated in its own try/catch.
 export const scanRipErrors = async () => {
-  const dir = getWorkflowErrorPath();
+  const dir = getRipErrorRootPath();
 
   let entries;
   try {
