@@ -17,6 +17,7 @@
 | Icons | React Icons 5.5.0 (Lucide `Lu*`, hi2 `Hi*`, fi `Fi*`, pi `Pi*`) |
 | PDF copy | pdf-lib 1.17.1 (page 1 only) |
 | PDF preview | pdfjs-dist **v4 only** — v5 breaks in Electron 40 Chromium |
+| XML parse | fast-xml-parser 5.x — main process only (RIP-error ingest); generation stays hand-rolled string templates |
 | Settings | electron-store → `%APPDATA%\ripflow-desktop\config.json` — **machine-specific only** |
 | DB | better-sqlite3 → `ripflow.db` in **storagePath** (NOT userData) — **shared across all PCs** |
 
@@ -41,6 +42,8 @@ src/electron/
     ipcError.js            # toIpcError(err, stage, title)
     validateStoragePath.js # assertStorageFilePath — validate batchPath/filePath before file ops
     getFileAgeInDays.js    # uses Math.floor (not ceil) — 1h-old file = 0 days, not 1
+    parseRipErrorXml.js    # fast-xml-parser; PrintFactory error XML → array of error rows
+                           # main process only; Shape A (1 row) vs Shape B (N rows) — see RIP Errors section
   ipc/
     index.js               # Registers all handlers; calls initDb() then loadFabricCache()
                            # Runs one-time migration: reasonDefinitions electron-store → DB
@@ -51,6 +54,8 @@ src/electron/
                            #   readPrintedDays (skeletons, enumeration only), readPrintedDay (one day),
                            #   readSingleBatch (unchanged), buildDayGroup (shared per-day mapping)
     createXML.js           # isVelvet/isLinen/isBlossom read from fabricCache (fallback: string-contains)
+    ripErrorHandlers.js    # scanRipErrors(): reads {storagePath}\WORKFLOW_ERROR, parses *.xml → rip_errors
+                           # IPC rip-errors:scan / rip-errors:get
 
 src/ui/
   store/useStore.jsx       # Zustand store — central app state
@@ -70,6 +75,7 @@ src/ui/
     productionService.js   # getAllStages, getStagesAfter, getStagesByBatch, advanceStage,
                            #   setSewingSent, setSewingReceived, printBatchLabel,
                            #   getAllStageHistory, clearAllProductionStages
+    ripErrorService.js     # scanRipErrors, getRipErrors — withTimeout wrappers
   constants/
     printerColors.js       # PRINTER_COLORS: { DGEN, YOKO, YUMI } → { bg, color }
     rollbackReasons.js     # ROLLBACK_REASONS: static fallback only — runtime data comes from DB
@@ -178,7 +184,7 @@ Derived paths:
 ```
 
 ## SQLite (`helpers/db.js`)
-Tables: `logs`, `held_files`, `rollback_reasons`, `custom_order_history`, `reason_definitions`, `fabric_globals`, `fabrics`, `file_stages`, `file_stage_history`, `reprint_requests`
+Tables: `logs`, `held_files`, `rollback_reasons`, `custom_order_history`, `reason_definitions`, `fabric_globals`, `fabrics`, `file_stages`, `file_stage_history`, `reprint_requests`, `rip_errors`
 
 - `rollback_reasons.file_id = null` → whole batch reason; `= filename-without-ext` → single file
 - `logs.workstation` can be NULL in old records — render conditionally
@@ -188,10 +194,13 @@ Tables: `logs`, `held_files`, `rollback_reasons`, `custom_order_history`, `reaso
 - `fabric_globals` and `fabrics` are seeded from `defaultFabrics.js` on first run if tables empty
 - `fabrics` has an `alias` column (TEXT, nullable) — short path-safe name for the PRINTED folder / XML; empty/NULL alias = full `name` is used
 - `reason_definitions` is populated via one-time migration from electron-store on first run
+- `rip_errors`: one row per ERRORED FILE (not per xml). `UNIQUE(job_guid, file_id)` — dedup is per (xml, file); a pre-split failure shares one `job_guid` across N files → N rows. Index: `rip_errors(file_id)`
 
-**All DB functions:** `initDb`, `insertLog`, `getAllLogs`, `clearAllLogs`, `holdFile`, `unholdFile`, `getHeldFiles`, `insertRollbackReason`, `getRollbackReasonsByBatch`, `getRollbackReasonsByFile`, `insertCustomOrder`, `getAllCustomOrders`, `clearCustomOrders`, `getReasonDefinitions`, `setReasonDefinitions`, `migrateReasonDefinitions`, `getFabricGlobals`, `setFabricGlobals`, `getAllFabrics`, `saveFabric`, `deleteFabric`, `setAllFabrics`, `ensureFabricAliasColumn` (idempotent `ALTER TABLE fabrics ADD COLUMN alias` in `initDb`, wrapped in try/catch — safe when several PCs start against the shared DB), `insertReprintRequest`, `getOpenReprintRequests`, `getOpenReprintRequestsByFileIds`, `fulfillReprintRequests`, `getReprintRequests`, `clearAllReprintRequests`, `clearAllRollbackReasons`, `getRollbackStats`, `getRollbackDetails`, `getLatestRollbackReasonsForFileIds`, `clearAllFileStages`, `backupDb`, `cleanupShippedStages`
+**All DB functions:** `initDb`, `insertLog`, `getAllLogs`, `clearAllLogs`, `holdFile`, `unholdFile`, `getHeldFiles`, `insertRollbackReason`, `getRollbackReasonsByBatch`, `getRollbackReasonsByFile`, `insertCustomOrder`, `getAllCustomOrders`, `clearCustomOrders`, `getReasonDefinitions`, `setReasonDefinitions`, `migrateReasonDefinitions`, `getFabricGlobals`, `setFabricGlobals`, `getAllFabrics`, `saveFabric`, `deleteFabric`, `setAllFabrics`, `ensureFabricAliasColumn` (idempotent `ALTER TABLE fabrics ADD COLUMN alias` in `initDb`, wrapped in try/catch — safe when several PCs start against the shared DB), `insertReprintRequest`, `getOpenReprintRequests`, `getOpenReprintRequestsByFileIds`, `fulfillReprintRequests`, `getReprintRequests`, `clearAllReprintRequests`, `clearAllRollbackReasons`, `getRollbackStats`, `getRollbackDetails`, `getLatestRollbackReasonsForFileIds`, `clearAllFileStages`, `backupDb`, `cleanupShippedStages`, `insertRipError` (INSERT OR IGNORE), `getOpenRipErrors` (`resolved_at IS NULL`, ORDER BY `detected_at DESC`), `getRipErrorsByFileIds`
 
 **`reprint_requests`** (partial reprint tracking): one row per rollback-from-Production event. `qty_affected` REAL — meters for LM, piece count otherwise; `qty_original` = full qty at rollback time. Open = `fulfilled_at IS NULL AND superseded_at IS NULL`. A new rollback of the same file **supersedes** prior open rows (history kept for analytics). `stage:advance` to `packed` calls `fulfillReprintRequests(fileId)`. Index: `reprint_requests(file_id)`. When a Production rollback registers a qty, `rollback_reasons.meters` is estimated from **qty_affected** (LM: meters→height; others: pieces→qty), so Analytics waste (byFabric, Details) is partial-aware with no Analytics-side changes; BatchHistory rollbacks keep full-file meters. `readFolders` attaches `reprintQty`/`reprintQtyOriginal` to inbox file objects from open requests (matched by filename stem); `readSingleBatch` (BatchHistory) **prefers the persisted provenance in `_batch_info`** for reprint, falling back to open requests only when `_batch_info` has none → persistent blue "Reprint" badge in DataList and BatchHistory `FileRow`. **`selectedOverrides` holds ONLY manual operator overrides — it is no longer seeded from reprint** (the old seeding loop in `refreshFiles` was removed). At submit, `fileService.submitBatch` computes `effectiveQty = manualOverride ?? reprintQty ?? parsed`, and only the effective amount drives the printed output (XML `<Copies>`/`<Height>`) and the `_batch_info.json` provenance — `createXML.js` still needs no reprint logic. The Override and Reprint badges are independent and may coexist (Override from `selectedOverrides`, Reprint from open requests / `_batch_info`); the old masking that hid the Override badge while it equalled `reprintQty` was removed.
+
+**`rip_errors`** (RIP-error ingest — Phase 1, no UI yet): one row per **errored file**. Columns: `id` TEXT PK (`crypto.randomUUID`), `job_guid` TEXT NOT NULL, `file_id` TEXT NOT NULL (filename stem, matches `file_stages.file_id`), `batch_id`, `nesting_group`, `failed_node`, `error_message`, `document_id` (XWD, nullable backup key), `detected_at` (ISO ingest time), `created_at` (`<Created>` from xml, nullable), `resolved_at` (NULL = open; **reserved** — rollback auto-resolve lands in a later phase, no resolve logic yet). `UNIQUE(job_guid, file_id)` + `INSERT OR IGNORE` → a pre-split failure shares one `job_guid` across N files (N rows), and re-scans don't duplicate. The **same `file_id` may hold multiple open errors** (different `job_guid` = distinct events); `getOpenRipErrors` orders `detected_at DESC` and the store keeps only the most recent per file. See **RIP Errors** section.
 
 ## Fabric Config (`fabricCache.js`)
 In-memory cache loaded at startup (`loadFabricCache()` called in `ipc/index.js` after `initDb()`).
@@ -299,6 +308,10 @@ stage.clearAll()                                       // → { success }
 // Label printing
 label.printBatch({ batchName, totalMeters }) // → { success } — labelPrinter.js uses only batchName + totalMeters
 
+// RIP errors — use ripErrorService, never window.api.ripErrors directly
+ripErrors.scan() // → { success, data: ripErrorRow[] } ("rip-errors:scan") — scan WORKFLOW_ERROR/, parse + persist, return open errors
+ripErrors.get()  // → { success, data: ripErrorRow[] } ("rip-errors:get")  — open errors only, no scan
+
 // System
 getAppVersion()  // → version string ("app:getVersion")
 backupDb()       // → { success, path, skipped } ("db:backup") — manual; also auto-runs on each startup
@@ -323,6 +336,7 @@ update.onAvailable(cb) / update.onProgress(cb) / update.onReady(cb) / update.onN
   fabricConfig: { globals: {...}, fabrics: [...] } | null,  // loaded from DB on startup
   productionStages: {},         // fileId → stageRow ({ file_id, stage, batch_path, order_id, customer_name, ... })
   stageHistory: {},             // fileId → [{ stage, entered_at }] — append-only per transition
+  ripErrors: {},                // fileId → ripErrorRow (open only; most-recent wins per file)
 }
 ```
 
@@ -336,6 +350,9 @@ update.onAvailable(cb) / update.onProgress(cb) / update.onReady(cb) / update.onN
 - `addStageHistoryEntry(fileId, stage, enteredAt)` — optimistic append
 - `clearAllStages()` — dev/admin reset; clears both `productionStages` and `stageHistory`
 Key: `getLastBatch(batchDays)` exported helper. `applyFilters()` internal helper.
+
+**RIP-error store action:**
+- `loadRipErrors()` → `{ success: bool }` — calls `ripErrorService.scanRipErrors()`, maps rows into `ripErrors` keyed `fileId → row` (open only). DECISION: one row per file — most recent wins (DB may hold multiple open errors per file; the store/badge surfaces only the latest). No polling interval and no component wiring yet (deferred to the UI phase).
 
 **Startup load order (App.jsx):**
 ```js
@@ -446,6 +463,22 @@ The full PRINTED scan (35 days / ~580 batches → ~2050 SMB roundtrips) used to 
 - `new-file` / `removed` skip days where `loaded !== true` (skeletons untouched — ends the global `totalFiles` zeroing).
 - `new-batch` on an existing skeleton is a no-op (content arrives on expand); on a loaded day it merges as before; a watcher-created new day is built with `dayFolder` + `loaded:true`.
 - **Degraded mode**: the fallback interval calls `reloadLoadedDays()` (re-reads only `loaded:true` days via `readPrintedDay` → merge), NOT the full `readPrintedFolder`. `dayGroupsRef` holds the current `dayGroups` so the interval reads a fresh list (stale-closure-safe).
+
+## RIP Errors (Phase 1 — ingest only, no UI)
+PrintFactory drops a per-failed-job pair into `{storagePath}\WORKFLOW_ERROR\`: `<name>.tif` (ignored) + `<name>.xml` (parsed). Because the workflow has a Split node (`SplitOn=Document`), each failed document gets its own xml with its own `<JobGUID>`.
+
+**Parser (`parseRipErrorXml.js`)** — `fast-xml-parser` (`attributeNamePrefix:"@_"`, `ignoreAttributes:false`, entity-decoding on). Returns an **ARRAY** of error rows; never throws (missing → null, malformed/non-error → `[]`, logged).
+- **Detection:** any node `WorkflowResult="Fail"` OR `Job.WFState` has `@_Error`; else `[]`.
+- **errorMessage** = `WFState@Error` (fallback: the Journal entry carrying `@_Error`). **failedNode** = that Journal entry's `@_Process` (Shape B → `"Hotfolder"`).
+- **Two shapes:**
+  - **Shape A** (failure AFTER split, common): a job-level `<Documents>` (`parsed.Job.Documents`, distinct from the RipFlowJob one) is **present** → **ONE** row; failed file = stem of job-level `<Name>`.
+  - **Shape B** (failure BEFORE split, e.g. input missing): **no** job-level `<Documents>` → one row per `<Document>` under `parsed.Job.ProcessNodes.XML.RipFlowJob.Documents`.
+- **Real-structure notes (don't re-derive wrongly):** the true Job root is `parsed.Job`; `RipFlowJob` is at `Job.ProcessNodes.XML.RipFlowJob` (**NOT** a direct child of `Job`). `documentId` (XWD) is taken from the filename stem (regex `/XWD[0-9a-f]+/i`), **NOT** from `UserData.DocumentId` (absent/inconsistent across PF exports); it's a nullable backup key.
+- **KNOWN LIMIT:** the Shape A/B discriminator rests solely on presence of a job-level `<Documents>`. Verified on three real shapes only (Layout-fail / File-not-found / OK). Other failing nodes (Split, Nester, Resize, StepRepeat) are **NOT** yet verified — a pre-split failure that still emits a job-level `<Documents>` would be misread as Shape A. Revisit if a real export contradicts this.
+
+**Scan (`ripErrorHandlers.js` `scanRipErrors()`)** — reads `{storagePath}\WORKFLOW_ERROR` (via `getStorageRootPath`, sibling of `PRINTED/`, never hardcoded), filters `*.xml` only (ignores the `.tif`), `parseRipErrorXml` + `insertRipError` per row, per-file try/catch (one bad xml can't sink the scan), missing folder → no-op `{success:true,data:[]}`, returns `getOpenRipErrors()`. IPC `rip-errors:scan` / `rip-errors:get` → `window.api.ripErrors` → `ripErrorService`. Store: `loadRipErrors()` (see store section). No polling/UI yet.
+
+**PrintFactory side (operational context):** a single Export node wired to every workflow port writes the per-failed-job `<name>.tif` + `<name>.xml` into `WORKFLOW_ERROR/`. The Export uses `Content=Layout` + Export XML (Document/Original was abandoned — it couldn't access the `PRINTED/` pdf). RipFlow reads only the `*.xml`. **TIFF cleanup is out of scope for RipFlow** — a separate scheduled task should prune old TIFFs; RipFlow never deletes from the shared share.
 
 ## Rollback Reasons
 14 codes: `MISSING_JOB`, `PRINTER_LINES`, `WRONG_SIZE`, `WRONG_MATERIAL`, `FABRIC_FAULT`, `PRESSING_FAULT`, `FABRIC_CREASE`, `GHOSTING`, `LINT_MARK`, `WRONG_COLOURS`, `AUTOMATION_FAULT`, `RERUN`, `ARTWORK_ISSUE`, `OTHER`
