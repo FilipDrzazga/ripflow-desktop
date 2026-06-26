@@ -354,11 +354,14 @@ export const initDb = () => {
     db.exec("CREATE INDEX IF NOT EXISTS idx_reprint_requests_file ON reprint_requests(file_id)");
 
     // ── rip_errors ─────────────────────────────────────────────────────────────
-    // One row per PrintFactory error xml (job_guid = dedup key). file_id = stem of the
-    // affected pdf. resolved_at NULL = open (resolve logic reserved for a later phase).
+    // One row per ERRORED FILE. A pre-split failure (Shape B) affecting N files yields N
+    // rows that share one job_guid, so the PK is a synthetic id and dedup is on the
+    // (job_guid, file_id) pair. file_id = stem of the affected pdf. resolved_at NULL = open
+    // (resolve logic reserved for a later phase).
     db.exec(`
       CREATE TABLE IF NOT EXISTS rip_errors (
-        job_guid      TEXT PRIMARY KEY,
+        id            TEXT PRIMARY KEY,
+        job_guid      TEXT NOT NULL,
         file_id       TEXT NOT NULL,
         batch_id      TEXT,
         nesting_group TEXT,
@@ -367,12 +370,13 @@ export const initDb = () => {
         document_id   TEXT,
         detected_at   TEXT NOT NULL,
         created_at    TEXT,
-        resolved_at   TEXT
+        resolved_at   TEXT,
+        UNIQUE(job_guid, file_id)
       )
     `);
     db.exec("CREATE INDEX IF NOT EXISTS idx_rip_errors_file ON rip_errors(file_id)");
     stmtInsertRipError = db.prepare(
-      "INSERT OR IGNORE INTO rip_errors (job_guid, file_id, batch_id, nesting_group, failed_node, error_message, document_id, detected_at, created_at, resolved_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+      "INSERT OR IGNORE INTO rip_errors (id, job_guid, file_id, batch_id, nesting_group, failed_node, error_message, document_id, detected_at, created_at, resolved_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
     );
     stmtGetOpenRipErrors = db.prepare("SELECT * FROM rip_errors WHERE resolved_at IS NULL ORDER BY detected_at DESC");
   } catch (err) {
@@ -992,10 +996,13 @@ export const clearAllReprintRequests = () =>
 
 // ── rip_errors ─────────────────────────────────────────────────────────────
 
-// INSERT OR IGNORE dedups on job_guid — a re-scanned xml is a no-op.
+// INSERT OR IGNORE dedups on the UNIQUE(job_guid, file_id) pair — a re-scanned xml (and
+// each file within a pre-split failure) inserts at most once. The synthetic id matches the
+// reprint_requests convention (crypto.randomUUID).
 export const insertRipError = (row) =>
   runWrite("insertRipError", () => {
     stmtInsertRipError.run(
+      crypto.randomUUID(),
       row.jobGuid,
       row.fileId,
       row.batchId ?? null,
