@@ -64,7 +64,7 @@ const FileRow = ({ file, batch, stageRow, ripError, activeContextFilePath, onCon
         {ripError && (
           <span className={style.rip_error_badge} title={ripError.error_message || undefined}>
             <LuTriangleAlert size={11} />
-            Błąd RIP
+            RIP Error
           </span>
         )}
       </span>

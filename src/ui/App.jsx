@@ -70,7 +70,7 @@ const App = () => {
     return () => clearTimeout(safetyTimerRef.current);
   }, [refreshFiles, refreshBatchDays, loadLogsFromDb, loadHeldFiles, loadReasonDefinitions, loadFabricConfig, loadRipErrors, finishStartup, checkDbDegraded]);
 
-  // Global RIP-error poll — keeps the "Błąd RIP" badge fresh in BOTH Production and
+  // Global RIP-error poll — keeps the "RIP Error" badge fresh in BOTH Production and
   // BatchHistory for the whole session, independent of activeView. Mirrors Production's
   // setInterval/clear idiom. (Initial load fires in the startup effect above.)
   useEffect(() => {

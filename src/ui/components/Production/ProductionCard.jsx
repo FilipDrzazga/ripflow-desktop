@@ -110,7 +110,7 @@ const ProductionCard = ({ stage: row, history = [], highlighted, selected, await
         {ripError && (
           <span className={style.card_type_badge_rip_error} title={ripError.error_message || undefined}>
             <LuTriangleAlert size={12} />
-            Błąd RIP
+            RIP Error
           </span>
         )}
         {row.print_type === "LM"

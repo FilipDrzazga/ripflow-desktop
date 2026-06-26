@@ -37,6 +37,14 @@ const BatchRow = ({
     ? (batch.rollbackReasons?.find((r) => r.file_id === null) ?? batch.rollbackReasons?.[0] ?? null)
     : null;
 
+  // Distinct errored files in THIS batch (this batch's files ∩ open ripErrors). Same stem
+  // derivation + same store source FileRow uses, so this equals the number of red "RIP Error"
+  // file badges shown once the batch is expanded.
+  const ripErrorCount = batch.files.reduce(
+    (n, f) => n + (ripErrors[f.name.replace(/\.[^.]+$/, "")] ? 1 : 0),
+    0,
+  );
+
   return (
     <div
       className={`${style.batch_group} ${isRolledBack ? style.batch_rolled_back : ""}`}
@@ -55,6 +63,11 @@ const BatchRow = ({
           </span>
           {rolledBackCount > 0 && (
             <span className={style.rolled_back_badge}>{rolledBackCount} rolled back</span>
+          )}
+          {ripErrorCount > 0 && (
+            <span className={style.rip_error_count_badge}>
+              {ripErrorCount} RIP Error{ripErrorCount === 1 ? "" : "s"}
+            </span>
           )}
           {batchLevelReason && (
             <span className={style.reason_badge}>{batchLevelReason.reason_label}</span>

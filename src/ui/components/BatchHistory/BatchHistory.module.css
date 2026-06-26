@@ -418,6 +418,21 @@
   font-style: italic;
 }
 
+/* Batch-header count of files with an open RIP error. Display-only (no popover yet). */
+.rip_error_count_badge {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 600;
+  color: #dc2626;
+  background-color: #fef2f2;
+  border: 1px solid rgba(220, 38, 38, 0.4);
+  border-radius: 7px;
+  padding: 3px 9px;
+  white-space: nowrap;
+}
+
 .file_count {
   flex-shrink: 0;
   font-size: 13px;
