@@ -84,6 +84,7 @@ const Production = () => {
   const addStageHistoryEntry = useStore((s) => s.addStageHistoryEntry);
   const stageHistory         = useStore((s) => s.stageHistory);
   const ripErrors            = useStore((s) => s.ripErrors);
+  const removeRipError       = useStore((s) => s.removeRipError);
 
   // "batches" = stage/batch lens (default); "orders" = order-centric read-only lens
   const [viewMode,       setViewMode]       = useState("batches");
@@ -236,6 +237,7 @@ const Production = () => {
         });
         if (res?.success) {
           removeStageFromStore(fileId);
+          removeRipError(fileId);
           successCount++;
         } else {
           failCount++;

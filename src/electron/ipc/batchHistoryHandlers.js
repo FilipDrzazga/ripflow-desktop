@@ -7,7 +7,7 @@ import { parsePrintFileName } from "../helpers/parseFileName.js";
 import { getMaterialType } from "../helpers/getMaterialType.js";
 import { submitBatchToPrintFactory } from "./createXML.js";
 import { parseBatchFolderName } from "./readPrintedFolder.js";
-import { insertRollbackReason, insertReprintRequest, clearFileStagesByBatch, clearFileStage } from "../helpers/db.js";
+import { insertRollbackReason, insertReprintRequest, clearFileStagesByBatch, clearFileStage, resolveRipErrorsByFile } from "../helpers/db.js";
 import { getSettings } from "../helpers/getSettings.js";
 import { GROUP_NAME_OVERRIDES_REVERSE } from "../helpers/createBatchIds.js";
 import { getCachedFabrics, getCachedGlobals } from "../helpers/fabricCache.js";
@@ -100,6 +100,11 @@ export const rollbackBatchFromHistory = async ({ batchPath, reason } = {}) => {
     result.success = true;
     clearFileStagesByBatch(validatedBatchPath);
 
+    // Resolve every rolled-back file's open RIP errors (same stem key as clearFileStage uses).
+    for (const pdfName of pdfNames) {
+      resolveRipErrorsByFile(pdfName.replace(/\.[^.]+$/, ""));
+    }
+
     if (reason) {
       const workstation = getSettings().workstationName;
       for (const pdfName of pdfNames) {
@@ -185,6 +190,8 @@ export const rollbackFileFromHistory = async ({ filePath, batchPath, reason, rep
     const fileId = path.basename(validatedFilePath, path.extname(validatedFilePath));
     result.success = true;
     clearFileStage(fileId);
+    // Returning the file to the inbox resolves all of its open RIP errors (same stem key).
+    resolveRipErrorsByFile(fileId);
 
     const parsed = parsePrintFileName(path.basename(validatedFilePath));
 

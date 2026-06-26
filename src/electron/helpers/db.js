@@ -1039,6 +1039,15 @@ export const getRipErrorsByFileIds = (fileIds) => {
   }
 };
 
+// Rollback is the only resolve path: returning a file to the inbox makes ALL of its open
+// errors stale, so resolve every open row for the file_id (not just the latest).
+export const resolveRipErrorsByFile = (fileId) =>
+  runWrite("resolveRipErrorsByFile", () =>
+    db.prepare(
+      "UPDATE rip_errors SET resolved_at = ? WHERE file_id = ? AND resolved_at IS NULL",
+    ).run(new Date().toISOString(), fileId),
+  );
+
 export const getRollbackDetails = (since) => {
   if (!db) return [];
   try {

@@ -286,6 +286,28 @@ export const useStore = create(
         return { success: false };
       }
     },
+    // Optimistic clear after a rollback resolves the file's errors (badge gone at once;
+    // the next loadRipErrors poll confirms). Mirrors removeStageFromStore.
+    removeRipError: (fileId) => {
+      set((state) => {
+        if (!(fileId in state.ripErrors)) return state;
+        const next = { ...state.ripErrors };
+        delete next[fileId];
+        return { ripErrors: next };
+      });
+    },
+    clearRipErrorsForFiles: (fileIds) => {
+      set((state) => {
+        const ids = new Set(fileIds);
+        let changed = false;
+        const next = {};
+        for (const [key, value] of Object.entries(state.ripErrors)) {
+          if (ids.has(key)) { changed = true; continue; }
+          next[key] = value;
+        }
+        return changed ? { ripErrors: next } : state;
+      });
+    },
 
     loadRollbackReasonsForInbox: async (fileIds) => {
       if (!fileIds.length) { set({ rollbackReasons: new Map() }); return; }

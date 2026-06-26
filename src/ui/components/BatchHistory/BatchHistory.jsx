@@ -59,6 +59,8 @@ const BatchHistory = () => {
   const reasonDefinitions = useStore((state) => state.reasonDefinitions);
   const refreshFiles = useStore((state) => state.refreshFiles);
   const removeStageFromStore = useStore((state) => state.removeStageFromStore);
+  const removeRipError = useStore((state) => state.removeRipError);
+  const clearRipErrorsForFiles = useStore((state) => state.clearRipErrorsForFiles);
   const [dayGroups, setDayGroups] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -227,7 +229,9 @@ const BatchHistory = () => {
         );
         succeededFiles.forEach(({ filePath: fp }) => {
           const fn = fp.replace(/\\/g, "/").split("/").pop();
-          removeStageFromStore(fn.replace(/\.[^.]+$/, ""));
+          const stem = fn.replace(/\.[^.]+$/, "");
+          removeStageFromStore(stem);
+          removeRipError(stem);
         });
         refreshFiles();
       }
@@ -259,7 +263,7 @@ const BatchHistory = () => {
         );
       }
     },
-    [refreshFiles, loadData, removeStageFromStore],
+    [refreshFiles, loadData, removeStageFromStore, removeRipError],
   );
 
   // Degraded-mode refresh: re-read ONLY already-loaded days (skeletons reload on
@@ -677,6 +681,7 @@ const BatchHistory = () => {
             })),
           );
           removeStageFromStore(fileId);
+          removeRipError(fileId);
           refreshFiles();
           searchInputRef.current?.focus();
         } else {
@@ -698,7 +703,7 @@ const BatchHistory = () => {
         );
       }
     },
-    [refreshFiles, loadData, removeStageFromStore],
+    [refreshFiles, loadData, removeStageFromStore, removeRipError],
   );
 
   const handleConfirmRollbackBatch = useCallback(
@@ -739,6 +744,14 @@ const BatchHistory = () => {
           Object.keys(allStages)
             .filter((id) => allStages[id].batch_path === batchPath)
             .forEach((id) => removeStageFromStore(id));
+          // Clear RIP errors for every file in the rolled-back batch (stems from the
+          // fresh dayGroups mirror), so the badges + header count clear at once.
+          const rolledBackBatch = dayGroupsRef.current
+            .flatMap((d) => d.batches)
+            .find((b) => b.path === batchPath);
+          if (rolledBackBatch) {
+            clearRipErrorsForFiles(rolledBackBatch.files.map((f) => f.name.replace(/\.[^.]+$/, "")));
+          }
           refreshFiles();
           searchInputRef.current?.focus();
         } else {
@@ -760,7 +773,7 @@ const BatchHistory = () => {
         );
       }
     },
-    [rollbackModal, refreshFiles, loadData, removeStageFromStore],
+    [rollbackModal, refreshFiles, loadData, removeStageFromStore, clearRipErrorsForFiles],
   );
 
   const handleDeleteBatch = useCallback(async (batchPath) => {
