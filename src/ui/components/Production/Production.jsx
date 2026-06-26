@@ -30,7 +30,6 @@ const FILTER_TABS = [
   { key: PRODUCTION_STAGE.HEATPRESS,   label: "Press" },
   { key: PRODUCTION_STAGE.QC,          label: STAGE_LABEL.qc },
   { key: PRODUCTION_STAGE.TO_SEWING,   label: "Sew Out" },
-  { key: PRODUCTION_STAGE.FROM_SEWING, label: "Sew In" },
   { key: PRODUCTION_STAGE.PACKED,      label: STAGE_LABEL.packed },
   { key: PRODUCTION_STAGE.SHIPPED,     label: STAGE_LABEL.shipped },
 ];
@@ -39,7 +38,7 @@ const POLL_INTERVAL = 15_000;
 
 const STAGE_PIPELINE_ORDER = [
   PRODUCTION_STAGE.PRINTED, PRODUCTION_STAGE.HEATPRESS, PRODUCTION_STAGE.QC,
-  PRODUCTION_STAGE.TO_SEWING, PRODUCTION_STAGE.FROM_SEWING, PRODUCTION_STAGE.PACKED, PRODUCTION_STAGE.SHIPPED,
+  PRODUCTION_STAGE.TO_SEWING, PRODUCTION_STAGE.PACKED, PRODUCTION_STAGE.SHIPPED,
 ];
 
 const BatchGroupHeader = ({ batchPath, rows, selectedFileIds, onSelectAll }) => {
@@ -187,8 +186,8 @@ const Production = () => {
     const now = new Date().toISOString();
     const res = await setSewingReceived(fileId, PRODUCTION_STAGE.TO_SEWING);
     if (res?.success) {
-      updateStageInStore(fileId, { ...row, stage: PRODUCTION_STAGE.FROM_SEWING, sewing_received_at: now, updated_at: now });
-      addStageHistoryEntry(fileId, PRODUCTION_STAGE.FROM_SEWING, now);
+      updateStageInStore(fileId, { ...row, stage: PRODUCTION_STAGE.PACKED, sewing_received_at: now, updated_at: now });
+      addStageHistoryEntry(fileId, PRODUCTION_STAGE.PACKED, now);
     }
   };
 
@@ -394,8 +393,8 @@ const Production = () => {
       const now = new Date().toISOString();
       const res = await setSewingReceived(id, PRODUCTION_STAGE.TO_SEWING);
       if (res?.success) {
-        updateStageInStore(id, { ...r, stage: PRODUCTION_STAGE.FROM_SEWING, sewing_received_at: now, updated_at: now });
-        addStageHistoryEntry(id, PRODUCTION_STAGE.FROM_SEWING, now);
+        updateStageInStore(id, { ...r, stage: PRODUCTION_STAGE.PACKED, sewing_received_at: now, updated_at: now });
+        addStageHistoryEntry(id, PRODUCTION_STAGE.PACKED, now);
         count++;
       }
     }

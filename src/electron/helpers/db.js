@@ -312,7 +312,7 @@ export const initDb = () => {
     stmtClearFileStage = db.prepare("DELETE FROM file_stages WHERE file_id = ?");
     stmtClearFileStagesByBatch = db.prepare("DELETE FROM file_stages WHERE batch_path = ?");
     stmtSetSewingSent = db.prepare("UPDATE file_stages SET stage = 'to_sewing', sewing_sent_at = ?, sewing_company = ?, updated_at = ?, updated_by = ? WHERE file_id = ?");
-    stmtSetSewingReceived = db.prepare("UPDATE file_stages SET stage = 'from_sewing', sewing_received_at = ?, updated_at = ?, updated_by = ? WHERE file_id = ?");
+    stmtSetSewingReceived = db.prepare("UPDATE file_stages SET stage = 'packed', sewing_received_at = ?, updated_at = ?, updated_by = ? WHERE file_id = ?");
 
     // ── file_stage_history ────────────────────────────────────────────────────
     db.exec(`
@@ -330,7 +330,7 @@ export const initDb = () => {
     stmtClearStageHistoryByBatch  = db.prepare("DELETE FROM file_stage_history WHERE file_id IN (SELECT file_id FROM file_stages WHERE batch_path = ?)");
     stmtAdvanceFileStageGuarded  = db.prepare("UPDATE file_stages SET stage = ?, updated_at = ?, updated_by = ? WHERE file_id = ? AND stage = ?");
     stmtSetSewingSentGuarded     = db.prepare("UPDATE file_stages SET stage = 'to_sewing', sewing_sent_at = ?, sewing_company = ?, updated_at = ?, updated_by = ? WHERE file_id = ? AND stage = ?");
-    stmtSetSewingReceivedGuarded = db.prepare("UPDATE file_stages SET stage = 'from_sewing', sewing_received_at = ?, updated_at = ?, updated_by = ? WHERE file_id = ? AND stage = ?");
+    stmtSetSewingReceivedGuarded = db.prepare("UPDATE file_stages SET stage = 'packed', sewing_received_at = ?, updated_at = ?, updated_by = ? WHERE file_id = ? AND stage = ?");
     stmtGetFileStagesAfter       = db.prepare("SELECT * FROM file_stages WHERE updated_at > ? ORDER BY updated_at ASC");
 
     // ── reprint_requests ──────────────────────────────────────────────────────
@@ -879,7 +879,7 @@ export const setSewingReceived = (fileId, updatedBy, expectedStage) => {
     const result = expectedStage
       ? stmtSetSewingReceivedGuarded.run(now, now, updatedBy ?? null, fileId, expectedStage)
       : stmtSetSewingReceived.run(now, now, updatedBy ?? null, fileId);
-    if (result.changes > 0) _insertStageHistory(fileId, "from_sewing", now);
+    if (result.changes > 0) _insertStageHistory(fileId, "packed", now);
     return { updated: result.changes > 0 };
   } catch (err) {
     console.error("[db] setSewingReceived failed:", err);

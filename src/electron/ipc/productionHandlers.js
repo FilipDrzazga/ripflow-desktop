@@ -100,6 +100,9 @@ export function registerProductionHandlers() {
       const { workstationName } = getSettings();
       const result = setSewingReceived(fileId, workstationName, expectedStage ?? null);
       if (!result) return { success: false, error: "DB unavailable" };
+      // Receive from sewing now lands directly in "packed", so it is the entry
+      // point that completes any open reprint request for the file.
+      if (result.updated) fulfillReprintRequests(fileId);
       return { success: true };
     } catch (err) {
       return { success: false, error: err.message };
