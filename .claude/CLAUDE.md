@@ -388,8 +388,10 @@ refreshBatchDays()      // non-awaited
 ## Production — Key Behaviors
 DB tables: `file_stages` (one row per active file), `file_stage_history` (append-only per stage transition).
 
-**Stages pipeline:** `printed → heatpress → qc → packed → shipped` (or with sewing: `qc → to_sewing → from_sewing → packed → shipped`)
+**Stages pipeline:** `printed → heatpress → qc → packed → shipped` (or with sewing: `qc → to_sewing → [Receive → packed] → shipped`)
 `STAGE_NEXT` / `STAGE_PREV` maps are the source of truth — use them, never hardcode transitions.
+**`FROM_SEWING` is legacy** (like `REJECTED`/`OVERRIDDEN`): kept in `constants.js` (incl. `STAGE_NEXT.from_sewing → packed`) so old rows still render and a file can be pushed there manually via `STAGE_NEXT`, but it is **no longer an active routing target** — "Receive from sewing" now lands directly in `packed`. No filter tab / pipeline-order entry for it (display-only lookups in `ProductionCard`/`groupByOrder` stay).
+**Receive completes reprints** — because Receive is now the entry to `packed`, the `stage:setSewingReceived` handler calls `fulfillReprintRequests(fileId)` on success (mirrors `stage:advance → packed`).
 
 **Rollback = physical file move to inbox** — calling `rollbackFile` automatically calls `clearFileStage(fileId)` in `batchHistoryHandlers.js`. No separate DB cleanup needed. The card disappears from Production UI via `removeStageFromStore(fileId)`.
 
@@ -408,7 +410,7 @@ DB tables: `file_stages` (one row per active file), `file_stage_history` (append
 
 **"Awaiting QC" visual state** — in the `qc` role view, files still at the `heatpress` stage render dimmed (lowered opacity, dashed border) with an "Awaiting QC" badge (colored from `STAGE_COLOR[HEATPRESS]`). `heatpress` itself signals "not yet arrived at QC" — there is **no** separate DB stage/field for awaiting; `ProductionCard` receives an `awaitingQc` prop computed in `Production.jsx` as `workstationRole === "qc" && row.stage === HEATPRESS`. Scanning the batch code at the QC station advances these `heatpress` files to `qc` (clearing the "Awaiting QC" state).
 
-**Multi-select & bulk actions** — click card to toggle select; `BatchGroupHeader` "Select All" toggles whole batch. The context menu drives all bulk actions (see Context menu below). Selection cleared on filter/batch change.
+**Multi-select & bulk actions** — click card to toggle select; `BatchGroupHeader` "Select All" toggles whole batch. The context menu drives all bulk actions (see Context menu below). Selection cleared on filter/batch change. **Bulk Pass / Receive preserve the selection** — `handleBulkAdvance` / `handleBulkReceive` keep every selected file that still exists in the store (dropping only ones that vanished) instead of clearing, so chained bulk stage moves keep working on the same set; `ContextMenu` `onClose` only closes the menu (no longer clears selection). Deliberate full-clear stays in `handleRollbackDecisions`, `handleBulkGoBack`, `handleBulkSewing`.
 
 **Rollback collects qty_affected** — context-menu rollback (single + bulk) opens `ProductionRollbackModal` (reason dropdown + qty input per file, defaults to full qty; OTHER → inline text). It passes `reprint: { qtyAffected, qtyOriginal }` to `rollbackFile` → `insertReprintRequest` in `batchHistoryHandlers.js` (new request supersedes prior open ones for the file).
 
@@ -422,7 +424,7 @@ DB tables: `file_stages` (one row per active file), `file_stage_history` (append
 
 **Context menu** — stage-aware across the WHOLE selection (`selectedFileIds`; falls back to the clicked row when selection is empty). A stage action shows only when valid for EVERY target file (common availability). Order — stage actions first, then a separator, then tools:
 - **Pass** (advance per `STAGE_NEXT`; `from_sewing → packed`) — every file has `STAGE_NEXT[stage]` and `stage` ∉ {`TO_SEWING`, `SHIPPED`}. Label: "Pass to {STAGE_LABEL[next]}" when all on one stage, else "Pass to next stage". Single → `handleAdvance`, bulk → `handleBulkAdvance`.
-- **Receive from sewing** (`to_sewing → from_sewing`, `setSewingReceived`) — every file `stage === TO_SEWING`. Single → `handleReceive`, bulk → `handleBulkReceive`.
+- **Receive from sewing** (`to_sewing → packed`, `setSewingReceived`) — every file `stage === TO_SEWING`. Lands directly in `packed` (skips `from_sewing`) and fulfills open reprints. Single → `handleReceive`, bulk → `handleBulkReceive`.
 - **Send to Sewing ▸** (submenu Olya | Vagabond, `setSewingSent`) — every file `stage === QC`. Single → `handleSewing`, bulk → `handleBulkSewing`.
 - **Go back** (per `STAGE_PREV`) — every file has `STAGE_PREV[stage]`.
 - **Rollback** — every file has `batch_path` and `stage !== SHIPPED`; opens `ProductionRollbackModal`.
