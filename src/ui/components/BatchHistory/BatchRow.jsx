@@ -24,6 +24,7 @@ const BatchRow = ({
 }) => {
   const productionStages = useStore((s) => s.productionStages);
   const loadStagesForBatch = useStore((s) => s.loadStagesForBatch);
+  const ripErrors = useStore((s) => s.ripErrors);
 
   useEffect(() => {
     if (isBatchExpanded) loadStagesForBatch(batch.path);
@@ -134,6 +135,7 @@ const BatchRow = ({
               file={file}
               batch={batch}
               stageRow={productionStages[file.name.replace(/\.[^.]+$/, "")]}
+              ripError={ripErrors[file.name.replace(/\.[^.]+$/, "")]}
               activeContextFilePath={activeContextFilePath}
               onContextMenu={onContextMenu}
               elementRefsRef={elementRefsRef}

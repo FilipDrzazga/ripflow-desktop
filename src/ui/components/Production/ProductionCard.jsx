@@ -3,7 +3,7 @@ import gsap from "gsap";
 import {
   LuScissors,
   LuPrinter, LuThermometer, LuSearch, LuPackage, LuTruck,
-  LuFileText, LuCheck, LuRotateCcw,
+  LuFileText, LuCheck, LuRotateCcw, LuTriangleAlert,
 } from "react-icons/lu";
 import {
   PRODUCTION_STAGE, STAGE_LABEL, STAGE_SHORT_LABEL, STAGE_COLOR,
@@ -62,7 +62,7 @@ const StagePill = ({ stageKey, status, company, title }) => {
   );
 };
 
-const ProductionCard = ({ stage: row, history = [], highlighted, selected, awaitingQc, onSelect, onContextMenu }) => {
+const ProductionCard = ({ stage: row, history = [], highlighted, selected, awaitingQc, ripError, onSelect, onContextMenu }) => {
   const cardRef  = useRef(null);
 
   // stage -> formatted date of the LAST entry into that stage (max entered_at; ISO compares lexicographically)
@@ -107,6 +107,12 @@ const ProductionCard = ({ stage: row, history = [], highlighted, selected, await
       <LuFileText className={style.card_file_icon} />
       <div className={style.card_info}>
         <span className={style.card_filename} title={row.file_id}>{row.file_id}</span>
+        {ripError && (
+          <span className={style.card_type_badge_rip_error} title={ripError.error_message || undefined}>
+            <LuTriangleAlert size={12} />
+            Błąd RIP
+          </span>
+        )}
         {row.print_type === "LM"
           ? row.meters_override != null && (
               <span className={style.card_type_badge_override}>Override: {row.meters_override}m</span>

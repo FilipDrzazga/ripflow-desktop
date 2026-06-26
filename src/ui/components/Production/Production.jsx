@@ -82,6 +82,7 @@ const Production = () => {
   const loadAllStageHistory  = useStore((s) => s.loadAllStageHistory);
   const addStageHistoryEntry = useStore((s) => s.addStageHistoryEntry);
   const stageHistory         = useStore((s) => s.stageHistory);
+  const ripErrors            = useStore((s) => s.ripErrors);
 
   // "batches" = stage/batch lens (default); "orders" = order-centric read-only lens
   const [viewMode,       setViewMode]       = useState("batches");
@@ -918,6 +919,7 @@ const Production = () => {
                   highlighted={highlightedId === row.file_id}
                   selected={selectedFileIds.has(row.file_id)}
                   awaitingQc={workstationRole === "qc" && row.stage === PRODUCTION_STAGE.HEATPRESS}
+                  ripError={ripErrors[row.file_id]}
                   onSelect={toggleProductionSelect}
                   onContextMenu={(r, x, y) => setContextMenu({ row: r, x, y })}
                 />
@@ -933,6 +935,7 @@ const Production = () => {
               highlighted={highlightedId === row.file_id}
               selected={selectedFileIds.has(row.file_id)}
               awaitingQc={workstationRole === "qc" && row.stage === PRODUCTION_STAGE.HEATPRESS}
+              ripError={ripErrors[row.file_id]}
               onSelect={toggleProductionSelect}
               onContextMenu={(r, x, y) => setContextMenu({ row: r, x, y })}
             />

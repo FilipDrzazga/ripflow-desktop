@@ -19,6 +19,8 @@ import CustomOrder from "./components/CustomOrder/CustomOrder";
 import Production from "./components/Production/Production";
 import { onDbError, onDbRecovered } from "./services/systemService";
 
+const RIP_ERROR_POLL_INTERVAL = 30_000;
+
 const App = () => {
   const refreshFiles = useStore((state) => state.refreshFiles);
   const refreshBatchDays = useStore((state) => state.refreshBatchDays);
@@ -26,6 +28,7 @@ const App = () => {
   const loadHeldFiles = useStore((state) => state.loadHeldFiles);
   const loadReasonDefinitions = useStore((state) => state.loadReasonDefinitions);
   const loadFabricConfig = useStore((state) => state.loadFabricConfig);
+  const loadRipErrors = useStore((state) => state.loadRipErrors);
   const dbDegraded = useStore((state) => state.dbDegraded);
   const setDbDegraded = useStore((state) => state.setDbDegraded);
   const checkDbDegraded = useStore((state) => state.checkDbDegraded);
@@ -53,6 +56,7 @@ const App = () => {
       loadLogsFromDb();
       loadReasonDefinitions();
       loadFabricConfig();
+      loadRipErrors();
       checkDbDegraded();
       await loadHeldFiles();
       await refreshFiles({
@@ -64,7 +68,15 @@ const App = () => {
     fetchFolders();
 
     return () => clearTimeout(safetyTimerRef.current);
-  }, [refreshFiles, refreshBatchDays, loadLogsFromDb, loadHeldFiles, loadReasonDefinitions, loadFabricConfig, finishStartup, checkDbDegraded]);
+  }, [refreshFiles, refreshBatchDays, loadLogsFromDb, loadHeldFiles, loadReasonDefinitions, loadFabricConfig, loadRipErrors, finishStartup, checkDbDegraded]);
+
+  // Global RIP-error poll — keeps the "Błąd RIP" badge fresh in BOTH Production and
+  // BatchHistory for the whole session, independent of activeView. Mirrors Production's
+  // setInterval/clear idiom. (Initial load fires in the startup effect above.)
+  useEffect(() => {
+    const id = setInterval(() => { loadRipErrors(); }, RIP_ERROR_POLL_INTERVAL);
+    return () => clearInterval(id);
+  }, [loadRipErrors]);
 
   // DB degraded banner: main emits db:error/db:recovered only on state transition.
   useEffect(() => {

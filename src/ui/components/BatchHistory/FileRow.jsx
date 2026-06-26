@@ -1,4 +1,4 @@
-import { LuFileText, LuCheck } from "react-icons/lu";
+import { LuFileText, LuCheck, LuTriangleAlert } from "react-icons/lu";
 import { FILE_STATUS } from "../../../shared/constants";
 import StageBadge from "../StageBadge/StageBadge";
 import style from "./BatchHistory.module.css";
@@ -12,7 +12,7 @@ const formatRolledBackAt = (isoString) => {
   return `${hh}:${mm} ${dd}/${mo}`;
 };
 
-const FileRow = ({ file, batch, stageRow, activeContextFilePath, onContextMenu, elementRefsRef, isSelected, onToggleSelect }) => {
+const FileRow = ({ file, batch, stageRow, ripError, activeContextFilePath, onContextMenu, elementRefsRef, isSelected, onToggleSelect }) => {
   const isFileRolledBack = file.status === FILE_STATUS.ROLLED_BACK;
   const fileId = file.name.replace(/\.[^.]+$/, "");
   const rollbackReason = isFileRolledBack
@@ -59,6 +59,12 @@ const FileRow = ({ file, batch, stageRow, activeContextFilePath, onContextMenu, 
             {file.reprintQtyOriginal != null && file.reprintQtyOriginal !== file.reprintQty
               ? ` of ${file.type === "LM" ? `${file.reprintQtyOriginal}m` : `x${file.reprintQtyOriginal}`}`
               : ""}
+          </span>
+        )}
+        {ripError && (
+          <span className={style.rip_error_badge} title={ripError.error_message || undefined}>
+            <LuTriangleAlert size={11} />
+            Błąd RIP
           </span>
         )}
       </span>
