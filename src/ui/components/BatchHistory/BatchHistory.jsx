@@ -4,6 +4,7 @@ import { notify } from "../../utils/notify";
 import { runMutation } from "../../utils/runMutation";
 import { useStore } from "../../store/useStore";
 import ContextMenu from "../ContextMenu/ContextMenu";
+import RipErrorPopover from "../RipErrorPopover/RipErrorPopover";
 import PdfPreviewModal from "../PdfPreviewModal/PdfPreviewModal";
 import RollbackModal from "../RollbackModal/RollbackModal";
 import { usePdfPreview } from "../../hooks/usePdfPreview";
@@ -66,6 +67,7 @@ const BatchHistory = () => {
   const [expandedBatches, setExpandedBatches] = useState(new Set());
   const [loadingDays, setLoadingDays] = useState(new Set()); // dayFolder set — lazy-load in flight
   const [contextMenu, setContextMenu] = useState(null);
+  const [ripPopover, setRipPopover] = useState(null); // { error, x, y } → RipErrorPopover
   const [rollbackModal, setRollbackModal] = useState(null);
   const [otherReasonTarget, setOtherReasonTarget] = useState(null);
   const [otherReasonText, setOtherReasonText] = useState("");
@@ -964,6 +966,7 @@ const BatchHistory = () => {
                         onSetRollbackModal={setRollbackModal}
                         onDeleteBatch={handleDeleteBatch}
                         onContextMenu={(file, batch, x, y) => setContextMenu({ file, batch, x, y })}
+                        onRipBadgeClick={(error, x, y) => setRipPopover({ error, x, y })}
                         elementRefsRef={elementRefsRef}
                         activeContextFilePath={activeContextFilePath}
                         canPrintLabel={canPrintLabel}
@@ -988,6 +991,16 @@ const BatchHistory = () => {
           </div>
         )}
       </div>
+
+      {ripPopover && createPortal(
+        <RipErrorPopover
+          error={ripPopover.error}
+          anchorX={ripPopover.x}
+          anchorY={ripPopover.y}
+          onClose={() => setRipPopover(null)}
+        />,
+        document.body,
+      )}
 
       {contextMenu &&
         createPortal(

@@ -15,6 +15,7 @@ const BatchRow = ({
   onSetRollbackModal,
   onDeleteBatch,
   onContextMenu,
+  onRipBadgeClick,
   elementRefsRef,
   activeContextFilePath,
   canPrintLabel,
@@ -149,6 +150,7 @@ const BatchRow = ({
               batch={batch}
               stageRow={productionStages[file.name.replace(/\.[^.]+$/, "")]}
               ripError={ripErrors[file.name.replace(/\.[^.]+$/, "")]}
+              onRipBadgeClick={onRipBadgeClick}
               activeContextFilePath={activeContextFilePath}
               onContextMenu={onContextMenu}
               elementRefsRef={elementRefsRef}

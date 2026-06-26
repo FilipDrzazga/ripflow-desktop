@@ -62,7 +62,7 @@ const StagePill = ({ stageKey, status, company, title }) => {
   );
 };
 
-const ProductionCard = ({ stage: row, history = [], highlighted, selected, awaitingQc, ripError, onSelect, onContextMenu }) => {
+const ProductionCard = ({ stage: row, history = [], highlighted, selected, awaitingQc, ripError, onRipBadgeClick, onSelect, onContextMenu }) => {
   const cardRef  = useRef(null);
 
   // stage -> formatted date of the LAST entry into that stage (max entered_at; ISO compares lexicographically)
@@ -108,7 +108,10 @@ const ProductionCard = ({ stage: row, history = [], highlighted, selected, await
       <div className={style.card_info}>
         <span className={style.card_filename} title={row.file_id}>{row.file_id}</span>
         {ripError && (
-          <span className={style.card_type_badge_rip_error} title={ripError.error_message || undefined}>
+          <span
+            className={style.card_type_badge_rip_error}
+            onClick={(e) => { e.stopPropagation(); onRipBadgeClick?.(ripError, e.clientX, e.clientY); }}
+          >
             <LuTriangleAlert size={12} />
             RIP Error
           </span>

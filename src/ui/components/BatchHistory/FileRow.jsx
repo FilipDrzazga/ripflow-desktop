@@ -12,7 +12,7 @@ const formatRolledBackAt = (isoString) => {
   return `${hh}:${mm} ${dd}/${mo}`;
 };
 
-const FileRow = ({ file, batch, stageRow, ripError, activeContextFilePath, onContextMenu, elementRefsRef, isSelected, onToggleSelect }) => {
+const FileRow = ({ file, batch, stageRow, ripError, onRipBadgeClick, activeContextFilePath, onContextMenu, elementRefsRef, isSelected, onToggleSelect }) => {
   const isFileRolledBack = file.status === FILE_STATUS.ROLLED_BACK;
   const fileId = file.name.replace(/\.[^.]+$/, "");
   const rollbackReason = isFileRolledBack
@@ -62,7 +62,10 @@ const FileRow = ({ file, batch, stageRow, ripError, activeContextFilePath, onCon
           </span>
         )}
         {ripError && (
-          <span className={style.rip_error_badge} title={ripError.error_message || undefined}>
+          <span
+            className={style.rip_error_badge}
+            onClick={(e) => { e.stopPropagation(); onRipBadgeClick?.(ripError, e.clientX, e.clientY); }}
+          >
             <LuTriangleAlert size={11} />
             RIP Error
           </span>

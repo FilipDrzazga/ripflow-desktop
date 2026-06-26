@@ -726,6 +726,7 @@
   border-radius: 7px;
   padding: 3px 8px;
   white-space: nowrap;
+  cursor: pointer;
 }
 
 /* ===== FILE ROW SELECTION ===== */

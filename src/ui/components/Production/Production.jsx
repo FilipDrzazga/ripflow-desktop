@@ -19,6 +19,7 @@ import { PRINTER_COLORS } from "../../constants/printerColors";
 import ContextMenu from "../ContextMenu/ContextMenu";
 import PdfPreviewModal from "../PdfPreviewModal/PdfPreviewModal";
 import ProductionCard from "./ProductionCard";
+import RipErrorPopover from "../RipErrorPopover/RipErrorPopover";
 import ProductionRollbackModal from "./ProductionRollbackModal";
 import OrderView from "./OrderView";
 import style from "./Production.module.css";
@@ -107,6 +108,7 @@ const Production = () => {
 
   const [contextMenu, setContextMenu] = useState(null);
   const [rollbackTargets, setRollbackTargets] = useState(null); // stageRow[] → ProductionRollbackModal
+  const [ripPopover, setRipPopover] = useState(null); // { error, x, y } → RipErrorPopover
 
   useEffect(() => {
     let cancelled = false;
@@ -920,6 +922,7 @@ const Production = () => {
                   selected={selectedFileIds.has(row.file_id)}
                   awaitingQc={workstationRole === "qc" && row.stage === PRODUCTION_STAGE.HEATPRESS}
                   ripError={ripErrors[row.file_id]}
+                  onRipBadgeClick={(error, x, y) => setRipPopover({ error, x, y })}
                   onSelect={toggleProductionSelect}
                   onContextMenu={(r, x, y) => setContextMenu({ row: r, x, y })}
                 />
@@ -936,6 +939,7 @@ const Production = () => {
               selected={selectedFileIds.has(row.file_id)}
               awaitingQc={workstationRole === "qc" && row.stage === PRODUCTION_STAGE.HEATPRESS}
               ripError={ripErrors[row.file_id]}
+              onRipBadgeClick={(error, x, y) => setRipPopover({ error, x, y })}
               onSelect={toggleProductionSelect}
               onContextMenu={(r, x, y) => setContextMenu({ row: r, x, y })}
             />
@@ -963,6 +967,17 @@ const Production = () => {
           anchorY={contextMenu.y}
           onClose={() => { setContextMenu(null); clearProductionSelection(); }}
           options={contextMenuOptions}
+        />,
+        document.body,
+      )}
+
+      {/* RIP-error detail popover (anchored to the clicked file badge) */}
+      {ripPopover && createPortal(
+        <RipErrorPopover
+          error={ripPopover.error}
+          anchorX={ripPopover.x}
+          anchorY={ripPopover.y}
+          onClose={() => setRipPopover(null)}
         />,
         document.body,
       )}
