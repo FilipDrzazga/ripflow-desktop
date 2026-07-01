@@ -311,6 +311,7 @@
 /* ── File checkbox ───────────────────────────────────── */
 .cell_checkbox {
   width: 32px;
+  padding-left: 10px;
   padding-right: 0;
 }
 
@@ -343,6 +344,7 @@
   width: 100%;
   border-collapse: separate;
   border-spacing: 0 4px;
+  padding: 0 16px;
 }
 
 .file_row {
@@ -354,8 +356,18 @@
   border-bottom: none;
 }
 
-.file_row:hover {
+.file_row:hover td {
   background-color: var(--bg-grey-light);
+}
+
+.file_row:hover td:first-child {
+  border-top-left-radius: 14px;
+  border-bottom-left-radius: 14px;
+}
+
+.file_row:hover td:last-child {
+  border-top-right-radius: 14px;
+  border-bottom-right-radius: 14px;
 }
 
 .file_row_locked {
@@ -363,7 +375,7 @@
   opacity: 0.6;
 }
 
-.file_row.file_row_locked:hover {
+.file_row.file_row_locked:hover td {
   background-color: transparent;
 }
 
@@ -373,6 +385,10 @@
   font-size: 13px;
   color: var(--text-primary);
   vertical-align: middle;
+}
+
+.file_row td:nth-child(2) {
+  padding-left: 10px;
 }
 
 .cell_meters {
@@ -386,7 +402,7 @@
 .file_name_wrap {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
 }
 
 .file_name {
