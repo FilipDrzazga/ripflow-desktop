@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { notify } from "@/utils/notify";
-import { LuChevronRight, LuCheck, LuX, LuPlay, LuTrash2, LuScanLine, LuFileText } from "react-icons/lu";
+import { LuChevronRight, LuCheck, LuPlay, LuTrash2, LuScanLine, LuFileText } from "react-icons/lu";
 import { PRINTER_COLORS } from "@/constants/printerColors";
 import styles from "./CustomOrderCard.module.css";
 import { generateCustomOrderXML } from "../../services/customOrderService";
@@ -204,12 +204,20 @@ const CustomOrderCard = ({ group, onGenerated, onRefresh, onRemove }) => {
               {files.map((file, idx) => {
                 const isSelected = selectedFiles.has(file.fileName);
                 const checkboxLocked = isGenerating || isGenerated;
+                const nameColorClass = file.found ? styles.file_name_found : styles.file_name_missing;
                 return (
-                  <tr key={idx} className={styles.file_row}>
+                  <tr
+                    key={idx}
+                    className={`${styles.file_row} ${checkboxLocked ? styles.file_row_locked : ""}`}
+                    onClick={() => !checkboxLocked && toggleFileSelection(file.fileName)}
+                  >
                     <td className={`${styles.cell} ${styles.cell_checkbox}`}>
                       <span
                         className={`${styles.card_checkbox} ${isSelected ? styles.card_checkbox_checked : ""} ${checkboxLocked ? styles.card_checkbox_disabled : ""}`}
-                        onClick={() => !checkboxLocked && toggleFileSelection(file.fileName)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (!checkboxLocked) toggleFileSelection(file.fileName);
+                        }}
                         role="checkbox"
                         aria-checked={isSelected}
                         tabIndex={0}
@@ -223,16 +231,9 @@ const CustomOrderCard = ({ group, onGenerated, onRefresh, onRemove }) => {
                         {isSelected && <LuCheck size={10} />}
                       </span>
                     </td>
-                    <td className={`${styles.cell} ${styles.cell_icon}`}>
-                      {file.found ? (
-                        <LuCheck size={14} className={styles.icon_found} />
-                      ) : (
-                        <LuX size={14} className={styles.icon_missing} />
-                      )}
-                    </td>
                     <td className={styles.cell}>
                       <div className={styles.file_name_wrap}>
-                        <span className={`${styles.file_name} ${!file.found ? styles.file_name_missing : ""}`}>
+                        <span className={`${styles.file_name} ${nameColorClass}`}>
                           {file.fileName}
                         </span>
                       </div>

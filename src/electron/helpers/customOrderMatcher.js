@@ -1,6 +1,5 @@
 import fs from "fs";
 import path from "path";
-import Fuse from "fuse.js";
 
 export async function scanCustomOrderFolder(folderPath) {
   const entries = await fs.promises.readdir(folderPath, { withFileTypes: true });
@@ -10,16 +9,10 @@ export async function scanCustomOrderFolder(folderPath) {
 }
 
 export function matchFiles(parsedCSV, cachedFileNames) {
-  const fuseInstance = new Fuse(cachedFileNames, { threshold: 0.3, includeScore: true });
-
-  const files = parsedCSV.files.map((file) => {
-    if (cachedFileNames.includes(file.fileName)) {
-      return { ...file, found: true, suggestion: null };
-    }
-    const results = fuseInstance.search(file.fileName);
-    const suggestion = results.length > 0 ? results[0].item : null;
-    return { ...file, found: false, suggestion };
-  });
+  const files = parsedCSV.files.map((file) => ({
+    ...file,
+    found: cachedFileNames.includes(file.fileName),
+  }));
 
   return { ...parsedCSV, files };
 }

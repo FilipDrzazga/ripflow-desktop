@@ -347,6 +347,7 @@
 
 .file_row {
   border-bottom: 1px solid var(--border-grey);
+  cursor: pointer;
 }
 
 .file_row:last-child {
@@ -357,17 +358,21 @@
   background-color: var(--bg-grey-light);
 }
 
+.file_row_locked {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.file_row.file_row_locked:hover {
+  background-color: transparent;
+}
+
 .cell {
   padding: 0 19px;
   height: 50px;
   font-size: 13px;
   color: var(--text-primary);
   vertical-align: middle;
-}
-
-.cell_icon {
-  width: 36px;
-  padding-right: 0;
 }
 
 .cell_meters {
@@ -391,20 +396,11 @@
   color: var(--text-primary);
 }
 
-.file_name_missing {
-  color: #ef4444;
-}
-
-.suggestion {
-  font-size: 12px;
-  color: #2477f7;
-  font-weight: 500;
-}
-
-.icon_found {
+.file_name_found {
   color: #05c95d;
 }
-.icon_missing {
+
+.file_name_missing {
   color: #ef4444;
 }
 
