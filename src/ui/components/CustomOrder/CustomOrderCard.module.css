@@ -385,9 +385,8 @@
 
 .file_name_wrap {
   display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 3px;
+  align-items: center;
+  gap: 8px;
 }
 
 .file_name {

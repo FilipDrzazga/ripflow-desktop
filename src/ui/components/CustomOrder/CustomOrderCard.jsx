@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { notify } from "@/utils/notify";
-import { LuChevronRight, LuCheck, LuPlay, LuTrash2, LuScanLine, LuFileText } from "react-icons/lu";
+import { LuChevronRight, LuCheck, LuPlay, LuTrash2, LuScanLine, LuFileText, LuLayers } from "react-icons/lu";
 import { PRINTER_COLORS } from "@/constants/printerColors";
 import styles from "./CustomOrderCard.module.css";
 import { generateCustomOrderXML } from "../../services/customOrderService";
@@ -118,7 +118,7 @@ const CustomOrderCard = ({ group, onGenerated, onRefresh, onRemove }) => {
         aria-expanded={isExpanded}
       >
         <span className={`${styles.status_dot} ${dotClass}`} />
-        <LuFileText className={styles.file_icon} />
+        <LuLayers className={styles.file_icon} />
         <div className={styles.name_and_badge}>
           <span className={styles.material_name}>{materialName}</span>
           <span className={styles.poly_badge}>POLYESTERS</span>
@@ -233,6 +233,7 @@ const CustomOrderCard = ({ group, onGenerated, onRefresh, onRemove }) => {
                     </td>
                     <td className={styles.cell}>
                       <div className={styles.file_name_wrap}>
+                        <LuFileText className={styles.file_icon} />
                         <span className={`${styles.file_name} ${nameColorClass}`}>
                           {file.fileName}
                         </span>
