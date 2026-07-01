@@ -89,7 +89,7 @@ src/ui/
       FileRow.jsx          # single file row with badges and context menu
     CustomOrder/           # CSV import workflow for Minerva custom orders
       CustomOrder.jsx      # drag-drop + file picker, imports via customOrderService
-      CustomOrderCard.jsx  # per-CSV card: printer toggle, generate XML button
+      CustomOrderCard.jsx  # per-CSV card: printer toggle, per-file checkbox selection, generate XML button
       CustomOrderHistory.jsx # read-only history list from DB
     DataList/              # Inbox file list; own usePdfPreview instance; 5 fixed-width tag slots
     Production/            # Stage tracking board for in-progress batches
@@ -468,6 +468,21 @@ The full PRINTED scan (35 days / ~580 batches → ~2050 SMB roundtrips) used to 
 - `new-file` / `removed` skip days where `loaded !== true` (skeletons untouched — ends the global `totalFiles` zeroing).
 - `new-batch` on an existing skeleton is a no-op (content arrives on expand); on a loaded day it merges as before; a watcher-created new day is built with `dayFolder` + `loaded:true`.
 - **Degraded mode**: the fallback interval calls `reloadLoadedDays()` (re-reads only `loaded:true` days via `readPrintedDay` → merge), NOT the full `readPrintedFolder`. `dayGroupsRef` holds the current `dayGroups` so the interval reads a fresh list (stale-closure-safe).
+
+## Custom Order — Key Behaviors
+Per-file checkbox selection inside a `CustomOrderCard`, so an operator can exclude specific files from a single imported CSV batch before generating its XML.
+
+**State is card-local, not lifted.** `selectedFiles` is a `Set` of `fileName` (from the CSV row), held in `CustomOrderCard.jsx`'s own `useState` — it is NOT lifted to `CustomOrder.jsx` (which only owns the `csvGroups` array) and NOT persisted to the DB or `custom_order_history`. Scope is exactly one imported CSV / one card.
+
+**Default-all-selected on import** — a `useEffect` keyed on `group.isParsing` populates `selectedFiles` with every `fileName` the moment parsing finishes (`isParsing: true → false`). Because `onRefresh` (rescan) never flips `isParsing` back to `true`, this effect does not re-run on refresh — existing checkbox choices survive a rescan. **Known edge case:** a `fileName` that only appears for the first time after a rescan/refresh is NOT auto-selected (starts unchecked) — this is intentional, not a bug.
+
+**Checkbox UX** — reuses `ProductionCard`'s span+`LuCheck` pattern (a styled `<span>` toggled via `onClick`, not a native `<input>`), styled with `.card_checkbox` / `.card_checkbox_checked` in `CustomOrderCard.module.css` (copied from `Production.module.css`). `checkboxLocked = isGenerating || isGenerated` disables and dims it (`.card_checkbox_disabled`) once a card starts or finishes generating — mirrors the existing printer-toggle disable pattern, and prevents `selectedTotalMeters` from ever drifting from what was actually sent to `generateXML` and logged to `custom_order_history`.
+
+**`selectedTotalMeters` replaces `totalMeters`** in the card's header pill and footer, recalculated live on every checkbox toggle. It sums `metersToprint` over selected files using the SAME found-agnostic rule the original `totalMeters` always used (missing files still inflate the total). **This pre-existing quirk is unchanged by this feature** — selection only filters by what's checked, it does not also filter out missing files from the total. Don't miscredit this feature with fixing it.
+
+**Generate payload is filtered** — `handleGenerate` builds `files: files.filter(f => selectedFiles.has(f.fileName))` and `totalMeters: selectedTotalMeters` before calling `generateCustomOrderXML`. Deselected files never reach the IPC layer, so they never appear in the generated XML `<Documents>` or in the `custom_order_history` row for that order (no IPC/handler changes were needed — the main-process side already only ever saw whatever `files` array the renderer sent it).
+
+**Empty-selection guard** — clicking Generate with `selectedFiles.size === 0` is blocked with a `notify()` warning (same pattern as the existing "no printer selected" guard) and returns before calling `generateCustomOrderXML`.
 
 ## RIP Errors
 Surfaces PrintFactory job failures on the affected files. PrintFactory drops a per-failed-job pair into `{storagePath}\AUTOMATION_WORKFLOW_ERROR\`: `<name>.tif` (ignored) + `<name>.xml` (parsed). Because the workflow has a Split node (`SplitOn=Document`), each failed document gets its own xml with its own `<JobGUID>`. New dependency: **fast-xml-parser** (main process only). Folder name has ONE source of truth: `RIP_ERROR_FOLDER` + `getRipErrorRootPath()` in `getRootPath.js`.
