@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { notify } from "@/utils/notify";
 import { LuChevronRight, LuCheck, LuX, LuPlay, LuTrash2, LuScanLine, LuFileText } from "react-icons/lu";
 import { PRINTER_COLORS } from "@/constants/printerColors";
@@ -14,6 +14,19 @@ const CustomOrderCard = ({ group, onGenerated, onRefresh, onRemove }) => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isGenerated, setIsGenerated] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [selectedFiles, setSelectedFiles] = useState(() => new Set());
+
+  // Default-select every file exactly once, the moment CSV parsing finishes
+  // (isParsing true -> false). A later rescan (onRefresh) never flips isParsing
+  // back to true, so this does not re-run then — existing checkbox choices
+  // survive a refresh. A fileName that only appears for the first time after a
+  // rescan is NOT auto-selected (starts unchecked) — accepted edge case, not a bug.
+  useEffect(() => {
+    if (!group.isParsing && group.files) {
+      setSelectedFiles(new Set(group.files.map((f) => f.fileName)));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [group.isParsing]);
 
   if (group.isParsing) {
     return (
@@ -32,9 +45,26 @@ const CustomOrderCard = ({ group, onGenerated, onRefresh, onRemove }) => {
     );
   }
 
-  const { poNumber, materialName, files = [], totalMeters = 0, missingCount = 0 } = group;
+  const { poNumber, materialName, files = [], missingCount = 0 } = group;
 
   const dotClass = missingCount > 0 ? styles.dot_partial : styles.dot_ready;
+
+  const toggleFileSelection = (fileName) => {
+    setSelectedFiles((prev) => {
+      const next = new Set(prev);
+      if (next.has(fileName)) next.delete(fileName);
+      else next.add(fileName);
+      return next;
+    });
+  };
+
+  // Mirrors totalMeters's existing inclusion rule (sums metersToprint regardless
+  // of `found`) — missing files inflating the total is a pre-existing quirk,
+  // untouched by this selection feature.
+  const selectedTotalMeters = files.reduce(
+    (sum, f) => (selectedFiles.has(f.fileName) ? sum + f.metersToprint : sum),
+    0,
+  );
 
   const handleGenerate = async () => {
     if (!selectedPrinter) {
@@ -44,14 +74,22 @@ const CustomOrderCard = ({ group, onGenerated, onRefresh, onRemove }) => {
       );
       return;
     }
+    if (selectedFiles.size === 0) {
+      notify(
+        { type: "Warning", title: "No files selected", message: "Select at least one file before generating XML." },
+        { stage: "generateXML", code: "NO_FILES_SELECTED" },
+      );
+      return;
+    }
     setIsGenerating(true);
     try {
+      const selected = files.filter((f) => selectedFiles.has(f.fileName));
       const res = await generateCustomOrderXML({
         poNumber,
         materialName,
         printer: selectedPrinter,
-        files,
-        totalMeters,
+        files: selected,
+        totalMeters: selectedTotalMeters,
       });
       if (res.success) {
         setIsGenerated(true);
@@ -98,7 +136,7 @@ const CustomOrderCard = ({ group, onGenerated, onRefresh, onRemove }) => {
             PO {poNumber}
           </span>
           <span className={styles.header_count}>
-            {files.length} {files.length === 1 ? "file" : "files"} · {totalMeters.toFixed(1)} m
+            {files.length} {files.length === 1 ? "file" : "files"} · {selectedTotalMeters.toFixed(1)} m
           </span>
         </div>
         <div className={styles.printer_toggles} onClick={(e) => e.stopPropagation()}>
@@ -163,25 +201,46 @@ const CustomOrderCard = ({ group, onGenerated, onRefresh, onRemove }) => {
         <div className={styles.content}>
           <table className={styles.file_table}>
             <tbody>
-              {files.map((file, idx) => (
-                <tr key={idx} className={styles.file_row}>
-                  <td className={`${styles.cell} ${styles.cell_icon}`}>
-                    {file.found ? (
-                      <LuCheck size={14} className={styles.icon_found} />
-                    ) : (
-                      <LuX size={14} className={styles.icon_missing} />
-                    )}
-                  </td>
-                  <td className={styles.cell}>
-                    <div className={styles.file_name_wrap}>
-                      <span className={`${styles.file_name} ${!file.found ? styles.file_name_missing : ""}`}>
-                        {file.fileName}
+              {files.map((file, idx) => {
+                const isSelected = selectedFiles.has(file.fileName);
+                const checkboxLocked = isGenerating || isGenerated;
+                return (
+                  <tr key={idx} className={styles.file_row}>
+                    <td className={`${styles.cell} ${styles.cell_checkbox}`}>
+                      <span
+                        className={`${styles.card_checkbox} ${isSelected ? styles.card_checkbox_checked : ""} ${checkboxLocked ? styles.card_checkbox_disabled : ""}`}
+                        onClick={() => !checkboxLocked && toggleFileSelection(file.fileName)}
+                        role="checkbox"
+                        aria-checked={isSelected}
+                        tabIndex={0}
+                        onKeyDown={(e) => {
+                          if ((e.key === "Enter" || e.key === " ") && !checkboxLocked) {
+                            e.preventDefault();
+                            toggleFileSelection(file.fileName);
+                          }
+                        }}
+                      >
+                        {isSelected && <LuCheck size={10} />}
                       </span>
-                    </div>
-                  </td>
-                  <td className={`${styles.cell} ${styles.cell_meters}`}>{file.metersToprint.toFixed(1)}m</td>
-                </tr>
-              ))}
+                    </td>
+                    <td className={`${styles.cell} ${styles.cell_icon}`}>
+                      {file.found ? (
+                        <LuCheck size={14} className={styles.icon_found} />
+                      ) : (
+                        <LuX size={14} className={styles.icon_missing} />
+                      )}
+                    </td>
+                    <td className={styles.cell}>
+                      <div className={styles.file_name_wrap}>
+                        <span className={`${styles.file_name} ${!file.found ? styles.file_name_missing : ""}`}>
+                          {file.fileName}
+                        </span>
+                      </div>
+                    </td>
+                    <td className={`${styles.cell} ${styles.cell_meters}`}>{file.metersToprint.toFixed(1)}m</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
 
@@ -192,7 +251,7 @@ const CustomOrderCard = ({ group, onGenerated, onRefresh, onRemove }) => {
               </span>
             ) : (
               <span>
-                {files.length} files · {totalMeters.toFixed(1)}m total
+                {files.length} files · {selectedTotalMeters.toFixed(1)}m total
               </span>
             )}
           </div>
