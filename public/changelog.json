@@ -1,5 +1,39 @@
 [
   {
+    "version": "1.0.11",
+    "date": "2026-06-26",
+    "changes": [
+      {
+        "text": "RipFlow now automatically detects when a print job fails inside PrintFactory (for example a wrong material width or a file problem) and flags the affected file with a red \"RIP Error\" badge - shown on both the Production board and in Batch History, so you no longer have to check the RIP software separately",
+        "clients": ["all"]
+      },
+      {
+        "text": "When a whole batch fails before printing starts, every file in it is flagged and a count is shown on the batch itself (e.g. \"4 RIP Errors\"), so you can spot a problem without opening the batch",
+        "clients": ["all"]
+      },
+      {
+        "text": "Click the red RIP Error badge to see what went wrong, which step it failed on and when - with a \"Copy\" button to grab the details for reporting",
+        "clients": ["all"]
+      },
+      {
+        "text": "Rolling a file back to the inbox clears its RIP Error badge automatically - no extra steps needed",
+        "clients": ["all"]
+      },
+      {
+        "text": "Right-click a file in Production (or several selected files) and choose \"Show in Orders\" to switch to the order-centric view - it expands and scrolls straight to the matching order(s), so QC can quickly see which files in an order still need collecting",
+        "clients": ["all"]
+      },
+      {
+        "text": "Files returning from sewing now go straight to the \"Packed\" stage after scanning - the intermediate \"Sew In\" stage has been removed. The flow is now scan, receive (straight to Packed), then Shipped, saving two clicks on every order",
+        "clients": ["all"]
+      },
+      {
+        "text": "Your selection now stays put after \"Pass to next stage\" - pushed files remain selected if they're still visible, so you can click \"Pass\" again without reselecting them",
+        "clients": ["all"]
+      }
+    ]
+  },
+  {
     "version": "1.0.10",
     "date": "2026-06-24",
     "changes": [

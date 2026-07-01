@@ -341,12 +341,6 @@
   flex: 1;
   overflow: auto;
   padding: 0 0 40px;
-  scrollbar-width: none;
-}
-
-.table_wrapper::-webkit-scrollbar,
-.cards_wrapper::-webkit-scrollbar {
-  display: none;
 }
 
 .empty_state {

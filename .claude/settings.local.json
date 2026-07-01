@@ -76,7 +76,18 @@
       "Bash(ELECTRON_RUN_AS_NODE=1 \"F:/ripflow-desktop/node_modules/electron/dist/electron.exe\" \"F:/ripflow-desktop/__q_tmp.js\")",
       "Bash(rm -f \"F:/ripflow-desktop/__q_tmp.js\")",
       "Bash(ELECTRON_RUN_AS_NODE=1 \"F:/ripflow-desktop/node_modules/electron/dist/electron.exe\" \"F:/ripflow-desktop/__q_tmp.cjs\")",
-      "Bash(rm -f \"F:/ripflow-desktop/__q_tmp.cjs\")"
+      "Bash(rm -f \"F:/ripflow-desktop/__q_tmp.cjs\")",
+      "PowerShell($p = \"O:\\\\Custom Print Files\\\\Loome Fabrics\\\\APPROVED DESIGNS - LF NUMBERS\"; if \\(Test-Path $p\\) { Write-Output \"EXISTS\"; Write-Output \"--- top-level items ---\"; Get-ChildItem -LiteralPath $p | Select-Object -First 30 Mode, Name } else { Write-Output \"MISSING: $p\" })",
+      "Bash(ELECTRON_RUN_AS_NODE=1 F:/ripflow-desktop/node_modules/electron/dist/electron.exe -e ' *)",
+      "Bash(rm -f step1.mjs task1.mjs harness.cjs)",
+      "Bash(ls /c/Users/RIPPC~1/AppData/Local/Temp/rip_verify_*.db)",
+      "PowerShell(Write-Output \\(\"main:   \" + \\(git rev-parse main\\)\\); Write-Output \\(\"branch: \" + \\(git rev-parse feat/rip-error-phase1\\)\\); if \\(\\(git rev-parse main\\) -eq \\(git rev-parse feat/rip-error-phase1\\)\\) { Write-Output \"EQUAL: main == feat/rip-error-phase1\" } else { Write-Output \"MISMATCH\" })",
+      "Bash(python3 -c \"import sqlite3; print\\('py3-ok'\\)\")",
+      "PowerShell($py = \\(Get-Command python -ErrorAction SilentlyContinue\\); if \\($py\\) { python -c \"import sqlite3; print\\('py-ok'\\)\" }; $py3 = \\(Get-Command py -ErrorAction SilentlyContinue\\); if \\($py3\\) { py -c \"import sqlite3; print\\('py-ok'\\)\" }; \\(Get-Command sqlite3 -ErrorAction SilentlyContinue\\).Source)",
+      "Bash(ELECTRON_RUN_AS_NODE=1 \"F:/ripflow-desktop/node_modules/electron/dist/electron.exe\" \"C:/Users/RIPPC~1/AppData/Local/Temp/claude/F--ripflow-desktop/36a4fd4c-6fd6-4ca5-bf3e-9308c5528abe/scratchpad/inspect.js\")",
+      "Bash(ELECTRON_RUN_AS_NODE=1 \"F:/ripflow-desktop/node_modules/electron/dist/electron.exe\" \"C:/Users/RIPPC~1/AppData/Local/Temp/claude/F--ripflow-desktop/36a4fd4c-6fd6-4ca5-bf3e-9308c5528abe/scratchpad/inspect2.js\")",
+      "PowerShell(& \"F:\\\\ripflow-desktop\\\\node_modules\\\\.bin\\\\better-sqlite3-cli.cmd\" \"O:\\\\SPPrintReadyArtwork\\\\ripflow.db\" \"SELECT id, file_id, batch_path, reason_code, reason_label FROM rollback_reasons WHERE reason_label IN \\('TEST', 'Automation fault'\\) OR reason_code = 'TEST'\" 2>&1)",
+      "PowerShell(python --version 2>&1; python3 --version 2>&1)"
     ]
   }
 }
