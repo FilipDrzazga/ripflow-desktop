@@ -29,6 +29,10 @@ const App = () => {
   const loadReasonDefinitions = useStore((state) => state.loadReasonDefinitions);
   const loadFabricConfig = useStore((state) => state.loadFabricConfig);
   const loadRipErrors = useStore((state) => state.loadRipErrors);
+  const loadAllStages = useStore((state) => state.loadAllStages);
+  const loadAllStageHistory = useStore((state) => state.loadAllStageHistory);
+  const loadStagesAfter = useStore((state) => state.loadStagesAfter);
+  const loadOpenReprints = useStore((state) => state.loadOpenReprints);
   const dbDegraded = useStore((state) => state.dbDegraded);
   const setDbDegraded = useStore((state) => state.setDbDegraded);
   const checkDbDegraded = useStore((state) => state.checkDbDegraded);
@@ -36,6 +40,9 @@ const App = () => {
   const [activeView, setActiveView] = useState("print");
   const startupFinishedRef = useRef(false);
   const safetyTimerRef = useRef(null);
+  // Watermark for the incremental stage poll below. Seeded at startup right after the
+  // base loadAllStages(), so the 30s poll only pulls rows changed since then.
+  const lastStagePollAt = useRef(null);
 
   // Idempotent startup teardown. Normal path: StartupLoader animates to 100% and calls
   // this via onDone. Safety net: the 30s timer below calls it if readFolders hangs on a
@@ -57,6 +64,14 @@ const App = () => {
       loadReasonDefinitions();
       loadFabricConfig();
       loadRipErrors();
+      // Full base load of production data so the print-view OverviewPanel has real
+      // counts immediately (cheap SQLite reads, NOT SMB scans). The 30s poll below only
+      // fetches incremental changes, so this initial full load is required — without it
+      // the panel would show zeros until the first tick / a Production visit.
+      loadAllStages();
+      loadAllStageHistory();
+      loadOpenReprints();
+      lastStagePollAt.current = new Date().toISOString();
       checkDbDegraded();
       await loadHeldFiles();
       await refreshFiles({
@@ -68,15 +83,26 @@ const App = () => {
     fetchFolders();
 
     return () => clearTimeout(safetyTimerRef.current);
-  }, [refreshFiles, refreshBatchDays, loadLogsFromDb, loadHeldFiles, loadReasonDefinitions, loadFabricConfig, loadRipErrors, finishStartup, checkDbDegraded]);
+  }, [refreshFiles, refreshBatchDays, loadLogsFromDb, loadHeldFiles, loadReasonDefinitions, loadFabricConfig, loadRipErrors, loadAllStages, loadAllStageHistory, loadOpenReprints, finishStartup, checkDbDegraded]);
 
-  // Global RIP-error poll — keeps the "RIP Error" badge fresh in BOTH Production and
-  // BatchHistory for the whole session, independent of activeView. Mirrors Production's
-  // setInterval/clear idiom. (Initial load fires in the startup effect above.)
+  // Global 30s poll — keeps the "RIP Error" badge and the print-view OverviewPanel
+  // counts fresh session-wide, independent of activeView. RIP errors re-scan in full;
+  // production stages fetch incrementally via loadStagesAfter (watermark advanced only
+  // on success, so a network failure retries the same window); open reprints re-load in
+  // full (small set) so the count self-heals after a transient startup failure and picks
+  // up mid-session rollbacks. Initial full loads fire in the startup effect above.
   useEffect(() => {
-    const id = setInterval(() => { loadRipErrors(); }, RIP_ERROR_POLL_INTERVAL);
+    const id = setInterval(async () => {
+      loadRipErrors();
+      loadOpenReprints();
+      if (lastStagePollAt.current) {
+        const since = lastStagePollAt.current;
+        const result = await loadStagesAfter(since);
+        if (result?.success !== false) lastStagePollAt.current = new Date().toISOString();
+      }
+    }, RIP_ERROR_POLL_INTERVAL);
     return () => clearInterval(id);
-  }, [loadRipErrors]);
+  }, [loadRipErrors, loadStagesAfter, loadOpenReprints]);
 
   // DB degraded banner: main emits db:error/db:recovered only on state transition.
   useEffect(() => {
@@ -101,7 +127,7 @@ const App = () => {
           <main className={styles.content}>
             {activeView === "print" && (
               <>
-                <DataOverviewSection />
+                <DataOverviewSection onNavigate={setActiveView} />
                 <DataFilters />
                 <ErrorBoundary>
                   <DataList />

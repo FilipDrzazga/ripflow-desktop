@@ -16,7 +16,7 @@ import { getStorageRootPath } from "../helpers/getRootPath.js";
 import { assertStorageFilePath } from "../helpers/validateStoragePath.js";
 import { parsePrintFileName } from "../helpers/parseFileName.js";
 import { getSettings, setSettings, getRollbackDefinitions, clearRollbackDefinitions } from "../helpers/getSettings.js";
-import { initDb, insertLog, getAllLogs, clearAllLogs, holdFile, unholdFile, getHeldFiles, getRollbackReasonsByBatch, getRollbackReasonsByFile, getRollbackStats, getRollbackDetails, clearAllRollbackReasons, getLatestRollbackReasonsForFileIds, getReasonDefinitions, setReasonDefinitions as setReasonDefinitionsDb, migrateReasonDefinitions, getAllFabrics, saveFabric, deleteFabric as deleteFabricDb, setAllFabrics, getFabricGlobals, setFabricGlobals, backupDb, cleanupShippedStages, getDbDegraded } from "../helpers/db.js";
+import { initDb, insertLog, getAllLogs, clearAllLogs, holdFile, unholdFile, getHeldFiles, pruneOrphanHeldFiles, getRollbackReasonsByBatch, getRollbackReasonsByFile, getRollbackStats, getRollbackDetails, clearAllRollbackReasons, getLatestRollbackReasonsForFileIds, getReasonDefinitions, setReasonDefinitions as setReasonDefinitionsDb, migrateReasonDefinitions, getAllFabrics, saveFabric, deleteFabric as deleteFabricDb, setAllFabrics, getFabricGlobals, setFabricGlobals, backupDb, cleanupShippedStages, getDbDegraded } from "../helpers/db.js";
 import { loadFabricCache, invalidateFabricCache } from "../helpers/fabricCache.js";
 
 const DAY_FOLDER_RE = /^\d{2}-\d{2}-\d{4}$/;
@@ -195,6 +195,13 @@ export function registerIpcHandlers() {
   ipcMain.handle("hold:unset", (_event, fileId) => {
     unholdFile(fileId);
     return { success: true };
+  });
+
+  // Delete held_files rows whose file_id is no longer in the inbox. Caller passes the
+  // fresh live inbox id set; the diff + empty-guard live in pruneOrphanHeldFiles.
+  ipcMain.handle("hold:pruneOrphans", (_event, liveIds) => {
+    const res = pruneOrphanHeldFiles(liveIds);
+    return { success: res.success, removed: res.removed };
   });
 
   ipcMain.handle("read-folders", async (event) => {

@@ -5,11 +5,11 @@ import { BATCH_STATUS, FILE_STATUS } from "../../shared/constants";
 import { ROLLBACK_REASONS } from "../constants/rollbackReasons";
 import { readFolders } from "../services/fileService";
 import { readPrintedDays, readPrintedDay } from "../services/batchService";
-import { getLogs, clearLogs as clearLogsApi, getHeldFiles, holdFile as holdFileApi, unholdFile as unholdFileApi, getDbDegraded } from "../services/systemService";
+import { getLogs, clearLogs as clearLogsApi, getHeldFiles, holdFile as holdFileApi, unholdFile as unholdFileApi, pruneOrphanHolds, getDbDegraded } from "../services/systemService";
 import { getRollbackReasonsForFiles as getRollbackReasonsForFilesApi } from "../services/analyticsService";
 import { getRollbackDefinitions as getRollbackDefinitionsApi } from "../services/reasonDefsService";
 import { getFabricGlobals as getFabricGlobalsApi, getFabrics as getFabricsApi } from "../services/fabricService";
-import { getStagesByBatch as getStagesByBatchApi, getAllStages as getAllStagesApi, getStagesAfter as getStagesAfterApi, getAllStageHistory as getAllStageHistoryApi, clearAllProductionStages as clearAllProductionStagesApi } from "../services/productionService";
+import { getStagesByBatch as getStagesByBatchApi, getAllStages as getAllStagesApi, getStagesAfter as getStagesAfterApi, getAllStageHistory as getAllStageHistoryApi, clearAllProductionStages as clearAllProductionStagesApi, getOpenReprints as getOpenReprintsApi } from "../services/productionService";
 import { scanRipErrors as scanRipErrorsApi } from "../services/ripErrorService";
 
 const applySort = (groups, sortOrder) => {
@@ -124,7 +124,7 @@ export const useStore = create(
     batchDays: [],
     setBatchDays: (days) => set({ batchDays: days }),
     // Lazy: load ONLY the newest day's content (the sole consumer of batchDays
-    // outside BatchHistory is LastBatchCard/getLastBatch, which reads only the
+    // outside BatchHistory is OverviewPanel/getLastBatch, which reads only the
     // newest active batch). Avoids the full PRINTED scan at startup + after submit.
     refreshBatchDays: async () => {
       try {
@@ -268,6 +268,26 @@ export const useStore = create(
         delete nextHistory[fileId];
         return { productionStages: next, stageHistory: nextHistory };
       });
+    },
+
+    // Open reprint requests (fulfilled_at IS NULL AND superseded_at IS NULL) across all
+    // files. Used by the print-view OverviewPanel for a global "Reprints" count
+    // (count = openReprints.length). Loaded once at startup (App.jsx). This is the DB's
+    // authoritative open set — NOT derivable from productionStages, since a reprint whose
+    // file was rolled back to the inbox has no file_stages row.
+    openReprints: [],
+    loadOpenReprints: async () => {
+      try {
+        const res = await getOpenReprintsApi();
+        if (res?.success && Array.isArray(res.data)) {
+          set({ openReprints: res.data });
+          return { success: true };
+        }
+        return { success: false };
+      } catch (err) {
+        console.error("[store] loadOpenReprints failed:", err);
+        return { success: false };
+      }
     },
 
     // RIP errors (open only), keyed file_id → error row. Populated by loadRipErrors, which
@@ -477,6 +497,39 @@ export const useStore = create(
             selectedIds: clearSelection ? new Set() : state.selectedIds,
             lastFilesRefreshAt: new Date().toISOString(),
           }));
+
+          // Prune orphaned holds (DB cleanup) off the FRESH res.data — never store.files,
+          // which is left stale on a failed scan. Gate is absolute: we're already inside
+          // res.success, and we additionally require ZERO scan warnings. A single warning
+          // means the defensive scan skipped a file/folder => res.data may be missing a live
+          // file => we must NOT prune (an inflated Hold count is acceptable; deleting a live
+          // hold is not). id === `${folder}_${filename}` — same key as readFolders + held_files.
+          //
+          // Orphan = held file_id ∉ current inbox ids (simple diff, per product decision):
+          // holds whose material-folder has vanished from the inbox ARE pruned. Consciously
+          // accepted residual risks, left in place:
+          //   1. If SMB ever returns a silently-partial ROOT listing (readdir resolves, no
+          //      throw, no warning, so the gate still passes), holds for the omitted folder
+          //      get deleted despite their files existing. Rare — a root readdir normally
+          //      returns the full listing or throws (→ res.success:false → no prune). This is
+          //      the "folder vanished from root without a warning" case: it IS pruned, and
+          //      that is the accepted trade for actually fixing the inflated count.
+          //   2. A present-but-unparseable file is absent from res.data and would be pruned.
+          // The liveIds.length > 0 guard (also enforced in the DB fn) stops a spurious
+          // "empty but clean" mount from wiping every hold at once.
+          if ((res.warnings?.length ?? 0) === 0) {
+            const liveIds = res.data.flatMap((g) => g.items.map((i) => i.id));
+            if (liveIds.length > 0) {
+              try {
+                const pruneRes = await pruneOrphanHolds(liveIds);
+                if (pruneRes?.success && pruneRes.removed > 0) {
+                  await get().loadHeldFiles(); // re-read heldIds from the pruned DB state
+                }
+              } catch (err) {
+                console.error("[store] prune orphan holds failed:", err);
+              }
+            }
+          }
 
           if (showSuccessAlert) {
             get().setAlert({

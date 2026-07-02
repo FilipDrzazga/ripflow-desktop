@@ -470,6 +470,37 @@ export const getHeldFiles = () => {
   }
 };
 
+// Prune orphaned holds: delete every held_files row whose file_id is NOT among the
+// current live inbox ids. `liveIds` is the FRESH inbox id set from readFolders
+// (id === `${folder}_${filename}`), passed in by the caller — the diff is done here so
+// only the (small) orphan set hits the DELETE, keeping the parameter list bounded.
+// The renderer only calls this after a clean, complete scan (res.success && no warnings).
+// Guard: a non-array / EMPTY liveIds is refused — treating "no data" as "every hold is an
+// orphan" would wipe the table, so a spurious empty/failed scan can never clear all holds
+// (an inflated Hold count is acceptable; deleting a live hold is not).
+export const pruneOrphanHeldFiles = (liveIds) => {
+  if (!db || !stmtGetHeldFiles) return { success: false, removed: 0 };
+  if (!Array.isArray(liveIds) || liveIds.length === 0) return { success: false, removed: 0 };
+
+  let orphans;
+  try {
+    const live = new Set(liveIds);
+    orphans = stmtGetHeldFiles.all().map((r) => r.file_id).filter((id) => !live.has(id));
+  } catch (err) {
+    console.error("[db] pruneOrphanHeldFiles (read) failed:", err);
+    return { success: false, removed: 0 };
+  }
+  if (orphans.length === 0) return { success: true, removed: 0 };
+
+  let removed = 0;
+  const ok = runWrite("pruneOrphanHeldFiles", () => {
+    const placeholders = orphans.map(() => "?").join(",");
+    const info = db.prepare(`DELETE FROM held_files WHERE file_id IN (${placeholders})`).run(...orphans);
+    removed = info.changes;
+  });
+  return { success: ok, removed: ok ? removed : 0 };
+};
+
 export const insertRollbackReason = ({
   id,
   fileId,

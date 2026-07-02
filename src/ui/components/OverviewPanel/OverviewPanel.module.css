@@ -1,0 +1,255 @@
+.panel {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0;
+  min-width: 0;
+  height: 100%;
+  padding: 20px;
+  border-radius: 20px;
+  background-color: var(--bg-white);
+  box-shadow: var(--card-shadow);
+}
+
+/* ─── Top bar: condensed Last batch ─────────────────────────────────────── */
+.top_bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+}
+
+.top_info {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.top_label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.top_name {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+.top_sub {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.top_empty {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.top_right {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.printer_badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3px 10px;
+  border-radius: 7px;
+  font-size: 13px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.spinner {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--text-secondary);
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ─── Status pills: RIP errors / Hold / Reprints ────────────────────────── */
+.status_row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-grey);
+}
+
+.status_pill {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 12px 8px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: filter 0.15s ease;
+}
+
+.status_pill:hover {
+  filter: brightness(0.96);
+}
+
+.status_top {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.status_icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.status_count {
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.status_label {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.pill_danger {
+  background-color: #fef2f2;
+  color: #dc2626;
+}
+
+.pill_warning {
+  background-color: #fef3c7;
+  color: #b45309;
+}
+
+.pill_neutral {
+  background-color: var(--bg-grey);
+  color: var(--text-secondary);
+}
+
+/* Nothing to flag → dim the pill so a non-zero count stands out. */
+.status_pill_zero {
+  opacity: 0.4;
+}
+
+/* ─── Production pipeline ────────────────────────────────────────────────── */
+.pipeline_section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-grey);
+}
+
+.pipeline_header {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.pipeline_row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+}
+
+/* display: contents flattens the pill+chevron wrapper so every stage pill becomes a
+   direct flex child of the row — pills share the width equally (flex: 1), chevrons and
+   the divider stay fixed. */
+.pipeline_step {
+  display: contents;
+}
+
+.stage_pill {
+  flex: 1 1 0;
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 8px 6px;
+  border-radius: 9px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: filter 0.15s ease;
+}
+
+/* Shipped carries an extra "today" tag — give it a bit more room than the chain pills. */
+.stage_pill_shipped {
+  flex-grow: 1.5;
+}
+
+.stage_pill:hover {
+  filter: brightness(0.96);
+}
+
+.stage_icon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+.stage_count {
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.stage_today {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.75;
+}
+
+.chevron {
+  width: 14px;
+  height: 14px;
+  color: var(--text-secondary);
+  opacity: 0.45;
+  flex-shrink: 0;
+}
+
+.pipeline_divider {
+  align-self: stretch;
+  width: 1px;
+  min-height: 22px;
+  margin: 0 5px;
+  background-color: var(--border-grey);
+}
+
+@media (max-width: 1200px) {
+  .panel {
+    flex: 1 1 100%;
+  }
+}

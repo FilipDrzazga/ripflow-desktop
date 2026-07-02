@@ -10,6 +10,8 @@ export const holdFile = (fileId, reason = "") =>
   withTimeout(window.api.holdFile(fileId, reason), 5_000, "holdFile");
 export const unholdFile = (fileId) =>
   withTimeout(window.api.unholdFile(fileId), 5_000, "unholdFile");
+export const pruneOrphanHolds = (liveIds) =>
+  withTimeout(window.api.pruneOrphanHolds(liveIds), 10_000, "hold:pruneOrphans");
 // fire-and-forget IPC sends — no invoke, no timeout needed
 export const minimizeWindow = () => window.api.minimizeWindow();
 export const closeWindow = () => window.api.closeWindow();

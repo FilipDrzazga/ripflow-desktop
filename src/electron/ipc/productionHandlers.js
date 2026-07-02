@@ -11,6 +11,7 @@ import {
   setSewingReceived,
   getAllStageHistory,
   fulfillReprintRequests,
+  getOpenReprintRequests,
   getOpenReprintRequestsByFileIds,
 } from "../helpers/db.js";
 import { getSettings } from "../helpers/getSettings.js";
@@ -133,6 +134,17 @@ export function registerProductionHandlers() {
   ipcMain.handle("stage:getAllHistory", () => {
     try {
       return { success: true, data: getAllStageHistory() };
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+  });
+
+  // Open reprint requests (fulfilled_at IS NULL AND superseded_at IS NULL) across all
+  // files — used by the print-view OverviewPanel for a global "Reprints" count. Returns
+  // rows (not just a count) so the renderer can derive .length and stay flexible.
+  ipcMain.handle("reprint:getOpen", () => {
+    try {
+      return { success: true, data: getOpenReprintRequests() };
     } catch (err) {
       return { success: false, error: err.message };
     }

@@ -9,3 +9,4 @@ export const setSewingReceived             = (fileId, expectedStage)          =>
 export const printBatchLabel               = (data)                           => withTimeout(window.api.label.printBatch(data),                   30_000, "label:printBatch");
 export const getAllStageHistory             = ()                               => withTimeout(window.api.stage.getAllHistory(),                     15_000, "stage:getAllHistory");
 export const clearAllProductionStages      = ()                               => withTimeout(window.api.stage.clearAll(),                         10_000, "stage:clearAll");
+export const getOpenReprints                = ()                               => withTimeout(window.api.reprint.getOpen(),                        15_000, "reprint:getOpen");

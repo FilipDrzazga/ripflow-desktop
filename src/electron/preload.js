@@ -148,6 +148,8 @@ const api = Object.freeze({
     assertPath(fileId);
     return ipcRenderer.invoke("hold:unset", fileId);
   },
+  // liveIds is a plain diff key list (never used for file ops) — no assertPath needed.
+  pruneOrphanHolds: (liveIds) => ipcRenderer.invoke("hold:pruneOrphans", liveIds),
   getRollbackStats: (since) => ipcRenderer.invoke("get-rollback-stats", since ?? null),
   getRollbackDetails: (since) => ipcRenderer.invoke("get-rollback-details", since ?? null),
   clearRollbackReasons: () => ipcRenderer.invoke("rollback-reasons:clear"),
@@ -199,6 +201,10 @@ const api = Object.freeze({
 
   label: Object.freeze({
     printBatch: (data) => ipcRenderer.invoke("label:printBatch", data),
+  }),
+
+  reprint: Object.freeze({
+    getOpen: () => ipcRenderer.invoke("reprint:getOpen"),
   }),
 
   ripErrors: Object.freeze({

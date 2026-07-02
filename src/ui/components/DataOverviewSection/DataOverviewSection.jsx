@@ -1,15 +1,15 @@
 import ProductionOverviewCard from "./ProductionOverviewCard/ProductionOverviewCard";
 import PrintMaterialBreakdownCard from "./PrintMaterialBreakdownCard/PrintMaterialBreakdownCard";
-import LastBatchCard from "../LastBatchCard/LastBatchCard";
+import OverviewPanel from "../OverviewPanel/OverviewPanel";
 
 import styles from "./DataOverviewSection.module.css";
 
-const DataOverviewSection = () => {
+const DataOverviewSection = ({ onNavigate }) => {
   return (
     <div className={styles.carts_container}>
       <ProductionOverviewCard />
       <PrintMaterialBreakdownCard />
-      <LastBatchCard />
+      <OverviewPanel onNavigate={onNavigate} />
     </div>
   );
 };
