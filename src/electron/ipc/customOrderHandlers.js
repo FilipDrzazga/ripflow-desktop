@@ -57,7 +57,7 @@ const buildCustomOrderXML = (group, batchId) => {
   <PONumber>${escapeXml(poNumber)}</PONumber>
   <NestingGroup>${escapeXml(nestingId)}</NestingGroup>
   <LogisticGroup>${escapeXml(nestingId)}_${escapeXml(totalMeters)}m</LogisticGroup>
-  <PhysicalGroup>Minerva_${escapeXml(poNumber)}_${escapeXml(materialName)}_${escapeXml(totalMeters)}m</PhysicalGroup>
+  <PhysicalGroup>Min_${escapeXml(materialName)}_${escapeXml(totalMeters)}m_PO${escapeXml(poNumber)}</PhysicalGroup>
   <Documents>
 ${documentsXml}
   </Documents>

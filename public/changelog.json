@@ -1,5 +1,31 @@
 [
   {
+    "version": "1.0.12",
+    "date": "2026-07-02",
+    "changes": [
+      {
+        "text": "The main screen now shows a quick-view panel at a glance - alongside your last batch you can see how many files have RIP errors, how many are on hold, and how many reprints are open, plus a live production pipeline showing how many files sit at each stage (Printed, Heat Press, QC, Sewing, Packed) and how many shipped today",
+        "clients": ["all"]
+      },
+      {
+        "text": "Click any of these to jump straight to the relevant screen",
+        "clients": ["all"]
+      },
+      {
+        "text": "Holds now clean themselves up - if a file on hold disappears from the inbox on its own (for example moved or removed outside the app), its leftover hold is cleared automatically, so the hold count always reflects what is really there",
+        "clients": ["all"]
+      },
+      {
+        "text": "Refreshed the icons in Custom Orders for a clearer, more consistent look",
+        "clients": ["all"]
+      },
+      {
+        "text": "You can now pick which files to print in a Custom Order using checkboxes - everything is selected by default, so just untick anything you want to leave out",
+        "clients": ["all"]
+      }
+    ]
+  },
+  {
     "version": "1.0.11",
     "date": "2026-06-26",
     "changes": [
@@ -194,12 +220,12 @@
   },
   {
     "version": "1.0.3",
-    "date": "2025-06-11",
+    "date": "2026-06-11",
     "changes": [{ "text": "Improved Analytics UI layout and readability", "clients": ["all"] }]
   },
   {
     "version": "1.0.2",
-    "date": "2025-06-11",
+    "date": "2026-06-11",
     "changes": [{ "text": "First production release", "clients": ["all"] }]
   }
 ]
