@@ -321,7 +321,7 @@ const Details = ({ details, stats, isLoading, period, onPeriodChange, onRefresh 
               Export CSV
             </button>
             <button className={`${style.icon_btn} ${isLoading ? style.icon_btn_active : ""}`} onClick={onRefresh} disabled={isLoading} title="Refresh">
-              <LuRefreshCw size={15} className={isLoading ? style.spinning : ""} />
+              {isLoading ? <span className={style.spinner} /> : <LuRefreshCw size={15} />}
             </button>
           </div>
 

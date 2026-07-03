@@ -1,10 +1,7 @@
 .card {
   display: flex;
   flex-direction: column;
-  justify-content: flex-start;
-  align-items: flex-start;
-  gap: 5px;
-  flex: 2 1 0;
+  flex: 1 1 0;
   min-width: 0;
   height: 100%;
   padding: 20px;
@@ -13,81 +10,62 @@
   box-shadow: var(--card-shadow);
 }
 
-.card_content {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  width: 100%;
-}
-
-.card_columns {
-  display: flex;
-  width: 100%;
-}
-
-.card_column {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  gap: 10px;
-  min-width: 0;
-}
-
-.card_column_divider {
-  padding-right: 20px;
-  margin-right: 20px;
-  border-right: 1px solid var(--border-grey);
-}
-
-.card_column_header {
+.card_header {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 10px;
+  margin-bottom: 16px;
 }
 
-.card_column_title {
-  font-size: 24px;
+.card_micro_label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 11px;
   font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #9a9ea8;
+}
+
+.card_title {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 800;
   color: var(--text-primary);
 }
 
-.card_column_metric {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 84px;
-  padding: 4px 10px;
-  border-radius: 999px;
-}
-
-.card_column_metric_sum {
+.card_total {
+  flex-shrink: 0;
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .card_bar {
   display: flex;
-  gap: 3px;
+  gap: 4px;
   width: 100%;
   height: 10px;
+  margin-bottom: 18px;
 }
 
 .card_bar_segment {
   min-width: 0;
-  border-radius: 4px;
+  border-radius: 6px;
 }
 
 .card_material_container {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 16px;
 }
 
 .card_material_group {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
+  display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 10px;
   width: 100%;
 }
@@ -100,9 +78,9 @@
 }
 
 .card_material_dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 999px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
   flex-shrink: 0;
 }
 
@@ -110,50 +88,57 @@
   overflow: hidden;
   font-size: 14px;
   font-weight: 600;
+  color: var(--text-primary);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+.card_material_label_others {
+  color: #4b4f59;
+}
+
 .card_material_extra {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 34px;
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: #eef2f8;
+  flex-shrink: 0;
+  padding: 3px 7px;
+  border-radius: 6px;
+  background: #f1f2f5;
+  font-size: 11px;
+  font-weight: 600;
+  color: #8b8f9a;
+}
+
+.card_material_values {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.card_material_percent {
+  min-width: 40px;
   font-size: 12px;
-  font-weight: 700;
-  color: #5f6f88;
+  font-weight: 500;
+  color: #8b8f9a;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
 }
 
 .card_material_sum {
-  font-size: 14px;
+  min-width: 62px;
+  font-size: 15px;
   font-weight: 700;
-  opacity: 0.9;
-}
-
-.card_material_metric {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 78px;
-  padding: 4px 10px;
-  border-radius: 999px;
-}
-
-.card_material_metric_sum {
-  font-size: 14px;
-  font-weight: 600;
+  color: var(--text-primary);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
 }
 
 .card_empty_state {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 120px;
+  min-height: 100px;
   border: 1px dashed var(--border-grey);
-  border-radius: 16px;
+  border-radius: 14px;
 }
 
 .card_empty_state_text {
@@ -165,21 +150,5 @@
 @media (max-width: 1200px) {
   .card {
     flex: 1 1 100%;
-  }
-}
-
-@media (max-width: 900px) {
-  .card_columns {
-    flex-direction: column;
-    gap: 20px;
-  }
-
-  .card_column_divider {
-    padding-right: 0;
-    margin-right: 0;
-    padding-bottom: 20px;
-    margin-bottom: 0;
-    border-right: 0;
-    border-bottom: 1px solid var(--border-grey);
   }
 }

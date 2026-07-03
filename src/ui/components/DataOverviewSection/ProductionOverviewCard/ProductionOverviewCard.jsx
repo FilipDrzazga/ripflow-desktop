@@ -6,19 +6,16 @@ import { LuAlarmClock } from "react-icons/lu";
 
 const MATERIAL_COLORS = {
   Cottons: {
-    bar: "#57b8f6",
-    badgeBackground: "#daeaff",
-    badgeText: "#2477f7",
+    accent: "#3f8ee0",
+    gradient: "linear-gradient(90deg, #3f8ee0, #63a9ec)",
+    rowBackground: "#f6f9fd",
+    mutedCount: "#8fb4dd",
   },
   Polyesters: {
-    bar: "#7c4dff",
-    badgeBackground: "#f4e7ff",
-    badgeText: "#b542ff",
-  },
-  Unknown: {
-    bar: "#fbbf24",
-    badgeBackground: "#fff7c1",
-    badgeText: "#ecb809",
+    accent: "#7c4ff0",
+    gradient: "linear-gradient(90deg, #7c4ff0, #9b6bf5)",
+    rowBackground: "#f8f6fd",
+    mutedCount: "#b09ae2",
   },
 };
 
@@ -40,7 +37,6 @@ const ProductionPrintCard = () => {
         label,
         count,
         percentage: allItems.length ? (count / allItems.length) * 100 : 0,
-        colors: MATERIAL_COLORS[label] || MATERIAL_COLORS.Unknown,
       }))
       .sort((a, b) => b.count - a.count);
   }, [allItems]);
@@ -59,6 +55,7 @@ const ProductionPrintCard = () => {
   const polyestersLength = materialLengths.Polyesters ?? 0;
   const cottonsCount = materialStats.find((material) => material.label === "Cottons")?.count ?? 0;
   const polyestersCount = materialStats.find((material) => material.label === "Polyesters")?.count ?? 0;
+  const totalLength = Number((cottonsLength + polyestersLength).toFixed(2));
 
   useEffect(() => {
     if (!lastFilesRefreshAt) return undefined;
@@ -71,96 +68,101 @@ const ProductionPrintCard = () => {
   }, [lastFilesRefreshAt]);
 
   const lastRefreshLabel = useMemo(() => {
-    if (!lastFilesRefreshAt) return "Last refresh: not available";
+    if (!lastFilesRefreshAt) return "not available";
 
     const refreshedAt = new Date(lastFilesRefreshAt).getTime();
 
-    if (Number.isNaN(refreshedAt)) return "Last refresh: not available";
+    if (Number.isNaN(refreshedAt)) return "not available";
 
     const diffMs = Math.max(0, now - refreshedAt);
     const diffMinutes = Math.floor(diffMs / 60000);
 
-    if (diffMinutes < 1) return "Last refresh: just now";
-    if (diffMinutes < 60) return `Last refresh: ${diffMinutes} min ago`;
+    if (diffMinutes < 1) return "just now";
+    if (diffMinutes < 60) return `${diffMinutes} min ago`;
 
     const diffHours = Math.floor(diffMinutes / 60);
-    if (diffHours < 24) return `Last refresh: ${diffHours} h ago`;
+    if (diffHours < 24) return `${diffHours} h ago`;
 
     const diffDays = Math.floor(diffHours / 24);
-    return `Last refresh: ${diffDays} d ago`;
+    return `${diffDays} d ago`;
   }, [lastFilesRefreshAt, now]);
 
   return (
     <div className={style.card}>
-      <div className={style.card_content}>
-        <div className={style.card_header}>
-          <span className={style.card_header_title}>Inbox</span>
-          <span className={style.card_header_value}>{allItems.length} Files</span>
+      <div className={style.card_header}>
+        <div>
+          <span className={style.card_micro_label}>Storage split</span>
+          <h2 className={style.card_title}>Inbox</h2>
         </div>
-        <div className={style.card_bar}>
-          {materialStats.map((material) => (
-            <div
-              key={material.label}
-              className={style.card_bar_segment}
-              style={{ width: `${material.percentage}%`, backgroundColor: material.colors.bar }}
-            />
-          ))}
+        <div className={style.card_header_right}>
+          <span className={style.card_total}>~{totalLength} m</span>
+          <span className={style.card_total_sub}>
+            {allItems.length} {allItems.length === 1 ? "file" : "files"} total
+          </span>
         </div>
-        <div className={style.card_material_container}>
-          <div className={style.card_material_group}>
-            <div className={style.card_material_box}>
-              <span className={style.card_material_dot} style={{ backgroundColor: MATERIAL_COLORS.Cottons.bar }} />
-              <span className={style.card_material_label}>Cottons</span>
-              <span className={style.card_material_sum}>{Math.round(cottonsShare)}%</span>
-            </div>
-            <div
-              className={style.card_material_metric}
-              style={{ background: MATERIAL_COLORS.Cottons.badgeBackground, color: MATERIAL_COLORS.Cottons.badgeText }}
-            >
-              <span className={style.card_material_metric_sum}>~{cottonsLength} m</span>
-            </div>
-            <div
-              className={style.card_material_metric}
-              style={{ background: MATERIAL_COLORS.Cottons.badgeBackground, color: MATERIAL_COLORS.Cottons.badgeText }}
-            >
-              <span className={style.card_material_metric_sum}>
-                {cottonsCount} {cottonsCount > 1 ? "files" : "file"}
-              </span>
-            </div>
-          </div>
-          <div className={style.card_material_group}>
-            <div className={style.card_material_box}>
-              <span className={style.card_material_dot} style={{ backgroundColor: MATERIAL_COLORS.Polyesters.bar }} />
-              <span className={style.card_material_label}>Polyesters</span>
-              <span className={style.card_material_sum}>{Math.round(polyestersShare)}%</span>
-            </div>
-            <div
-              className={style.card_material_metric}
-              style={{
-                background: MATERIAL_COLORS.Polyesters.badgeBackground,
-                color: MATERIAL_COLORS.Polyesters.badgeText,
-              }}
-            >
-              <span className={style.card_material_metric_sum}>~{polyestersLength} m</span>
-            </div>
+      </div>
 
-            <div
-              className={style.card_material_metric}
-              style={{
-                background: MATERIAL_COLORS.Polyesters.badgeBackground,
-                color: MATERIAL_COLORS.Polyesters.badgeText,
-              }}
-            >
-              <span className={style.card_material_metric_sum}>
-                {polyestersCount} {polyestersCount > 1 ? "files" : "file"}
-              </span>
-            </div>
+      <div className={style.card_bar}>
+        <div
+          className={style.card_bar_segment}
+          style={{ width: `${cottonsShare}%`, background: MATERIAL_COLORS.Cottons.gradient }}
+          title={`Cottons · ~${cottonsLength} m`}
+        />
+        <div
+          className={style.card_bar_segment}
+          style={{ width: `${polyestersShare}%`, background: MATERIAL_COLORS.Polyesters.gradient }}
+          title={`Polyesters · ~${polyestersLength} m`}
+        />
+      </div>
+      <div className={style.card_bar_labels}>
+        <span className={style.card_bar_label} style={{ width: `${cottonsShare}%`, color: MATERIAL_COLORS.Cottons.accent }}>
+          {Math.round(cottonsShare)}%
+        </span>
+        <span
+          className={style.card_bar_label}
+          style={{ width: `${polyestersShare}%`, color: MATERIAL_COLORS.Polyesters.accent }}
+        >
+          {Math.round(polyestersShare)}%
+        </span>
+      </div>
+
+      <div className={style.card_material_container}>
+        <div className={style.card_material_row} style={{ background: MATERIAL_COLORS.Cottons.rowBackground }}>
+          <div className={style.card_material_left}>
+            <span className={style.card_material_swatch} style={{ backgroundColor: MATERIAL_COLORS.Cottons.accent }} />
+            <span className={style.card_material_name}>Cottons</span>
+          </div>
+          <div className={style.card_material_right}>
+            <span className={style.card_material_count} style={{ color: MATERIAL_COLORS.Cottons.mutedCount }}>
+              {cottonsCount} {cottonsCount === 1 ? "file" : "files"}
+            </span>
+            <span className={style.card_material_value} style={{ color: MATERIAL_COLORS.Cottons.accent }}>
+              ~{cottonsLength} m
+            </span>
           </div>
         </div>
-        <div className={style.card_footer}>
-          <LuAlarmClock className={style.card_footer_icon} />
-          <span className={style.card_footer_text}>{lastRefreshLabel}</span>
+        <div className={style.card_material_row} style={{ background: MATERIAL_COLORS.Polyesters.rowBackground }}>
+          <div className={style.card_material_left}>
+            <span
+              className={style.card_material_swatch}
+              style={{ backgroundColor: MATERIAL_COLORS.Polyesters.accent }}
+            />
+            <span className={style.card_material_name}>Polyesters</span>
+          </div>
+          <div className={style.card_material_right}>
+            <span className={style.card_material_count} style={{ color: MATERIAL_COLORS.Polyesters.mutedCount }}>
+              {polyestersCount} {polyestersCount === 1 ? "file" : "files"}
+            </span>
+            <span className={style.card_material_value} style={{ color: MATERIAL_COLORS.Polyesters.accent }}>
+              ~{polyestersLength} m
+            </span>
+          </div>
         </div>
+      </div>
+
+      <div className={style.card_footer}>
+        <LuAlarmClock className={style.card_footer_icon} />
+        <span className={style.card_footer_text}>Last refresh · {lastRefreshLabel}</span>
       </div>
     </div>
   );

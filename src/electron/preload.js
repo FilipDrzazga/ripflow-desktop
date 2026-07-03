@@ -183,6 +183,7 @@ const api = Object.freeze({
     },
     getHistory: () => ipcRenderer.invoke("customOrder:getHistory"),
     clearHistory: () => ipcRenderer.invoke("customOrder:clearHistory"),
+    deleteOrder: (id) => ipcRenderer.invoke("customOrder:deleteOrder", id),
     selectCSV: () => ipcRenderer.invoke("customOrder:selectCSV"),
   }),
 

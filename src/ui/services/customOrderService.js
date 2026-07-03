@@ -10,5 +10,7 @@ export const getCustomOrderHistory = () =>
   withTimeout(window.api.customOrder.getHistory(), 5_000, "getCustomOrderHistory");
 export const clearCustomOrderHistory = () =>
   withTimeout(window.api.customOrder.clearHistory(), 5_000, "clearCustomOrderHistory");
+export const deleteCustomOrder = (id) =>
+  withTimeout(window.api.customOrder.deleteOrder(id), 5_000, "deleteCustomOrder");
 // no timeout — user drives the dialog
 export const selectCustomOrderCSV = () => window.api.customOrder.selectCSV();

@@ -6,7 +6,7 @@ const formatPercentage = (value) => {
   return `${value.toFixed(1)}%`;
 };
 
-const OthersTooltip = ({ children, items, badgeBackground, badgeText }) => {
+const OthersTooltip = ({ children, items, dotColor }) => {
   return (
     <div className={style.tooltip}>
       {children}
@@ -15,10 +15,13 @@ const OthersTooltip = ({ children, items, badgeBackground, badgeText }) => {
         <div className={style.tooltip_list}>
           {items.map((item) => (
             <div key={item.label} className={style.tooltip_item}>
-              <span className={style.tooltip_item_label}>{item.label}</span>
-              <span className={style.tooltip_item_sum}>{formatPercentage(item.percentage)}</span>
-              <div className={style.tooltip_item_metric} style={{ background: badgeBackground, color: badgeText }}>
-                <span className={style.tooltip_item_metric_sum}>~{item.length} m</span>
+              <div className={style.tooltip_item_box}>
+                <span className={style.tooltip_item_dot} style={{ backgroundColor: dotColor }} />
+                <span className={style.tooltip_item_label}>{item.label}</span>
+              </div>
+              <div className={style.tooltip_item_values}>
+                <span className={style.tooltip_item_percent}>{formatPercentage(item.percentage)}</span>
+                <span className={style.tooltip_item_sum}>~{item.length} m</span>
               </div>
             </div>
           ))}

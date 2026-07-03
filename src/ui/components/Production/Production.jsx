@@ -819,6 +819,8 @@ const Production = () => {
           </button>
         </div>
 
+        {viewMode === "batches" && <div className={style.topbar_sep} />}
+
         {viewMode === "batches" && (
           <div className={style.tabs}>
             {FILTER_TABS.map((tab) => (
@@ -888,7 +890,7 @@ const Production = () => {
             )}
           </div>
           <button type="button" className={style.refresh_btn} onClick={handleRefresh} disabled={isRefreshing}>
-            <LuRefreshCw size={15} className={isRefreshing ? style.spinning_icon : ""} />
+            {isRefreshing ? <span className={style.spinner} /> : <LuRefreshCw size={15} />}
           </button>
         </div>
       </div>

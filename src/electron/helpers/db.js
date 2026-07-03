@@ -20,6 +20,7 @@ let stmtClearRollbackReasons = null;
 let stmtInsertCustomOrder = null;
 let stmtGetAllCustomOrders = null;
 let stmtClearCustomOrders = null;
+let stmtDeleteCustomOrder = null;
 let stmtInsertFileStage = null;
 let stmtGetFileStagesByBatch = null;
 let stmtGetAllFileStages = null;
@@ -227,6 +228,7 @@ export const initDb = () => {
       "SELECT * FROM custom_order_history ORDER BY date DESC",
     );
     stmtClearCustomOrders = db.prepare("DELETE FROM custom_order_history");
+    stmtDeleteCustomOrder = db.prepare("DELETE FROM custom_order_history WHERE id = ?");
 
     // ── reason_definitions ──────────────────────────────────────────────────
     db.exec(`
@@ -396,6 +398,7 @@ export const initDb = () => {
     stmtInsertCustomOrder = null;
     stmtGetAllCustomOrders = null;
     stmtClearCustomOrders = null;
+    stmtDeleteCustomOrder = null;
     stmtInsertFileStage = null;
     stmtGetFileStagesByBatch = null;
     stmtGetAllFileStages = null;
@@ -633,10 +636,19 @@ export const insertCustomOrder = ({ poNumber, materialName, printer, date, total
 export const clearCustomOrders = () =>
   runWrite("clearCustomOrders", () => stmtClearCustomOrders.run());
 
+export const deleteCustomOrder = (id) => {
+  let result;
+  runWrite("deleteCustomOrder", () => {
+    result = stmtDeleteCustomOrder.run(id);
+  });
+  return result;
+};
+
 export const getAllCustomOrders = () => {
   if (!stmtGetAllCustomOrders) return [];
   try {
     return stmtGetAllCustomOrders.all().map((row) => ({
+      id: row.id,
       poNumber: row.po_number,
       materialName: row.material,
       printer: row.printer,

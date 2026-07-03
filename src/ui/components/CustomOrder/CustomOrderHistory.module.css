@@ -149,6 +149,33 @@
   white-space: nowrap;
 }
 
+/* ── Delete button ────────────────────────────────── */
+
+.delete_btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.delete_btn:hover {
+  background-color: #fef2f2;
+  color: #dc2626;
+}
+
+.delete_btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
 /* ── Chevron ──────────────────────────────────────── */
 
 .chevron {

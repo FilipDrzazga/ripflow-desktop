@@ -12,13 +12,13 @@
   opacity: 0;
   transform: translateY(-6px);
   flex-direction: column;
-  gap: 12px;
+  gap: 14px;
   width: 100%;
-  padding: 14px;
-  border: 1px solid rgba(34, 51, 84, 0.08);
+  padding: 16px;
+  border: 1px solid #ecedf1;
   border-radius: 16px;
-  background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
-  box-shadow: 0 20px 40px rgba(27, 39, 94, 0.14);
+  background: linear-gradient(180deg, #ffffff, #fbfbfe);
+  box-shadow: 0 20px 44px -20px rgba(20, 22, 34, 0.22);
   transition:
     opacity 0.2s ease,
     transform 0.2s ease,
@@ -39,58 +39,79 @@
   top: auto;
   width: 12px;
   height: 12px;
-  border-left: 1px solid rgba(34, 51, 84, 0.08);
-  border-top: 1px solid rgba(34, 51, 84, 0.08);
+  border-left: 1px solid #ecedf1;
+  border-top: 1px solid #ecedf1;
   background: #ffffff;
   transform: rotate(45deg) translateY(6px);
 }
 
 .tooltip_title {
-  font-size: 13px;
+  font-size: 11px;
   font-weight: 700;
-  color: var(--text-primary);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #9a9ea8;
 }
 
 .tooltip_list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 14px;
   max-height: 260px;
   overflow-y: auto;
 }
 
 .tooltip_item {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.tooltip_item_box {
+  display: flex;
   align-items: center;
   gap: 10px;
+  min-width: 0;
+}
+
+.tooltip_item_dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
 }
 
 .tooltip_item_label {
   overflow: hidden;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--text-primary);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.tooltip_item_sum {
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--text-secondary);
-}
-
-.tooltip_item_metric {
+.tooltip_item_values {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 76px;
-  padding: 4px 10px;
-  border-radius: 999px;
+  align-items: baseline;
+  gap: 10px;
+  flex-shrink: 0;
 }
 
-.tooltip_item_metric_sum {
-  font-size: 13px;
-  font-weight: 600;
+.tooltip_item_percent {
+  min-width: 40px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #8b8f9a;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.tooltip_item_sum {
+  min-width: 62px;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
 }

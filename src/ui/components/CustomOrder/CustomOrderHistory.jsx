@@ -1,6 +1,9 @@
 import { useState } from "react";
-import { LuChevronRight, LuCheck, LuX, LuLayers } from "react-icons/lu";
+import { LuChevronRight, LuCheck, LuX, LuLayers, LuTrash2 } from "react-icons/lu";
 import { PRINTER_COLORS } from "@/constants/printerColors";
+import { notify } from "@/utils/notify";
+import { deleteCustomOrder } from "../../services/customOrderService";
+import { showConfirm } from "../../services/systemService";
 import styles from "./CustomOrderHistory.module.css";
 import { CUSTOM_ORDER_STATUS } from "../../../shared/constants";
 
@@ -9,8 +12,32 @@ const formatDate = (isoString) => {
   return d.toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" });
 };
 
-const CustomOrderHistory = ({ history }) => {
+const CustomOrderHistory = ({ history, onDeleted }) => {
   const [expandedIdx, setExpandedIdx] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
+
+  const handleDelete = async (e, order) => {
+    e.stopPropagation();
+    const ok = await showConfirm("Do you want to permanently delete this entry?");
+    if (!ok) return;
+    setDeletingId(order.id);
+    try {
+      const res = await deleteCustomOrder(order.id);
+      if (res.success) {
+        notify({
+          type: "Success",
+          title: "Entry deleted",
+          message: `Custom order PO ${order.poNumber} removed from history.`,
+        });
+        onDeleted?.();
+      } else {
+        notify({ type: "Error", title: "Delete failed", message: res.error ?? "Could not delete entry." });
+      }
+    } catch (err) {
+      notify({ type: "Error", title: "Delete failed", message: err?.message ?? "Could not delete entry." });
+    }
+    setDeletingId(null);
+  };
 
   if (history.length === 0) {
     return <div className={styles.empty}>No import history yet.</div>;
@@ -25,7 +52,7 @@ const CustomOrderHistory = ({ history }) => {
         const isComplete = order.status === CUSTOM_ORDER_STATUS.COMPLETE;
 
         return (
-          <div key={idx} className={styles.card}>
+          <div key={order.id} className={styles.card}>
             <div
               className={styles.card_header}
               onClick={() => setExpandedIdx(isExpanded ? null : idx)}
@@ -42,9 +69,7 @@ const CustomOrderHistory = ({ history }) => {
                 >
                   {order.printer}
                 </span>
-                {!isComplete && (
-                  <span className={styles.header_missing}>{order.missingFiles} missing</span>
-                )}
+                {!isComplete && <span className={styles.header_missing}>{order.missingFiles} missing</span>}
               </div>
               <div className={styles.header_right}>
                 <span className={styles.header_pill}>PO {order.poNumber}</span>
@@ -54,11 +79,18 @@ const CustomOrderHistory = ({ history }) => {
                 <span className={styles.header_date}>{formatDate(order.date)}</span>
               </div>
               {files.length > 0 && (
-                <LuChevronRight
-                  size={16}
-                  className={`${styles.chevron} ${isExpanded ? styles.chevron_open : ""}`}
-                />
+                <LuChevronRight size={16} className={`${styles.chevron} ${isExpanded ? styles.chevron_open : ""}`} />
               )}
+              <button
+                type="button"
+                className={styles.delete_btn}
+                onClick={(e) => handleDelete(e, order)}
+                disabled={deletingId === order.id}
+                aria-label="Usuń wpis"
+                title="Usuń wpis"
+              >
+                <LuTrash2 size={15} />
+              </button>
             </div>
 
             {isExpanded && files.length > 0 && (
@@ -79,9 +111,7 @@ const CustomOrderHistory = ({ history }) => {
                             {file.fileName}
                           </span>
                         </td>
-                        <td className={`${styles.cell} ${styles.cell_meters}`}>
-                          {Number(file.meters).toFixed(1)}m
-                        </td>
+                        <td className={`${styles.cell} ${styles.cell_meters}`}>{Number(file.meters).toFixed(1)}m</td>
                       </tr>
                     ))}
                   </tbody>

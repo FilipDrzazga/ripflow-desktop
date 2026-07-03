@@ -128,7 +128,7 @@ const CustomOrder = () => {
         <div className={styles.right_topbar}>
           <h2 className={styles.history_label}>Custom Order History</h2>
         </div>
-        <CustomOrderHistory history={history} />
+        <CustomOrderHistory history={history} onDeleted={refreshHistory} />
       </div>
     </div>
   );

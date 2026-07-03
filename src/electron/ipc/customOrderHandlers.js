@@ -6,7 +6,7 @@ import { getSettings } from "../helpers/getSettings.js";
 import { getStorageRootPath } from "../helpers/getRootPath.js";
 import { parseCSVContent } from "../helpers/parseCustomOrderCSV.js";
 import { scanCustomOrderFolder, matchFiles } from "../helpers/customOrderMatcher.js";
-import { insertCustomOrder, getAllCustomOrders, clearCustomOrders } from "../helpers/db.js";
+import { insertCustomOrder, getAllCustomOrders, clearCustomOrders, deleteCustomOrder } from "../helpers/db.js";
 import { LM_XML_POLY } from "../../shared/printWidths.js";
 import { PRINTER, CUSTOM_ORDER_STATUS } from "../../shared/constants.js";
 
@@ -154,6 +154,15 @@ export function registerCustomOrderHandlers() {
   ipcMain.handle("customOrder:clearHistory", () => {
     try {
       clearCustomOrders();
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+  });
+
+  ipcMain.handle("customOrder:deleteOrder", (_event, id) => {
+    try {
+      deleteCustomOrder(id);
       return { success: true };
     } catch (err) {
       return { success: false, error: err.message };

@@ -7,17 +7,15 @@ import { estimatePrintLength } from "../../../../shared/estimatePrintLength";
 const MATERIAL_SECTIONS = [
   {
     label: "Cottons",
-    palette: ["#2f9be8", "#57b8f6", "#88d1ff"],
-    othersColor: "#b8defa",
-    badgeBackground: "#deefff",
-    badgeText: "#226fc8",
+    accent: "#2e7fd6",
+    palette: ["#2e7fd6", "#4d9de8", "#78b8ef"],
+    othersColor: "#b9dbf7",
   },
   {
     label: "Polyesters",
-    palette: ["#6c57ff", "#8f76ff", "#b39eff"],
-    othersColor: "#ddd1ff",
-    badgeBackground: "#f4e7ff",
-    badgeText: "#b542ff",
+    accent: "#7c4ff0",
+    palette: ["#6a3de8", "#8f6bef", "#b298f5"],
+    othersColor: "#ddd0fa",
   },
 ];
 
@@ -93,77 +91,69 @@ const PrintMaterialBreakdownCard = () => {
   );
 
   return (
-    <div className={style.card}>
-      <div className={style.card_content}>
-        <div className={style.card_columns}>
-          {sections.map((section, index) => (
-            <div
-              key={section.label}
-              className={`${style.card_column} ${index === 0 ? style.card_column_divider : ""}`.trim()}
-            >
-              <div className={style.card_column_header}>
-                <span className={style.card_column_title}>{section.label}</span>
-                <div
-                  className={style.card_column_metric}
-                  style={{ background: section.badgeBackground, color: section.badgeText }}
-                >
-                  <span className={style.card_column_metric_sum}>~{section.totalLength} m</span>
-                </div>
-              </div>
-              <div className={style.card_bar}>
-                {section.displayGroups.map((group) => (
-                  <div
-                    key={group.label}
-                    className={style.card_bar_segment}
-                    style={{ width: `${group.percentage}%`, backgroundColor: group.color }}
-                  />
-                ))}
-              </div>
-              <div className={style.card_material_container}>
-                {section.displayGroups.map((group) => {
-                  const rowContent = (
-                    <div className={style.card_material_group}>
-                      <div className={style.card_material_box}>
-                        <span className={style.card_material_dot} style={{ backgroundColor: group.color }} />
-                        <span className={style.card_material_label}>{group.label}</span>
-                        {group.isOthers && <span className={style.card_material_extra}>+{group.othersCount}</span>}
-                      </div>
-                      <span className={style.card_material_sum}>{formatPercentage(group.percentage)}</span>
-                      <div
-                        className={style.card_material_metric}
-                        style={{ background: section.badgeBackground, color: section.badgeText }}
-                      >
-                        <span className={style.card_material_metric_sum}>~{group.length} m</span>
-                      </div>
-                    </div>
-                  );
-
-                  if (!group.isOthers) {
-                    return <div key={group.label}>{rowContent}</div>;
-                  }
-
-                  return (
-                    <OthersTooltip
-                      key={group.label}
-                      items={section.remainingGroups}
-                      badgeBackground={section.badgeBackground}
-                      badgeText={section.badgeText}
-                    >
-                      {rowContent}
-                    </OthersTooltip>
-                  );
-                })}
-                {section.groups.length === 0 && (
-                  <div className={style.card_empty_state}>
-                    <span className={style.card_empty_state_text}>No materials available</span>
-                  </div>
-                )}
-              </div>
+    <>
+      {sections.map((section) => (
+        <div key={section.label} className={style.card}>
+          <div className={style.card_header}>
+            <div>
+              <span className={style.card_micro_label}>Category</span>
+              <h2 className={style.card_title}>{section.label}</h2>
             </div>
-          ))}
+            <span className={style.card_total} style={{ color: section.accent }}>
+              ~{section.totalLength} m
+            </span>
+          </div>
+
+          <div className={style.card_bar}>
+            {section.displayGroups.map((group) => (
+              <div
+                key={group.label}
+                className={style.card_bar_segment}
+                style={{ width: `${group.percentage}%`, backgroundColor: group.color }}
+                title={`${group.label} · ~${group.length} m`}
+              />
+            ))}
+          </div>
+
+          <div className={style.card_material_container}>
+            {section.displayGroups.map((group) => {
+              const rowContent = (
+                <div className={style.card_material_group}>
+                  <div className={style.card_material_box}>
+                    <span className={style.card_material_dot} style={{ backgroundColor: group.color }} />
+                    <span
+                      className={`${style.card_material_label} ${group.isOthers ? style.card_material_label_others : ""}`.trim()}
+                    >
+                      {group.label}
+                    </span>
+                    {group.isOthers && <span className={style.card_material_extra}>+{group.othersCount}</span>}
+                  </div>
+                  <div className={style.card_material_values}>
+                    <span className={style.card_material_percent}>{formatPercentage(group.percentage)}</span>
+                    <span className={style.card_material_sum}>~{group.length} m</span>
+                  </div>
+                </div>
+              );
+
+              if (!group.isOthers) {
+                return <div key={group.label}>{rowContent}</div>;
+              }
+
+              return (
+                <OthersTooltip key={group.label} items={section.remainingGroups} dotColor={group.color}>
+                  {rowContent}
+                </OthersTooltip>
+              );
+            })}
+            {section.groups.length === 0 && (
+              <div className={style.card_empty_state}>
+                <span className={style.card_empty_state_text}>No materials available</span>
+              </div>
+            )}
+          </div>
         </div>
-      </div>
-    </div>
+      ))}
+    </>
   );
 };
 

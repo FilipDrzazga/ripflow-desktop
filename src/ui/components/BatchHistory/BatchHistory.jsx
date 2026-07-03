@@ -910,7 +910,7 @@ const BatchHistory = () => {
           <LuChevronsDownUp size={15} />
         </button>
         <button type="button" className={style.refresh_btn} onClick={loadData} disabled={isLoading}>
-          <LuRefreshCw size={15} className={isLoading ? style.spinning_icon : ""} />
+          {isLoading ? <span className={style.spinner} /> : <LuRefreshCw size={15} />}
         </button>
       </div>
 
