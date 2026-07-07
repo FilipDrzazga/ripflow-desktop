@@ -1,5 +1,27 @@
 [
   {
+    "version": "1.0.14",
+    "date": "2026-07-07",
+    "changes": [
+      {
+        "text": "You can now override the print quantity on several files at once - select multiple files and set the new value in one go, instead of editing each file separately",
+        "clients": ["all"]
+      },
+      {
+        "text": "Custom Order history entries can now be removed individually from Analytics too, so you can tidy up records without leaving the reports screen",
+        "clients": ["all"]
+      },
+      {
+        "text": "The Inbox now shows each material group's share as a percentage of the total metres, giving you a quick sense of the print load split at a glance",
+        "clients": ["all"]
+      },
+      {
+        "text": "General UI improvements across the app for a cleaner, more consistent look",
+        "clients": ["all"]
+      }
+    ]
+  },
+  {
     "version": "1.0.13",
     "date": "2026-07-03",
     "changes": [

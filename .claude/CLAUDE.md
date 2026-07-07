@@ -50,9 +50,14 @@ src/electron/
                            # file:read-buffer uses assertStorageFilePath — no path traversal
     createBatch.js         # Atomic file move; stale lock timeout = 60s (not 5min)
     batchHistoryHandlers.js # rollback, regenerateXML, deleteBatch; uses resolveOriginalGroup()
+                           # regenerateXmlForBatch overlays effective printed amount via
+                           #   normalizeOverrideEntry (same gate as readSingleBatch; NOT raw ov.qty/ov.meters)
     readPrintedFolder.js   # Reads PRINTED/ tree. Exports: readPrintedFolder (full scan, legacy),
                            #   readPrintedDays (skeletons, enumeration only), readPrintedDay (one day),
-                           #   readSingleBatch (unchanged), buildDayGroup (shared per-day mapping)
+                           #   readSingleBatch (unchanged), buildDayGroup (shared per-day mapping),
+                           #   normalizeOverrideEntry (exported — shared by regenerateXmlForBatch)
+    normalizeOverrideEntry.test.js # Vitest — 7 cases: new {printed} shape + legacy {qty}|{meters}
+                           # mocks db.js/getRootPath.js to break the native import chain (node env)
     createXML.js           # isVelvet/isLinen/isBlossom read from fabricCache (fallback: string-contains)
     ripErrorHandlers.js    # scanRipErrors(): reads {storagePath}\AUTOMATION_WORKFLOW_ERROR, parses *.xml → rip_errors
                            # IPC rip-errors:scan / rip-errors:get
@@ -60,6 +65,8 @@ src/electron/
 src/ui/
   store/useStore.jsx       # Zustand store — central app state
   hooks/usePdfPreview.js   # PDF → JPEG via pdfjs; module-level Map cache by filePath
+  hooks/useStageTransition.js # Shared store-core for Production stage moves; classifies IPC
+                           #   result vs guarded UPDATE → "applied" | "rejected" | "failed"
   utils/notify.js          # ALWAYS use instead of setAlert() — adds toast + SessionLogs entry
   services/                # IPC abstraction layer — ALWAYS import from here, NOT window.api directly
     batchService.js        # readPrintedFolder, readPrintedDays, readPrintedDay, rollback*, watcher, deleteBatch, regenerateXml
@@ -94,6 +101,7 @@ src/ui/
     DataList/              # Inbox file list; own usePdfPreview instance; 5 fixed-width tag slots
     Production/            # Stage tracking board for in-progress batches
       Production.jsx       # filters, scanner, bulk-select, stage-aware context menu, polling
+                           # all stage moves (single/bulk/scan) go through useStageTransition
       ProductionCard.jsx   # single file card: stage pills pipeline, GSAP highlight on scan; dimmed "Awaiting QC" badge in qc view
       ProductionRollbackModal.jsx # rollback modal: per-file reason dropdown + qty_affected input
                            # returns decisions [{fileId, reason, override}]; override = {qty}|{meters}
@@ -234,7 +242,7 @@ VALIDATE → LOCK (`.lock` file) → DESTINATION_STRUCTURE → COPY (pdf-lib p.1
 
 **COPY is page 1 only — intentional.** `pdf-lib` copies only the first page of each source PDF; pages 2+ are deliberately not preserved (PrintFactory needs only page 1). A rolled-back or regenerated file therefore never carries pages 2+ — by design, not data loss.
 
-`_batch_info.json`: stores full inbox folder name (`originalGroup`). Used by `batchHistoryHandlers` to find correct rollback target. Without it, falls back to GROUP_NAME_OVERRIDES_REVERSE. It also persists per-file print provenance under `overrides[stem]` = `{ printed: {meters}|{qty}, manual: bool, reprintQty, reprintOriginal }` — written in `createBatch.js` from the `_printed`/`_manual`/`_reprintQty`/`_reprintOriginal` fields set by `fileService.submitBatch` (one entry per file that has an effective printed amount: manual override OR reprint). `readPrintedFolder.js` reads it via `normalizeOverrideEntry`, which also accepts the **legacy shape** (`{qty}`|`{meters}`) defensively (treated as `manual:true`, no reprint provenance). Group metres (`fixedTotalLengthM`) are computed from `printed` (effective): `printed.meters`→height / `printed.qty`→qty is overlaid onto the parsed file before `estimatePrintLength`, so the BatchHistory header reflects the actually-printed amount, not the parsed original.
+`_batch_info.json`: stores full inbox folder name (`originalGroup`). Used by `batchHistoryHandlers` to find correct rollback target. Without it, falls back to GROUP_NAME_OVERRIDES_REVERSE. It also persists per-file print provenance under `overrides[stem]` = `{ printed: {meters}|{qty}, manual: bool, reprintQty, reprintOriginal }` — written in `createBatch.js` from the `_printed`/`_manual`/`_reprintQty`/`_reprintOriginal` fields set by `fileService.submitBatch` (one entry per file that has an effective printed amount: manual override OR reprint). `readPrintedFolder.js` reads it via `normalizeOverrideEntry` (an **exported** pure fn — `{ printed:{meters}|{qty}, manual, reprintQty, reprintOriginal } | null`), which also accepts the **legacy shape** (`{qty}`|`{meters}`) defensively (treated as `manual:true`, no reprint provenance) and returns `null` for a malformed/empty entry. Group metres (`fixedTotalLengthM`) are computed from `printed` (effective): `printed.meters`→height / `printed.qty`→qty is overlaid onto the parsed file before `estimatePrintLength`, so the BatchHistory header reflects the actually-printed amount, not the parsed original. **`batchHistoryHandlers.regenerateXmlForBatch` imports the SAME `normalizeOverrideEntry`** and applies the identical overlay (`printed.qty`→`qty`, `printed.meters`→`height = round(meters*1000)`), so a regenerated XML reproduces the effective printed amount for both new and legacy `_batch_info.json` — no longer the old hand-rolled `ov.qty`/`ov.meters` read (which missed the new `{printed}` shape).
 
 `_rollback_snapshot.json`: written in the batch folder on rollback (`{ rolledBackAt, type: "batch"|"file", files: [] }`). `readSingleBatch` reads it so already-`rolled_back` files still render (with reason badges) even after their PDF has moved back to the inbox.
 
@@ -422,7 +430,11 @@ DB tables: `file_stages` (one row per active file), `file_stage_history` (append
 
 **Grouping** — `groupingEnabled` toggle (default on). When on and `stageFilter === "all"` or `batchFilter` active: cards grouped by `batch_path` under `BatchGroupHeader` showing stage-count pills and printer badge.
 
-**Optimistic updates** — all stage transitions call `updateStageInStore` + `addStageHistoryEntry` immediately after IPC success. No `loadAllStages()` reload needed after single actions.
+**Optimistic updates — via `useStageTransition` (`hooks/useStageTransition.js`)** — EVERY stage transition (single/bulk/scan) routes its store write through `applyStageTransition({ fileId, row, newStage, res, now, extra? })`, which classifies the IPC result against the **guarded DB UPDATE** (`WHERE file_id=? AND stage=expectedStage`, returning `{ updated: changes>0 }`): `res.success && res.updated` → `updateStageInStore` + `addStageHistoryEntry`, returns `"applied"`; `res.success && !res.updated` → store untouched, `"rejected"` (guard matched 0 rows — another station already moved the file); `!res.success` → store untouched, `"failed"` (DB/NAS down). **The store is touched ONLY on `"applied"`** — a stale `updated:false` no longer fakes a transition + phantom `stageHistory` entry (the old bug: call-sites checked only `res.success`). Optional `extra` merges sewing fields (`sewing_sent_at`/`sewing_company`/`sewing_received_at`) onto the optimistic row; `newStage` is always the stage written to both the row and the history entry. No `loadAllStages()` reload needed after single actions. The helper owns ONLY this core — it does NOT toast/count/know bulk-vs-scan; call-sites keep their own counters + messages.
+
+**Handler `updated` plumbing** — all three DB fns (`advanceFileStage`/`setSewingSent`/`setSewingReceived`) return `{ updated }`; `stage:advance` always forwarded it, and `stage:setSewingSent`/`stage:setSewingReceived` now forward `updated: result.updated` too (previously returned bare `{ success:true }`, dropping it). `success:true` is still returned regardless of whether a row changed — `updated` is the ONLY signal that distinguishes a real move from a guard rejection.
+
+**`rejected` vs `failed` surfaced separately (NEVER merged)** — single handlers (`handleAdvance`/`GoBack`/`Sewing`/`Receive`) skip the store on non-applied and show `notifyStageRejected(1)` (Warning) or `notifyStageFailed(1)` (Error). Bulk (4×) + scan (4×) tally three counters (`count`/`rejected`/`failed`) and after the loop emit each non-empty one: `count>0` success toast, `rejected>0` amber "already moved by another station", `failed>0` red "check connection". `rejected` uses `type:"Warning"` (NOT `Info` — `AlertsHost.alertTypes` has no Info entry, so Info falls back to `alertTypes[0]`=Error/red). The `rollpress` scan branch keeps its own `advancedIds` Set (its success message reads `.size`) instead of a `count` — left in the call-site by design; it also dropped its old blanket "Advance failed" early-return so rejected/failed are reported apart there too.
 
 **Stage counts in tabs** — when `batchFilter` is active, tab counts reflect only that batch's files.
 
@@ -590,3 +602,4 @@ npm run test:watch # Vitest watch mode
 15. **Rollback reason rows**: both batch and single-file rollbacks insert **one row per PDF** with `fileId = filename-stem`. Never use `fileId: null` for new rows — it breaks DataList inbox badges. Existing null rows in DB are handled by the `?? batch.rollbackReasons?.[0]` fallback in BatchRow and FileRow.
 16. **Fabric/reason config is DB-backed and shared** — electron-store holds ONLY machine-specific settings (paths, workstation name). Do NOT store shared config back in electron-store.
 17. **fabricCache must be loaded before getMaterialType/parseFileName are called** — `loadFabricCache()` is called in `ipc/index.js` right after `initDb()`. Both functions have static-set fallbacks for the window before DB is ready.
+18. **Every Production stage transition MUST go through `useStageTransition`** — never hand-roll an optimistic `updateStageInStore`/`addStageHistoryEntry` off `res.success` alone. The guarded UPDATE returns `updated:false` when another station already moved the file; touching the store on `success` (ignoring `updated`) re-introduces the phantom-transition bug in the new call-site. Route via `applyStageTransition(...)`, act only on `"applied"`, and report `"rejected"` (Warning) apart from `"failed"` (Error). Any new stage handler in the DB/IPC layer must also return `{ updated }` for the helper to read.
