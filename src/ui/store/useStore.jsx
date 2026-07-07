@@ -383,6 +383,12 @@ export const useStore = create(
         next.set(itemId, override);
         return { selectedOverrides: next };
       }),
+    setOverridesBulk: (entries) =>
+      set((s) => {
+        const next = new Map(s.selectedOverrides);
+        entries.forEach(({ id, override }) => next.set(id, override));
+        return { selectedOverrides: next };
+      }),
     clearOverride: (itemId) =>
       set((s) => {
         const next = new Map(s.selectedOverrides);

@@ -46,7 +46,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 70px;
+  min-width: 70px;
   height: 28px;
   padding: 0 12px;
   margin-left: 2px;
@@ -54,6 +54,8 @@
   background: var(--bg-black);
   font-size: 12px;
   font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
   /* letter-spacing: 0.02em; */
   color: var(--text-white);
 }

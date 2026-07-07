@@ -26,22 +26,18 @@ const formatTimestamp = (batch, day) => {
 
 const isSameDay = (iso, ref) => {
   const d = new Date(iso);
-  return (
-    d.getFullYear() === ref.getFullYear() &&
-    d.getMonth() === ref.getMonth() &&
-    d.getDate() === ref.getDate()
-  );
+  return d.getFullYear() === ref.getFullYear() && d.getMonth() === ref.getMonth() && d.getDate() === ref.getDate();
 };
 
 // Current-state pipeline pills (left→right). "Sewing" aggregates to_sewing + from_sewing
 // (one physical stage for the operator). "shipped" is a daily-flow count, handled
 // separately below and visually split from this current-state chain.
 const PIPELINE = [
-  { key: PRODUCTION_STAGE.PRINTED,   label: STAGE_LABEL.printed },
+  { key: PRODUCTION_STAGE.PRINTED, label: STAGE_LABEL.printed },
   { key: PRODUCTION_STAGE.HEATPRESS, label: STAGE_LABEL.heatpress },
-  { key: PRODUCTION_STAGE.QC,        label: STAGE_LABEL.qc },
+  { key: PRODUCTION_STAGE.QC, label: STAGE_LABEL.qc },
   { key: PRODUCTION_STAGE.TO_SEWING, label: "Sewing" },
-  { key: PRODUCTION_STAGE.PACKED,    label: STAGE_LABEL.packed },
+  { key: PRODUCTION_STAGE.PACKED, label: STAGE_LABEL.packed },
 ];
 
 const OverviewPanel = ({ onNavigate }) => {
@@ -67,8 +63,7 @@ const OverviewPanel = ({ onNavigate }) => {
     return counts;
   }, [productionStages]);
 
-  const sewingCount =
-    (stageCounts[PRODUCTION_STAGE.TO_SEWING] ?? 0) + (stageCounts[PRODUCTION_STAGE.FROM_SEWING] ?? 0);
+  const sewingCount = (stageCounts[PRODUCTION_STAGE.TO_SEWING] ?? 0) + (stageCounts[PRODUCTION_STAGE.FROM_SEWING] ?? 0);
 
   // Files shipped today, from append-only stage history (productionStages loses shipped
   // rows to retention cleanup). Count each file once even if it has >1 shipped entry.
@@ -83,13 +78,33 @@ const OverviewPanel = ({ onNavigate }) => {
     return n;
   }, [stageHistory]);
 
-  const getStageCount = (key) =>
-    key === PRODUCTION_STAGE.TO_SEWING ? sewingCount : (stageCounts[key] ?? 0);
+  const getStageCount = (key) => (key === PRODUCTION_STAGE.TO_SEWING ? sewingCount : (stageCounts[key] ?? 0));
 
   const statusPills = [
-    { id: "rip",     label: "RIP errors", count: ripErrorCount, Icon: LuTriangleAlert, cls: style.pill_danger,  onClick: () => onNavigate?.("production") },
-    { id: "hold",    label: "Hold",       count: holdCount,     Icon: FiLock,          cls: style.pill_warning, onClick: () => onNavigate?.("print") },
-    { id: "reprint", label: "Reprints",   count: reprintCount,  Icon: LuRepeat2,       cls: style.pill_neutral, onClick: () => onNavigate?.("production") },
+    {
+      id: "rip",
+      label: "RIP errors",
+      count: ripErrorCount,
+      Icon: LuTriangleAlert,
+      cls: style.pill_danger,
+      onClick: () => onNavigate?.("production"),
+    },
+    {
+      id: "hold",
+      label: "Hold",
+      count: holdCount,
+      Icon: FiLock,
+      cls: style.pill_warning,
+      onClick: () => onNavigate?.("print"),
+    },
+    {
+      id: "reprint",
+      label: "Reprints",
+      count: reprintCount,
+      Icon: LuRepeat2,
+      cls: style.pill_neutral,
+      onClick: () => onNavigate?.("production"),
+    },
   ];
 
   const batch = result?.batch;
@@ -107,7 +122,9 @@ const OverviewPanel = ({ onNavigate }) => {
           <span className={style.top_label}>Last batch</span>
           {result ? (
             <>
-              <span className={style.top_name} title={batch.name}>{batch.name}</span>
+              <span className={style.top_name} title={batch.name}>
+                {batch.name}
+              </span>
               <span className={style.top_sub}>
                 {batch.fileCount} {batch.fileCount === 1 ? "file" : "files"} · {formatTimestamp(batch, day)}
               </span>
@@ -182,7 +199,6 @@ const OverviewPanel = ({ onNavigate }) => {
           >
             {ShippedIcon && <ShippedIcon className={style.stage_icon} />}
             <span className={style.stage_count}>{shippedTodayCount}</span>
-            <span className={style.stage_today}>today</span>
           </button>
         </div>
       </div>

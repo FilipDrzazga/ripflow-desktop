@@ -2,9 +2,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PRINTER_COLORS } from "@/constants/printerColors";
 import { PRINT_TYPE_MAP } from "@/constants/printTypeMap";
 import { useStore } from "@/store/useStore";
-import { LuDownload, LuRefreshCw, LuChevronDown, LuChevronUp, LuFilter, LuSearch, LuX, LuMinus, LuCircle } from "react-icons/lu";
+import { LuDownload, LuRefreshCw, LuChevronDown, LuChevronUp, LuFilter, LuSearch, LuX, LuMinus, LuCircle, LuTrash2 } from "react-icons/lu";
 import { HiCheck } from "react-icons/hi2";
 import { resolveIcon } from "@/constants/rollbackReasonIcons";
+import { deleteRollbackReason } from "@/services/analyticsService";
+import { showConfirm } from "@/services/systemService";
+import { notify } from "@/utils/notify";
 import Summary from "../Summary/Summary";
 import style from "./Details.module.css";
 import { PRINTER } from "../../../../shared/constants";
@@ -174,6 +177,34 @@ const Details = ({ details, stats, isLoading, period, onPeriodChange, onRefresh 
     URL.revokeObjectURL(url);
   };
 
+  const handleDelete = useCallback(
+    async (row) => {
+      const label = getDisplayReason(row.reason_code, row.reason_label);
+      const parts = [row.fabric, label, row.order_id].filter(Boolean).join(" · ");
+      const confirmed = await showConfirm(
+        `Permanently delete this rollback entry?\n\n${parts || "This entry"}\n\nThis cannot be undone.`,
+      );
+      if (!confirmed) return;
+      try {
+        const res = await deleteRollbackReason(row.id);
+        if (res?.success) {
+          onRefresh?.();
+        } else {
+          notify(
+            { type: "Error", title: "Delete failed", message: "Could not delete the analytics entry." },
+            { stage: "app", code: "ANALYTICS_DELETE_FAILED" },
+          );
+        }
+      } catch (err) {
+        notify(
+          { type: "Error", title: "Delete failed", message: err?.message || "Could not delete the analytics entry." },
+          { stage: "app", code: "ANALYTICS_DELETE_FAILED" },
+        );
+      }
+    },
+    [getDisplayReason, onRefresh],
+  );
+
   const dayGroups = useMemo(() => (splitByDay ? groupByDay(filtered) : null), [filtered, splitByDay]);
 
   const isEmpty = filtered.length === 0;
@@ -341,6 +372,7 @@ const Details = ({ details, stats, isLoading, period, onPeriodChange, onRefresh 
                   <span>Reason</span>
                   <span>Type</span>
                   <span>Meters</span>
+                  <span aria-hidden="true" />
                 </div>
                 {splitByDay && dayGroups
                   ? dayGroups.map(([key, rows]) => (
@@ -351,12 +383,12 @@ const Details = ({ details, stats, isLoading, period, onPeriodChange, onRefresh 
                           </span>
                         </div>
                         {rows.map((row) => (
-                          <AnalyticsCard key={row.id} row={row} getDisplayReason={getDisplayReason} reasonIconMap={reasonIconMap} />
+                          <AnalyticsCard key={row.id} row={row} getDisplayReason={getDisplayReason} reasonIconMap={reasonIconMap} onDelete={handleDelete} />
                         ))}
                       </div>
                     ))
                   : filtered.map((row) => (
-                      <AnalyticsCard key={row.id} row={row} getDisplayReason={getDisplayReason} reasonIconMap={reasonIconMap} />
+                      <AnalyticsCard key={row.id} row={row} getDisplayReason={getDisplayReason} reasonIconMap={reasonIconMap} onDelete={handleDelete} />
                     ))}
               </div>
             )}
@@ -367,7 +399,7 @@ const Details = ({ details, stats, isLoading, period, onPeriodChange, onRefresh 
   );
 };
 
-const AnalyticsCard = ({ row, getDisplayReason, reasonIconMap }) => {
+const AnalyticsCard = ({ row, getDisplayReason, reasonIconMap, onDelete }) => {
   const Icon = reasonIconMap?.[row.reason_code];
   return (
   <div className={style.card}>
@@ -383,6 +415,17 @@ const AnalyticsCard = ({ row, getDisplayReason, reasonIconMap }) => {
     </span>
     <span className={style.col_cell}><TypeBadge printType={row.print_type} /></span>
     <span className={style.col_meters}>{row.meters != null ? `${row.meters.toFixed(2)} m` : <Empty />}</span>
+    <span className={style.col_action}>
+      <button
+        type="button"
+        className={style.delete_btn}
+        title="Delete entry"
+        aria-label="Delete entry"
+        onClick={() => onDelete(row)}
+      >
+        <LuTrash2 size={14} />
+      </button>
+    </span>
   </div>
   );
 };

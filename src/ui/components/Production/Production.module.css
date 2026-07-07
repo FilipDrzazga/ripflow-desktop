@@ -637,6 +637,8 @@
   gap: 12px;
   flex-shrink: 0;
   transition: background-color 0.15s ease;
+  /* Keep the normal arrow cursor even over the selectable order number (no I-beam). */
+  cursor: default;
 }
 
 .card:hover {

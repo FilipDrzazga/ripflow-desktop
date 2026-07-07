@@ -17,6 +17,14 @@ const MATERIAL_COLORS = {
     rowBackground: "#f8f6fd",
     mutedCount: "#b09ae2",
   },
+  // Files whose material couldn't be parsed (getMaterialType → "Unknown").
+  // Amber / gold accent.
+  Unknown: {
+    accent: "#E0A32E",
+    gradient: "linear-gradient(90deg, #E0A32E, #F2C55C)",
+    rowBackground: "#fdf9ef",
+    mutedCount: "#e6cb93",
+  },
 };
 
 const ProductionPrintCard = () => {
@@ -36,7 +44,6 @@ const ProductionPrintCard = () => {
       .map(([label, count]) => ({
         label,
         count,
-        percentage: allItems.length ? (count / allItems.length) * 100 : 0,
       }))
       .sort((a, b) => b.count - a.count);
   }, [allItems]);
@@ -49,13 +56,19 @@ const ProductionPrintCard = () => {
     };
   }, [files]);
 
-  const cottonsShare = materialStats.find((material) => material.label === "Cottons")?.percentage ?? 0;
-  const polyestersShare = materialStats.find((material) => material.label === "Polyesters")?.percentage ?? 0;
   const cottonsLength = materialLengths.Cottons ?? 0;
   const polyestersLength = materialLengths.Polyesters ?? 0;
+  const unknownLength = materialLengths.Unknown ?? 0;
   const cottonsCount = materialStats.find((material) => material.label === "Cottons")?.count ?? 0;
   const polyestersCount = materialStats.find((material) => material.label === "Polyesters")?.count ?? 0;
-  const totalLength = Number((cottonsLength + polyestersLength).toFixed(2));
+  const unknownCount = materialStats.find((material) => material.label === "Unknown")?.count ?? 0;
+  const lengthTotal = cottonsLength + polyestersLength + unknownLength;
+  const totalLength = Number(lengthTotal.toFixed(2));
+
+  // Bar shares reflect each material's share of total printed LENGTH (meters), not file count.
+  const cottonsShare = lengthTotal ? (cottonsLength / lengthTotal) * 100 : 0;
+  const polyestersShare = lengthTotal ? (polyestersLength / lengthTotal) * 100 : 0;
+  const unknownShare = lengthTotal ? (unknownLength / lengthTotal) * 100 : 0;
 
   useEffect(() => {
     if (!lastFilesRefreshAt) return undefined;
@@ -113,6 +126,13 @@ const ProductionPrintCard = () => {
           style={{ width: `${polyestersShare}%`, background: MATERIAL_COLORS.Polyesters.gradient }}
           title={`Polyesters · ~${polyestersLength} m`}
         />
+        {unknownCount > 0 && (
+          <div
+            className={style.card_bar_segment}
+            style={{ width: `${unknownShare}%`, background: MATERIAL_COLORS.Unknown.gradient }}
+            title={`Unknown · ~${unknownLength} m`}
+          />
+        )}
       </div>
       <div className={style.card_bar_labels}>
         <span className={style.card_bar_label} style={{ width: `${cottonsShare}%`, color: MATERIAL_COLORS.Cottons.accent }}>
@@ -124,6 +144,14 @@ const ProductionPrintCard = () => {
         >
           {Math.round(polyestersShare)}%
         </span>
+        {unknownCount > 0 && (
+          <span
+            className={style.card_bar_label}
+            style={{ width: `${unknownShare}%`, color: MATERIAL_COLORS.Unknown.accent }}
+          >
+            {Math.round(unknownShare)}%
+          </span>
+        )}
       </div>
 
       <div className={style.card_material_container}>
@@ -158,6 +186,22 @@ const ProductionPrintCard = () => {
             </span>
           </div>
         </div>
+        {unknownCount > 0 && (
+          <div className={style.card_material_row} style={{ background: MATERIAL_COLORS.Unknown.rowBackground }}>
+            <div className={style.card_material_left}>
+              <span className={style.card_material_swatch} style={{ backgroundColor: MATERIAL_COLORS.Unknown.accent }} />
+              <span className={style.card_material_name}>Unknown</span>
+            </div>
+            <div className={style.card_material_right}>
+              <span className={style.card_material_count} style={{ color: MATERIAL_COLORS.Unknown.mutedCount }}>
+                {unknownCount} {unknownCount === 1 ? "file" : "files"}
+              </span>
+              <span className={style.card_material_value} style={{ color: MATERIAL_COLORS.Unknown.accent }}>
+                ~{unknownLength} m
+              </span>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className={style.card_footer}>

@@ -419,7 +419,7 @@
 
 /* === COLUMN TEMPLATE (shared between header and cards) === */
 :root {
-  --analytics-cols: 115px 90px 1fr 1fr 96px 72px 1.4fr 68px 65px;
+  --analytics-cols: 115px 90px 1fr 1fr 96px 72px 1.4fr 68px 65px 34px;
   --analytics-pad: 0 16px;
 }
 
@@ -565,6 +565,39 @@
   color: var(--text-primary);
   white-space: nowrap;
   text-align: right;
+}
+
+/* Per-row delete — reveal on card hover so the grid stays clean while browsing. */
+.col_action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.delete_btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s ease, background-color 0.15s ease, color 0.15s ease;
+}
+
+.card:hover .delete_btn,
+.delete_btn:focus-visible {
+  opacity: 1;
+}
+
+.delete_btn:hover {
+  background: #fee2e2;
+  color: #dc2626;
 }
 
 /* === BADGES === */

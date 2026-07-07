@@ -203,9 +203,10 @@
   transition: filter 0.15s ease;
 }
 
-/* Shipped carries an extra "today" tag — give it a bit more room than the chain pills. */
+/* Shipped shares the chain pills' width (flex: 1 1 0 from .stage_pill); min-width: auto +
+   nowrap let it grow to fit a 3-digit count instead of overflowing. */
 .stage_pill_shipped {
-  flex-grow: 1.5;
+  flex-grow: 1;
 }
 
 .stage_pill:hover {

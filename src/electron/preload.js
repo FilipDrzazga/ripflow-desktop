@@ -153,6 +153,7 @@ const api = Object.freeze({
   getRollbackStats: (since) => ipcRenderer.invoke("get-rollback-stats", since ?? null),
   getRollbackDetails: (since) => ipcRenderer.invoke("get-rollback-details", since ?? null),
   clearRollbackReasons: () => ipcRenderer.invoke("rollback-reasons:clear"),
+  deleteRollbackReason: (id) => ipcRenderer.invoke("rollback-reasons:delete", id),
   getRollbackReasonsByBatch: (batchPath) => {
     assertPath(batchPath);
     return ipcRenderer.invoke("get-rollback-reasons-batch", batchPath);

@@ -1,5 +1,23 @@
 [
   {
+    "version": "1.0.13",
+    "date": "2026-07-03",
+    "changes": [
+      {
+        "text": "You can now remove individual entries from the Custom Order history - handy for clearing out mistaken or duplicate imports without wiping the whole log",
+        "clients": ["all"]
+      },
+      {
+        "text": "Updated the Minerva print label with the latest layout",
+        "clients": ["all"]
+      },
+      {
+        "text": "General UI improvements across the app for a cleaner, more consistent look",
+        "clients": ["all"]
+      }
+    ]
+  },
+  {
     "version": "1.0.12",
     "date": "2026-07-02",
     "changes": [

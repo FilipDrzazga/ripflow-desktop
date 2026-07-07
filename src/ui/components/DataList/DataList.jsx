@@ -34,6 +34,10 @@ const formatFileSize = (bytes) => {
   return `${bytes} B`;
 };
 
+// Original printed quantity for override comparisons: meters for LM, piece count otherwise.
+const getOriginalQty = (item) =>
+  item.printTypeCode === "LM" ? (item.height != null ? item.height / 1000 : null) : item.qty;
+
 const MATERIAL_MAP = {
   Cottons: { Icon: LuLeaf, color: "#3B6D11", label: "Cottons" },
   Polyesters: { Icon: PiPolygon, color: "#185FA5", label: "Polyesters" },
@@ -59,7 +63,7 @@ const DataList = () => {
   const toggleHold = useStore((state) => state.toggleHold);
   const holdSelectedFiles = useStore((state) => state.holdSelectedFiles);
   const selectedOverrides = useStore((state) => state.selectedOverrides);
-  const setOverride = useStore((state) => state.setOverride);
+  const setOverridesBulk = useStore((state) => state.setOverridesBulk);
   const clearOverride = useStore((state) => state.clearOverride);
   const [contextMenu, setContextMenu] = useState(null);
   const [holdModal, setHoldModal] = useState(null);
@@ -92,6 +96,30 @@ const DataList = () => {
     toggleItemSelection(item.id);
   };
   const closeContextMenu = () => setContextMenu(null);
+
+  // Apply the entered quantity to every file the override modal targets (one file, or the
+  // whole selection in bulk mode). Each file is interpreted by its own print type (meters
+  // for LM, pieces otherwise); a value equal to a file's original is skipped (no-op override).
+  const applyOverride = () => {
+    if (!overrideModal) return;
+    const val = Number(overrideValue);
+    const items = overrideModal.bulk ? overrideModal.items : [overrideModal.item];
+    const entries = [];
+    items.forEach((it) => {
+      if (overrideValue && val >= 1 && val !== getOriginalQty(it)) {
+        entries.push({ id: it.id, override: it.printTypeCode === "LM" ? { meters: val } : { qty: val } });
+      }
+    });
+    if (entries.length) setOverridesBulk(entries);
+    setOverrideModal(null);
+  };
+
+  // Cancel/backdrop/Escape. Single mode clears the item's override (matches prior behavior);
+  // bulk mode leaves existing overrides untouched.
+  const cancelOverride = () => {
+    if (overrideModal && !overrideModal.bulk) clearOverride(overrideModal.item.id);
+    setOverrideModal(null);
+  };
 
   const handleOpenInFolder = async (item) => {
     try {
@@ -435,6 +463,34 @@ const DataList = () => {
                 const isItemInvalid = item.status === FILE_STATUS.INVALID;
                 const isItemHeld = heldIds.has(item.id);
                 if (isItemInvalid || isItemHeld) return null;
+
+                // Bulk override: right-clicked item is part of a multi-selection. Apply one
+                // quantity to every eligible selected file. Selected files are already
+                // guaranteed valid + not held (see toggleItemSelection), but filter defensively.
+                const isItemSelected = selectedIds.has(item.id);
+                if (isItemSelected) {
+                  const selectedItems = [];
+                  filteredFiles.forEach((g) =>
+                    g.items.forEach((it) => {
+                      if (selectedIds.has(it.id) && it.status !== FILE_STATUS.INVALID && !heldIds.has(it.id)) {
+                        selectedItems.push(it);
+                      }
+                    }),
+                  );
+                  if (selectedItems.length > 1) {
+                    return {
+                      id: "set-qty",
+                      label: `Override ${selectedItems.length} selected`,
+                      icon: <LuPencil />,
+                      onClick: () => {
+                        closeContextMenu();
+                        setOverrideValue("");
+                        setOverrideModal({ bulk: true, items: selectedItems });
+                      },
+                    };
+                  }
+                }
+
                 const hasOverride = selectedOverrides.has(item.id);
                 if (hasOverride) {
                   return {
@@ -476,74 +532,73 @@ const DataList = () => {
       />
       {overrideModal &&
         createPortal(
-          <>
-            <div className={style.hold_backdrop} onClick={() => { clearOverride(overrideModal.item.id); setOverrideModal(null); }} />
-            <div className={style.hold_modal}>
-              <p className={style.hold_modal_title}>Set quantity override</p>
-              <p className={style.hold_modal_filename}>{overrideModal.item.file.name}</p>
-              {(() => {
-                const val = Number(overrideValue);
-                const item = overrideModal.item;
-                const original = item.printTypeCode === "LM" ? (item.height != null ? item.height / 1000 : null) : item.qty;
-                const visible = overrideValue && val === original;
-                return (
-                  <p className={style.override_modal_hint} style={{ visibility: visible ? "visible" : "hidden" }}>
+          (() => {
+            const isBulk = !!overrideModal.bulk;
+            const items = isBulk ? overrideModal.items : [overrideModal.item];
+            const single = isBulk ? null : items[0];
+            const allLm = items.every((i) => i.printTypeCode === "LM");
+            const noneLm = items.every((i) => i.printTypeCode !== "LM");
+            const val = Number(overrideValue);
+            // Files whose override would actually change something (value differs from original).
+            const willApplyCount = items.filter((it) => overrideValue && val >= 1 && val !== getOriginalQty(it)).length;
+            const placeholder = isBulk
+              ? allLm
+                ? "e.g. 10m"
+                : noneLm
+                  ? "e.g. x4"
+                  : "e.g. 10"
+              : single.printTypeCode === "LM"
+                ? single.height != null
+                  ? `${single.height / 1000}m`
+                  : "e.g. 10m"
+                : single.qty != null
+                  ? `x${single.qty}`
+                  : "e.g. x4";
+            return (
+              <>
+                <div className={style.hold_backdrop} onClick={cancelOverride} />
+                <div className={style.hold_modal}>
+                  <p className={style.hold_modal_title}>Set quantity override</p>
+                  <p className={style.hold_modal_filename}>
+                    {isBulk ? `${items.length} selected files` : single.file.name}
+                  </p>
+                  <p
+                    className={style.override_modal_hint}
+                    style={{ visibility: !isBulk && overrideValue && val === getOriginalQty(single) ? "visible" : "hidden" }}
+                  >
                     Value is the same as the original - no override needed.
                   </p>
-                );
-              })()}
-              <input
-                className={style.hold_modal_input}
-                type="number"
-                min={1}
-                max={overrideModal.item.printTypeCode === "LM"
-                  ? (overrideModal.item.height != null ? overrideModal.item.height / 1000 : undefined)
-                  : (overrideModal.item.qty ?? undefined)}
-                placeholder={overrideModal.item.printTypeCode === "LM"
-                  ? (overrideModal.item.height != null ? `${overrideModal.item.height / 1000}m` : "e.g. 10m")
-                  : (overrideModal.item.qty != null ? `x${overrideModal.item.qty}` : "e.g. x4")
-                }
-                value={overrideValue}
-                autoFocus
-                onChange={(e) => setOverrideValue(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Escape") { clearOverride(overrideModal.item.id); setOverrideModal(null); }
-                  if (e.key === "Enter") {
-                    const val = Number(overrideValue);
-                    const item = overrideModal.item;
-                    const original = item.printTypeCode === "LM" ? (item.height != null ? item.height / 1000 : null) : item.qty;
-                    if (overrideValue && val >= 1 && val !== original) {
-                      setOverride(item.id, item.printTypeCode === "LM" ? { meters: val } : { qty: val });
-                    }
-                    setOverrideModal(null);
-                  }
-                }}
-              />
-              <div className={style.hold_modal_actions}>
-                <button type="button" className={style.hold_modal_cancel} onClick={() => { clearOverride(overrideModal.item.id); setOverrideModal(null); }}>
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  className={style.hold_modal_confirm}
-                  disabled={(() => {
-                    const val = Number(overrideValue);
-                    const item = overrideModal.item;
-                    const original = item.printTypeCode === "LM" ? (item.height != null ? item.height / 1000 : null) : item.qty;
-                    return !overrideValue || val < 1 || val === original;
-                  })()}
-                  onClick={() => {
-                    const val = Number(overrideValue);
-                    const item = overrideModal.item;
-                    setOverride(item.id, item.printTypeCode === "LM" ? { meters: val } : { qty: val });
-                    setOverrideModal(null);
-                  }}
-                >
-                  Set override
-                </button>
-              </div>
-            </div>
-          </>,
+                  <input
+                    className={style.hold_modal_input}
+                    type="number"
+                    min={1}
+                    max={isBulk ? undefined : (getOriginalQty(single) ?? undefined)}
+                    placeholder={placeholder}
+                    value={overrideValue}
+                    autoFocus
+                    onChange={(e) => setOverrideValue(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Escape") cancelOverride();
+                      if (e.key === "Enter") applyOverride();
+                    }}
+                  />
+                  <div className={style.hold_modal_actions}>
+                    <button type="button" className={style.hold_modal_cancel} onClick={cancelOverride}>
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      className={style.hold_modal_confirm}
+                      disabled={willApplyCount === 0}
+                      onClick={applyOverride}
+                    >
+                      {isBulk ? `Set override (${willApplyCount})` : "Set override"}
+                    </button>
+                  </div>
+                </div>
+              </>
+            );
+          })(),
           document.body,
         )}
       {holdModal &&

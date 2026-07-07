@@ -64,6 +64,23 @@ const StagePill = ({ stageKey, status, company, title }) => {
 
 const ProductionCard = ({ stage: row, history = [], highlighted, selected, awaitingQc, ripError, onRipBadgeClick, onSelect, onContextMenu }) => {
   const cardRef  = useRef(null);
+  // Where the mouse went down, so a click that ends a text-selection drag doesn't toggle the card.
+  const pointerDownRef = useRef(null);
+
+  const handlePointerDown = (e) => {
+    pointerDownRef.current = { x: e.clientX, y: e.clientY };
+  };
+
+  const handleCardClick = (e) => {
+    const down = pointerDownRef.current;
+    pointerDownRef.current = null;
+    // The mouse travelled between down and up -> this was a drag (selecting text), not a click.
+    if (down && (Math.abs(e.clientX - down.x) > 4 || Math.abs(e.clientY - down.y) > 4)) return;
+    // A non-collapsed selection means the user is highlighting text (e.g. the order number) -> don't toggle.
+    const selection = window.getSelection?.();
+    if (selection && !selection.isCollapsed && selection.toString().length > 0) return;
+    onSelect?.(row.file_id);
+  };
 
   // stage -> formatted date of the LAST entry into that stage (max entered_at; ISO compares lexicographically)
   const stageDates = useMemo(() => {
@@ -98,7 +115,8 @@ const ProductionCard = ({ stage: row, history = [], highlighted, selected, await
       className={`${style.card} ${selected ? style.card_selected : ""} ${awaitingQc ? style.card_awaiting : ""}`}
       ref={cardRef}
       data-file-id={row.file_id}
-      onClick={() => onSelect?.(row.file_id)}
+      onMouseDown={handlePointerDown}
+      onClick={handleCardClick}
       onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); onContextMenu?.(row, e.clientX, e.clientY); }}
     >
       <span className={`${style.card_checkbox} ${selected ? style.card_checkbox_checked : ""}`}>

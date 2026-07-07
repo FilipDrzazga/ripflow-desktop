@@ -549,6 +549,16 @@ export const getRollbackReasonsByBatch = (batchPath) => {
 export const clearAllRollbackReasons = () =>
   runWrite("clearAllRollbackReasons", () => stmtClearRollbackReasons.run());
 
+// Hard-delete a single rollback_reasons row by primary key (per-row Analytics delete).
+// Returns the run result so `.changes` is inspectable; undefined when the DB is unavailable.
+export const deleteRollbackReason = (id) => {
+  let result;
+  runWrite("deleteRollbackReason", () => {
+    result = db.prepare("DELETE FROM rollback_reasons WHERE id = ?").run(id);
+  });
+  return result;
+};
+
 export const getRollbackReasonsByFile = (fileId) => {
   if (!stmtGetRollbackReasonsByFile) return null;
   try {
