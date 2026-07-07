@@ -15,6 +15,7 @@ import { openInFolder as openInFolderApi, openInShopify as openInShopifyApi } fr
 import { getSettings } from "../../services/settingsService";
 import { notify } from "@/utils/notify";
 import { usePdfPreview } from "../../hooks/usePdfPreview";
+import { useStageTransition } from "../../hooks/useStageTransition";
 import { PRINTER_COLORS } from "../../constants/printerColors";
 import ContextMenu from "../ContextMenu/ContextMenu";
 import PdfPreviewModal from "../PdfPreviewModal/PdfPreviewModal";
@@ -40,6 +41,26 @@ const STAGE_PIPELINE_ORDER = [
   PRODUCTION_STAGE.PRINTED, PRODUCTION_STAGE.HEATPRESS, PRODUCTION_STAGE.QC,
   PRODUCTION_STAGE.TO_SEWING, PRODUCTION_STAGE.PACKED, PRODUCTION_STAGE.SHIPPED,
 ];
+
+// Distinct operator feedback for the two non-success stage-transition outcomes —
+// they are two different states and must never be merged into one message.
+// "rejected": the guarded UPDATE matched 0 rows because another station already
+// moved the file — a normal race, NOT an error → Warning (AlertsHost has no
+// "Info" style, so Info would render red like an error; Warning is amber).
+// "failed": the IPC/DB write itself failed (shared DB/NAS down) → Error.
+const notifyStageRejected = (n) =>
+  notify({
+    type: "Warning",
+    title: "Already moved",
+    message: `${n} file${n === 1 ? "" : "s"} already moved by another station.`,
+  });
+
+const notifyStageFailed = (n) =>
+  notify({
+    type: "Error",
+    title: "Save failed",
+    message: `${n} file${n === 1 ? "" : "s"} could not be saved — check connection.`,
+  });
 
 const BatchGroupHeader = ({ batchPath, rows, selectedFileIds, onSelectAll }) => {
   const batchName = batchPath?.split(/[/\\]/).pop() ?? "Unknown";
@@ -76,14 +97,17 @@ const Production = () => {
   const productionStages    = useStore((s) => s.productionStages);
   const loadAllStages       = useStore((s) => s.loadAllStages);
   const loadStagesAfter     = useStore((s) => s.loadStagesAfter);
-  const updateStageInStore  = useStore((s) => s.updateStageInStore);
   const removeStageFromStore = useStore((s) => s.removeStageFromStore);
   const refreshFiles        = useStore((s) => s.refreshFiles);
   const loadAllStageHistory  = useStore((s) => s.loadAllStageHistory);
-  const addStageHistoryEntry = useStore((s) => s.addStageHistoryEntry);
   const stageHistory         = useStore((s) => s.stageHistory);
   const ripErrors            = useStore((s) => s.ripErrors);
   const removeRipError       = useStore((s) => s.removeRipError);
+
+  // Shared store-core for every stage transition — applies the optimistic store
+  // update + history entry ONLY when the DB confirms the row actually moved
+  // (res.updated), and classifies the outcome as applied/rejected/failed.
+  const applyStageTransition = useStageTransition();
 
   // "batches" = stage/batch lens (default); "orders" = order-centric read-only lens
   const [viewMode,       setViewMode]       = useState("batches");
@@ -150,10 +174,9 @@ const Production = () => {
     if (!newStage) return;
     const now = new Date().toISOString();
     const res = await advanceStage(fileId, newStage, row.stage);
-    if (res?.success) {
-      updateStageInStore(fileId, { ...row, stage: newStage, updated_at: now });
-      addStageHistoryEntry(fileId, newStage, now);
-    }
+    const outcome = applyStageTransition({ fileId, row, newStage, res, now });
+    if (outcome === "rejected") notifyStageRejected(1);
+    else if (outcome === "failed") notifyStageFailed(1);
   };
 
   const handleGoBack = async (fileId) => {
@@ -163,21 +186,22 @@ const Production = () => {
     if (!prevStage) return;
     const now = new Date().toISOString();
     const res = await advanceStage(fileId, prevStage, row.stage);
-    if (res?.success) {
-      updateStageInStore(fileId, { ...row, stage: prevStage, updated_at: now });
-      addStageHistoryEntry(fileId, prevStage, now);
-    }
+    const outcome = applyStageTransition({ fileId, row, newStage: prevStage, res, now });
+    if (outcome === "rejected") notifyStageRejected(1);
+    else if (outcome === "failed") notifyStageFailed(1);
   };
 
   const handleSewing = async (fileId, sewingCompany) => {
     const row = productionStages[fileId];
     if (!row) return;
+    const now = new Date().toISOString();
     const res = await setSewingSent(fileId, row.stage, sewingCompany ?? null);
-    if (res?.success) {
-      const now = new Date().toISOString();
-      updateStageInStore(fileId, { ...row, stage: PRODUCTION_STAGE.TO_SEWING, sewing_sent_at: now, sewing_company: sewingCompany ?? null, updated_at: now });
-      addStageHistoryEntry(fileId, PRODUCTION_STAGE.TO_SEWING, now);
-    }
+    const outcome = applyStageTransition({
+      fileId, row, newStage: PRODUCTION_STAGE.TO_SEWING, res, now,
+      extra: { sewing_sent_at: now, sewing_company: sewingCompany ?? null },
+    });
+    if (outcome === "rejected") notifyStageRejected(1);
+    else if (outcome === "failed") notifyStageFailed(1);
   };
 
   const handleReceive = async (fileId) => {
@@ -185,10 +209,12 @@ const Production = () => {
     if (!row || row.stage !== PRODUCTION_STAGE.TO_SEWING) return;
     const now = new Date().toISOString();
     const res = await setSewingReceived(fileId, PRODUCTION_STAGE.TO_SEWING);
-    if (res?.success) {
-      updateStageInStore(fileId, { ...row, stage: PRODUCTION_STAGE.PACKED, sewing_received_at: now, updated_at: now });
-      addStageHistoryEntry(fileId, PRODUCTION_STAGE.PACKED, now);
-    }
+    const outcome = applyStageTransition({
+      fileId, row, newStage: PRODUCTION_STAGE.PACKED, res, now,
+      extra: { sewing_received_at: now },
+    });
+    if (outcome === "rejected") notifyStageRejected(1);
+    else if (outcome === "failed") notifyStageFailed(1);
   };
 
   const handleReprintLabel = async (fileId) => {
@@ -344,7 +370,7 @@ const Production = () => {
 
   const handleBulkGoBack = async () => {
     const ids = [...selectedFileIds];
-    let count = 0;
+    let count = 0, rejected = 0, failed = 0;
     for (const id of ids) {
       const r = productionStages[id];
       if (!r) continue;
@@ -352,19 +378,20 @@ const Production = () => {
       if (!prevStage) continue;
       const now = new Date().toISOString();
       const res = await advanceStage(id, prevStage, r.stage);
-      if (res?.success) {
-        updateStageInStore(id, { ...r, stage: prevStage, updated_at: now });
-        addStageHistoryEntry(id, prevStage, now);
-        count++;
-      }
+      const outcome = applyStageTransition({ fileId: id, row: r, newStage: prevStage, res, now });
+      if (outcome === "applied") count++;
+      else if (outcome === "rejected") rejected++;
+      else failed++;
     }
     setSelectedFileIds(new Set());
     if (count > 0) notify({ type: "Success", title: "Moved back", message: `${count} file(s) moved back.` });
+    if (rejected > 0) notifyStageRejected(rejected);
+    if (failed > 0) notifyStageFailed(failed);
   };
 
   const handleBulkAdvance = async () => {
     const ids = [...selectedFileIds];
-    let count = 0;
+    let count = 0, rejected = 0, failed = 0;
     for (const id of ids) {
       const r = productionStages[id];
       if (!r) continue;
@@ -372,11 +399,10 @@ const Production = () => {
       if (!newStage) continue;
       const now = new Date().toISOString();
       const res = await advanceStage(id, newStage, r.stage);
-      if (res?.success) {
-        updateStageInStore(id, { ...r, stage: newStage, updated_at: now });
-        addStageHistoryEntry(id, newStage, now);
-        count++;
-      }
+      const outcome = applyStageTransition({ fileId: id, row: r, newStage, res, now });
+      if (outcome === "applied") count++;
+      else if (outcome === "rejected") rejected++;
+      else failed++;
     }
     // Keep the selection on files that survive in the store (advanced files stay
     // selected so the operator can act on them again); drop any that vanished.
@@ -386,21 +412,25 @@ const Production = () => {
       return next;
     });
     if (count > 0) notify({ type: "Success", title: `${count} file${count > 1 ? "s" : ""} moved`, message: "Moved to next stage." });
+    if (rejected > 0) notifyStageRejected(rejected);
+    if (failed > 0) notifyStageFailed(failed);
   };
 
   const handleBulkReceive = async () => {
     const ids = [...selectedFileIds];
-    let count = 0;
+    let count = 0, rejected = 0, failed = 0;
     for (const id of ids) {
       const r = productionStages[id];
       if (!r || r.stage !== PRODUCTION_STAGE.TO_SEWING) continue;
       const now = new Date().toISOString();
       const res = await setSewingReceived(id, PRODUCTION_STAGE.TO_SEWING);
-      if (res?.success) {
-        updateStageInStore(id, { ...r, stage: PRODUCTION_STAGE.PACKED, sewing_received_at: now, updated_at: now });
-        addStageHistoryEntry(id, PRODUCTION_STAGE.PACKED, now);
-        count++;
-      }
+      const outcome = applyStageTransition({
+        fileId: id, row: r, newStage: PRODUCTION_STAGE.PACKED, res, now,
+        extra: { sewing_received_at: now },
+      });
+      if (outcome === "applied") count++;
+      else if (outcome === "rejected") rejected++;
+      else failed++;
     }
     // Keep the selection on files that survive in the store; drop any that vanished.
     setSelectedFileIds((prev) => {
@@ -409,24 +439,30 @@ const Production = () => {
       return next;
     });
     if (count > 0) notify({ type: "Success", title: "Received from sewing", message: `${count} file(s) received.` });
+    if (rejected > 0) notifyStageRejected(rejected);
+    if (failed > 0) notifyStageFailed(failed);
   };
 
   const handleBulkSewing = async (sewingCompany) => {
     const ids = [...selectedFileIds];
-    let count = 0;
+    let count = 0, rejected = 0, failed = 0;
     for (const id of ids) {
       const r = productionStages[id];
       if (!r || r.stage !== PRODUCTION_STAGE.QC) continue;
       const now = new Date().toISOString();
       const res = await setSewingSent(id, PRODUCTION_STAGE.QC, sewingCompany ?? null);
-      if (res?.success) {
-        updateStageInStore(id, { ...r, stage: PRODUCTION_STAGE.TO_SEWING, sewing_sent_at: now, sewing_company: sewingCompany ?? null, updated_at: now });
-        addStageHistoryEntry(id, PRODUCTION_STAGE.TO_SEWING, now);
-        count++;
-      }
+      const outcome = applyStageTransition({
+        fileId: id, row: r, newStage: PRODUCTION_STAGE.TO_SEWING, res, now,
+        extra: { sewing_sent_at: now, sewing_company: sewingCompany ?? null },
+      });
+      if (outcome === "applied") count++;
+      else if (outcome === "rejected") rejected++;
+      else failed++;
     }
     setSelectedFileIds(new Set());
     if (count > 0) notify({ type: "Success", title: "Sent to sewing", message: `${count} file(s) sent to ${sewingCompany}.` });
+    if (rejected > 0) notifyStageRejected(rejected);
+    if (failed > 0) notifyStageFailed(failed);
   };
 
   // Clear selection when filter changes
@@ -478,15 +514,17 @@ const Production = () => {
           return;
         }
         const now = new Date().toISOString();
-        let count = 0;
+        let count = 0, rejected = 0, failed = 0;
         for (const f of targets) {
-          const r1 = await advanceStage(f.file_id, PRODUCTION_STAGE.HEATPRESS, PRODUCTION_STAGE.PRINTED);
-          if (!r1?.success) continue;
-          updateStageInStore(f.file_id, { ...f, stage: PRODUCTION_STAGE.HEATPRESS, updated_at: now });
-          addStageHistoryEntry(f.file_id, PRODUCTION_STAGE.HEATPRESS, now);
-          count++;
+          const res = await advanceStage(f.file_id, PRODUCTION_STAGE.HEATPRESS, PRODUCTION_STAGE.PRINTED);
+          const outcome = applyStageTransition({ fileId: f.file_id, row: f, newStage: PRODUCTION_STAGE.HEATPRESS, res, now });
+          if (outcome === "applied") count++;
+          else if (outcome === "rejected") rejected++;
+          else failed++;
         }
         if (count > 0) notify({ type: "Success", title: `${count} file${count > 1 ? "s" : ""} moved`, message: "Moved to Heat Press" });
+        if (rejected > 0) notifyStageRejected(rejected);
+        if (failed > 0) notifyStageFailed(failed);
         return;
       }
 
@@ -497,16 +535,17 @@ const Production = () => {
           return;
         }
         const now = new Date().toISOString();
-        let count = 0;
+        let count = 0, rejected = 0, failed = 0;
         for (const f of targets) {
           const res = await advanceStage(f.file_id, PRODUCTION_STAGE.HEATPRESS, PRODUCTION_STAGE.PRINTED);
-          if (res?.success) {
-            updateStageInStore(f.file_id, { ...f, stage: PRODUCTION_STAGE.HEATPRESS, updated_at: now });
-            addStageHistoryEntry(f.file_id, PRODUCTION_STAGE.HEATPRESS, now);
-            count++;
-          }
+          const outcome = applyStageTransition({ fileId: f.file_id, row: f, newStage: PRODUCTION_STAGE.HEATPRESS, res, now });
+          if (outcome === "applied") count++;
+          else if (outcome === "rejected") rejected++;
+          else failed++;
         }
         if (count > 0) notify({ type: "Success", title: `${count} file${count > 1 ? "s" : ""} moved`, message: "Moved to Heat Press" });
+        if (rejected > 0) notifyStageRejected(rejected);
+        if (failed > 0) notifyStageFailed(failed);
         return;
       }
 
@@ -517,20 +556,21 @@ const Production = () => {
           return;
         }
         const now = new Date().toISOString();
+        // This branch keeps its own advancedIds Set (its success message reads the
+        // .size) instead of a plain counter — left in the call-site per design;
+        // the helper only owns the store-core. rejected/failed still tracked apart.
         const advancedIds = new Set();
+        let rejected = 0, failed = 0;
         for (const f of targets) {
           const res = await advanceStage(f.file_id, PRODUCTION_STAGE.QC, f.stage);
-          if (res?.success) {
-            updateStageInStore(f.file_id, { ...f, stage: PRODUCTION_STAGE.QC, updated_at: now });
-            addStageHistoryEntry(f.file_id, PRODUCTION_STAGE.QC, now);
-            advancedIds.add(f.file_id);
-          }
+          const outcome = applyStageTransition({ fileId: f.file_id, row: f, newStage: PRODUCTION_STAGE.QC, res, now });
+          if (outcome === "applied") advancedIds.add(f.file_id);
+          else if (outcome === "rejected") rejected++;
+          else failed++;
         }
-        if (advancedIds.size === 0) {
-          notify({ type: "Error", title: "Advance failed", message: "Could not advance files to QC." });
-          return;
-        }
-        notify({ type: "Success", title: "Advanced to QC", message: `${advancedIds.size} file(s) moved to QC.` });
+        if (advancedIds.size > 0) notify({ type: "Success", title: "Advanced to QC", message: `${advancedIds.size} file(s) moved to QC.` });
+        if (rejected > 0) notifyStageRejected(rejected);
+        if (failed > 0) notifyStageFailed(failed);
         return;
       }
 
@@ -541,16 +581,17 @@ const Production = () => {
         const targets = batchFiles.filter((f) => f.stage === PRODUCTION_STAGE.HEATPRESS);
         if (targets.length === 0) return; // scan only filters the view to the batch
         const now = new Date().toISOString();
-        let count = 0;
+        let count = 0, rejected = 0, failed = 0;
         for (const f of targets) {
           const res = await advanceStage(f.file_id, PRODUCTION_STAGE.QC, PRODUCTION_STAGE.HEATPRESS);
-          if (res?.success) {
-            updateStageInStore(f.file_id, { ...f, stage: PRODUCTION_STAGE.QC, updated_at: now });
-            addStageHistoryEntry(f.file_id, PRODUCTION_STAGE.QC, now);
-            count++;
-          }
+          const outcome = applyStageTransition({ fileId: f.file_id, row: f, newStage: PRODUCTION_STAGE.QC, res, now });
+          if (outcome === "applied") count++;
+          else if (outcome === "rejected") rejected++;
+          else failed++;
         }
         if (count > 0) notify({ type: "Success", title: `${count} file${count > 1 ? "s" : ""} moved`, message: "Moved to QC" });
+        if (rejected > 0) notifyStageRejected(rejected);
+        if (failed > 0) notifyStageFailed(failed);
         return;
       }
 
@@ -575,7 +616,7 @@ const Production = () => {
     });
     setTimeout(() => setHighlightedId(null), 1500);
     notify({ type: "Success", title: "Order found", message: `${row.order_id ?? value}` });
-  }, [productionStages, workstationRole, updateStageInStore, addStageHistoryEntry]);
+  }, [productionStages, workstationRole, applyStageTransition]);
 
   useEffect(() => {
     handleScanRef.current = handleScan;

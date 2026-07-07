@@ -90,7 +90,7 @@ export function registerProductionHandlers() {
       const { workstationName } = getSettings();
       const result = setSewingSent(fileId, workstationName, expectedStage ?? null, sewingCompany ?? null);
       if (!result) return { success: false, error: "DB unavailable" };
-      return { success: true };
+      return { success: true, updated: result.updated };
     } catch (err) {
       return { success: false, error: err.message };
     }
@@ -104,7 +104,7 @@ export function registerProductionHandlers() {
       // Receive from sewing now lands directly in "packed", so it is the entry
       // point that completes any open reprint request for the file.
       if (result.updated) fulfillReprintRequests(fileId);
-      return { success: true };
+      return { success: true, updated: result.updated };
     } catch (err) {
       return { success: false, error: err.message };
     }
