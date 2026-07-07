@@ -6,7 +6,7 @@ import { toIpcError } from "../helpers/ipcError.js";
 import { parsePrintFileName } from "../helpers/parseFileName.js";
 import { getMaterialType } from "../helpers/getMaterialType.js";
 import { submitBatchToPrintFactory } from "./createXML.js";
-import { parseBatchFolderName } from "./readPrintedFolder.js";
+import { parseBatchFolderName, normalizeOverrideEntry } from "./readPrintedFolder.js";
 import { insertRollbackReason, insertReprintRequest, clearFileStagesByBatch, clearFileStage, resolveRipErrorsByFile } from "../helpers/db.js";
 import { getSettings } from "../helpers/getSettings.js";
 import { GROUP_NAME_OVERRIDES_REVERSE } from "../helpers/createBatchIds.js";
@@ -324,15 +324,18 @@ export const regenerateXmlForBatch = async (batchPath) => {
         const parsed = parsePrintFileName(pdf.name, { fullPath, dir: validatedBatchPath });
         const materialType = getMaterialType(parsed?.material);
         const stem = path.parse(pdf.name).name;
-        const ov = batchOverrides[stem];
+        // Effective printed amount via the SINGLE shape gate (new {printed} +
+        // legacy defensively) — same overlay readSingleBatch uses, so regenerate
+        // reproduces the amount that was actually printed, not the parsed original.
+        const prov = normalizeOverrideEntry(batchOverrides[stem]);
         return {
           file: { name: pdf.name, fullPath },
           printGroup: meta.group,
           printer: meta.printer,
           materialType,
           ...(parsed || {}),
-          ...(ov?.qty != null ? { qty: ov.qty } : {}),
-          ...(ov?.meters != null ? { height: Math.round(ov.meters * 1000) } : {}),
+          ...(prov?.printed?.qty != null ? { qty: prov.printed.qty } : {}),
+          ...(prov?.printed?.meters != null ? { height: Math.round(prov.printed.meters * 1000) } : {}),
         };
       })
       .filter((item) => item.printTypeCode && item.printTypeCode !== "UNKNOWN");

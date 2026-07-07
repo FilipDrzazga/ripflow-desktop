@@ -22,7 +22,7 @@ export const parseBatchFolderName = (name) => {
 // New shape: { printed:{meters}|{qty}, manual:bool, reprintQty, reprintOriginal }.
 // Legacy shape ({ qty }|{ meters }) is read defensively and treated as a manual
 // override with no reprint provenance (legacy reprints were stored as overrides).
-const normalizeOverrideEntry = (entry) => {
+export const normalizeOverrideEntry = (entry) => {
   if (!entry) return null;
   if (entry.printed) {
     return {
