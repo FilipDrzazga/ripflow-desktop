@@ -33,6 +33,27 @@ const exists = async (targetPath) => {
   }
 };
 
+// Claim-and-remove a stale lock via RENAME (atomic source-consumption) instead of a
+// destructive unlink-by-name. If two stations race to clear the SAME stale lock, exactly
+// one wins the rename and the loser gets ENOENT — so this can never delete another
+// station's freshly created lock (the TOCTOU that let two stations enter COPY of the same
+// sources → double print). Returns true only if THIS call actually removed the lock.
+const removeStaleLock = async (lockPath) => {
+  const deadPath = `${lockPath}.dead-${process.pid}-${Date.now()}`;
+  try {
+    // Same-directory rename: safe on SMB (a cross-dir rename would EPERM on Windows shares).
+    await fs.promises.rename(lockPath, deadPath);
+  } catch (err) {
+    if (err.code === "ENOENT") return false; // another station already claimed this lock
+    throw err;
+  }
+  // deadPath is a name only THIS call holds → unlinking it by name is safe. Best-effort:
+  // a leftover .dead-* (crash between rename and unlink) is inert — it is never named
+  // ".lock", so it never blocks a future batch.
+  await fs.promises.unlink(deadPath).catch(() => {});
+  return true;
+};
+
 const toBatchError = (error, stage, fallbackTitle = "Batch creation failed") =>
   toIpcError(error, stage, fallbackTitle);
 
@@ -227,8 +248,7 @@ export const createBatch = async (batch) => {
 
         if (nowOnServer != null) {
           if (nowOnServer - lockStat.mtimeMs > STALE_LOCK_MS) {
-            await fs.promises.unlink(lockPath);
-            staleLockRemoved = true;
+            if (await removeStaleLock(lockPath)) staleLockRemoved = true;
           }
         } else {
           // No NAS reference available. Do NOT delete on a small Date.now() threshold —
@@ -236,8 +256,7 @@ export const createBatch = async (batch) => {
           // a lock that is conservatively old by the local clock (5 min), and warn.
           result.warnings.push(`NAS lock probe failed in ${sourceFolderPath}; using conservative 5min fallback`);
           if (Date.now() - lockStat.mtimeMs > 5 * 60 * 1000) {
-            await fs.promises.unlink(lockPath);
-            staleLockRemoved = true;
+            if (await removeStaleLock(lockPath)) staleLockRemoved = true;
           }
         }
       } catch {
@@ -251,6 +270,8 @@ export const createBatch = async (batch) => {
             pid: process.pid,
             batchId: batchIds.mainFolder,
             timestamp: new Date().toISOString(),
+            // nonce reserved for future lock-ownership verification (Opcja 2); currently unused
+            nonce: crypto.randomUUID(),
           }),
         );
         lockRecords.push({ handle, lockPath });
