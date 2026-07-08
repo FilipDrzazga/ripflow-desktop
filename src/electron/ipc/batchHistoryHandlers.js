@@ -7,7 +7,7 @@ import { parsePrintFileName } from "../helpers/parseFileName.js";
 import { getMaterialType } from "../helpers/getMaterialType.js";
 import { submitBatchToPrintFactory } from "./createXML.js";
 import { parseBatchFolderName, normalizeOverrideEntry } from "./readPrintedFolder.js";
-import { insertRollbackReason, insertReprintRequest, clearFileStagesByBatch, clearFileStage, resolveRipErrorsByFile } from "../helpers/db.js";
+import { insertRollbackReason, insertReprintRequest, clearFileStage, resolveRipErrorsByFile } from "../helpers/db.js";
 import { getSettings } from "../helpers/getSettings.js";
 import { GROUP_NAME_OVERRIDES_REVERSE } from "../helpers/createBatchIds.js";
 import { getCachedFabrics, getCachedGlobals } from "../helpers/fabricCache.js";
@@ -37,8 +37,18 @@ const resolveOriginalGroup = async (batchPath, shortGroup, stem = null) => {
   return resolveGroupFromInfo(info, shortGroup, stem);
 };
 
+const renameNoOverwrite = async (src, dest) => {
+  try {
+    await fs.promises.access(dest);
+    throw Object.assign(new Error(`Destination already exists: ${dest}`), { code: "EEXIST" });
+  } catch (e) {
+    if (e.code !== "ENOENT") throw e;   // ENOENT = wolne; EEXIST/inne → w górę
+  }
+  await fs.promises.rename(src, dest);
+};
+
 export const rollbackBatchFromHistory = async ({ batchPath, reason } = {}) => {
-  const result = { success: false, errors: [], restoredFiles: [] };
+  const result = { success: false, errors: [], restoredFiles: [], failedFiles: [] };
 
   try {
     const validatedBatchPath = await assertStorageFilePath(batchPath, {
@@ -85,52 +95,49 @@ export const rollbackBatchFromHistory = async ({ batchPath, reason } = {}) => {
     } catch {
       // best-effort snapshot
     }
+    const workstation = reason ? getSettings().workstationName : null;
     for (const f of entries) {
       if (!f.isFile() || !f.name.toLowerCase().endsWith(".pdf")) continue;
       const stem = f.name.replace(/\.[^.]+$/, "");
       const group = resolveGroupFromInfo(batchInfo, meta.group, stem);
       const destDir = path.join(storageRoot, group);
-      await fs.promises.mkdir(destDir, { recursive: true });
       const src = path.join(validatedBatchPath, f.name);
       const dest = path.join(destDir, f.name);
-      await fs.promises.rename(src, dest);
-      result.restoredFiles.push(dest);
-    }
-
-    result.success = true;
-    clearFileStagesByBatch(validatedBatchPath);
-
-    // Resolve every rolled-back file's open RIP errors (same stem key as clearFileStage uses).
-    for (const pdfName of pdfNames) {
-      resolveRipErrorsByFile(pdfName.replace(/\.[^.]+$/, ""));
-    }
-
-    if (reason) {
-      const workstation = getSettings().workstationName;
-      for (const pdfName of pdfNames) {
-        const fileId = pdfName.replace(/\.[^.]+$/, "");
-        const p = parsePrintFileName(pdfName);
-        const parsed = p ? { ...p, materialType: p.material ? getMaterialType(p.material) : "Unknown" } : null;
-        const fileFabric = parsed?.material ?? null;
-        const metersResult = parsed
-          ? estimatePrintLength([parsed], { globals: getCachedGlobals(), fabrics: getCachedFabrics() })
-          : null;
-        insertRollbackReason({
-          id: crypto.randomUUID(),
-          fileId,
-          batchPath: validatedBatchPath,
-          reasonCode: reason.code,
-          reasonLabel: reason.label,
-          workstation,
-          orderId: parsed?.orderId ?? null,
-          customer: parsed?.customerName ?? null,
-          fabric: fileFabric,
-          process: getMaterialType(fileFabric),
-          printType: parsed?.printTypeCode ?? null,
-          meters: metersResult?.fixedTotalLengthM ?? null,
-        });
+      try {
+        await fs.promises.mkdir(destDir, { recursive: true });
+        await renameNoOverwrite(src, dest);
+        // uzgodnienie DB natychmiast po udanym rename — wzorzec single-file
+        clearFileStage(stem);
+        resolveRipErrorsByFile(stem);
+        if (reason) {
+          const p = parsePrintFileName(f.name);
+          const parsed = p ? { ...p, materialType: p.material ? getMaterialType(p.material) : "Unknown" } : null;
+          const fileFabric = parsed?.material ?? null;
+          const metersResult = parsed
+            ? estimatePrintLength([parsed], { globals: getCachedGlobals(), fabrics: getCachedFabrics() })
+            : null;
+          insertRollbackReason({
+            id: crypto.randomUUID(),
+            fileId: stem,
+            batchPath: validatedBatchPath,
+            reasonCode: reason.code,
+            reasonLabel: reason.label,
+            workstation,
+            orderId: parsed?.orderId ?? null,
+            customer: parsed?.customerName ?? null,
+            fabric: fileFabric,
+            process: getMaterialType(fileFabric),
+            printType: parsed?.printTypeCode ?? null,
+            meters: metersResult?.fixedTotalLengthM ?? null,
+          });
+        }
+        result.restoredFiles.push(dest);
+      } catch (err) {
+        result.failedFiles.push({ name: f.name, error: toError(err, "File rollback failed") });
+        // kontynuuj — pad jednego pliku nie blokuje reszty (best-effort)
       }
     }
+    result.success = result.failedFiles.length === 0;
   } catch (err) {
     result.errors = [toError(err, err.title || "Rollback failed")];
   }
@@ -185,7 +192,7 @@ export const rollbackFileFromHistory = async ({ filePath, batchPath, reason, rep
       // best-effort snapshot
     }
     const dest = path.join(destDir, filename);
-    await fs.promises.rename(validatedFilePath, dest);
+    await renameNoOverwrite(validatedFilePath, dest);
 
     const fileId = path.basename(validatedFilePath, path.extname(validatedFilePath));
     result.success = true;

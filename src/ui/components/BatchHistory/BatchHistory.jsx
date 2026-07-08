@@ -754,6 +754,31 @@ const BatchHistory = () => {
           }
           refreshFiles();
           searchInputRef.current?.focus();
+        } else if (res?.restoredFiles?.length > 0) {
+          // Częściowy rollback: część plików wróciła do inboksu, część padła.
+          const failed = res.failedFiles || [];
+          const failedStems = new Set(failed.map((f) => f.name.replace(/\.[^.]+$/, "")));
+          const batch = dayGroupsRef.current.flatMap((d) => d.batches).find((b) => b.path === batchPath);
+          const movedStems = (batch?.files || [])
+            .map((f) => f.name.replace(/\.[^.]+$/, ""))
+            .filter((stem) => !failedStems.has(stem));
+          const total = movedStems.length + failedStems.size;
+          notify(
+            {
+              type: "Warning",
+              title: "Batch częściowo cofnięty",
+              message: `Przeniesiono ${movedStems.length} z ${total} plików.`,
+            },
+            { stage: "rollback", code: "BATCH_ROLLBACK_PARTIAL", detail: { batchPath, failedFiles: failed } },
+          );
+          // Optymistyczne clear'y TYLKO dla plików, które przeszły.
+          movedStems.forEach((stem) => removeStageFromStore(stem));
+          clearRipErrorsForFiles(movedStems);
+          // runMutation NIE woła refresh przy success:false → jawnie. loadData maluje
+          // prawdę z dysku (moved→ROLLED_BACK przez masking, stuck→active).
+          await refreshFiles();
+          loadData();
+          searchInputRef.current?.focus();
         } else {
           const err = res?.errors?.[0];
           throw {
