@@ -50,6 +50,9 @@ src/electron/
                            # file:read-buffer uses assertStorageFilePath — no path traversal
     createBatch.js         # Atomic file move; stale lock timeout = 60s (not 5min)
     batchHistoryHandlers.js # rollback, regenerateXML, deleteBatch; uses resolveOriginalGroup()
+                           # rollbackBatchFromHistory: per-file rename+DB reconcile INSIDE the move loop
+                           #   (single-file pattern); best-effort on mid-loop fail → result.failedFiles
+                           # renameNoOverwrite (access-check → EEXIST) shared by batch + single-file rollback
                            # regenerateXmlForBatch overlays effective printed amount via
                            #   normalizeOverrideEntry (same gate as readSingleBatch; NOT raw ov.qty/ov.meters)
     readPrintedFolder.js   # Reads PRINTED/ tree. Exports: readPrintedFolder (full scan, legacy),
@@ -411,7 +414,7 @@ DB tables: `file_stages` (one row per active file), `file_stage_history` (append
 **`FROM_SEWING` is legacy** (like `REJECTED`/`OVERRIDDEN`): kept in `constants.js` (incl. `STAGE_NEXT.from_sewing → packed`) so old rows still render and a file can be pushed there manually via `STAGE_NEXT`, but it is **no longer an active routing target** — "Receive from sewing" now lands directly in `packed`. No filter tab / pipeline-order entry for it (display-only lookups in `ProductionCard`/`groupByOrder` stay).
 **Receive completes reprints** — because Receive is now the entry to `packed`, the `stage:setSewingReceived` handler calls `fulfillReprintRequests(fileId)` on success (mirrors `stage:advance → packed`).
 
-**Rollback = physical file move to inbox** — calling `rollbackFile` automatically calls `clearFileStage(fileId)` in `batchHistoryHandlers.js`. No separate DB cleanup needed. The card disappears from Production UI via `removeStageFromStore(fileId)`.
+**Rollback = physical file move to inbox** — calling `rollbackFile` automatically calls `clearFileStage(fileId)` in `batchHistoryHandlers.js`. No separate DB cleanup needed. The card disappears from Production UI via `removeStageFromStore(fileId)`. **Batch rollback reconciles the DB PER FILE inside the move loop** — `clearFileStage` + `resolveRipErrorsByFile` + `insertRollbackReason` run right after each successful `rename`, NOT collectively after the loop. A mid-loop rename failure therefore never leaves live `file_stages` / open `rip_errors` for files still physically in PRINTED; it is best-effort (continues past a failed file) and returns `result.failedFiles` (`[{ name, error }]`).
 
 **No REJECTED stage in UI** — "Rollback to inbox" is the only destructive action for any non-shipped file. REJECTED/OVERRIDDEN constants remain in code for DB backward compatibility only.
 
@@ -457,6 +460,7 @@ DB tables: `file_stages` (one row per active file), `file_stage_history` (append
 - Call `stopBatchWatcher()` on unmount
 - Click anywhere on batch row to expand/collapse; action buttons use `e.stopPropagation()`
 - Whole batch rollback: watcher sends `"removed"` → no manual reload needed. Both the optimistic update and the `"removed"` handler keep `files` in state as `ROLLED_BACK` (with `fileCount: 0`), NOT cleared to `files: []` — this matches `readSingleBatch` (live↔reload parity) so a rolled-back batch stays matchable by search (filter checks `file.name`). Do not revert to `files: []` — that re-breaks search after rollback.
+- **`handleConfirmRollbackBatch` is tri-state**: (a) `res.success` → full success (existing optimistic `setDayGroups` + scoped clears); (b) `!success && restoredFiles.length > 0` → **partial** — Warning toast "Przeniesiono X z Y", optimistic stage/RIP clear **scoped to moved files only** (`movedStems` = batch stems minus `failedFiles` stems), explicit `refreshFiles()`/`loadData()` because `runMutation` does NOT refresh on `!success`, NO `setDayGroups` (relies on `loadData` painting disk truth: moved→ROLLED_BACK via snapshot masking, stuck→active); (c) total fail → throws to the Error branch.
 - Single file rollback: watcher fires but only sends event if batch has 0 PDFs left; optimistic update is sufficient for UI — do NOT call `loadData()` after single file rollback
 - `loadData` must fetch rollback reasons for: (a) `rolled_back` batches AND (b) `active` batches with any `file.status === "rolled_back"` — skipping (b) breaks file-level badges
 - Optimistic updates: set state immediately after `res?.success`, watcher syncs after
@@ -609,3 +613,4 @@ npm run test:watch # Vitest watch mode
 16. **Fabric/reason config is DB-backed and shared** — electron-store holds ONLY machine-specific settings (paths, workstation name). Do NOT store shared config back in electron-store.
 17. **fabricCache must be loaded before getMaterialType/parseFileName are called** — `loadFabricCache()` is called in `ipc/index.js` right after `initDb()`. Both functions have static-set fallbacks for the window before DB is ready.
 18. **Every Production stage transition MUST go through `useStageTransition`** — never hand-roll an optimistic `updateStageInStore`/`addStageHistoryEntry` off `res.success` alone. The guarded UPDATE returns `updated:false` when another station already moved the file; touching the store on `success` (ignoring `updated`) re-introduces the phantom-transition bug in the new call-site. Route via `applyStageTransition(...)`, act only on `"applied"`, and report `"rejected"` (Warning) apart from `"failed"` (Error). Any new stage handler in the DB/IPC layer must also return `{ updated }` for the helper to read.
+19. **Batch rollback reconciles the DB per file after each successful `rename` — never collectively after the loop.** A collective `clearFileStagesByBatch`/reason-insert past the move loop desyncs `file_stages`/`rip_errors` from disk when a rename fails mid-loop (files still in PRINTED but marked cleared). Every rename in a rollback path goes through `renameNoOverwrite` — **never bare `fs.rename`**: on Windows a silent overwrite destroys a full inbox original, because the PRINTED copy is page-1-only. It refuses the overwrite (EEXIST) and surfaces it — no collision/suffix logic.
