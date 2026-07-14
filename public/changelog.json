@@ -1,5 +1,27 @@
 [
   {
+    "version": "1.0.15",
+    "date": "2026-07-08",
+    "changes": [
+      {
+        "text": "Reliability improvements for busy, multi-station setups - when several workstations are working against the shared network at the same time, batch creation and stage moves are now more robust against rare timing clashes, so what you see on screen always matches what actually happened",
+        "clients": ["all"]
+      },
+      {
+        "text": "Rolling a batch back to the inbox is now safer - each file is returned and its production status cleared one by one, so if the network hiccups midway you get a clear count of how many files came back rather than files that look stuck in Production while already sitting in the inbox",
+        "clients": ["all"]
+      },
+      {
+        "text": "Fixed: moving a job to the next stage from one workstation while another had already moved it could briefly show the move as done on both - the app now correctly recognises when another station got there first and tells you, instead of showing a move that didn't happen",
+        "clients": ["all"]
+      },
+      {
+        "text": "Fixed: regenerating a batch's print file now uses the quantity actually printed (including partial reprints and overrides), matching the totals shown in Batch History, rather than the original quantity from the filename",
+        "clients": ["all"]
+      }
+    ]
+  },
+  {
     "version": "1.0.14",
     "date": "2026-07-07",
     "changes": [
