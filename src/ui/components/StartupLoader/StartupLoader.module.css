@@ -42,7 +42,7 @@
   background-color: var(--text-primary);
 }
 .loader_logo {
-  margin-top: 24px;
-  width: 90px;
+  width: 180px;
   height: auto;
+  margin-bottom: 24px;
 }

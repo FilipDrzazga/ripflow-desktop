@@ -1,13 +1,13 @@
 import { LuMinus, LuX } from "react-icons/lu";
 import { minimizeWindow, closeWindow } from "../../services/systemService";
 import styles from "./TitleBar.module.css";
-import maakeLogo from "@/assets/image/Maake_Logo.webp";
+import ripflowWordmark from "@/assets/image/ripflow_wordmark.png";
 
 const TitleBar = () => {
   return (
     <div className={styles.titlebar}>
       <div className={styles.logo_col}>
-        <img src={maakeLogo} alt="Maake" className={styles.logo} draggable={false} />
+        <img src={ripflowWordmark} alt="RipFlow" className={styles.logo} draggable={false} />
       </div>
       <div className={styles.controls}>
         <button className={styles.btn} onClick={minimizeWindow}>

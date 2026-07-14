@@ -3,7 +3,7 @@ import { onReadFoldersProgress } from "../../services/fileService";
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
 import style from "./StartupLoader.module.css";
-import MaakeLogo from "@/assets/image/Maake_Logo.webp";
+import RipflowLogo from "@/assets/image/ripflow_logo_full.png";
 
 const StartupLoader = ({ onDone }) => {
   const containerRef = useRef(null);
@@ -63,11 +63,11 @@ const StartupLoader = ({ onDone }) => {
   return (
     <div ref={containerRef} className={style.loader_container}>
       <div className={style.loader_content}>
+        <img ref={logoRef} src={RipflowLogo} alt="RipFlow" className={style.loader_logo} />
         <h1 className={style.loader_title}>{progressLabel}</h1>
         <div className={style.loader_track}>
           <div ref={fillRef} className={style.loader_fill} />
         </div>
-        <img ref={logoRef} src={MaakeLogo} alt="Maake Logo" className={style.loader_logo} />
       </div>
     </div>
   );
