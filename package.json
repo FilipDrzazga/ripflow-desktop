@@ -28,11 +28,14 @@
     ],
     "win": {
       "target": "nsis",
-      "icon": "src/ui/assets/image/maake_logo_256.ico"
+      "icon": "src/electron/assets/ripflow_icon.ico"
     },
     "nsis": {
       "oneClick": false,
-      "allowToChangeInstallationDirectory": true
+      "allowToChangeInstallationDirectory": true,
+      "installerIcon": "src/electron/assets/ripflow_icon.ico",
+      "uninstallerIcon": "src/electron/assets/ripflow_icon.ico",
+      "installerHeaderIcon": "src/electron/assets/ripflow_icon.ico"
     },
     "publish": {
       "provider": "github",

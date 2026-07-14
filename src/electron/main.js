@@ -24,7 +24,7 @@ const createWindow = () => {
     fullscreenable: false,
     frame: false,
     show: false,
-    icon: join(__dirname, "../ui/assets/image/favicon.ico"),
+    icon: join(__dirname, "assets/ripflow_icon.ico"),
     webPreferences: {
       preload: join(__dirname, "preload.js"),
       contextIsolation: true,
