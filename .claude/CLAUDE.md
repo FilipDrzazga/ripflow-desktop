@@ -67,10 +67,15 @@ src/electron/
 
 src/ui/
   store/useStore.jsx       # Zustand store — central app state
-  hooks/usePdfPreview.js   # PDF → JPEG via pdfjs; module-level Map cache by filePath
+  hooks/usePdfPreview.js   # Modal preview state only — delegates rendering to utils/pdfRender.js
   hooks/useStageTransition.js # Shared store-core for Production stage moves; classifies IPC
                            #   result vs guarded UPDATE → "applied" | "rejected" | "failed"
   utils/notify.js          # ALWAYS use instead of setAlert() — adds toast + SessionLogs entry
+  utils/pdfRender.js       # renderPdfToJpeg(filePath, { targetWidth, scale, quality })
+                           #   + clearPdfCache(). Module-level LRU cache (30) keyed by
+                           #   path + render params. GlobalWorkerOptions.workerSrc lives
+                           #   HERE — every PDF-rendering module imports from this file
+                           #   instead of relying on import order for the side effect.
   services/                # IPC abstraction layer — ALWAYS import from here, NOT window.api directly
     batchService.js        # readPrintedFolder, readPrintedDays, readPrintedDay, rollback*, watcher, deleteBatch, regenerateXml
     fileService.js         # readFolders, submitBatch, openPreview, openInFolder, openInShopify, readFileBuffer
@@ -91,6 +96,9 @@ src/ui/
     rollbackReasons.js     # ROLLBACK_REASONS: static fallback only — runtime data comes from DB
     rollbackReasonIcons.js # ICON_MAP, ICON_OPTIONS, resolveIcon(iconName)
     printTypeMap.js        # PRINT_TYPE_MAP: { LM, FQ, SAMPLE, CUSHION, TEA_TOWEL } → { label, Icon, color }
+    viewModes.js           # VIEW_MODE: { BATCHES, ORDERS, RECEIVE } — the viewMode values in
+                           #   Production.jsx. RECEIVE is declared ahead of its UI
+                           #   (sewing-return lens) and is not reachable yet.
   components/
     Analytics/             # rollback analytics (Details/, Summary/, hooks/)
     BatchHistory/          # day→batch→file tree, real-time watcher, rollback with reasons
@@ -409,6 +417,10 @@ refreshBatchDays()      // non-awaited
 ## Production — Key Behaviors
 DB tables: `file_stages` (one row per active file), `file_stage_history` (append-only per stage transition).
 
+**viewMode goes through `VIEW_MODE`, never a bare string** (`constants/viewModes.js`: `BATCHES` | `ORDERS` | `RECEIVE`). `Production.jsx` is the only consumer. `RECEIVE` exists as a value but has no tab and no render branch yet — its branches are deliberately dead until the sewing-return lens lands.
+- **`handleScan` no longer forces the lens.** It flips `ORDERS → BATCHES` (so the scan result is visible instead of silently mutating the hidden Batches state), leaves `BATCHES` alone, and leaves `RECEIVE` alone — that lens will handle its own scans. Written as a functional `setViewMode` updater so `viewMode` stays OUT of the `useCallback` deps (reading it directly would re-create the callback on every lens switch and re-point `handleScanRef`).
+- **Scan from the search box is a whitelist** — `viewMode !== BATCHES && viewMode !== RECEIVE → return`. Deny is the default **on purpose**: `handleScan` MUTATES the DB (per `workstationRole` it advances stages), so a future fourth lens must not inherit access to a state-changing path merely by existing. Do not flip this back to a blacklist (`=== ORDERS`).
+
 **Stages pipeline:** `printed → heatpress → qc → packed → shipped` (or with sewing: `qc → to_sewing → [Receive → packed] → shipped`)
 `STAGE_NEXT` / `STAGE_PREV` maps are the source of truth — use them, never hardcode transitions.
 **`FROM_SEWING` is legacy** (like `REJECTED`/`OVERRIDDEN`): kept in `constants.js` (incl. `STAGE_NEXT.from_sewing → packed`) so old rows still render and a file can be pushed there manually via `STAGE_NEXT`, but it is **no longer an active routing target** — "Receive from sewing" now lands directly in `packed`. No filter tab / pipeline-order entry for it (display-only lookups in `ProductionCard`/`groupByOrder` stay).
@@ -454,7 +466,7 @@ DB tables: `file_stages` (one row per active file), `file_stage_history` (append
 - **Go back** (per `STAGE_PREV`) — every file has `STAGE_PREV[stage]`.
 - **Rollback** — every file has `batch_path` and `stage !== SHIPPED`; opens `ProductionRollbackModal`.
 - ── separator ── then tools (always operate on the clicked row): **Reprint Label** (`printBatchLabel`, aggregates batch material + total meters from store), **Quick Preview**, **Open in Folder**, **Open in Shopify** (`openInShopify(orderId)` from fileService).
-- **Show in Orders** — also in the tools group, but **consciously operates on the selection** (exception to the "tools always operate on the clicked row" rule above). Maps the target rows (selection when the clicked row is in it, else the clicked row) → `order_id` → order key, using the SAME logic as `groupByOrder.js` (the `"__UNKNOWN_ORDER__"` literal is **hardcoded and manually kept in sync** with `groupByOrder.js:41` — NOT an exported constant; only `UNKNOWN_ORDER_LABEL` is exported). Clears `search`, switches `viewMode → "orders"`, and signals `OrderView` via `focusOrders={ keys, nonce }` (the `nonce` makes a repeat click on the same order re-fire the effect). `OrderView` expands all keys and scroll+highlights the first one (`data-order-key` on the `OrderRow` root; amber `.order_highlight`, no GSAP). Scanner forcing `viewMode → "batches"` pulls the view back to Batches on the next scan — known interaction, not a bug.
+- **Show in Orders** — also in the tools group, but **consciously operates on the selection** (exception to the "tools always operate on the clicked row" rule above). Maps the target rows (selection when the clicked row is in it, else the clicked row) → `order_id` → order key, using the SAME logic as `groupByOrder.js`. The unknown-order key comes from the **exported `UNKNOWN_ORDER_KEY`** (`groupByOrder.js`), imported by both `Production.jsx` and `OrderView.jsx` — one definition, zero hand-copied literals. `groupByOrder.js` exports `groupByOrder`, `ORDER_STAGE_PIPELINE`, `UNKNOWN_ORDER_LABEL` and `UNKNOWN_ORDER_KEY`. Clears `search`, switches `viewMode → VIEW_MODE.ORDERS`, and signals `OrderView` via `focusOrders={ keys, nonce }` (the `nonce` makes a repeat click on the same order re-fire the effect). `OrderView` expands all keys and scroll+highlights the first one (`data-order-key` on the `OrderRow` root; amber `.order_highlight`, no GSAP). A scan on the Orders lens pulls the view back to Batches — known interaction, not a bug (see the viewMode note below).
 
 ## BatchHistory — Key Behaviors
 - Call `stopBatchWatcher()` on unmount
@@ -578,12 +590,29 @@ Maps long group names → short folder names. `resolveOriginalGroup(batchPath, s
 
 **printGroup resolution (single group)** — `getAliasFromCache(group) ?? GROUP_NAME_OVERRIDES[group] ?? group`. The per-material DB `alias` is **primary**; `GROUP_NAME_OVERRIDES` is the **fallback** (legacy "Neraki" / old batches); raw group name is last. `printGroup` = inbox folder name = material `fabrics.name`. Multi-group batches stay `"SAMPLES"` (unchanged). **The alias shortens only the PRINTED folder + `.xml` filename + `<PhysicalGroup>`/`<Path>` — NOT the PDF filename (intentional).** It is a MAX_PATH mitigation, not elimination.
 
+## pdfRender.js — shared PDF rendering
+`src/ui/utils/pdfRender.js` owns the whole renderer-side PDF path: IPC read → base64 → `Uint8Array` → `pdfjsLib.getDocument` → page 1 → canvas → JPEG data URL. **`pdfjsLib.GlobalWorkerOptions.workerSrc` is set here**, so any module that renders a PDF gets the worker by importing from this file rather than depending on `usePdfPreview` happening to be imported first.
+
+```js
+renderPdfToJpeg(filePath, { targetWidth = null, scale = 0.75, quality = 0.85 })  // → JPEG data URL
+clearPdfCache()   // drop every cached render (manual re-testing without an app restart)
+```
+
+- **`targetWidth` wins over `scale`** — when given, the scale is derived as `targetWidth / page.getViewport({ scale: 1 }).width` and the `scale` argument is ignored. Without it, `scale` is used directly.
+- **Cache key encodes the REQUEST, not the resolved scale**: `` `${filePath}|${targetWidth != null ? `w${targetWidth}` : `s${scale}`}|${quality}` ``. Deliberate — the resolved scale is only known after `getDocument` + `getPage(1)`, i.e. after exactly the work the cache exists to skip, so keying on it would make the cache useless in `targetWidth` mode. For a given file the `targetWidth → scale` mapping is deterministic, so the request descriptor identifies the output image just as uniquely. A 200px thumbnail and a full preview of the same file therefore can never serve or evict each other.
+- Module-level LRU, capped at 30 entries; canvas released after render (`canvas.width = 0`).
+
+**KNOWN DEBT (deliberate, to address in the thumbnail-grid stage):**
+1. **One shared LRU limit for two very different payloads** — thumbnails (~15 KB) and full previews (several MB) share the same 30-entry cap, so ~90 thumbnails would flush every preview out of the cache.
+2. **No in-flight deduplication** — two calls for the same key before the first resolves cause two full SMB reads. Cannot happen today (one preview at a time); it will happen the moment the receive lens prefetches thumbnails.
+3. **No `pdf.destroy()` after render** (also true before the extraction). pdfjs keeps worker-side structures alive until an explicit destroy; across dozens of documents in a row this can grow measurably.
+
 ## usePdfPreview Hook
-- Module-level LRU Map cache (key: filePath) — capped at 30 entries; instant on repeat opens
-- Render scale: 0.75 (not 1.0); canvas released after render (`canvas.width = 0`)
+- **Does not render any more** — it owns modal state only and delegates to `renderPdfToJpeg`, passing `PREVIEW_SCALE` 0.75 and `PREVIEW_QUALITY` 0.85 **explicitly** (pinned to the hook, so a future change to the module defaults cannot silently alter the preview)
+- Shares the module-level LRU cache in `pdfRender.js` with every other caller
 - Returns: `{ openPreview, closePreview, navigate, isOpen, isLoading, imgSrc, error, currentPath, currentIndex, fileList }`
 - `PdfPreviewModal` accepts `fileList: [{ path, name }]`; in BatchHistory skip `rolled_back` files
-- `DataList` has its own instance — does not share cache/state with BatchHistory instance
+- `DataList` has its own instance — separate hook state, but the render cache is shared (a file previewed in DataList opens instantly in BatchHistory)
 
 ## Dev Commands
 ```bash
@@ -602,7 +631,7 @@ npm run test:watch # Vitest watch mode
 5. Use `notify()` not `setAlert()` — only `notify()` writes to SessionLogs
 6. `ripflow.db` lives in `storagePath` — fails if network unavailable; app continues (all db fns guarded)
 7. pdfjs-dist **must stay v4** — v5 incompatible with Electron 40 Chromium
-8. Load PDF via IPC `readFileBuffer` → base64 → Uint8Array → `pdfjsLib.getDocument({ data })` — NOT `file://`
+8. Load PDF via IPC `readFileBuffer` → base64 → Uint8Array → `pdfjsLib.getDocument({ data })` — NOT `file://`. That path lives in **`src/ui/utils/pdfRender.js`** and belongs there — call `renderPdfToJpeg` instead of re-implementing it (re-implementing also means re-setting `GlobalWorkerOptions.workerSrc`).
 9. `DataDaysCounter` was removed — age rendered inline in DataList; do not recreate
 10. **Never call `window.api` directly in components** — always import from `src/ui/services/`
 11. **Use constants from `src/shared/constants.js`** — never compare against raw strings. Covers: `BATCH_STATUS`, `FILE_STATUS`, `PRINTER`, `CUSTOM_ORDER_STATUS`, `PRODUCTION_STAGE`, `STAGE_NEXT`, `STAGE_PREV`, `STAGE_LABEL`, `STAGE_COLOR`, `QC_ACTION`, `SEWING_SUGGESTED_TYPES`
@@ -614,3 +643,4 @@ npm run test:watch # Vitest watch mode
 17. **fabricCache must be loaded before getMaterialType/parseFileName are called** — `loadFabricCache()` is called in `ipc/index.js` right after `initDb()`. Both functions have static-set fallbacks for the window before DB is ready.
 18. **Every Production stage transition MUST go through `useStageTransition`** — never hand-roll an optimistic `updateStageInStore`/`addStageHistoryEntry` off `res.success` alone. The guarded UPDATE returns `updated:false` when another station already moved the file; touching the store on `success` (ignoring `updated`) re-introduces the phantom-transition bug in the new call-site. Route via `applyStageTransition(...)`, act only on `"applied"`, and report `"rejected"` (Warning) apart from `"failed"` (Error). Any new stage handler in the DB/IPC layer must also return `{ updated }` for the helper to read.
 19. **Batch rollback reconciles the DB per file after each successful `rename` — never collectively after the loop.** A collective `clearFileStagesByBatch`/reason-insert past the move loop desyncs `file_stages`/`rip_errors` from disk when a rename fails mid-loop (files still in PRINTED but marked cleared). Every rename in a rollback path goes through `renameNoOverwrite` — **never bare `fs.rename`**: on Windows a silent overwrite destroys a full inbox original, because the PRINTED copy is page-1-only. It refuses the overwrite (EEXIST) and surfaces it — no collision/suffix logic.
+20. **`viewMode` values go exclusively through `VIEW_MODE`** (`src/ui/constants/viewModes.js`) — never a bare `"batches"`/`"orders"`/`"receive"` string, in a comparison or an assignment. Note that `"batches"` also occurs as plain UI text elsewhere (e.g. the BatchHistory day-pill plural) — that is not a viewMode value and is not covered by this rule.
