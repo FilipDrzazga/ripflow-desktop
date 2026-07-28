@@ -1,5 +1,15 @@
 [
   {
+    "version": "1.0.16",
+    "date": "2026-07-14",
+    "changes": [
+      {
+        "text": "New RipFlow logo and app icon - refreshed branding across the installer, taskbar, startup screen and title bar",
+        "clients": ["all"]
+      }
+    ]
+  },
+  {
     "version": "1.0.15",
     "date": "2026-07-08",
     "changes": [
