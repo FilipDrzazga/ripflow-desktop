@@ -2,7 +2,7 @@ import { useMemo, useState, useRef, useEffect } from "react";
 import { LuChevronRight, LuChevronDown, LuPackageCheck, LuFileText } from "react-icons/lu";
 import { useStore } from "../../store/useStore";
 import { STAGE_LABEL, STAGE_SHORT_LABEL, STAGE_COLOR } from "../../../shared/constants";
-import { groupByOrder, ORDER_STAGE_PIPELINE, UNKNOWN_ORDER_LABEL } from "../../utils/groupByOrder";
+import { groupByOrder, ORDER_STAGE_PIPELINE, UNKNOWN_ORDER_LABEL, UNKNOWN_ORDER_KEY } from "../../utils/groupByOrder";
 import { PRINTER_COLORS } from "../../constants/printerColors";
 import style from "./Production.module.css";
 import ov from "./OrderView.module.css";
@@ -142,7 +142,7 @@ const OrderView = ({ searchQuery = "", focusOrders = null }) => {
   return (
     <div className={ov.list} ref={listRef}>
       {filtered.map((order) => {
-        const key = order.isUnknown ? "__UNKNOWN_ORDER__" : order.orderId;
+        const key = order.isUnknown ? UNKNOWN_ORDER_KEY : order.orderId;
         return (
           <OrderRow
             key={key}

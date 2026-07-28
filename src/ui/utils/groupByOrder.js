@@ -18,6 +18,11 @@ export const ORDER_STAGE_PIPELINE = [
 // they collapse into one dedicated bucket so the grouping is lossless.
 export const UNKNOWN_ORDER_LABEL = "Unknown order";
 
+// Map/React key of that bucket. Exported because callers outside this module have
+// to derive the same key to address an order (e.g. "Show in Orders") — it used to
+// be a bare literal here and hand-copied at each call site.
+export const UNKNOWN_ORDER_KEY = "__UNKNOWN_ORDER__";
+
 const hasOrderId = (row) => typeof row?.order_id === "string" && row.order_id.trim() !== "";
 
 /**
@@ -38,7 +43,7 @@ export const groupByOrder = (stageRows = []) => {
   for (const row of stageRows) {
     if (!row) continue;
     const orderId = hasOrderId(row) ? row.order_id.trim() : null;
-    const bucketKey = orderId ?? "__UNKNOWN_ORDER__";
+    const bucketKey = orderId ?? UNKNOWN_ORDER_KEY;
     if (!map.has(bucketKey)) {
       map.set(bucketKey, {
         orderId,                  // null for the unknown bucket

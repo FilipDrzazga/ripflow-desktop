@@ -17,6 +17,8 @@ import { notify } from "@/utils/notify";
 import { usePdfPreview } from "../../hooks/usePdfPreview";
 import { useStageTransition } from "../../hooks/useStageTransition";
 import { PRINTER_COLORS } from "../../constants/printerColors";
+import { VIEW_MODE } from "../../constants/viewModes";
+import { UNKNOWN_ORDER_KEY } from "../../utils/groupByOrder";
 import ContextMenu from "../ContextMenu/ContextMenu";
 import PdfPreviewModal from "../PdfPreviewModal/PdfPreviewModal";
 import ProductionCard from "./ProductionCard";
@@ -109,8 +111,8 @@ const Production = () => {
   // (res.updated), and classifies the outcome as applied/rejected/failed.
   const applyStageTransition = useStageTransition();
 
-  // "batches" = stage/batch lens (default); "orders" = order-centric read-only lens
-  const [viewMode,       setViewMode]       = useState("batches");
+  // Which lens is on screen — see VIEW_MODE for the available lenses.
+  const [viewMode,       setViewMode]       = useState(VIEW_MODE.BATCHES);
   // Focus signal for the Orders lens: { keys, nonce } — "Show in Orders" sets it so
   // OrderView expands + scrolls to those orders. nonce makes repeat clicks re-fire.
   const [focusOrders,    setFocusOrders]    = useState(null);
@@ -473,10 +475,12 @@ const Production = () => {
   // ─── Scanner ───────────────────────────────────────────────────────────────
 
   const handleScan = useCallback(async (value) => {
-    // A scan acts on the Batches lens (filter/scroll/highlight). If we're on the
-    // Orders lens, flip back first so the result is actually visible instead of
-    // silently mutating the hidden Batches state. Idempotent when already on Batches.
-    setViewMode("batches");
+    // A scan acts on the Batches lens (filter/scroll/highlight). From the Orders
+    // lens, flip back first so the result is actually visible instead of silently
+    // mutating the hidden Batches state. The Receive lens owns its own scan
+    // handling, so a scan must NOT pull the operator out of it. Already on
+    // Batches → no-op. Functional updater so viewMode stays out of the deps.
+    setViewMode((mode) => (mode === VIEW_MODE.ORDERS ? VIEW_MODE.BATCHES : mode));
 
     const isBatchPath = value.includes("\\") || value.includes("/");
 
@@ -809,14 +813,13 @@ const Production = () => {
     // operate on the clicked row" rule. It flips to the Orders lens and asks
     // OrderView to expand + scroll to every selected file's order.
     if (targetRows.length > 0) {
-      // Same key logic as groupByOrder: trimmed order_id, else the unknown bucket.
-      // The "__UNKNOWN_ORDER__" literal must stay in sync with groupByOrder.js
-      // (it is a bare literal there, not an exported constant).
+      // Same key logic as groupByOrder: trimmed order_id, else the unknown bucket
+      // (UNKNOWN_ORDER_KEY is imported from groupByOrder.js — one definition).
       const orderKeys = [...new Set(
         targetRows.map((r) =>
           (typeof r?.order_id === "string" && r.order_id.trim() !== "")
             ? r.order_id.trim()
-            : "__UNKNOWN_ORDER__",
+            : UNKNOWN_ORDER_KEY,
         ),
       )];
       items.push({
@@ -826,7 +829,7 @@ const Production = () => {
         onClick: () => {
           setContextMenu(null);
           setSearch(""); // clear search so the order isn't filtered out in OrderView
-          setViewMode("orders");
+          setViewMode(VIEW_MODE.ORDERS);
           setFocusOrders({ keys: orderKeys, nonce: Date.now() });
         },
       });
@@ -846,23 +849,23 @@ const Production = () => {
         <div className={style.tabs}>
           <button
             type="button"
-            className={`${style.tab} ${viewMode === "batches" ? style.tab_active : ""}`}
-            onClick={() => setViewMode("batches")}
+            className={`${style.tab} ${viewMode === VIEW_MODE.BATCHES ? style.tab_active : ""}`}
+            onClick={() => setViewMode(VIEW_MODE.BATCHES)}
           >
             Batches
           </button>
           <button
             type="button"
-            className={`${style.tab} ${viewMode === "orders" ? style.tab_active : ""}`}
-            onClick={() => setViewMode("orders")}
+            className={`${style.tab} ${viewMode === VIEW_MODE.ORDERS ? style.tab_active : ""}`}
+            onClick={() => setViewMode(VIEW_MODE.ORDERS)}
           >
             Orders
           </button>
         </div>
 
-        {viewMode === "batches" && <div className={style.topbar_sep} />}
+        {viewMode === VIEW_MODE.BATCHES && <div className={style.topbar_sep} />}
 
-        {viewMode === "batches" && (
+        {viewMode === VIEW_MODE.BATCHES && (
           <div className={style.tabs}>
             {FILTER_TABS.map((tab) => (
               <button
@@ -879,7 +882,7 @@ const Production = () => {
         )}
 
         <div className={style.topbar_right}>
-          {viewMode === "batches" && (
+          {viewMode === VIEW_MODE.BATCHES && (
             <>
               <label className={style.group_toggle}>
                 <input
@@ -903,7 +906,11 @@ const Production = () => {
               onChange={(e) => setSearch(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key !== "Enter") return;
-                if (viewMode !== "batches") return; // scan-to-filter is a batch-lens action
+                // Whitelist, not blacklist: handleScan MUTATES the DB — depending on
+                // workstationRole it advances file stages. A future fourth lens must
+                // not reach that state-changing path just by existing, so deny is the
+                // default and each lens is opted in explicitly.
+                if (viewMode !== VIEW_MODE.BATCHES && viewMode !== VIEW_MODE.RECEIVE) return;
                 const val = search.trim();
                 if (val.length <= 5) return;
                 const isBatchName = Object.values(productionStages).some(
@@ -936,7 +943,7 @@ const Production = () => {
         </div>
       </div>
 
-      {viewMode === "batches" && batchFilter && (
+      {viewMode === VIEW_MODE.BATCHES && batchFilter && (
         <div className={style.filter_bar}>
           <span className={style.filter_bar_label}>Batch:</span>
           <button type="button" className={style.batch_chip} onClick={() => setBatchFilter(null)}>
@@ -947,7 +954,7 @@ const Production = () => {
       </div>
 
       <div className={style.cards_wrapper}>
-        {viewMode === "orders" ? (
+        {viewMode === VIEW_MODE.ORDERS ? (
           <OrderView searchQuery={search} focusOrders={focusOrders} />
         ) : isLoading && allRows.length === 0 ? (
           <div className={style.loading_state}>
