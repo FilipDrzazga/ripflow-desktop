@@ -1,5 +1,23 @@
 [
   {
+    "version": "1.0.17",
+    "date": "2026-07-29",
+    "changes": [
+      {
+        "text": "New Receive tab in Production for unpacking deliveries from the sewing companies - scan the barcode of every batch that went out, then work through the orders one by one and receive their items in bulk",
+        "clients": ["all"]
+      },
+      {
+        "text": "Items in the Receive tab now show a preview thumbnail of the artwork, so you can match what is in your hands to what is on screen without opening each file",
+        "clients": ["all"]
+      },
+      {
+        "text": "Filter the Receive tab by sewing company when one delivery contains work from more than one of them",
+        "clients": ["all"]
+      }
+    ]
+  },
+  {
     "version": "1.0.16",
     "date": "2026-07-14",
     "changes": [
