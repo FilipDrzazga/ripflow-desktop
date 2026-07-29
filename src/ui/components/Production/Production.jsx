@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { HiMagnifyingGlass, HiXMark } from "react-icons/hi2";
-import { LuArrowRight, LuArrowLeft, LuScissors, LuRefreshCw, LuCornerUpLeft, LuEye, LuListTree } from "react-icons/lu";
+import { LuArrowRight, LuArrowLeft, LuScissors, LuRefreshCw, LuCornerUpLeft, LuEye, LuListTree, LuPackageCheck } from "react-icons/lu";
 import { useStore } from "../../store/useStore";
 import { STAGE_LABEL, STAGE_SHORT_LABEL, STAGE_NEXT, STAGE_PREV, PRODUCTION_STAGE, STAGE_COLOR } from "../../../shared/constants";
 import {
@@ -25,6 +25,7 @@ import ProductionCard from "./ProductionCard";
 import RipErrorPopover from "../RipErrorPopover/RipErrorPopover";
 import ProductionRollbackModal from "./ProductionRollbackModal";
 import OrderView from "./OrderView";
+import SewingReceive from "./SewingReceive";
 import style from "./Production.module.css";
 
 const FILTER_TABS = [
@@ -63,6 +64,8 @@ const notifyStageFailed = (n) =>
     title: "Save failed",
     message: `${n} file${n === 1 ? "" : "s"} could not be saved — check connection.`,
   });
+
+const batchNameOf = (batchPath) => batchPath?.split(/[/\\]/).pop() ?? "Unknown";
 
 const BatchGroupHeader = ({ batchPath, rows, selectedFileIds, onSelectAll }) => {
   const batchName = batchPath?.split(/[/\\]/).pop() ?? "Unknown";
@@ -113,6 +116,45 @@ const Production = () => {
 
   // Which lens is on screen — see VIEW_MODE for the available lenses.
   const [viewMode,       setViewMode]       = useState(VIEW_MODE.BATCHES);
+  // handleScan needs the CURRENT lens, but adding viewMode to its deps would
+  // re-create the callback and re-point handleScanRef on every tab switch. A ref
+  // gives the read without the dependency.
+  const viewModeRef = useRef(viewMode);
+  viewModeRef.current = viewMode;
+  // Receiving session for the Receive lens. It lives HERE, not inside
+  // SewingReceive, because that component unmounts the moment the operator looks
+  // at another lens — a session held there would be lost on every tab switch.
+  const [session, setSession] = useState({
+    batchPaths: [],
+    receivedInSession: new Set(),
+    companyFilter: null,
+    activeOrderKey: null,
+  });
+
+  // Re-assigned on every render so it always closes over the current session and
+  // store. handleScan reaches it through the ref instead of taking it as a
+  // dependency — same reason as viewModeRef.
+  const addBatchToSessionRef = useRef(null);
+  addBatchToSessionRef.current = (batchPath) => {
+    if (session.batchPaths.includes(batchPath)) {
+      notify({ type: "Warning", title: "Batch already in session", message: batchNameOf(batchPath) });
+      return;
+    }
+    const pending = Object.values(productionStages).filter(
+      (r) => r.batch_path === batchPath && r.stage === PRODUCTION_STAGE.TO_SEWING,
+    );
+    if (pending.length === 0) {
+      notify({ type: "Warning", title: "Nothing at sewing in this batch", message: batchNameOf(batchPath) });
+      return;
+    }
+    // notify stays OUTSIDE the setter — StrictMode invokes updaters twice.
+    setSession((s) => ({ ...s, batchPaths: [...s.batchPaths, batchPath] }));
+    notify({
+      type: "Success",
+      title: "Batch added to session",
+      message: `${batchNameOf(batchPath)} - ${pending.length} item(s) to receive.`,
+    });
+  };
   // Focus signal for the Orders lens: { keys, nonce } — "Show in Orders" sets it so
   // OrderView expands + scrolls to those orders. nonce makes repeat clicks re-fire.
   const [focusOrders,    setFocusOrders]    = useState(null);
@@ -219,6 +261,127 @@ const Production = () => {
     else if (outcome === "failed") notifyStageFailed(1);
   };
 
+  // ─── Receive lens actions (driven by the context menu) ────────────────────
+
+  // useState drives the disabled attribute in SewingReceive; the ref is the
+  // ACTUAL guard. Two clicks in one tick both read the old state value before
+  // React re-renders, so state alone cannot stop a second loop from starting.
+  const [isReceiving, setIsReceiving] = useState(false);
+  const isReceivingRef = useRef(false);
+
+  // THE receive implementation for the Receive lens. Both entry points — the
+  // buttons inside SewingReceive and the "Receive" context-menu item — call this
+  // one function, so the two can never drift apart.
+  const receiveFiles = async (ids) => {
+    if (isReceivingRef.current || ids.length === 0) return;
+    isReceivingRef.current = true;
+    setIsReceiving(true);
+    let count = 0, rejected = 0, failed = 0;
+    const appliedIds = [];
+    try {
+      for (const id of ids) {
+        const r = productionStages[id];
+        if (!r || r.stage !== PRODUCTION_STAGE.TO_SEWING) continue;
+        const now = new Date().toISOString();
+        const res = await setSewingReceived(id, PRODUCTION_STAGE.TO_SEWING);
+        const outcome = applyStageTransition({
+          fileId: id, row: r, newStage: PRODUCTION_STAGE.PACKED, res, now,
+          extra: { sewing_received_at: now },
+        });
+        if (outcome === "applied") { count++; appliedIds.push(id); }
+        else if (outcome === "rejected") rejected++;
+        else failed++;
+      }
+    } finally {
+      isReceivingRef.current = false;
+      setIsReceiving(false);
+    }
+
+    // Only confirmed moves enter the session ledger — a rejected or failed file
+    // is still physically at the sewing company as far as we know.
+    if (appliedIds.length > 0) {
+      setSession((s) => ({
+        ...s,
+        receivedInSession: new Set([...s.receivedInSession, ...appliedIds]),
+      }));
+    }
+
+    if (count > 0) {
+      notify({ type: "Success", title: "Received from sewing", message: `${count} item(s) received.` });
+    }
+    if (rejected > 0) {
+      notify({
+        type: "Warning",
+        title: "Already moved",
+        message: `${rejected} item(s) already moved by another station.`,
+      });
+    }
+    if (failed > 0) {
+      notify({
+        type: "Error",
+        title: "Save failed",
+        message: `${failed} item(s) could not be saved — check connection.`,
+      });
+    }
+  };
+
+  // KNOWN DEBT: receiving ran fulfillReprintRequests(fileId) and stepping the
+  // stage back does NOT reopen that request — a later re-receive simply fulfills
+  // it again, which is harmless. sewing_received_at also stays in the DB and is
+  // overwritten on the next receive.
+  const undoReceiveFiles = async (ids) => {
+    if (isReceivingRef.current || ids.length === 0) return;
+    isReceivingRef.current = true;
+    setIsReceiving(true);
+    let count = 0, rejected = 0, failed = 0;
+    const appliedIds = [];
+    try {
+      for (const id of ids) {
+        const r = productionStages[id];
+        if (!r) continue;
+        const now = new Date().toISOString();
+        // Deliberately NOT STAGE_PREV: STAGE_PREV[packed] is qc, which would push
+        // the file into quality control instead of back to the sewing company.
+        const res = await advanceStage(id, PRODUCTION_STAGE.TO_SEWING, PRODUCTION_STAGE.PACKED);
+        const outcome = applyStageTransition({
+          fileId: id, row: r, newStage: PRODUCTION_STAGE.TO_SEWING, res, now,
+        });
+        if (outcome === "applied") { count++; appliedIds.push(id); }
+        else if (outcome === "rejected") rejected++;
+        else failed++;
+      }
+    } finally {
+      isReceivingRef.current = false;
+      setIsReceiving(false);
+    }
+
+    if (appliedIds.length > 0) {
+      setSession((s) => {
+        const next = new Set(s.receivedInSession);
+        for (const id of appliedIds) next.delete(id);
+        return { ...s, receivedInSession: next };
+      });
+    }
+
+    if (count > 0) {
+      notify({ type: "Success", title: "Receive undone", message: `${count} item(s) sent back to sewing.` });
+    }
+    if (rejected > 0) {
+      notify({
+        type: "Warning",
+        title: "Already moved",
+        message: `${rejected} item(s) already moved by another station.`,
+      });
+    }
+    if (failed > 0) {
+      notify({
+        type: "Error",
+        title: "Save failed",
+        message: `${failed} item(s) could not be saved — check connection.`,
+      });
+    }
+  };
+
   const handleReprintLabel = async (fileId) => {
     const row = productionStages[fileId];
     if (!row) return;
@@ -246,6 +409,7 @@ const Production = () => {
     let successCount = 0;
     let failCount = 0;
     let timedOut = 0;
+    const rolledBackIds = [];
     for (const { fileId, reason, override } of decisions) {
       const row = useStore.getState().productionStages[fileId];
       if (!row?.batch_path) { failCount++; continue; }
@@ -265,6 +429,7 @@ const Production = () => {
         if (res?.success) {
           removeStageFromStore(fileId);
           removeRipError(fileId);
+          rolledBackIds.push(fileId);
           successCount++;
         } else {
           failCount++;
@@ -276,6 +441,16 @@ const Production = () => {
       }
     }
     setSelectedFileIds(new Set());
+
+    // A rolled-back file leaves productionStages entirely — drop it from the
+    // receiving session too, or its id lingers there orphaned.
+    if (rolledBackIds.length > 0) {
+      setSession((s) => {
+        const next = new Set(s.receivedInSession);
+        for (const id of rolledBackIds) next.delete(id);
+        return { ...s, receivedInSession: next };
+      });
+    }
 
     // Once, after the loop: in-progress ops get a single warning + one state refresh.
     if (timedOut > 0) {
@@ -472,6 +647,13 @@ const Production = () => {
     setSelectedFileIds(new Set());
   }, [batchFilter, stageFilter]);
 
+  // Same idea across lenses: a selection carried between lenses, or between
+  // orders inside the Receive lens, would act on files the operator can no
+  // longer see on screen.
+  useEffect(() => {
+    setSelectedFileIds(new Set());
+  }, [viewMode, session.activeOrderKey]);
+
   // ─── Scanner ───────────────────────────────────────────────────────────────
 
   const handleScan = useCallback(async (value) => {
@@ -506,6 +688,15 @@ const Production = () => {
 
       if (batchFiles.length === 0) {
         notify({ type: "Error", title: "Not found", message: `Batch not found: ${resolvedBatchPath.split(/[/\\]/).pop()}` });
+        return;
+      }
+
+      // Receive lens: a scan adds the batch to the receiving session and NOTHING
+      // else. This MUST stay above the role logic below — otherwise scanning at a
+      // QC station while unpacking a sewing delivery would advance that batch's
+      // heatpress files to qc.
+      if (viewModeRef.current === VIEW_MODE.RECEIVE) {
+        addBatchToSessionRef.current?.(resolvedBatchPath);
         return;
       }
 
@@ -604,6 +795,17 @@ const Production = () => {
       return;
     }
 
+    // The Receive lens works batch by batch — a file-level scan has no meaning
+    // there, so say so instead of silently filtering the hidden Batches lens.
+    if (viewModeRef.current === VIEW_MODE.RECEIVE) {
+      notify({
+        type: "Warning",
+        title: "Scan a batch barcode",
+        message: "In the Receive lens scan a batch barcode, not a file.",
+      });
+      return;
+    }
+
     // File-level scan — scroll and highlight the card
     const row = productionStages[value];
     if (!row) {
@@ -687,6 +889,89 @@ const Production = () => {
     const fileId = row.file_id;
     const batchPath = row.batch_path;
     const filePath = batchPath ? `${batchPath}\\${fileId}.pdf` : null;
+
+    // The Receive lens gets its own, deliberately different menu — the
+    // stage-pipeline actions below (Pass / Send to sewing / Go back / bulk
+    // selection) do not apply while unpacking a delivery.
+    if (viewMode === VIEW_MODE.RECEIVE) {
+      // Same targeting rule as the Batches branch below: act on the whole
+      // selection when the clicked row belongs to it, otherwise on that row.
+      const isBulkReceive = selectedFileIds.size > 0 && selectedFileIds.has(fileId);
+      const receiveTargets = isBulkReceive
+        ? [...selectedFileIds].map((id) => productionStages[id]).filter(Boolean)
+        : [row];
+      const receiveCount = receiveTargets.length;
+      const receiveIds = receiveTargets.map((r) => r.file_id);
+
+      // Common availability, like the Batches branch: an action shows only when
+      // it is valid for EVERY target.
+      const canReceive = receiveCount > 0
+        && receiveTargets.every((r) => r.stage === PRODUCTION_STAGE.TO_SEWING);
+      // Both conditions: the session ledger alone would keep offering the undo
+      // after another station moved the file past packed — the guarded UPDATE
+      // would then reject it and the operator would only find out post-click.
+      const canUndoReceive = receiveCount > 0 && receiveTargets.every(
+        (r) => session.receivedInSession.has(r.file_id) && r.stage === PRODUCTION_STAGE.PACKED,
+      );
+      const canRollbackReceive = receiveCount > 0 && receiveTargets.every(
+        (r) => r.batch_path && r.stage !== PRODUCTION_STAGE.SHIPPED,
+      );
+
+      const receiveItems = [];
+      if (canReceive) {
+        receiveItems.push({
+          id: "receive",
+          label: receiveCount > 1 ? `Receive ${receiveCount} files` : "Receive",
+          icon: <LuPackageCheck size={14} />,
+          advance: true,
+          onClick: () => { setContextMenu(null); receiveFiles(receiveIds); },
+        });
+      }
+      if (canUndoReceive) {
+        receiveItems.push({
+          id: "undo-receive",
+          label: receiveCount > 1 ? `Undo receive for ${receiveCount} files` : "Undo receive",
+          icon: <LuArrowLeft size={14} />,
+          onClick: () => { setContextMenu(null); undoReceiveFiles(receiveIds); },
+        });
+      }
+      if (receiveItems.length > 0) receiveItems.push({ id: "sep-receive", separator: true });
+
+      receiveItems.push({
+        id: "shopify",
+        label: "Open in Shopify",
+        onClick: () => { setContextMenu(null); handleOpenInShopify(row.order_id); },
+      });
+      if (filePath) {
+        receiveItems.push({
+          id: "preview",
+          label: "Quick Preview",
+          icon: <LuEye size={14} />,
+          onClick: () => { setContextMenu(null); handleOpenPreview(row); },
+        });
+      }
+      if (batchPath) {
+        receiveItems.push({
+          id: "folder",
+          label: "Open in Folder",
+          onClick: () => { setContextMenu(null); handleOpenInFolder(batchPath); },
+        });
+      }
+      if (canRollbackReceive) {
+        receiveItems.push({
+          id: "rollback",
+          label: receiveCount > 1 ? `Rollback ${receiveCount} files` : "Rollback this file",
+          icon: <LuCornerUpLeft size={14} />,
+          danger: true,
+          onClick: () => {
+            setContextMenu(null);
+            const rows = receiveTargets.filter((r) => r?.batch_path);
+            if (rows.length > 0) setRollbackTargets(rows);
+          },
+        });
+      }
+      return receiveItems;
+    }
 
     // Stage-aware: when files are selected, the menu reflects the WHOLE selection;
     // otherwise it falls back to the clicked row. An action shows only when it is
@@ -836,7 +1121,7 @@ const Production = () => {
     }
 
     return items;
-  }, [contextMenu, selectedFileIds, productionStages]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [contextMenu, selectedFileIds, productionStages, viewMode, session]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className={style.container}>
@@ -860,6 +1145,13 @@ const Production = () => {
             onClick={() => setViewMode(VIEW_MODE.ORDERS)}
           >
             Orders
+          </button>
+          <button
+            type="button"
+            className={`${style.tab} ${viewMode === VIEW_MODE.RECEIVE ? style.tab_active : ""}`}
+            onClick={() => setViewMode(VIEW_MODE.RECEIVE)}
+          >
+            Receive
           </button>
         </div>
 
@@ -954,7 +1246,20 @@ const Production = () => {
       </div>
 
       <div className={style.cards_wrapper}>
-        {viewMode === VIEW_MODE.ORDERS ? (
+        {/* Receive owns its own empty/loading states — it must not fall through
+            into the Batches-lens isLoading / filtered.length branches below. */}
+        {viewMode === VIEW_MODE.RECEIVE ? (
+          <SewingReceive
+            session={session}
+            setSession={setSession}
+            onReceive={receiveFiles}
+            isReceiving={isReceiving}
+            selectedFileIds={selectedFileIds}
+            onSelect={toggleProductionSelect}
+            onRipBadgeClick={(error, x, y) => setRipPopover({ error, x, y })}
+            onContextMenu={(r, x, y) => setContextMenu({ row: r, x, y })}
+          />
+        ) : viewMode === VIEW_MODE.ORDERS ? (
           <OrderView searchQuery={search} focusOrders={focusOrders} />
         ) : isLoading && allRows.length === 0 ? (
           <div className={style.loading_state}>

@@ -1,0 +1,404 @@
+.wrapper {
+  /* One height for every toolbar control — chips, filter chips and buttons all
+     sit on the same line regardless of the font size of what is inside them. */
+  --sr-control-h: 30px;
+
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  gap: 10px;
+  padding: 8px 0 0;
+}
+
+/* ===== TOOLBAR ===== */
+
+.toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.toolbar_row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  min-height: var(--sr-control-h);
+}
+
+/* min-width (never a fixed width) so the "Session:" and "Sewing:" rows start
+   their content at the same x, while a longer label added later still renders
+   in full instead of being clipped. */
+.toolbar_label {
+  min-width: 64px;
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+
+/* Chips wrap as one block, so the trailing controls (Clear session, progress)
+   keep their place instead of being pushed around by each added batch.
+   flex-basis 320px with NO min-width override is what protects the chips: the
+   block refuses to shrink below its widest chip, so when space runs out the
+   trailing controls wrap to their own line and the chips get the full width —
+   the chips are never the thing that gives way. */
+.batch_chips {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  flex: 1 1 320px;
+}
+
+/* Amber batch chip — same palette as the batch filter chip in the Batches lens.
+   The batch name must ALWAYS be fully readable, so nothing here may clip it:
+   - flex-shrink: 0        → never squeezed by a neighbour
+   - no text-overflow      → never an ellipsis
+   - max-width: 100%       → never wider than the panel (no clipped overflow)
+   - white-space: normal + overflow-wrap: anywhere
+                           → in the extreme case of a name too long for one line
+                             it wraps instead of being cut
+   - min-height (not height) → a wrapped chip grows instead of clipping line 2 */
+.batch_chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: var(--sr-control-h);
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: 4px 6px 4px 10px;
+  border-radius: 8px;
+  border: 1px solid #f59e0b;
+  background-color: #fef3c7;
+  color: #92400e;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.3;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  flex-shrink: 0;
+}
+
+/* Fixed square so the icon cannot stretch the chip past the shared height, and
+   every chip's "x" sits at the same offset from its right edge. */
+.chip_remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  padding: 0;
+  border: none;
+  border-radius: 5px;
+  background: transparent;
+  color: inherit;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0.75;
+}
+
+.chip_remove:hover {
+  opacity: 1;
+  background: rgba(146, 64, 14, 0.14);
+}
+
+.company_chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  height: var(--sr-control-h);
+  box-sizing: border-box;
+  padding: 0 12px;
+  line-height: 1;
+  border-radius: 8px;
+  border: 1px solid var(--border-grey);
+  background-color: var(--bg-white);
+  box-shadow: var(--card-shadow);
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+}
+
+.company_chip:hover {
+  background-color: var(--bg-grey);
+  color: var(--text-primary);
+}
+
+.company_chip_active {
+  background-color: var(--bg-black);
+  color: var(--text-white);
+  border-color: var(--border-black);
+}
+
+.company_chip_active:hover {
+  background-color: var(--bg-black);
+  color: var(--text-white);
+}
+
+.ghost_btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: var(--sr-control-h);
+  box-sizing: border-box;
+  padding: 0 12px;
+  line-height: 1;
+  border-radius: 8px;
+  border: 1px solid var(--border-grey);
+  background-color: var(--bg-white);
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 0.12s ease, color 0.12s ease;
+}
+
+.ghost_btn:hover {
+  background-color: var(--bg-grey);
+  color: var(--text-primary);
+}
+
+.progress {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  height: var(--sr-control-h);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.progress_done {
+  color: #3b6d11;
+}
+
+/* ===== TWO COLUMNS ===== */
+
+/* align-items: flex-start keeps both columns anchored to the top edge instead of
+   stretching to the tallest one. max-height on the column is what preserves
+   independent scrolling once the items no longer stretch. */
+/* Fixed narrow order list, everything else to the items column — ProductionCard
+   needs the width for its filename + badges + full stage pipeline. */
+.columns {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  align-items: flex-start;
+  gap: 12px;
+  flex: 1;
+  min-height: 0;
+}
+
+.column {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  overflow-y: auto;
+  max-height: 100%;
+  min-height: 0;
+  padding-bottom: 24px;
+}
+
+.column_title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 2px 2px 4px;
+  flex-shrink: 0;
+}
+
+/* ===== ORDER LIST (left) ===== */
+
+.order {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: var(--bg-white);
+  box-shadow: var(--card-shadow);
+  cursor: pointer;
+  text-align: left;
+  transition: background-color 0.12s ease, border-color 0.12s ease;
+}
+
+.order:hover {
+  background-color: var(--bg-grey-light);
+}
+
+/* Amber selection — the same pair OrderView uses for its "Show in Orders"
+   highlight, so "this is the row you are looking at" reads identically in both
+   lenses. */
+.order_active {
+  border-color: #f5d98b;
+  background: #fff8e6;
+}
+
+.order_active:hover {
+  background: #fff8e6;
+}
+
+/* Fully received orders stay in place and keep their slot — the list must never
+   reorder under the operator's finger mid-session. */
+.order_done {
+  opacity: 0.55;
+}
+
+.order_main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+/* The order number is what the operator matches against the paperwork, so it is
+   the primary line; the customer name is context underneath it. */
+.order_id {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.order_id_unknown {
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+.order_customer {
+  font-size: 12px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.order_badge {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: 7px;
+  background: var(--bg-grey);
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.order_badge_done {
+  background: #dcfce7;
+  color: #3b6d11;
+}
+
+/* ===== FILE LIST (right) ===== */
+
+.panel {
+  border-radius: 10px;
+  background: var(--bg-white);
+  box-shadow: var(--card-shadow);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.panel_header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-grey);
+}
+
+.panel_title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.panel_sub {
+  font-size: 12px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.receive_all_btn {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border-black);
+  background-color: var(--bg-black);
+  color: var(--text-white);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.receive_all_btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Items are ProductionCards — they bring their own styling AND their own
+   spacing from Production.module.css (.card { margin: 4px 0 }). This container
+   must therefore stay a BLOCK with no gap, exactly like .cards_wrapper in the
+   Batches lens: in a block container those 4px margins collapse into a single
+   4px between cards. Making this a flex column (or adding a gap) stops the
+   collapse and stacks gap + 4px + 4px on top of each other, which is what made
+   the rows here sit further apart than in Batches. */
+.card_list {
+  background: var(--bg-grey-light);
+  padding: 8px;
+}
+
+/* ===== EMPTY STATES ===== */
+
+.empty_state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  min-height: 160px;
+  padding: 24px;
+}
+
+.empty_text {
+  font-size: 16px;
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+.hint {
+  font-size: 13px;
+  color: var(--text-secondary);
+  padding: 16px 4px;
+}
