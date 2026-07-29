@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { LuCheck, LuPackageCheck, LuTrash2 } from "react-icons/lu";
+import { LuCheck, LuPackageCheck, LuTrash2, LuScanBarcode, LuMousePointerClick } from "react-icons/lu";
 import { HiXMark } from "react-icons/hi2";
 import { useStore } from "../../store/useStore";
 import { PRODUCTION_STAGE } from "../../../shared/constants";
@@ -132,6 +132,7 @@ const SewingReceive = ({
   if (batchPaths.length === 0) {
     return (
       <div className={style.empty_state}>
+        <LuScanBarcode size={32} />
         <span className={style.empty_text}>Scan a batch barcode to start receiving.</span>
       </div>
     );
@@ -232,7 +233,10 @@ const SewingReceive = ({
             {activeOrder ? `Items (${activeOrder.totalFiles})` : "Items"}
           </span>
           {!activeOrder ? (
-            <span className={style.hint}>Select an order from the list on the left.</span>
+            <div className={`${style.empty_state} ${style.empty_state_page_centered}`}>
+              <LuMousePointerClick size={32} />
+              <span className={style.hint}>Select an order from the list on the left.</span>
+            </div>
           ) : (
             <div className={style.panel}>
               <div className={style.panel_header}>

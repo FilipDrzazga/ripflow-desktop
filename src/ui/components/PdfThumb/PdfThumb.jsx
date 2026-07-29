@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { LuFileText } from "react-icons/lu";
+import { LuImageOff } from "react-icons/lu";
 import { renderPdfThumb } from "../../utils/pdfRender";
 import style from "./PdfThumb.module.css";
 
@@ -44,7 +44,7 @@ const PdfThumb = ({ filePath }) => {
   if (!filePath) {
     return (
       <div className={style.fallback} title="Preview unavailable: no file path">
-        <LuFileText size={18} />
+        <LuImageOff size={20} />
       </div>
     );
   }
@@ -60,7 +60,7 @@ const PdfThumb = ({ filePath }) => {
   if (current?.error) {
     return (
       <div className={style.fallback} title={`Preview unavailable: ${current.error}`}>
-        <LuFileText size={18} />
+        <LuImageOff size={20} />
       </div>
     );
   }

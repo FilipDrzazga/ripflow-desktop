@@ -3,6 +3,12 @@
      sit on the same line regardless of the font size of what is inside them. */
   --sr-control-h: 30px;
 
+  /* Geometry of the two-column layout, declared once: the grid definition and
+     the page-centering offset below MUST stay in agreement, so neither hardcodes
+     the numbers. */
+  --sr-orders-col: 280px;
+  --sr-columns-gap: 12px;
+
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -189,16 +195,17 @@
 
 /* ===== TWO COLUMNS ===== */
 
-/* align-items: flex-start keeps both columns anchored to the top edge instead of
-   stretching to the tallest one. max-height on the column is what preserves
-   independent scrolling once the items no longer stretch. */
 /* Fixed narrow order list, everything else to the items column — ProductionCard
-   needs the width for its filename + badges + full stage pipeline. */
+   needs the width for its filename + badges + full stage pipeline.
+   Columns STRETCH to the full row height (the grid default). Top alignment of
+   the content does not come from align-items: each .column is itself a flex
+   column, so its children stack from the top edge either way. Stretching is what
+   gives the empty state a full-height box to centre itself in. */
 .columns {
   display: grid;
-  grid-template-columns: 280px minmax(0, 1fr);
-  align-items: flex-start;
-  gap: 12px;
+  grid-template-columns: var(--sr-orders-col) minmax(0, 1fr);
+  align-items: stretch;
+  gap: var(--sr-columns-gap);
   flex: 1;
   min-height: 0;
 }
@@ -382,13 +389,30 @@
 
 /* ===== EMPTY STATES ===== */
 
+/* Shared empty/idle state: icon stacked over its message, centred both ways.
+   Used by BOTH the "no session yet" screen and the "pick an order" hint — one
+   rule, so the two never drift apart. The inner text keeps its own font size. */
 .empty_state {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 10px;
+  flex: 1;
   height: 100%;
   min-height: 160px;
   padding: 24px;
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+/* Centre on the WHOLE two-column area rather than on this column alone. Reserving
+   the order list's footprint on the right makes the box symmetrical around the
+   panel's midpoint: with total width W the box spans (orders+gap)…W-(orders+gap),
+   so its centre lands exactly on W/2. Only for states shown next to the order
+   list — the pre-scan screen already spans everything and must NOT get this. */
+.empty_state_page_centered {
+  margin-right: calc(var(--sr-orders-col) + var(--sr-columns-gap));
 }
 
 .empty_text {
