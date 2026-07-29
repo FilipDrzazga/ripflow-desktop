@@ -641,6 +641,26 @@
   cursor: default;
 }
 
+/* A 64px tile does not fit a 44px row, so a card that actually got a thumbnail
+   grows to it. The tile is the tallest child, so it defines the height on its
+   own — no align-self needed. Vertical padding is required because the card had
+   none (0 16px) and the image would otherwise touch both edges. */
+.card_with_thumb {
+  height: auto;
+  padding: 6px 16px;
+}
+
+/* An agnostic box: the `thumbnail` slot accepts ANY element, so the card must
+   not style what it assumes is inside (it does not have to be an <img>).
+   Whatever is passed in is responsible for filling this box. */
+.card_thumb {
+  width: 64px;
+  height: 64px;
+  flex-shrink: 0;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
 .card:hover {
   background-color: var(--bg-grey-light);
 }

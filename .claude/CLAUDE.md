@@ -119,6 +119,9 @@ src/ui/
       SewingReceive.jsx    # sewing-return lens; the session state arrives as a prop from
                            # Production.jsx — the component is stateless apart from useMemo
       SewingReceive.module.css
+    PdfThumb/              # PdfThumb.jsx + PdfThumb.module.css — page-1 thumbnail in a
+                           # fixed 64x64 box (skeleton / img / silent placeholder).
+                           # Always renders via renderPdfThumb; errors never notify()
     ContextMenu/           # Portal popup; supports submenu (children field) with hover delay 150ms
     RipErrorPopover/       # Shared anchored popover (ProductionCard + FileRow); RIP-error detail + Copy
                            # positioning + backdrop-close lifted from ContextMenu (not imported)
@@ -496,7 +499,9 @@ DB tables: `file_stages` (one row per active file), `file_stage_history` (append
 
 **Notify wording says "item(s)", not "file(s)"** like `notifyStageRejected`/`notifyStageFailed` — a deliberate split: the operator is counting pieces in a parcel, not files. Two sources of text for the same DB condition, on purpose.
 
-**FUTURE (thumbnail stage):** the thumbnail enters `ProductionCard` as a **slot** (`thumbnail` — a ready-made element), NOT as a boolean flag. Batches simply does not pass the prop, so it renders nothing and pays for no SMB reads. `ProductionCard` must never learn about pdfjs or file paths.
+**Thumbnails (`PdfThumb`)** — the items column passes `thumbnail={<PdfThumb filePath={...} />}` to `ProductionCard`. The prop is a **slot**: a ready-made element, never a boolean or a path, so `ProductionCard` never learns about pdfjs or file paths. Batches does not pass it, renders nothing extra and pays for **zero** SMB reads. A card that got a thumbnail grows via the explicit `.card_with_thumb` class (the base `.card` is a fixed 44px row and a 64px tile does not fit) — an explicit class rather than `:has(> .card_thumb)`, so the geometry does not depend on DOM shape and stays visible to anyone reading `ProductionCard.jsx`. **Render failures are SILENT**: a grey `LuFileText` placeholder with the reason in `title`, `console.error`, and **no `notify()`** — roughly 8% of `to_sewing` rows currently fail with `ERR_PATH_NOT_ALLOWED` from the unrelated storage-root format problem, which would mean several red toasts on every order click. `PdfThumb` cancels through a `cancelled` flag checked AFTER the await and clears the previous image on `filePath` change, so a ~850 ms render never lands under the wrong card. Thumbnails load only for the ACTIVE order (2-3 items) — that is the laziness; there is deliberately no IntersectionObserver and no prefetch.
+
+**KNOWN DEBT:** the `` `${batch_path}\\${file_id}.pdf` `` path pattern now appears in **4 places** (3× `Production.jsx`, 1× `SewingReceive.jsx`). To be extracted in a change of its own — deliberately not mixed into a feature commit.
 
 ## BatchHistory — Key Behaviors
 - Call `stopBatchWatcher()` on unmount
@@ -625,17 +630,19 @@ Maps long group names → short folder names. `resolveOriginalGroup(batchPath, s
 
 ```js
 renderPdfToJpeg(filePath, { targetWidth = null, scale = 0.75, quality = 0.85 })  // → JPEG data URL
-clearPdfCache()   // drop every cached render (manual re-testing without an app restart)
+renderPdfThumb(filePath)   // → JPEG data URL at THUMB_WIDTH 160 / THUMB_QUALITY 0.5, QUEUED
+clearPdfCache()            // drop every cached render, both maps (manual re-testing / tests)
 ```
+
+**ALWAYS render thumbnails through `renderPdfThumb`.** `renderPdfToJpeg` with a `targetWidth` is the lower layer and is **not serialised** — reaching for it directly silently loses the queue and lets several ~850 ms main-thread renders collide.
 
 - **`targetWidth` wins over `scale`** — when given, the scale is derived as `targetWidth / page.getViewport({ scale: 1 }).width` and the `scale` argument is ignored. Without it, `scale` is used directly.
 - **Cache key encodes the REQUEST, not the resolved scale**: `` `${filePath}|${targetWidth != null ? `w${targetWidth}` : `s${scale}`}|${quality}` ``. Deliberate — the resolved scale is only known after `getDocument` + `getPage(1)`, i.e. after exactly the work the cache exists to skip, so keying on it would make the cache useless in `targetWidth` mode. For a given file the `targetWidth → scale` mapping is deterministic, so the request descriptor identifies the output image just as uniquely. A 200px thumbnail and a full preview of the same file therefore can never serve or evict each other.
-- Module-level LRU, capped at 30 entries; canvas released after render (`canvas.width = 0`).
-
-**KNOWN DEBT (deliberate, to address in the thumbnail-grid stage):**
-1. **One shared LRU limit for two very different payloads** — thumbnails (~15 KB) and full previews (several MB) share the same 30-entry cap, so ~90 thumbnails would flush every preview out of the cache.
-2. **No in-flight deduplication** — two calls for the same key before the first resolves cause two full SMB reads. Cannot happen today (one preview at a time); it will happen the moment the receive lens prefetches thumbnails.
-3. **No `pdf.destroy()` after render** (also true before the extraction). pdfjs keeps worker-side structures alive until an explicit destroy; across dozens of documents in a row this can grow measurably.
+- **Two separate LRU caches**, because the payloads differ by two orders of magnitude: `previewCache` (30 entries, several MB each) and `thumbCache` (200 entries, ~15 KB each, ≈3 MB total). Scrolling through thumbnails can no longer flush the previews. `clearPdfCache()` empties both. The LRU get/set pair is one shared helper, not duplicated per map — reading refreshes recency, so eviction is least-recently-USED, not FIFO.
+- **In-flight de-duplication** — `inFlight: Map` keyed exactly like the caches. A second caller asking for the same key while the first render is running gets the SAME promise instead of a second multi-MB SMB read (React StrictMode double-mounts, several cards asking at once). The entry is removed in `finally`, **including on rejection** — otherwise every later caller would inherit the failure instead of retrying. A failed render is likewise **never cached**.
+- **`pdf.destroy()` runs in `finally`**, strictly after `page.render` settled — never before, which would tear the document down mid-render. A failing destroy is caught and logged so it cannot mask the render result. Canvas is released too (`canvas.width = 0`).
+- **A concurrency-1 queue, for `renderPdfThumb` ONLY.** Rendering blocks the renderer's main thread (~400 ms for a 14 MB file), so parallel thumbnails freeze the UI in bursts. `renderPdfToJpeg` is deliberately **not** queued: a preview opened by hand must not wait behind a backlog of tiles. A `thumbCache` hit short-circuits the queue entirely and never joins the tail.
+- Covered by `pdfRender.test.js` (node env, pdfjs + fileService mocked): de-duplication, cache isolation, LRU order, failure-not-cached, in-flight cleanup on failure, destroy lifecycle, queue serialisation.
 
 ## usePdfPreview Hook
 - **Does not render any more** — it owns modal state only and delegates to `renderPdfToJpeg`, passing `PREVIEW_SCALE` 0.75 and `PREVIEW_QUALITY` 0.85 **explicitly** (pinned to the hook, so a future change to the module defaults cannot silently alter the preview)

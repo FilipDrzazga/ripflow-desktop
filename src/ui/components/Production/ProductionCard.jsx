@@ -62,7 +62,11 @@ const StagePill = ({ stageKey, status, company, title }) => {
   );
 };
 
-const ProductionCard = ({ stage: row, history = [], highlighted, selected, awaitingQc, ripError, onRipBadgeClick, onSelect, onContextMenu }) => {
+// `thumbnail` is a SLOT: a ready-made React element, never a boolean or a path.
+// The card must not learn about pdfjs, file paths or PdfThumb — a lens that wants
+// a thumbnail builds the element and hands it over. Lenses that pass nothing
+// render exactly as before and pay for no SMB reads.
+const ProductionCard = ({ stage: row, history = [], highlighted, selected, awaitingQc, ripError, thumbnail, onRipBadgeClick, onSelect, onContextMenu }) => {
   const cardRef  = useRef(null);
   // Where the mouse went down, so a click that ends a text-selection drag doesn't toggle the card.
   const pointerDownRef = useRef(null);
@@ -112,13 +116,18 @@ const ProductionCard = ({ stage: row, history = [], highlighted, selected, await
 
   return (
     <div
-      className={`${style.card} ${selected ? style.card_selected : ""} ${awaitingQc ? style.card_awaiting : ""}`}
+      className={`${style.card} ${thumbnail ? style.card_with_thumb : ""} ${selected ? style.card_selected : ""} ${awaitingQc ? style.card_awaiting : ""}`}
       ref={cardRef}
       data-file-id={row.file_id}
       onMouseDown={handlePointerDown}
       onClick={handleCardClick}
       onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); onContextMenu?.(row, e.clientX, e.clientY); }}
     >
+      {/* An explicit class, not :has(> .card_thumb): the card's geometry must not
+          depend on DOM shape (wrapping the slot in a container would silently
+          restore the 44px height), and the override stays visible to anyone
+          reading this file. */}
+      {thumbnail && <div className={style.card_thumb}>{thumbnail}</div>}
       <span className={`${style.card_checkbox} ${selected ? style.card_checkbox_checked : ""}`}>
         {selected && <LuCheck size={10} />}
       </span>

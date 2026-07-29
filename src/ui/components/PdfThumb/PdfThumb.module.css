@@ -1,0 +1,36 @@
+/* All three states fill their container completely, so the box never changes
+   size between loading, success and failure — the card height stays put while
+   thumbnails arrive. The box itself is sized by the host (.card_thumb). */
+
+.image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  /* Top, not centre: an LM page can be 1421x20000 px and a centred crop would
+     show the middle of the roll. The top is where the pattern starts. */
+  object-position: top;
+}
+
+.skeleton {
+  width: 100%;
+  height: 100%;
+  background: var(--bg-grey);
+  animation: pulse 1.4s ease-in-out infinite;
+}
+
+/* Quiet, slow breathing — no spinner and nothing that reads as an error. */
+@keyframes pulse {
+  0%, 100% { background-color: var(--bg-grey-light); }
+  50%      { background-color: var(--bg-grey); }
+}
+
+.fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  background: var(--bg-grey);
+  color: var(--text-secondary);
+}

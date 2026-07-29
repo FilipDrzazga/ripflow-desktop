@@ -6,6 +6,7 @@ import { PRODUCTION_STAGE } from "../../../shared/constants";
 import { groupByOrder, UNKNOWN_ORDER_KEY, UNKNOWN_ORDER_LABEL } from "../../utils/groupByOrder";
 import { notify } from "@/utils/notify";
 import ProductionCard from "./ProductionCard";
+import PdfThumb from "../PdfThumb/PdfThumb";
 import style from "./SewingReceive.module.css";
 
 // Bucket for rows whose sewing_company is null — the column arrived via ALTER TABLE,
@@ -262,6 +263,9 @@ const SewingReceive = ({
                     selected={selectedFileIds.has(row.file_id)}
                     awaitingQc={false}
                     ripError={ripErrors[row.file_id]}
+                    // Only the ACTIVE order's items are on screen (usually 2-3),
+                    // which is laziness enough — no observer, no prefetch.
+                    thumbnail={<PdfThumb filePath={`${row.batch_path}\\${row.file_id}.pdf`} />}
                     onRipBadgeClick={onRipBadgeClick}
                     onSelect={onSelect}
                     onContextMenu={onContextMenu}
