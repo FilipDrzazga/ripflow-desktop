@@ -1,5 +1,15 @@
 [
   {
+    "version": "1.0.18",
+    "date": "2026-07-30",
+    "changes": [
+      {
+        "text": "The RIP Error popup now has a \"Resolved\" button - use it to clear an error you've already sorted out (re-ran the job, cleared the print queue) without having to send the file back to the inbox",
+        "clients": ["all"]
+      }
+    ]
+  },
+  {
     "version": "1.0.17",
     "date": "2026-07-29",
     "changes": [
