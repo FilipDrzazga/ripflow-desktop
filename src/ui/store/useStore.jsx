@@ -10,7 +10,7 @@ import { getRollbackReasonsForFiles as getRollbackReasonsForFilesApi } from "../
 import { getRollbackDefinitions as getRollbackDefinitionsApi } from "../services/reasonDefsService";
 import { getFabricGlobals as getFabricGlobalsApi, getFabrics as getFabricsApi } from "../services/fabricService";
 import { getStagesByBatch as getStagesByBatchApi, getAllStages as getAllStagesApi, getStagesAfter as getStagesAfterApi, getAllStageHistory as getAllStageHistoryApi, clearAllProductionStages as clearAllProductionStagesApi, getOpenReprints as getOpenReprintsApi } from "../services/productionService";
-import { scanRipErrors as scanRipErrorsApi } from "../services/ripErrorService";
+import { scanRipErrors as scanRipErrorsApi, resolveRipError as resolveRipErrorApi } from "../services/ripErrorService";
 
 const applySort = (groups, sortOrder) => {
   if (!sortOrder) return groups;
@@ -315,6 +315,22 @@ export const useStore = create(
         delete next[fileId];
         return { ripErrors: next };
       });
+    },
+    // Manual resolve (UI-driven, second path next to rollback). Writes to the DB first and
+    // only drops the row from the store on success, so a failed write leaves the badge in
+    // place. The UI reports the outcome — the store stays silent (no notify here).
+    resolveRipError: async (fileId) => {
+      try {
+        const res = await resolveRipErrorApi(fileId);
+        if (res?.success) {
+          get().removeRipError(fileId);
+          return { success: true };
+        }
+        return { success: false, error: res?.error };
+      } catch (err) {
+        console.error("[store] resolveRipError failed:", err);
+        return { success: false, error: { message: err.message } };
+      }
     },
     clearRipErrorsForFiles: (fileIds) => {
       set((state) => {

@@ -1,5 +1,7 @@
 import { useLayoutEffect, useRef, useState, useEffect } from "react";
-import { LuTriangleAlert, LuCopy, LuCheck } from "react-icons/lu";
+import { LuTriangleAlert, LuCopy, LuCheck, LuCircleCheck } from "react-icons/lu";
+import { useStore } from "../../store/useStore";
+import { notify } from "../../utils/notify";
 import style from "./RipErrorPopover.module.css";
 
 const EDGE_OFFSET = 12;
@@ -23,7 +25,9 @@ const formatRipTime = (iso) => {
 const RipErrorPopover = ({ error, anchorX, anchorY, onClose }) => {
   const boxRef = useRef(null);
   const [copied, setCopied] = useState(false);
+  const [isResolving, setIsResolving] = useState(false);
   const copyTimerRef = useRef(null);
+  const resolveRipError = useStore((state) => state.resolveRipError);
 
   // Edge-flip clamp (same math as ContextMenu): keep the box inside the viewport.
   useLayoutEffect(() => {
@@ -50,6 +54,10 @@ const RipErrorPopover = ({ error, anchorX, anchorY, onClose }) => {
 
   const time = formatRipTime(error.detected_at);
   const fileId = error.file_id ?? "—";
+  // Display value above carries an em-dash fallback — the backend key must be the raw stem
+  // (rip_errors.file_id, same key clearFileStage uses) or nothing at all.
+  const rawFileId =
+    typeof error.file_id === "string" && error.file_id.trim() !== "" ? error.file_id : null;
   const message = error.error_message ?? "—";
   const node = error.failed_node ?? "—";
 
@@ -63,6 +71,36 @@ const RipErrorPopover = ({ error, anchorX, anchorY, onClose }) => {
       clearTimeout(copyTimerRef.current);
       copyTimerRef.current = setTimeout(() => setCopied(false), 1500);
     });
+  };
+
+  // Manual resolve — the second resolve path next to rollback, for an error the operator has
+  // dealt with without returning the file to the inbox (re-sent job, cleared RIP queue). The
+  // store writes to the DB first and only drops the badge on success, so a failed write keeps
+  // the popover open for a retry instead of hiding an error that is still open.
+  const handleResolve = async (e) => {
+    e.stopPropagation();
+    if (isResolving || !rawFileId) return;
+    setIsResolving(true);
+
+    const res = await resolveRipError(rawFileId);
+    if (res?.success) {
+      notify(
+        { type: "Success", title: "RIP error resolved", message: rawFileId },
+        { stage: "rip-errors", code: "RIP_ERROR_RESOLVED" },
+      );
+      onClose(); // unmounts this popover — no state update after it
+      return;
+    }
+
+    setIsResolving(false);
+    notify(
+      {
+        type: "Error",
+        title: "Resolve failed",
+        message: res?.error?.message ?? "Could not resolve the RIP error.",
+      },
+      { stage: "rip-errors", code: res?.error?.code ?? "RIP_ERROR_RESOLVE_FAILED" },
+    );
   };
 
   return (
@@ -92,10 +130,22 @@ const RipErrorPopover = ({ error, anchorX, anchorY, onClose }) => {
           <div className={style.field}><dt className={style.dt}>Time</dt><dd className={style.dd}>{time}</dd></div>
           <div className={style.field}><dt className={style.dt}>File</dt><dd className={`${style.dd} ${style.file_value}`}>{fileId}</dd></div>
         </dl>
-        <button type="button" className={style.copy_btn} onClick={handleCopy}>
-          {copied ? <LuCheck size={13} /> : <LuCopy size={13} />}
-          {copied ? "Copied!" : "Copy"}
-        </button>
+        <div className={style.actions}>
+          <button type="button" className={style.copy_btn} onClick={handleCopy}>
+            {copied ? <LuCheck size={13} /> : <LuCopy size={13} />}
+            {copied ? "Copied!" : "Copy"}
+          </button>
+          <button
+            type="button"
+            className={style.resolve_btn}
+            onClick={handleResolve}
+            disabled={isResolving || !rawFileId}
+            title={rawFileId ? "Mark this RIP error as resolved" : "No file id on this error"}
+          >
+            <LuCircleCheck size={13} />
+            {isResolving ? "Resolving…" : "Resolved"}
+          </button>
+        </div>
       </div>
     </>
   );

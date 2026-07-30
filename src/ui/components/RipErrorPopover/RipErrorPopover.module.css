@@ -65,9 +65,16 @@
   font-size: 11px;
 }
 
-.copy_btn {
+/* Copy + Resolved share the row; each button keeps its own palette (same per-button
+   convention as RollbackModal's .cancel_btn / .confirm_btn). */
+.actions {
   margin-top: 12px;
-  width: 100%;
+  display: flex;
+  gap: 8px;
+}
+
+.copy_btn {
+  flex: 1;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -84,4 +91,29 @@
 
 .copy_btn:hover {
   background-color: #fee2e2;
+}
+
+.resolve_btn {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border: 1px solid #bbf7d0;
+  border-radius: 7px;
+  background-color: #dcfce7;
+  color: #3b6d11;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.resolve_btn:hover:not(:disabled) {
+  background-color: #a7f3d0;
+}
+
+.resolve_btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }

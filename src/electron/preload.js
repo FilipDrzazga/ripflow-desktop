@@ -212,6 +212,7 @@ const api = Object.freeze({
   ripErrors: Object.freeze({
     scan: () => ipcRenderer.invoke("rip-errors:scan"),
     get: () => ipcRenderer.invoke("rip-errors:get"),
+    resolve: (fileId) => ipcRenderer.invoke("rip-errors:resolve", fileId),
   }),
 
   update: Object.freeze({
