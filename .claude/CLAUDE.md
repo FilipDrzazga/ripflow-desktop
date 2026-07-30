@@ -90,7 +90,7 @@ src/ui/
     productionService.js   # getAllStages, getStagesAfter, getStagesByBatch, advanceStage,
                            #   setSewingSent, setSewingReceived, printBatchLabel,
                            #   getAllStageHistory, clearAllProductionStages
-    ripErrorService.js     # scanRipErrors, getRipErrors — withTimeout wrappers
+    ripErrorService.js     # scanRipErrors, getRipErrors, resolveRipError — withTimeout wrappers
   constants/
     printerColors.js       # PRINTER_COLORS: { DGEN, YOKO, YUMI } → { bg, color }
     rollbackReasons.js     # ROLLBACK_REASONS: static fallback only — runtime data comes from DB
@@ -123,7 +123,7 @@ src/ui/
                            # fixed 64x64 box (skeleton / img / silent placeholder).
                            # Always renders via renderPdfThumb; errors never notify()
     ContextMenu/           # Portal popup; supports submenu (children field) with hover delay 150ms
-    RipErrorPopover/       # Shared anchored popover (ProductionCard + FileRow); RIP-error detail + Copy
+    RipErrorPopover/       # Shared anchored popover (ProductionCard + FileRow); RIP-error detail + Copy + Resolved (manual resolve)
                            # positioning + backdrop-close lifted from ContextMenu (not imported)
     RollbackModal/         # Portal modal; reason pills from store.reasonDefinitions; OTHER → text input
     ErrorBoundary/         # Class component — wraps DataList, BatchHistory, Analytics in App.jsx
@@ -348,6 +348,7 @@ label.printBatch({ batchName, totalMeters }) // → { success } — labelPrinter
 // RIP errors — use ripErrorService, never window.api.ripErrors directly
 ripErrors.scan() // → { success, data: ripErrorRow[] } ("rip-errors:scan") — scan AUTOMATION_WORKFLOW_ERROR/, parse + persist, return open errors
 ripErrors.get()  // → { success, data: ripErrorRow[] } ("rip-errors:get")  — open errors only, no scan
+ripErrors.resolve(fileId) // → { success } | { success:false, error } ("rip-errors:resolve") — manual resolve; resolves ALL open rows for the file_id
 
 // System
 getAppVersion()  // → version string ("app:getVersion")
@@ -391,6 +392,7 @@ Key: `getLastBatch(batchDays)` exported helper. `applyFilters()` internal helper
 **RIP-error store action:**
 - `loadRipErrors()` → `{ success: bool }` — calls `ripErrorService.scanRipErrors()`, maps rows into `ripErrors` keyed `fileId → row` (open only). DECISION: one row per file — most recent wins (DB may hold multiple open errors per file; the store/badge surfaces only the latest). Driven by a global 30s poll in `App.jsx` (initial load in the startup effect), session-wide so badges stay fresh in both views.
 - `removeRipError(fileId)` / `clearRipErrorsForFiles(ids)` — optimistic removal from `ripErrors` after a rollback resolves the file's errors (badge + batch-header count clear at once; the next poll reconciles). Mirrors `removeStageFromStore`.
+- `resolveRipError(fileId)` → `{ success, error? }` — the manual resolve path (popover "Resolved" button). Writes to the DB via `ripErrorService.resolveRipError` FIRST and calls `removeRipError(fileId)` only on `success`, so a failed write leaves the badge in place. Returns the outcome to the UI and never notifies itself.
 
 **Startup load order (App.jsx):**
 ```js
@@ -583,13 +585,17 @@ Surfaces PrintFactory job failures on the affected files. PrintFactory drops a p
 
 **Ingest + poll** — `ripErrorHandlers.js` `scanRipErrors()` reads `{storagePath}\AUTOMATION_WORKFLOW_ERROR` (via `getRipErrorRootPath`, sibling of `PRINTED/`, never hardcoded), filters `*.xml` only (ignores the `.tif`), `parseRipErrorXml` + `insertRipError` per row (INSERT OR IGNORE dedup on `(job_guid, file_id)`), per-file try/catch (one bad xml can't sink the scan), missing folder → no-op `{success:true,data:[]}`, returns `getOpenRipErrors()`. IPC `rip-errors:scan` / `rip-errors:get` → `window.api.ripErrors` → `ripErrorService`. **Global 30s poll in `App.jsx`** (`loadRipErrors`; initial load in the startup effect) runs the whole session regardless of `activeView`, so badges stay fresh in both views.
 
-**Store** — `ripErrors {}` keyed `fileId → row`, open-only, most-recent-wins (one file may hold multiple open DB rows; the store/badge surface the latest). Actions: `loadRipErrors()`, `removeRipError(fileId)` / `clearRipErrorsForFiles(ids)` (optimistic clear on rollback).
+**Store** — `ripErrors {}` keyed `fileId → row`, open-only, most-recent-wins (one file may hold multiple open DB rows; the store/badge surface the latest). Actions: `loadRipErrors()`, `removeRipError(fileId)` / `clearRipErrorsForFiles(ids)` (optimistic clear on rollback), `resolveRipError(fileId)` (manual resolve — DB write first, store clear only on success).
 
 **UI — badges** — red **"RIP Error"** badge (`LuTriangleAlert`) per file in BOTH `ProductionCard` and BatchHistory `FileRow`, shown when `store.ripErrors[stem]` exists (stem = `file.name.replace(/\.[^.]+$/,"")`). Both rows stay presentational — `Production.jsx` and `BatchRow.jsx` (already store subscribers) read `ripErrors` and pass the `ripError` prop down (mirrors how reprint/stageRow reach the rows). `BatchRow` also shows a **batch-header count badge** `"N RIP Error(s)"` (non-interactive) = this batch's files ∩ `ripErrors` with the same stem derivation → header count == expanded file-badge count by construction. Red palette `#FEF2F2` / `rgba(220,38,38,.4)` / `#DC2626`.
 
 **UI — popover (`RipErrorPopover/`)** — clicking the per-**file** badge opens one shared anchored popover (state owned by each view, portaled to `document.body` at the call site like `ContextMenu`). Positioning (anchor edge-flip clamp) + backdrop close (`onPointerDown → onClose`) are **lifted from `ContextMenu` (not imported)**; z-index 2999/3000. Shows Error message / failed node / time (local `formatRipTime`, `HH:MM DD/MM/YYYY` — no shared date helper exists) / file_id, plus a **Copy** button → `navigator.clipboard.writeText` (pattern mirrors `SessionLogs.jsx`) writing the 5-line block (`RIP Error` / `File:` / `Error:` / `Node:` / `Time:`), label `Copy → Copied! → revert ~1.5s` (timeout cleared on unmount). Badge `onClick` + popover interior `stopPropagation` so a click never expands the BatchHistory row or toggles the ProductionCard selection. The **batch-header count badge is NOT clickable**.
 
-**Resolve lifecycle** — rollback is the ONLY resolve path (a file returns to the inbox only via rollback; manual resolve intentionally not built). `rollbackFile` → `resolveRipErrorsByFile(stem)` using the SAME stem key as `clearFileStage`; `rollbackBatch` loops it over `pdfNames` stems (**not** `batch_path` — `rip_errors.batch_id` is the XML BatchId string, so per-stem is the correct key). Runs only on rollback **success**; resolves **ALL** open rows for that `file_id`. The store optimistically drops the stem(s) at every rollback-success site (Production `handleRollbackDecisions`; BatchHistory bulk/single/batch handlers — batch uses `dayGroupsRef.current` for the batch's file stems) so badges + header count clear instantly; the 30s poll reconciles against the DB (resolved rows excluded by `getOpenRipErrors`).
+**Resolve lifecycle — TWO paths.** (1) **Rollback (automatic):** `rollbackFile` → `resolveRipErrorsByFile(stem)` using the SAME stem key as `clearFileStage`; `rollbackBatch` loops it over `pdfNames` stems (**not** `batch_path` — `rip_errors.batch_id` is the XML BatchId string, so per-stem is the correct key). Runs only on rollback **success**. The store optimistically drops the stem(s) at every rollback-success site (Production `handleRollbackDecisions`; BatchHistory bulk/single/batch handlers — batch uses `dayGroupsRef.current` for the batch's file stems) so badges + header count clear instantly; the 30s poll reconciles against the DB (resolved rows excluded by `getOpenRipErrors`). (2) **Manual (deliberate, from the UI):** a **"Resolved"** button in `RipErrorPopover` next to Copy — for an error the operator has dealt with WITHOUT returning the file to the inbox (job re-sent, RIP queue cleared). Path: `RipErrorPopover` → `store.resolveRipError(fileId)` → `ripErrorService.resolveRipError` → IPC `rip-errors:resolve` → the SAME `resolveRipErrorsByFile`. Both paths resolve **ALL** open rows for that `file_id`.
+
+**`rip-errors:resolve` reads the `runWrite` return value, NOT a try/catch.** `resolveRipErrorsByFile` never throws — it returns `false` when the DB is unavailable or the write fails. The handler derives `success` **from that boolean** (`false` → `toIpcError` with `DB_WRITE_FAILED`); relying on the absence of an exception would report `success:true` against a dead DB and the store would drop the badge of an error still open in the DB. The store calls `removeRipError(fileId)` **only** on `success` — a failed write leaves the badge in place and the popover open for a retry. The store does NOT notify; the toasts (Success / Error) belong to the popover.
+
+**`RipErrorPopover` receives the row, not a `fileId`.** `error.file_id` is already the stem; the displayed `fileId` carries a `"—"` fallback, so the backend key is `rawFileId` (non-empty string or `null`) — the button is `disabled` when it is `null`.
 
 **PrintFactory side (operational context):** a single Export node wired to every workflow port writes the per-failed-job `<name>.tif` + `<name>.xml` into `AUTOMATION_WORKFLOW_ERROR/`. The Export uses `Content=Layout` + Export XML (Document/Original was abandoned — it couldn't access the `PRINTED/` pdf). RipFlow reads only the `*.xml`. **TIFF cleanup is out of scope for RipFlow** — a separate scheduled task should prune old TIFFs; RipFlow never deletes from the shared share.
 
