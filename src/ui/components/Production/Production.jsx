@@ -134,19 +134,19 @@ const BatchGroupHeader = ({ batchPath, rows, selectedFileIds, onSelectAll }) => 
 const STALE_DAYS_WARN = 3;
 const STALE_DAYS_ALERT = 7;
 
-const DayGroupHeader = ({ day, collapsed, onToggle, onFilter, selectedFileIds, onSelectAll }) => {
+const DayGroupHeader = ({ day, collapsed, onToggle, onFilter }) => {
   const { dayKey, label, batchCount, fileCount, staleDays, rows } = day;
   const isUnknown = dayKey === UNKNOWN_DAY_KEY;
   // A day everything has already shipped from is finished, not stuck — no pill.
   const hasOpenWork = rows.some((r) => r.stage !== PRODUCTION_STAGE.SHIPPED);
   const showStale = !isUnknown && staleDays != null && staleDays >= 2 && hasOpenWork;
+  // No "Select All" here on purpose — bulk selection stays a batch-level action.
   const staleClass =
     staleDays >= STALE_DAYS_ALERT
       ? style.day_age_pill_alert
       : staleDays >= STALE_DAYS_WARN
         ? style.day_age_pill_warn
         : "";
-  const allSelected = rows.length > 0 && rows.every((r) => selectedFileIds.has(r.file_id));
   return (
     <div className={style.day_header}>
       <button type="button" className={style.day_header_toggle} onClick={onToggle}>
@@ -169,9 +169,6 @@ const DayGroupHeader = ({ day, collapsed, onToggle, onFilter, selectedFileIds, o
           <LuFilter size={13} />
         </button>
       )}
-      <button type="button" className={style.batch_group_select_btn} onClick={() => onSelectAll(rows)}>
-        {allSelected ? "Deselect" : "Select All"}
-      </button>
     </div>
   );
 };
@@ -1620,8 +1617,6 @@ const Production = () => {
                   collapsed={collapsed}
                   onToggle={() => toggleDay(day.dayKey)}
                   onFilter={() => setDayFilter((prev) => (prev === day.dayKey ? null : day.dayKey))}
-                  selectedFileIds={selectedFileIds}
-                  onSelectAll={handleSelectBatch}
                 />
                 {!collapsed && (
                   <div className={style.day_body}>
