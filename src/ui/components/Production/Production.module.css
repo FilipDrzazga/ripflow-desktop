@@ -1336,6 +1336,10 @@
   background-color: var(--bg-grey-light);
   border-left: 4px solid var(--bg-black);
   border-bottom: 1px solid var(--border-grey);
+  /* Rounded on all four corners, not just the top: the bar is sticky, so it
+     floats over the cards while scrolling and reads as its own element.
+     One step above the cards' 10px, since the day is the outer group. */
+  border-radius: 12px;
 }
 
 /* Breathing room between consecutive days — without it the dark bars of two
