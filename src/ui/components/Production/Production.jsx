@@ -1,15 +1,29 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { HiMagnifyingGlass, HiXMark } from "react-icons/hi2";
-import { LuArrowRight, LuArrowLeft, LuScissors, LuRefreshCw, LuCornerUpLeft, LuEye, LuListTree, LuPackageCheck } from "react-icons/lu";
-import { useStore } from "../../store/useStore";
-import { STAGE_LABEL, STAGE_SHORT_LABEL, STAGE_NEXT, STAGE_PREV, PRODUCTION_STAGE, STAGE_COLOR } from "../../../shared/constants";
 import {
-  advanceStage,
-  setSewingSent,
-  setSewingReceived,
-  printBatchLabel,
-} from "../../services/productionService";
+  LuArrowRight,
+  LuArrowLeft,
+  LuScissors,
+  LuRefreshCw,
+  LuCornerUpLeft,
+  LuEye,
+  LuListTree,
+  LuPackageCheck,
+  LuChevronDown,
+  LuChevronRight,
+  LuFilter,
+} from "react-icons/lu";
+import { useStore } from "../../store/useStore";
+import {
+  STAGE_LABEL,
+  STAGE_SHORT_LABEL,
+  STAGE_NEXT,
+  STAGE_PREV,
+  PRODUCTION_STAGE,
+  STAGE_COLOR,
+} from "../../../shared/constants";
+import { advanceStage, setSewingSent, setSewingReceived, printBatchLabel } from "../../services/productionService";
 import { rollbackFile } from "../../services/batchService";
 import { openInFolder as openInFolderApi, openInShopify as openInShopifyApi } from "../../services/fileService";
 import { getSettings } from "../../services/settingsService";
@@ -19,6 +33,13 @@ import { useStageTransition } from "../../hooks/useStageTransition";
 import { PRINTER_COLORS } from "../../constants/printerColors";
 import { VIEW_MODE } from "../../constants/viewModes";
 import { UNKNOWN_ORDER_KEY } from "../../utils/groupByOrder";
+import {
+  UNKNOWN_DAY_KEY,
+  dayKeyFromBatchPath,
+  getDayLabel,
+  compareDayKeysDesc,
+  daysSinceDayKey,
+} from "../../utils/dayKey";
 import ContextMenu from "../ContextMenu/ContextMenu";
 import PdfPreviewModal from "../PdfPreviewModal/PdfPreviewModal";
 import ProductionCard from "./ProductionCard";
@@ -29,20 +50,24 @@ import SewingReceive from "./SewingReceive";
 import style from "./Production.module.css";
 
 const FILTER_TABS = [
-  { key: "all",                        label: "All" },
-  { key: PRODUCTION_STAGE.PRINTED,     label: STAGE_LABEL.printed },
-  { key: PRODUCTION_STAGE.HEATPRESS,   label: "Press" },
-  { key: PRODUCTION_STAGE.QC,          label: STAGE_LABEL.qc },
-  { key: PRODUCTION_STAGE.TO_SEWING,   label: "Sew Out" },
-  { key: PRODUCTION_STAGE.PACKED,      label: STAGE_LABEL.packed },
-  { key: PRODUCTION_STAGE.SHIPPED,     label: STAGE_LABEL.shipped },
+  { key: "all", label: "All" },
+  { key: PRODUCTION_STAGE.PRINTED, label: STAGE_LABEL.printed },
+  { key: PRODUCTION_STAGE.HEATPRESS, label: "Press" },
+  { key: PRODUCTION_STAGE.QC, label: STAGE_LABEL.qc },
+  { key: PRODUCTION_STAGE.TO_SEWING, label: "Sew Out" },
+  { key: PRODUCTION_STAGE.PACKED, label: STAGE_LABEL.packed },
+  { key: PRODUCTION_STAGE.SHIPPED, label: STAGE_LABEL.shipped },
 ];
 
 const POLL_INTERVAL = 15_000;
 
 const STAGE_PIPELINE_ORDER = [
-  PRODUCTION_STAGE.PRINTED, PRODUCTION_STAGE.HEATPRESS, PRODUCTION_STAGE.QC,
-  PRODUCTION_STAGE.TO_SEWING, PRODUCTION_STAGE.PACKED, PRODUCTION_STAGE.SHIPPED,
+  PRODUCTION_STAGE.PRINTED,
+  PRODUCTION_STAGE.HEATPRESS,
+  PRODUCTION_STAGE.QC,
+  PRODUCTION_STAGE.TO_SEWING,
+  PRODUCTION_STAGE.PACKED,
+  PRODUCTION_STAGE.SHIPPED,
 ];
 
 // Distinct operator feedback for the two non-success stage-transition outcomes —
@@ -78,8 +103,14 @@ const BatchGroupHeader = ({ batchPath, rows, selectedFileIds, onSelectAll }) => 
   return (
     <div className={style.batch_group_header}>
       <span className={style.batch_group_name}>{batchName}</span>
-      {pc && <span className={style.batch_group_printer} style={{ backgroundColor: pc.bg, color: pc.color }}>{printer}</span>}
-      <span className={style.batch_group_count}>{rows.length} file{rows.length !== 1 ? "s" : ""}</span>
+      {pc && (
+        <span className={style.batch_group_printer} style={{ backgroundColor: pc.bg, color: pc.color }}>
+          {printer}
+        </span>
+      )}
+      <span className={style.batch_group_count}>
+        {rows.length} file{rows.length !== 1 ? "s" : ""}
+      </span>
       <span className={style.batch_group_sep} />
       <div className={style.batch_group_stages}>
         {STAGE_PIPELINE_ORDER.filter((s) => stageCounts[s] > 0).map((s) => {
@@ -98,16 +129,63 @@ const BatchGroupHeader = ({ batchPath, rows, selectedFileIds, onSelectAll }) => 
   );
 };
 
+// Age thresholds for the "N days in production" pill on a day header. A day is
+// only ever flagged while it still holds unfinished work (see DayGroupHeader).
+const STALE_DAYS_WARN = 3;
+const STALE_DAYS_ALERT = 7;
+
+const DayGroupHeader = ({ day, collapsed, onToggle, onFilter, selectedFileIds, onSelectAll }) => {
+  const { dayKey, label, batchCount, fileCount, staleDays, rows } = day;
+  const isUnknown = dayKey === UNKNOWN_DAY_KEY;
+  // A day everything has already shipped from is finished, not stuck — no pill.
+  const hasOpenWork = rows.some((r) => r.stage !== PRODUCTION_STAGE.SHIPPED);
+  const showStale = !isUnknown && staleDays != null && staleDays >= 2 && hasOpenWork;
+  const staleClass =
+    staleDays >= STALE_DAYS_ALERT
+      ? style.day_age_pill_alert
+      : staleDays >= STALE_DAYS_WARN
+        ? style.day_age_pill_warn
+        : "";
+  const allSelected = rows.length > 0 && rows.every((r) => selectedFileIds.has(r.file_id));
+  return (
+    <div className={style.day_header}>
+      <button type="button" className={style.day_header_toggle} onClick={onToggle}>
+        <span className={style.day_chevron}>
+          {collapsed ? <LuChevronRight size={16} /> : <LuChevronDown size={16} />}
+        </span>
+        <span className={style.day_date}>{isUnknown ? "Unknown day" : dayKey}</span>
+        {label && <span className={style.day_label}>{label}</span>}
+        <span className={style.day_pill}>
+          {batchCount} {batchCount === 1 ? "batch" : "batches"} · {fileCount} {fileCount === 1 ? "file" : "files"}
+        </span>
+        {showStale && (
+          <span className={`${style.day_age_pill} ${staleClass}`}>
+            {staleDays} {staleDays === 1 ? "day" : "days"} in production
+          </span>
+        )}
+      </button>
+      {!isUnknown && (
+        <button type="button" className={style.day_filter_btn} onClick={onFilter} title="Show only this day">
+          <LuFilter size={13} />
+        </button>
+      )}
+      <button type="button" className={style.batch_group_select_btn} onClick={() => onSelectAll(rows)}>
+        {allSelected ? "Deselect" : "Select All"}
+      </button>
+    </div>
+  );
+};
+
 const Production = () => {
-  const productionStages    = useStore((s) => s.productionStages);
-  const loadAllStages       = useStore((s) => s.loadAllStages);
-  const loadStagesAfter     = useStore((s) => s.loadStagesAfter);
+  const productionStages = useStore((s) => s.productionStages);
+  const loadAllStages = useStore((s) => s.loadAllStages);
+  const loadStagesAfter = useStore((s) => s.loadStagesAfter);
   const removeStageFromStore = useStore((s) => s.removeStageFromStore);
-  const refreshFiles        = useStore((s) => s.refreshFiles);
-  const loadAllStageHistory  = useStore((s) => s.loadAllStageHistory);
-  const stageHistory         = useStore((s) => s.stageHistory);
-  const ripErrors            = useStore((s) => s.ripErrors);
-  const removeRipError       = useStore((s) => s.removeRipError);
+  const refreshFiles = useStore((s) => s.refreshFiles);
+  const loadAllStageHistory = useStore((s) => s.loadAllStageHistory);
+  const stageHistory = useStore((s) => s.stageHistory);
+  const ripErrors = useStore((s) => s.ripErrors);
+  const removeRipError = useStore((s) => s.removeRipError);
 
   // Shared store-core for every stage transition — applies the optimistic store
   // update + history entry ONLY when the DB confirms the row actually moved
@@ -115,7 +193,7 @@ const Production = () => {
   const applyStageTransition = useStageTransition();
 
   // Which lens is on screen — see VIEW_MODE for the available lenses.
-  const [viewMode,       setViewMode]       = useState(VIEW_MODE.BATCHES);
+  const [viewMode, setViewMode] = useState(VIEW_MODE.BATCHES);
   // handleScan needs the CURRENT lens, but adding viewMode to its deps would
   // re-create the callback and re-point handleScanRef on every tab switch. A ref
   // gives the read without the dependency.
@@ -157,17 +235,17 @@ const Production = () => {
   };
   // Focus signal for the Orders lens: { keys, nonce } — "Show in Orders" sets it so
   // OrderView expands + scrolls to those orders. nonce makes repeat clicks re-fire.
-  const [focusOrders,    setFocusOrders]    = useState(null);
-  const [stageFilter,    setStageFilter]    = useState("all");
-  const [search,         setSearch]         = useState("");
+  const [focusOrders, setFocusOrders] = useState(null);
+  const [stageFilter, setStageFilter] = useState("all");
+  const [search, setSearch] = useState("");
   const searchInputRef = useRef(null);
-  const [batchFilter,    setBatchFilter]    = useState(null);
+  const [batchFilter, setBatchFilter] = useState(null);
   const [workstationRole, setWorkstationRole] = useState("");
-  const [isLoading,      setIsLoading]      = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   const lastPollAt = useRef(null);
 
-  const [isRefreshing,  setIsRefreshing]  = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [highlightedId, setHighlightedId] = useState(null);
   const handleScanRef = useRef(null);
 
@@ -193,7 +271,9 @@ const Production = () => {
         setIsLoading(false);
       }
     });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [loadAllStages, loadAllStageHistory]);
 
   // Poll for changes — only advance lastPollAt on success so a network failure retries the same window
@@ -241,7 +321,11 @@ const Production = () => {
     const now = new Date().toISOString();
     const res = await setSewingSent(fileId, row.stage, sewingCompany ?? null);
     const outcome = applyStageTransition({
-      fileId, row, newStage: PRODUCTION_STAGE.TO_SEWING, res, now,
+      fileId,
+      row,
+      newStage: PRODUCTION_STAGE.TO_SEWING,
+      res,
+      now,
       extra: { sewing_sent_at: now, sewing_company: sewingCompany ?? null },
     });
     if (outcome === "rejected") notifyStageRejected(1);
@@ -254,7 +338,11 @@ const Production = () => {
     const now = new Date().toISOString();
     const res = await setSewingReceived(fileId, PRODUCTION_STAGE.TO_SEWING);
     const outcome = applyStageTransition({
-      fileId, row, newStage: PRODUCTION_STAGE.PACKED, res, now,
+      fileId,
+      row,
+      newStage: PRODUCTION_STAGE.PACKED,
+      res,
+      now,
       extra: { sewing_received_at: now },
     });
     if (outcome === "rejected") notifyStageRejected(1);
@@ -276,7 +364,9 @@ const Production = () => {
     if (isReceivingRef.current || ids.length === 0) return;
     isReceivingRef.current = true;
     setIsReceiving(true);
-    let count = 0, rejected = 0, failed = 0;
+    let count = 0,
+      rejected = 0,
+      failed = 0;
     const appliedIds = [];
     try {
       for (const id of ids) {
@@ -285,11 +375,17 @@ const Production = () => {
         const now = new Date().toISOString();
         const res = await setSewingReceived(id, PRODUCTION_STAGE.TO_SEWING);
         const outcome = applyStageTransition({
-          fileId: id, row: r, newStage: PRODUCTION_STAGE.PACKED, res, now,
+          fileId: id,
+          row: r,
+          newStage: PRODUCTION_STAGE.PACKED,
+          res,
+          now,
           extra: { sewing_received_at: now },
         });
-        if (outcome === "applied") { count++; appliedIds.push(id); }
-        else if (outcome === "rejected") rejected++;
+        if (outcome === "applied") {
+          count++;
+          appliedIds.push(id);
+        } else if (outcome === "rejected") rejected++;
         else failed++;
       }
     } finally {
@@ -333,7 +429,9 @@ const Production = () => {
     if (isReceivingRef.current || ids.length === 0) return;
     isReceivingRef.current = true;
     setIsReceiving(true);
-    let count = 0, rejected = 0, failed = 0;
+    let count = 0,
+      rejected = 0,
+      failed = 0;
     const appliedIds = [];
     try {
       for (const id of ids) {
@@ -344,10 +442,16 @@ const Production = () => {
         // the file into quality control instead of back to the sewing company.
         const res = await advanceStage(id, PRODUCTION_STAGE.TO_SEWING, PRODUCTION_STAGE.PACKED);
         const outcome = applyStageTransition({
-          fileId: id, row: r, newStage: PRODUCTION_STAGE.TO_SEWING, res, now,
+          fileId: id,
+          row: r,
+          newStage: PRODUCTION_STAGE.TO_SEWING,
+          res,
+          now,
         });
-        if (outcome === "applied") { count++; appliedIds.push(id); }
-        else if (outcome === "rejected") rejected++;
+        if (outcome === "applied") {
+          count++;
+          appliedIds.push(id);
+        } else if (outcome === "rejected") rejected++;
         else failed++;
       }
     } finally {
@@ -394,7 +498,14 @@ const Production = () => {
     const materials = [...new Set(batchRows.map((r) => r.material).filter(Boolean))];
     const material = materials.length === 1 ? materials[0] : "Mixed";
     const totalMeters = batchRows.reduce((sum, r) => sum + (r.meters ?? 0), 0);
-    const res = await printBatchLabel({ batchPath, batchName, printer, fileCount: batchRows.length, material, totalMeters: Number(totalMeters.toFixed(2)) });
+    const res = await printBatchLabel({
+      batchPath,
+      batchName,
+      printer,
+      fileCount: batchRows.length,
+      material,
+      totalMeters: Number(totalMeters.toFixed(2)),
+    });
     if (res?.success) {
       notify({ type: "Success", title: "Label sent", message: batchName });
     } else {
@@ -412,13 +523,15 @@ const Production = () => {
     const rolledBackIds = [];
     for (const { fileId, reason, override } of decisions) {
       const row = useStore.getState().productionStages[fileId];
-      if (!row?.batch_path) { failCount++; continue; }
+      if (!row?.batch_path) {
+        failCount++;
+        continue;
+      }
       const filePath = `${row.batch_path}\\${fileId}.pdf`;
       const qtyAffected = override?.meters ?? override?.qty ?? null;
       // qtyOriginal must match qtyAffected's unit: this run's meters for LM, pieces otherwise
-      const qtyOriginal = override?.meters != null
-        ? (row.meters_override ?? row.meters ?? null)
-        : (row.qty_override ?? row.qty ?? null);
+      const qtyOriginal =
+        override?.meters != null ? (row.meters_override ?? row.meters ?? null) : (row.qty_override ?? row.qty ?? null);
       try {
         const res = await rollbackFile({
           filePath,
@@ -454,7 +567,11 @@ const Production = () => {
 
     // Once, after the loop: in-progress ops get a single warning + one state refresh.
     if (timedOut > 0) {
-      notify({ type: "Warning", title: "Operations still in progress", message: `${timedOut} operation(s) taking longer than expected — refreshing state.` });
+      notify({
+        type: "Warning",
+        title: "Operations still in progress",
+        message: `${timedOut} operation(s) taking longer than expected — refreshing state.`,
+      });
       await refreshFiles();
       loadAllStages();
     }
@@ -462,7 +579,11 @@ const Production = () => {
     if (failCount === 0 && successCount > 0) {
       notify({ type: "Success", title: "Rolled back", message: `${successCount} file(s) returned to inbox.` });
     } else if (successCount > 0) {
-      notify({ type: "Warning", title: "Partially rolled back", message: `${successCount} succeeded, ${failCount} failed.` });
+      notify({
+        type: "Warning",
+        title: "Partially rolled back",
+        message: `${successCount} succeeded, ${failCount} failed.`,
+      });
     } else if (failCount > 0) {
       notify({ type: "Error", title: "Rollback failed", message: `${failCount} file(s) could not be rolled back.` });
     }
@@ -470,10 +591,16 @@ const Production = () => {
   };
 
   const {
-    openPreview, closePreview, navigate: navigatePreview,
-    isOpen: isPreviewOpen, isLoading: isPreviewLoading,
-    imgSrc: previewImgSrc, error: previewError,
-    currentPath: previewCurrentPath, currentIndex: previewCurrentIndex, fileList: previewFileList,
+    openPreview,
+    closePreview,
+    navigate: navigatePreview,
+    isOpen: isPreviewOpen,
+    isLoading: isPreviewLoading,
+    imgSrc: previewImgSrc,
+    error: previewError,
+    currentPath: previewCurrentPath,
+    currentIndex: previewCurrentIndex,
+    fileList: previewFileList,
   } = usePdfPreview();
 
   const handleOpenPreview = (row) => {
@@ -489,7 +616,11 @@ const Production = () => {
     if (!res?.success) {
       const err = res?.errors?.[0];
       notify(
-        { type: err?.type || "Error", title: err?.title || "Open folder failed", message: err?.message || "Could not open folder." },
+        {
+          type: err?.type || "Error",
+          title: err?.title || "Open folder failed",
+          message: err?.message || "Could not open folder.",
+        },
         { stage: "app", code: "OPEN_FOLDER_FAILED" },
       );
     }
@@ -497,15 +628,21 @@ const Production = () => {
 
   const handleOpenInShopify = async (orderId) => {
     if (!orderId) {
-      notify({ type: "Warning", title: "No order number", message: "No order number for this file." },
-        { stage: "app", code: "SHOPIFY_NO_ORDER_ID" });
+      notify(
+        { type: "Warning", title: "No order number", message: "No order number for this file." },
+        { stage: "app", code: "SHOPIFY_NO_ORDER_ID" },
+      );
       return;
     }
     const res = await openInShopifyApi(orderId);
     if (!res?.success) {
       const err = res?.errors?.[0];
       notify(
-        { type: err?.type || "Error", title: err?.title || "Open in Shopify failed", message: err?.message || "Could not open Shopify order." },
+        {
+          type: err?.type || "Error",
+          title: err?.title || "Open in Shopify failed",
+          message: err?.message || "Could not open Shopify order.",
+        },
         { stage: "app", code: "OPEN_SHOPIFY_FAILED" },
       );
     }
@@ -523,6 +660,33 @@ const Production = () => {
   }, []);
 
   const [groupingEnabled, setGroupingEnabled] = useState(true);
+
+  // COLLAPSED, not expanded (the inverse of BatchHistory's expandedDays):
+  // Production is the live board, so everything is open by default and a day
+  // that arrives later from polling shows up open without any auto-expand logic.
+  const [collapsedDays, setCollapsedDays] = useState(new Set());
+  const [dayFilter, setDayFilter] = useState(null);
+
+  const toggleDay = useCallback((dayKey) => {
+    setCollapsedDays((prev) => {
+      const next = new Set(prev);
+      if (next.has(dayKey)) next.delete(dayKey);
+      else next.add(dayKey);
+      return next;
+    });
+  }, []);
+
+  // Used by the scanner: a scanned batch/file must never land inside a collapsed
+  // day, or the card is not in the DOM to scroll to and highlight.
+  const expandDay = useCallback((dayKey) => {
+    if (!dayKey) return;
+    setCollapsedDays((prev) => {
+      if (!prev.has(dayKey)) return prev;
+      const next = new Set(prev);
+      next.delete(dayKey);
+      return next;
+    });
+  }, []);
 
   const handleSelectBatch = useCallback((rows) => {
     const ids = rows.map((r) => r.file_id);
@@ -547,7 +711,9 @@ const Production = () => {
 
   const handleBulkGoBack = async () => {
     const ids = [...selectedFileIds];
-    let count = 0, rejected = 0, failed = 0;
+    let count = 0,
+      rejected = 0,
+      failed = 0;
     for (const id of ids) {
       const r = productionStages[id];
       if (!r) continue;
@@ -568,7 +734,9 @@ const Production = () => {
 
   const handleBulkAdvance = async () => {
     const ids = [...selectedFileIds];
-    let count = 0, rejected = 0, failed = 0;
+    let count = 0,
+      rejected = 0,
+      failed = 0;
     for (const id of ids) {
       const r = productionStages[id];
       if (!r) continue;
@@ -588,21 +756,28 @@ const Production = () => {
       for (const id of prev) if (productionStages[id]) next.add(id);
       return next;
     });
-    if (count > 0) notify({ type: "Success", title: `${count} file${count > 1 ? "s" : ""} moved`, message: "Moved to next stage." });
+    if (count > 0)
+      notify({ type: "Success", title: `${count} file${count > 1 ? "s" : ""} moved`, message: "Moved to next stage." });
     if (rejected > 0) notifyStageRejected(rejected);
     if (failed > 0) notifyStageFailed(failed);
   };
 
   const handleBulkReceive = async () => {
     const ids = [...selectedFileIds];
-    let count = 0, rejected = 0, failed = 0;
+    let count = 0,
+      rejected = 0,
+      failed = 0;
     for (const id of ids) {
       const r = productionStages[id];
       if (!r || r.stage !== PRODUCTION_STAGE.TO_SEWING) continue;
       const now = new Date().toISOString();
       const res = await setSewingReceived(id, PRODUCTION_STAGE.TO_SEWING);
       const outcome = applyStageTransition({
-        fileId: id, row: r, newStage: PRODUCTION_STAGE.PACKED, res, now,
+        fileId: id,
+        row: r,
+        newStage: PRODUCTION_STAGE.PACKED,
+        res,
+        now,
         extra: { sewing_received_at: now },
       });
       if (outcome === "applied") count++;
@@ -622,14 +797,20 @@ const Production = () => {
 
   const handleBulkSewing = async (sewingCompany) => {
     const ids = [...selectedFileIds];
-    let count = 0, rejected = 0, failed = 0;
+    let count = 0,
+      rejected = 0,
+      failed = 0;
     for (const id of ids) {
       const r = productionStages[id];
       if (!r || r.stage !== PRODUCTION_STAGE.QC) continue;
       const now = new Date().toISOString();
       const res = await setSewingSent(id, PRODUCTION_STAGE.QC, sewingCompany ?? null);
       const outcome = applyStageTransition({
-        fileId: id, row: r, newStage: PRODUCTION_STAGE.TO_SEWING, res, now,
+        fileId: id,
+        row: r,
+        newStage: PRODUCTION_STAGE.TO_SEWING,
+        res,
+        now,
         extra: { sewing_sent_at: now, sewing_company: sewingCompany ?? null },
       });
       if (outcome === "applied") count++;
@@ -637,7 +818,8 @@ const Production = () => {
       else failed++;
     }
     setSelectedFileIds(new Set());
-    if (count > 0) notify({ type: "Success", title: "Sent to sewing", message: `${count} file(s) sent to ${sewingCompany}.` });
+    if (count > 0)
+      notify({ type: "Success", title: "Sent to sewing", message: `${count} file(s) sent to ${sewingCompany}.` });
     if (rejected > 0) notifyStageRejected(rejected);
     if (failed > 0) notifyStageFailed(failed);
   };
@@ -645,7 +827,7 @@ const Production = () => {
   // Clear selection when filter changes
   useEffect(() => {
     setSelectedFileIds(new Set());
-  }, [batchFilter, stageFilter]);
+  }, [batchFilter, dayFilter, stageFilter]);
 
   // Same idea across lenses: a selection carried between lenses, or between
   // orders inside the Receive lens, would act on files the operator can no
@@ -656,173 +838,221 @@ const Production = () => {
 
   // ─── Scanner ───────────────────────────────────────────────────────────────
 
-  const handleScan = useCallback(async (value) => {
-    // A scan acts on the Batches lens (filter/scroll/highlight). From the Orders
-    // lens, flip back first so the result is actually visible instead of silently
-    // mutating the hidden Batches state. The Receive lens owns its own scan
-    // handling, so a scan must NOT pull the operator out of it. Already on
-    // Batches → no-op. Functional updater so viewMode stays out of the deps.
-    setViewMode((mode) => (mode === VIEW_MODE.ORDERS ? VIEW_MODE.BATCHES : mode));
+  const handleScan = useCallback(
+    async (value) => {
+      // A scan acts on the Batches lens (filter/scroll/highlight). From the Orders
+      // lens, flip back first so the result is actually visible instead of silently
+      // mutating the hidden Batches state. The Receive lens owns its own scan
+      // handling, so a scan must NOT pull the operator out of it. Already on
+      // Batches → no-op. Functional updater so viewMode stays out of the deps.
+      setViewMode((mode) => (mode === VIEW_MODE.ORDERS ? VIEW_MODE.BATCHES : mode));
 
-    const isBatchPath = value.includes("\\") || value.includes("/");
+      const isBatchPath = value.includes("\\") || value.includes("/");
 
-    let resolvedBatchPath = null;
-    if (isBatchPath) {
-      resolvedBatchPath = value;
-    } else {
-      const nameMatch = Object.values(productionStages).find(
-        (r) => r.batch_path?.split(/[/\\]/).pop() === value,
-      );
-      if (nameMatch) {
-        resolvedBatchPath = nameMatch.batch_path;
-      } else if (/^\d{6}$/.test(value)) {
-        const tsMatch = Object.values(productionStages).find(
-          (r) => r.batch_path?.split(/[/\\]/).pop().startsWith(`PRINTED_${value}`),
-        );
-        if (tsMatch) resolvedBatchPath = tsMatch.batch_path;
+      let resolvedBatchPath = null;
+      if (isBatchPath) {
+        resolvedBatchPath = value;
+      } else {
+        const nameMatch = Object.values(productionStages).find((r) => r.batch_path?.split(/[/\\]/).pop() === value);
+        if (nameMatch) {
+          resolvedBatchPath = nameMatch.batch_path;
+        } else if (/^\d{6}$/.test(value)) {
+          const tsMatch = Object.values(productionStages).find((r) =>
+            r.batch_path?.split(/[/\\]/).pop().startsWith(`PRINTED_${value}`),
+          );
+          if (tsMatch) resolvedBatchPath = tsMatch.batch_path;
+        }
       }
-    }
 
-    if (resolvedBatchPath) {
-      const batchFiles = Object.values(productionStages).filter((s) => s.batch_path === resolvedBatchPath);
+      if (resolvedBatchPath) {
+        const batchFiles = Object.values(productionStages).filter((s) => s.batch_path === resolvedBatchPath);
 
-      if (batchFiles.length === 0) {
-        notify({ type: "Error", title: "Not found", message: `Batch not found: ${resolvedBatchPath.split(/[/\\]/).pop()}` });
+        if (batchFiles.length === 0) {
+          notify({
+            type: "Error",
+            title: "Not found",
+            message: `Batch not found: ${resolvedBatchPath.split(/[/\\]/).pop()}`,
+          });
+          return;
+        }
+
+        // Receive lens: a scan adds the batch to the receiving session and NOTHING
+        // else. This MUST stay above the role logic below — otherwise scanning at a
+        // QC station while unpacking a sewing delivery would advance that batch's
+        // heatpress files to qc.
+        if (viewModeRef.current === VIEW_MODE.RECEIVE) {
+          addBatchToSessionRef.current?.(resolvedBatchPath);
+          return;
+        }
+
+        // A day filter left over from browsing would hide a batch scanned from
+        // another day, and a collapsed day would keep its cards out of the DOM.
+        setDayFilter(null);
+        expandDay(dayKeyFromBatchPath(resolvedBatchPath) ?? UNKNOWN_DAY_KEY);
+        setBatchFilter(resolvedBatchPath);
+
+        if (workstationRole === "cotton") {
+          const targets = batchFiles.filter((f) => f.stage === PRODUCTION_STAGE.PRINTED);
+          if (targets.length === 0) {
+            notify({ type: "Warning", title: "Nothing to advance", message: "No files at Printed stage in this batch." });
+            return;
+          }
+          const now = new Date().toISOString();
+          let count = 0,
+            rejected = 0,
+            failed = 0;
+          for (const f of targets) {
+            const res = await advanceStage(f.file_id, PRODUCTION_STAGE.HEATPRESS, PRODUCTION_STAGE.PRINTED);
+            const outcome = applyStageTransition({
+              fileId: f.file_id,
+              row: f,
+              newStage: PRODUCTION_STAGE.HEATPRESS,
+              res,
+              now,
+            });
+            if (outcome === "applied") count++;
+            else if (outcome === "rejected") rejected++;
+            else failed++;
+          }
+          if (count > 0)
+            notify({
+              type: "Success",
+              title: `${count} file${count > 1 ? "s" : ""} moved`,
+              message: "Moved to Heat Press",
+            });
+          if (rejected > 0) notifyStageRejected(rejected);
+          if (failed > 0) notifyStageFailed(failed);
+          return;
+        }
+
+        if (workstationRole === "polyester") {
+          const targets = batchFiles.filter((f) => f.stage === PRODUCTION_STAGE.PRINTED);
+          if (targets.length === 0) {
+            notify({ type: "Warning", title: "Nothing to advance", message: "No files at Printed stage in this batch." });
+            return;
+          }
+          const now = new Date().toISOString();
+          let count = 0,
+            rejected = 0,
+            failed = 0;
+          for (const f of targets) {
+            const res = await advanceStage(f.file_id, PRODUCTION_STAGE.HEATPRESS, PRODUCTION_STAGE.PRINTED);
+            const outcome = applyStageTransition({
+              fileId: f.file_id,
+              row: f,
+              newStage: PRODUCTION_STAGE.HEATPRESS,
+              res,
+              now,
+            });
+            if (outcome === "applied") count++;
+            else if (outcome === "rejected") rejected++;
+            else failed++;
+          }
+          if (count > 0)
+            notify({
+              type: "Success",
+              title: `${count} file${count > 1 ? "s" : ""} moved`,
+              message: "Moved to Heat Press",
+            });
+          if (rejected > 0) notifyStageRejected(rejected);
+          if (failed > 0) notifyStageFailed(failed);
+          return;
+        }
+
+        if (workstationRole === "rollpress") {
+          const targets = batchFiles.filter((f) => f.stage === PRODUCTION_STAGE.HEATPRESS);
+          if (targets.length === 0) {
+            notify({
+              type: "Warning",
+              title: "Nothing to advance",
+              message: "No files at Heat Press stage in this batch.",
+            });
+            return;
+          }
+          const now = new Date().toISOString();
+          // This branch keeps its own advancedIds Set (its success message reads the
+          // .size) instead of a plain counter — left in the call-site per design;
+          // the helper only owns the store-core. rejected/failed still tracked apart.
+          const advancedIds = new Set();
+          let rejected = 0,
+            failed = 0;
+          for (const f of targets) {
+            const res = await advanceStage(f.file_id, PRODUCTION_STAGE.QC, f.stage);
+            const outcome = applyStageTransition({ fileId: f.file_id, row: f, newStage: PRODUCTION_STAGE.QC, res, now });
+            if (outcome === "applied") advancedIds.add(f.file_id);
+            else if (outcome === "rejected") rejected++;
+            else failed++;
+          }
+          if (advancedIds.size > 0)
+            notify({ type: "Success", title: "Advanced to QC", message: `${advancedIds.size} file(s) moved to QC.` });
+          if (rejected > 0) notifyStageRejected(rejected);
+          if (failed > 0) notifyStageFailed(failed);
+          return;
+        }
+
+        if (workstationRole === "qc") {
+          // Cotton roll heat-press has no scanner — the QC station completes the
+          // heatpress → qc transition for the whole batch on scan. Manual
+          // Pass/Rollback via the context menu still applies per file.
+          const targets = batchFiles.filter((f) => f.stage === PRODUCTION_STAGE.HEATPRESS);
+          if (targets.length === 0) return; // scan only filters the view to the batch
+          const now = new Date().toISOString();
+          let count = 0,
+            rejected = 0,
+            failed = 0;
+          for (const f of targets) {
+            const res = await advanceStage(f.file_id, PRODUCTION_STAGE.QC, PRODUCTION_STAGE.HEATPRESS);
+            const outcome = applyStageTransition({ fileId: f.file_id, row: f, newStage: PRODUCTION_STAGE.QC, res, now });
+            if (outcome === "applied") count++;
+            else if (outcome === "rejected") rejected++;
+            else failed++;
+          }
+          if (count > 0)
+            notify({ type: "Success", title: `${count} file${count > 1 ? "s" : ""} moved`, message: "Moved to QC" });
+          if (rejected > 0) notifyStageRejected(rejected);
+          if (failed > 0) notifyStageFailed(failed);
+          return;
+        }
+
+        // workstationRole === "" (default): scan only filters the view to the batch
+        // (setBatchFilter above). No auto-advance, no modal.
         return;
       }
 
-      // Receive lens: a scan adds the batch to the receiving session and NOTHING
-      // else. This MUST stay above the role logic below — otherwise scanning at a
-      // QC station while unpacking a sewing delivery would advance that batch's
-      // heatpress files to qc.
+      // The Receive lens works batch by batch — a file-level scan has no meaning
+      // there, so say so instead of silently filtering the hidden Batches lens.
       if (viewModeRef.current === VIEW_MODE.RECEIVE) {
-        addBatchToSessionRef.current?.(resolvedBatchPath);
+        notify({
+          type: "Warning",
+          title: "Scan a batch barcode",
+          message: "In the Receive lens scan a batch barcode, not a file.",
+        });
         return;
       }
 
-      setBatchFilter(resolvedBatchPath);
-
-      if (workstationRole === "cotton") {
-        const targets = batchFiles.filter((f) => f.stage === PRODUCTION_STAGE.PRINTED);
-        if (targets.length === 0) {
-          notify({ type: "Warning", title: "Nothing to advance", message: "No files at Printed stage in this batch." });
-          return;
-        }
-        const now = new Date().toISOString();
-        let count = 0, rejected = 0, failed = 0;
-        for (const f of targets) {
-          const res = await advanceStage(f.file_id, PRODUCTION_STAGE.HEATPRESS, PRODUCTION_STAGE.PRINTED);
-          const outcome = applyStageTransition({ fileId: f.file_id, row: f, newStage: PRODUCTION_STAGE.HEATPRESS, res, now });
-          if (outcome === "applied") count++;
-          else if (outcome === "rejected") rejected++;
-          else failed++;
-        }
-        if (count > 0) notify({ type: "Success", title: `${count} file${count > 1 ? "s" : ""} moved`, message: "Moved to Heat Press" });
-        if (rejected > 0) notifyStageRejected(rejected);
-        if (failed > 0) notifyStageFailed(failed);
+      // File-level scan — scroll and highlight the card
+      const row = productionStages[value];
+      if (!row) {
+        notify({ type: "Error", title: "Not found", message: `Order not found: ${value}` });
         return;
       }
-
-      if (workstationRole === "polyester") {
-        const targets = batchFiles.filter((f) => f.stage === PRODUCTION_STAGE.PRINTED);
-        if (targets.length === 0) {
-          notify({ type: "Warning", title: "Nothing to advance", message: "No files at Printed stage in this batch." });
-          return;
-        }
-        const now = new Date().toISOString();
-        let count = 0, rejected = 0, failed = 0;
-        for (const f of targets) {
-          const res = await advanceStage(f.file_id, PRODUCTION_STAGE.HEATPRESS, PRODUCTION_STAGE.PRINTED);
-          const outcome = applyStageTransition({ fileId: f.file_id, row: f, newStage: PRODUCTION_STAGE.HEATPRESS, res, now });
-          if (outcome === "applied") count++;
-          else if (outcome === "rejected") rejected++;
-          else failed++;
-        }
-        if (count > 0) notify({ type: "Success", title: `${count} file${count > 1 ? "s" : ""} moved`, message: "Moved to Heat Press" });
-        if (rejected > 0) notifyStageRejected(rejected);
-        if (failed > 0) notifyStageFailed(failed);
-        return;
-      }
-
-      if (workstationRole === "rollpress") {
-        const targets = batchFiles.filter((f) => f.stage === PRODUCTION_STAGE.HEATPRESS);
-        if (targets.length === 0) {
-          notify({ type: "Warning", title: "Nothing to advance", message: "No files at Heat Press stage in this batch." });
-          return;
-        }
-        const now = new Date().toISOString();
-        // This branch keeps its own advancedIds Set (its success message reads the
-        // .size) instead of a plain counter — left in the call-site per design;
-        // the helper only owns the store-core. rejected/failed still tracked apart.
-        const advancedIds = new Set();
-        let rejected = 0, failed = 0;
-        for (const f of targets) {
-          const res = await advanceStage(f.file_id, PRODUCTION_STAGE.QC, f.stage);
-          const outcome = applyStageTransition({ fileId: f.file_id, row: f, newStage: PRODUCTION_STAGE.QC, res, now });
-          if (outcome === "applied") advancedIds.add(f.file_id);
-          else if (outcome === "rejected") rejected++;
-          else failed++;
-        }
-        if (advancedIds.size > 0) notify({ type: "Success", title: "Advanced to QC", message: `${advancedIds.size} file(s) moved to QC.` });
-        if (rejected > 0) notifyStageRejected(rejected);
-        if (failed > 0) notifyStageFailed(failed);
-        return;
-      }
-
-      if (workstationRole === "qc") {
-        // Cotton roll heat-press has no scanner — the QC station completes the
-        // heatpress → qc transition for the whole batch on scan. Manual
-        // Pass/Rollback via the context menu still applies per file.
-        const targets = batchFiles.filter((f) => f.stage === PRODUCTION_STAGE.HEATPRESS);
-        if (targets.length === 0) return; // scan only filters the view to the batch
-        const now = new Date().toISOString();
-        let count = 0, rejected = 0, failed = 0;
-        for (const f of targets) {
-          const res = await advanceStage(f.file_id, PRODUCTION_STAGE.QC, PRODUCTION_STAGE.HEATPRESS);
-          const outcome = applyStageTransition({ fileId: f.file_id, row: f, newStage: PRODUCTION_STAGE.QC, res, now });
-          if (outcome === "applied") count++;
-          else if (outcome === "rejected") rejected++;
-          else failed++;
-        }
-        if (count > 0) notify({ type: "Success", title: `${count} file${count > 1 ? "s" : ""} moved`, message: "Moved to QC" });
-        if (rejected > 0) notifyStageRejected(rejected);
-        if (failed > 0) notifyStageFailed(failed);
-        return;
-      }
-
-      // workstationRole === "" (default): scan only filters the view to the batch
-      // (setBatchFilter above). No auto-advance, no modal.
-      return;
-    }
-
-    // The Receive lens works batch by batch — a file-level scan has no meaning
-    // there, so say so instead of silently filtering the hidden Batches lens.
-    if (viewModeRef.current === VIEW_MODE.RECEIVE) {
-      notify({
-        type: "Warning",
-        title: "Scan a batch barcode",
-        message: "In the Receive lens scan a batch barcode, not a file.",
+      setStageFilter("all");
+      setBatchFilter(null);
+      setDayFilter(null);
+      // Must happen BEFORE the rAF below — a card inside a collapsed day is not
+      // in the DOM, so querySelector would find nothing to scroll to.
+      expandDay(dayKeyFromBatchPath(row.batch_path) ?? UNKNOWN_DAY_KEY);
+      setSearch("");
+      setHighlightedId(value);
+      requestAnimationFrame(() => {
+        const el = document.querySelector(`[data-file-id="${CSS.escape(value)}"]`);
+        if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
       });
-      return;
-    }
-
-    // File-level scan — scroll and highlight the card
-    const row = productionStages[value];
-    if (!row) {
-      notify({ type: "Error", title: "Not found", message: `Order not found: ${value}` });
-      return;
-    }
-    setStageFilter("all");
-    setBatchFilter(null);
-    setSearch("");
-    setHighlightedId(value);
-    requestAnimationFrame(() => {
-      const el = document.querySelector(`[data-file-id="${CSS.escape(value)}"]`);
-      if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
-    });
-    setTimeout(() => setHighlightedId(null), 1500);
-    notify({ type: "Success", title: "Order found", message: `${row.order_id ?? value}` });
-  }, [productionStages, workstationRole, applyStageTransition]);
+      setTimeout(() => setHighlightedId(null), 1500);
+      notify({ type: "Success", title: "Order found", message: `${row.order_id ?? value}` });
+    },
+    [productionStages, workstationRole, applyStageTransition, expandDay],
+  );
 
   useEffect(() => {
     handleScanRef.current = handleScan;
@@ -841,7 +1071,9 @@ const Production = () => {
         return;
       }
       if (e.key.length === 1) buffer += e.key;
-      timer = setTimeout(() => { buffer = ""; }, 100);
+      timer = setTimeout(() => {
+        buffer = "";
+      }, 100);
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
@@ -849,20 +1081,39 @@ const Production = () => {
 
   // ─── Filtering ────────────────────────────────────────────────────────────
 
-  const allRows = Object.values(productionStages);
+  const allRows = useMemo(() => Object.values(productionStages), [productionStages]);
 
-  const filtered = allRows.filter((row) => {
-    if (batchFilter && row.batch_path !== batchFilter) return false;
-    if (stageFilter !== "all" && row.stage !== stageFilter) return false;
-    if (search.trim()) {
-      const q = search.trim().toLowerCase();
-      return row.order_id?.toLowerCase().includes(q) || row.customer_name?.toLowerCase().includes(q);
-    }
-    return true;
-  });
+  // Memoized because day grouping now sorts on top of this — recomputing the
+  // filter on every render would defeat the grouping memo below.
+  const filtered = useMemo(
+    () =>
+      allRows.filter((row) => {
+        if (batchFilter && row.batch_path !== batchFilter) return false;
+        if (dayFilter && dayKeyFromBatchPath(row.batch_path) !== dayFilter) return false;
+        if (stageFilter !== "all" && row.stage !== stageFilter) return false;
+        if (search.trim()) {
+          const q = search.trim().toLowerCase();
+          return (
+            row.order_id?.toLowerCase().includes(q) ||
+            row.customer_name?.toLowerCase().includes(q) ||
+            row.material?.toLowerCase().includes(q)
+          );
+        }
+        return true;
+      }),
+    [allRows, batchFilter, dayFilter, stageFilter, search],
+  );
 
-  // Tab counts reflect the current batch filter when active
-  const countableRows = batchFilter ? allRows.filter((r) => r.batch_path === batchFilter) : allRows;
+  // Tab counts reflect the current batch/day filter when active
+  const countableRows = useMemo(
+    () =>
+      allRows.filter(
+        (r) =>
+          (!batchFilter || r.batch_path === batchFilter) &&
+          (!dayFilter || dayKeyFromBatchPath(r.batch_path) === dayFilter),
+      ),
+    [allRows, batchFilter, dayFilter],
+  );
   const counts = Object.fromEntries(
     FILTER_TABS.map((tab) => [
       tab.key,
@@ -871,15 +1122,55 @@ const Production = () => {
   );
   const isGrouped = groupingEnabled && (stageFilter === "all" || batchFilter !== null);
 
-  const groupedBatches = useMemo(() => {
-    const map = new Map();
+  // Day → batch → cards. The day layer is ALWAYS built (it must survive the
+  // "Groups" toggle and the stage tabs); the batch layer inside it only when
+  // isGrouped, otherwise the day renders its cards flat.
+  const groupedDays = useMemo(() => {
+    const byDay = new Map();
     for (const row of filtered) {
-      const key = row.batch_path ?? "__no_batch__";
-      if (!map.has(key)) map.set(key, []);
-      map.get(key).push(row);
+      const key = dayKeyFromBatchPath(row.batch_path) ?? UNKNOWN_DAY_KEY;
+      if (!byDay.has(key)) byDay.set(key, []);
+      byDay.get(key).push(row);
     }
-    return [...map.entries()];
+    return [...byDay.entries()]
+      .sort(([a], [b]) => compareDayKeysDesc(a, b))
+      .map(([dayKey, rows]) => {
+        const byBatch = new Map();
+        for (const row of rows) {
+          const key = row.batch_path ?? "__no_batch__";
+          if (!byBatch.has(key)) byBatch.set(key, []);
+          byBatch.get(key).push(row);
+        }
+        // Within one day every folder shares the PRINTED_HHMMSS prefix, so a
+        // descending name compare is a descending time compare.
+        const batches = [...byBatch.entries()].sort(([a], [b]) => batchNameOf(b).localeCompare(batchNameOf(a)));
+        return {
+          dayKey,
+          label: getDayLabel(dayKey),
+          staleDays: daysSinceDayKey(dayKey),
+          batchCount: batches.length,
+          fileCount: rows.length,
+          rows,
+          batches,
+        };
+      });
   }, [filtered]);
+
+  // One card definition for both layouts inside a day (batch groups / flat).
+  const renderCard = (row) => (
+    <ProductionCard
+      key={row.file_id}
+      stage={row}
+      history={stageHistory[row.file_id] ?? []}
+      highlighted={highlightedId === row.file_id}
+      selected={selectedFileIds.has(row.file_id)}
+      awaitingQc={workstationRole === "qc" && row.stage === PRODUCTION_STAGE.HEATPRESS}
+      ripError={ripErrors[row.file_id]}
+      onRipBadgeClick={(error, x, y) => setRipPopover({ error, x, y })}
+      onSelect={toggleProductionSelect}
+      onContextMenu={(r, x, y) => setContextMenu({ row: r, x, y })}
+    />
+  );
 
   // ─── Context menu options (memoized) ─────────────────────────────────────
 
@@ -905,17 +1196,15 @@ const Production = () => {
 
       // Common availability, like the Batches branch: an action shows only when
       // it is valid for EVERY target.
-      const canReceive = receiveCount > 0
-        && receiveTargets.every((r) => r.stage === PRODUCTION_STAGE.TO_SEWING);
+      const canReceive = receiveCount > 0 && receiveTargets.every((r) => r.stage === PRODUCTION_STAGE.TO_SEWING);
       // Both conditions: the session ledger alone would keep offering the undo
       // after another station moved the file past packed — the guarded UPDATE
       // would then reject it and the operator would only find out post-click.
-      const canUndoReceive = receiveCount > 0 && receiveTargets.every(
-        (r) => session.receivedInSession.has(r.file_id) && r.stage === PRODUCTION_STAGE.PACKED,
-      );
-      const canRollbackReceive = receiveCount > 0 && receiveTargets.every(
-        (r) => r.batch_path && r.stage !== PRODUCTION_STAGE.SHIPPED,
-      );
+      const canUndoReceive =
+        receiveCount > 0 &&
+        receiveTargets.every((r) => session.receivedInSession.has(r.file_id) && r.stage === PRODUCTION_STAGE.PACKED);
+      const canRollbackReceive =
+        receiveCount > 0 && receiveTargets.every((r) => r.batch_path && r.stage !== PRODUCTION_STAGE.SHIPPED);
 
       const receiveItems = [];
       if (canReceive) {
@@ -924,7 +1213,10 @@ const Production = () => {
           label: receiveCount > 1 ? `Receive ${receiveCount} files` : "Receive",
           icon: <LuPackageCheck size={14} />,
           advance: true,
-          onClick: () => { setContextMenu(null); receiveFiles(receiveIds); },
+          onClick: () => {
+            setContextMenu(null);
+            receiveFiles(receiveIds);
+          },
         });
       }
       if (canUndoReceive) {
@@ -932,7 +1224,10 @@ const Production = () => {
           id: "undo-receive",
           label: receiveCount > 1 ? `Undo receive for ${receiveCount} files` : "Undo receive",
           icon: <LuArrowLeft size={14} />,
-          onClick: () => { setContextMenu(null); undoReceiveFiles(receiveIds); },
+          onClick: () => {
+            setContextMenu(null);
+            undoReceiveFiles(receiveIds);
+          },
         });
       }
       if (receiveItems.length > 0) receiveItems.push({ id: "sep-receive", separator: true });
@@ -940,21 +1235,30 @@ const Production = () => {
       receiveItems.push({
         id: "shopify",
         label: "Open in Shopify",
-        onClick: () => { setContextMenu(null); handleOpenInShopify(row.order_id); },
+        onClick: () => {
+          setContextMenu(null);
+          handleOpenInShopify(row.order_id);
+        },
       });
       if (filePath) {
         receiveItems.push({
           id: "preview",
           label: "Quick Preview",
           icon: <LuEye size={14} />,
-          onClick: () => { setContextMenu(null); handleOpenPreview(row); },
+          onClick: () => {
+            setContextMenu(null);
+            handleOpenPreview(row);
+          },
         });
       }
       if (batchPath) {
         receiveItems.push({
           id: "folder",
           label: "Open in Folder",
-          onClick: () => { setContextMenu(null); handleOpenInFolder(batchPath); },
+          onClick: () => {
+            setContextMenu(null);
+            handleOpenInFolder(batchPath);
+          },
         });
       }
       if (canRollbackReceive) {
@@ -977,21 +1281,21 @@ const Production = () => {
     // otherwise it falls back to the clicked row. An action shows only when it is
     // valid for EVERY target file (common availability).
     const isBulk = selectedFileIds.size > 0 && selectedFileIds.has(fileId);
-    const targetRows = isBulk
-      ? [...selectedFileIds].map((id) => productionStages[id]).filter(Boolean)
-      : [row];
+    const targetRows = isBulk ? [...selectedFileIds].map((id) => productionStages[id]).filter(Boolean) : [row];
     const count = targetRows.length;
 
     const stages = new Set(targetRows.map((r) => r.stage));
     const allSameStage = stages.size === 1;
     const onlyStage = allSameStage ? [...stages][0] : null;
 
-    const canPass = count > 0 && targetRows.every(
-      (r) => STAGE_NEXT[r.stage] && r.stage !== PRODUCTION_STAGE.TO_SEWING && r.stage !== PRODUCTION_STAGE.SHIPPED,
-    );
-    const canReceive  = count > 0 && targetRows.every((r) => r.stage === PRODUCTION_STAGE.TO_SEWING);
-    const canSew      = count > 0 && targetRows.every((r) => r.stage === PRODUCTION_STAGE.QC);
-    const canGoBack   = count > 0 && targetRows.every((r) => STAGE_PREV[r.stage]);
+    const canPass =
+      count > 0 &&
+      targetRows.every(
+        (r) => STAGE_NEXT[r.stage] && r.stage !== PRODUCTION_STAGE.TO_SEWING && r.stage !== PRODUCTION_STAGE.SHIPPED,
+      );
+    const canReceive = count > 0 && targetRows.every((r) => r.stage === PRODUCTION_STAGE.TO_SEWING);
+    const canSew = count > 0 && targetRows.every((r) => r.stage === PRODUCTION_STAGE.QC);
+    const canGoBack = count > 0 && targetRows.every((r) => STAGE_PREV[r.stage]);
     const canRollback = count > 0 && targetRows.every((r) => r.batch_path && r.stage !== PRODUCTION_STAGE.SHIPPED);
 
     const items = [];
@@ -1029,8 +1333,22 @@ const Production = () => {
         label: "Send to Sewing",
         icon: <LuScissors size={14} />,
         children: [
-          { id: "sewing-olya",     label: "Olya",     onClick: () => { if (isBulk) handleBulkSewing("Olya"); else handleSewing(fileId, "Olya"); } },
-          { id: "sewing-vagabond", label: "Vagabond", onClick: () => { if (isBulk) handleBulkSewing("Vagabond"); else handleSewing(fileId, "Vagabond"); } },
+          {
+            id: "sewing-olya",
+            label: "Olya",
+            onClick: () => {
+              if (isBulk) handleBulkSewing("Olya");
+              else handleSewing(fileId, "Olya");
+            },
+          },
+          {
+            id: "sewing-vagabond",
+            label: "Vagabond",
+            onClick: () => {
+              if (isBulk) handleBulkSewing("Vagabond");
+              else handleSewing(fileId, "Vagabond");
+            },
+          },
         ],
       });
     }
@@ -1069,7 +1387,10 @@ const Production = () => {
         label: "Reprint Label",
         icon: <LuRefreshCw size={14} />,
         amber: true,
-        onClick: () => { setContextMenu(null); handleReprintLabel(fileId); },
+        onClick: () => {
+          setContextMenu(null);
+          handleReprintLabel(fileId);
+        },
       });
     }
     if (filePath) {
@@ -1077,20 +1398,29 @@ const Production = () => {
         id: "preview",
         label: "Quick Preview",
         icon: <LuEye size={14} />,
-        onClick: () => { setContextMenu(null); handleOpenPreview(row); },
+        onClick: () => {
+          setContextMenu(null);
+          handleOpenPreview(row);
+        },
       });
     }
     if (batchPath) {
       items.push({
         id: "folder",
         label: "Open in Folder",
-        onClick: () => { setContextMenu(null); handleOpenInFolder(batchPath); },
+        onClick: () => {
+          setContextMenu(null);
+          handleOpenInFolder(batchPath);
+        },
       });
     }
     items.push({
       id: "shopify",
       label: "Open in Shopify",
-      onClick: () => { setContextMenu(null); handleOpenInShopify(row.order_id); },
+      onClick: () => {
+        setContextMenu(null);
+        handleOpenInShopify(row.order_id);
+      },
     });
 
     // "Show in Orders" deliberately operates on the SELECTION (like the stage
@@ -1100,13 +1430,13 @@ const Production = () => {
     if (targetRows.length > 0) {
       // Same key logic as groupByOrder: trimmed order_id, else the unknown bucket
       // (UNKNOWN_ORDER_KEY is imported from groupByOrder.js — one definition).
-      const orderKeys = [...new Set(
-        targetRows.map((r) =>
-          (typeof r?.order_id === "string" && r.order_id.trim() !== "")
-            ? r.order_id.trim()
-            : UNKNOWN_ORDER_KEY,
+      const orderKeys = [
+        ...new Set(
+          targetRows.map((r) =>
+            typeof r?.order_id === "string" && r.order_id.trim() !== "" ? r.order_id.trim() : UNKNOWN_ORDER_KEY,
+          ),
         ),
-      )];
+      ];
       items.push({
         id: "show-in-orders",
         label: "Show in Orders",
@@ -1125,124 +1455,135 @@ const Production = () => {
 
   return (
     <div className={style.container}>
-
       <div className={style.top_section}>
-      <div className={style.topbar}>
-        <h2 className={style.title}>Production</h2>
+        <div className={style.topbar}>
+          <h2 className={style.title}>Production</h2>
 
-        {/* Lens toggle: batch/stage view vs read-only order-centric view */}
-        <div className={style.tabs}>
-          <button
-            type="button"
-            className={`${style.tab} ${viewMode === VIEW_MODE.BATCHES ? style.tab_active : ""}`}
-            onClick={() => setViewMode(VIEW_MODE.BATCHES)}
-          >
-            Batches
-          </button>
-          <button
-            type="button"
-            className={`${style.tab} ${viewMode === VIEW_MODE.ORDERS ? style.tab_active : ""}`}
-            onClick={() => setViewMode(VIEW_MODE.ORDERS)}
-          >
-            Orders
-          </button>
-          <button
-            type="button"
-            className={`${style.tab} ${viewMode === VIEW_MODE.RECEIVE ? style.tab_active : ""}`}
-            onClick={() => setViewMode(VIEW_MODE.RECEIVE)}
-          >
-            Receive
-          </button>
+          {/* Lens toggle: batch/stage view vs read-only order-centric view */}
+          <div className={style.tabs}>
+            <button
+              type="button"
+              className={`${style.tab} ${viewMode === VIEW_MODE.BATCHES ? style.tab_active : ""}`}
+              onClick={() => setViewMode(VIEW_MODE.BATCHES)}
+            >
+              Batches
+            </button>
+            <button
+              type="button"
+              className={`${style.tab} ${viewMode === VIEW_MODE.ORDERS ? style.tab_active : ""}`}
+              onClick={() => setViewMode(VIEW_MODE.ORDERS)}
+            >
+              Orders
+            </button>
+            <button
+              type="button"
+              className={`${style.tab} ${viewMode === VIEW_MODE.RECEIVE ? style.tab_active : ""}`}
+              onClick={() => setViewMode(VIEW_MODE.RECEIVE)}
+            >
+              Receive
+            </button>
+          </div>
+
+          {viewMode === VIEW_MODE.BATCHES && <div className={style.topbar_sep} />}
+
+          {viewMode === VIEW_MODE.BATCHES && (
+            <div className={style.tabs}>
+              {FILTER_TABS.map((tab) => (
+                <button
+                  key={tab.key}
+                  type="button"
+                  className={`${style.tab} ${stageFilter === tab.key ? style.tab_active : ""}`}
+                  onClick={() => setStageFilter(tab.key)}
+                >
+                  {tab.label}
+                  {counts[tab.key] > 0 && <span className={style.tab_count}>{counts[tab.key]}</span>}
+                </button>
+              ))}
+            </div>
+          )}
+
+          <div className={style.topbar_right}>
+            {viewMode === VIEW_MODE.BATCHES && (
+              <>
+                <label className={style.group_toggle}>
+                  <input
+                    type="checkbox"
+                    checked={groupingEnabled}
+                    onChange={(e) => setGroupingEnabled(e.target.checked)}
+                    className={style.group_toggle_checkbox}
+                  />
+                  Groups
+                </label>
+                <div className={style.topbar_right_sep} />
+              </>
+            )}
+            <div className={style.search_wrapper}>
+              <HiMagnifyingGlass className={style.search_icon} />
+              <input
+                ref={searchInputRef}
+                className={style.search_input}
+                placeholder="Id, customer, fabric"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key !== "Enter") return;
+                  // Whitelist, not blacklist: handleScan MUTATES the DB — depending on
+                  // workstationRole it advances file stages. A future fourth lens must
+                  // not reach that state-changing path just by existing, so deny is the
+                  // default and each lens is opted in explicitly.
+                  if (viewMode !== VIEW_MODE.BATCHES && viewMode !== VIEW_MODE.RECEIVE) return;
+                  const val = search.trim();
+                  if (val.length <= 5) return;
+                  const isBatchName = Object.values(productionStages).some(
+                    (r) => r.batch_path?.split(/[/\\]/).pop() === val,
+                  );
+                  const isFileId = !!productionStages[val];
+                  const isBatchPath = val.includes("\\") || val.includes("/");
+                  if (isBatchName || isFileId || isBatchPath) {
+                    handleScan(val);
+                    setSearch("");
+                  }
+                }}
+              />
+              {search && (
+                <button
+                  className={style.search_clear}
+                  type="button"
+                  onClick={() => {
+                    setSearch("");
+                    searchInputRef.current?.focus();
+                  }}
+                >
+                  <HiXMark />
+                </button>
+              )}
+            </div>
+            <button type="button" className={style.refresh_btn} onClick={handleRefresh} disabled={isRefreshing}>
+              {isRefreshing ? <span className={style.spinner} /> : <LuRefreshCw size={15} />}
+            </button>
+          </div>
         </div>
 
-        {viewMode === VIEW_MODE.BATCHES && <div className={style.topbar_sep} />}
-
-        {viewMode === VIEW_MODE.BATCHES && (
-          <div className={style.tabs}>
-            {FILTER_TABS.map((tab) => (
-              <button
-                key={tab.key}
-                type="button"
-                className={`${style.tab} ${stageFilter === tab.key ? style.tab_active : ""}`}
-                onClick={() => setStageFilter(tab.key)}
-              >
-                {tab.label}
-                {counts[tab.key] > 0 && <span className={style.tab_count}>{counts[tab.key]}</span>}
-              </button>
-            ))}
-          </div>
-        )}
-
-        <div className={style.topbar_right}>
-          {viewMode === VIEW_MODE.BATCHES && (
-            <>
-              <label className={style.group_toggle}>
-                <input
-                  type="checkbox"
-                  checked={groupingEnabled}
-                  onChange={(e) => setGroupingEnabled(e.target.checked)}
-                  className={style.group_toggle_checkbox}
-                />
-                Groups
-              </label>
-              <div className={style.topbar_right_sep} />
-            </>
-          )}
-          <div className={style.search_wrapper}>
-            <HiMagnifyingGlass className={style.search_icon} />
-            <input
-              ref={searchInputRef}
-              className={style.search_input}
-              placeholder="Search order ID or customer... (Enter to scan)"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key !== "Enter") return;
-                // Whitelist, not blacklist: handleScan MUTATES the DB — depending on
-                // workstationRole it advances file stages. A future fourth lens must
-                // not reach that state-changing path just by existing, so deny is the
-                // default and each lens is opted in explicitly.
-                if (viewMode !== VIEW_MODE.BATCHES && viewMode !== VIEW_MODE.RECEIVE) return;
-                const val = search.trim();
-                if (val.length <= 5) return;
-                const isBatchName = Object.values(productionStages).some(
-                  (r) => r.batch_path?.split(/[/\\]/).pop() === val
-                );
-                const isFileId = !!productionStages[val];
-                const isBatchPath = val.includes("\\") || val.includes("/");
-                if (isBatchName || isFileId || isBatchPath) {
-                  handleScan(val);
-                  setSearch("");
-                }
-              }}
-            />
-            {search && (
-              <button
-                className={style.search_clear}
-                type="button"
-                onClick={() => {
-                  setSearch("");
-                  searchInputRef.current?.focus();
-                }}
-              >
-                <HiXMark />
-              </button>
+        {viewMode === VIEW_MODE.BATCHES && (batchFilter || dayFilter) && (
+          <div className={style.filter_bar}>
+            {dayFilter && (
+              <>
+                <span className={style.filter_bar_label}>Day:</span>
+                <button type="button" className={style.batch_chip} onClick={() => setDayFilter(null)}>
+                  {dayFilter} ×
+                </button>
+              </>
+            )}
+            {batchFilter && (
+              <>
+                <span className={style.filter_bar_label}>Batch:</span>
+                <button type="button" className={style.batch_chip} onClick={() => setBatchFilter(null)}>
+                  {batchFilter.split(/[/\\]/).pop()} ×
+                </button>
+              </>
             )}
           </div>
-          <button type="button" className={style.refresh_btn} onClick={handleRefresh} disabled={isRefreshing}>
-            {isRefreshing ? <span className={style.spinner} /> : <LuRefreshCw size={15} />}
-          </button>
-        </div>
-      </div>
-
-      {viewMode === VIEW_MODE.BATCHES && batchFilter && (
-        <div className={style.filter_bar}>
-          <span className={style.filter_bar_label}>Batch:</span>
-          <button type="button" className={style.batch_chip} onClick={() => setBatchFilter(null)}>
-            {batchFilter.split(/[/\\]/).pop()} ×
-          </button>
-        </div>
-      )}
+        )}
       </div>
 
       <div className={style.cards_wrapper}>
@@ -1269,46 +1610,39 @@ const Production = () => {
           <div className={style.empty_state}>
             <span className={style.empty_text}>No jobs match the current filter.</span>
           </div>
-        ) : isGrouped ? (
-          groupedBatches.map(([batchPath, rows]) => (
-            <div key={batchPath} className={style.batch_group}>
-              <BatchGroupHeader
-                batchPath={batchPath}
-                rows={rows}
-                selectedFileIds={selectedFileIds}
-                onSelectAll={handleSelectBatch}
-              />
-              {rows.map((row) => (
-                <ProductionCard
-                  key={row.file_id}
-                  stage={row}
-                  history={stageHistory[row.file_id] ?? []}
-                  highlighted={highlightedId === row.file_id}
-                  selected={selectedFileIds.has(row.file_id)}
-                  awaitingQc={workstationRole === "qc" && row.stage === PRODUCTION_STAGE.HEATPRESS}
-                  ripError={ripErrors[row.file_id]}
-                  onRipBadgeClick={(error, x, y) => setRipPopover({ error, x, y })}
-                  onSelect={toggleProductionSelect}
-                  onContextMenu={(r, x, y) => setContextMenu({ row: r, x, y })}
-                />
-              ))}
-            </div>
-          ))
         ) : (
-          filtered.map((row) => (
-            <ProductionCard
-              key={row.file_id}
-              stage={row}
-              history={stageHistory[row.file_id] ?? []}
-              highlighted={highlightedId === row.file_id}
-              selected={selectedFileIds.has(row.file_id)}
-              awaitingQc={workstationRole === "qc" && row.stage === PRODUCTION_STAGE.HEATPRESS}
-              ripError={ripErrors[row.file_id]}
-              onRipBadgeClick={(error, x, y) => setRipPopover({ error, x, y })}
-              onSelect={toggleProductionSelect}
-              onContextMenu={(r, x, y) => setContextMenu({ row: r, x, y })}
-            />
-          ))
+          groupedDays.map((day) => {
+            const collapsed = collapsedDays.has(day.dayKey);
+            return (
+              <div key={day.dayKey} className={style.day_group}>
+                <DayGroupHeader
+                  day={day}
+                  collapsed={collapsed}
+                  onToggle={() => toggleDay(day.dayKey)}
+                  onFilter={() => setDayFilter((prev) => (prev === day.dayKey ? null : day.dayKey))}
+                  selectedFileIds={selectedFileIds}
+                  onSelectAll={handleSelectBatch}
+                />
+                {!collapsed && (
+                  <div className={style.day_body}>
+                    {isGrouped
+                      ? day.batches.map(([batchPath, rows]) => (
+                          <div key={batchPath} className={style.batch_group}>
+                            <BatchGroupHeader
+                              batchPath={batchPath}
+                              rows={rows}
+                              selectedFileIds={selectedFileIds}
+                              onSelectAll={handleSelectBatch}
+                            />
+                            {rows.map((row) => renderCard(row))}
+                          </div>
+                        ))
+                      : day.rows.map((row) => renderCard(row))}
+                  </div>
+                )}
+              </div>
+            );
+          })
         )}
       </div>
 
@@ -1325,27 +1659,29 @@ const Production = () => {
       />
 
       {/* Context menu */}
-      {contextMenu && createPortal(
-        <ContextMenu
-          id="production-context-menu"
-          anchorX={contextMenu.x}
-          anchorY={contextMenu.y}
-          onClose={() => setContextMenu(null)}
-          options={contextMenuOptions}
-        />,
-        document.body,
-      )}
+      {contextMenu &&
+        createPortal(
+          <ContextMenu
+            id="production-context-menu"
+            anchorX={contextMenu.x}
+            anchorY={contextMenu.y}
+            onClose={() => setContextMenu(null)}
+            options={contextMenuOptions}
+          />,
+          document.body,
+        )}
 
       {/* RIP-error detail popover (anchored to the clicked file badge) */}
-      {ripPopover && createPortal(
-        <RipErrorPopover
-          error={ripPopover.error}
-          anchorX={ripPopover.x}
-          anchorY={ripPopover.y}
-          onClose={() => setRipPopover(null)}
-        />,
-        document.body,
-      )}
+      {ripPopover &&
+        createPortal(
+          <RipErrorPopover
+            error={ripPopover.error}
+            anchorX={ripPopover.x}
+            anchorY={ripPopover.y}
+            onClose={() => setRipPopover(null)}
+          />,
+          document.body,
+        )}
 
       {/* Rollback modal (reason + qty affected) */}
       {rollbackTargets && (
@@ -1355,7 +1691,6 @@ const Production = () => {
           onCancel={() => setRollbackTargets(null)}
         />
       )}
-
     </div>
   );
 };

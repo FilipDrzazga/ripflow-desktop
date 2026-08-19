@@ -1311,6 +1311,133 @@
   margin-bottom: 12px;
 }
 
+/* ===== DAY GROUPS ===== */
+
+.day_group {
+  position: relative;
+}
+
+/* Sticky inside .cards_wrapper (overflow: auto) so the operator always sees
+   which day the visible cards belong to. Batch headers stay non-sticky —
+   two sticky levels buy nothing and complicate the layout. */
+.day_header {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 16px 0 8px;
+  min-height: 36px;
+  background-color: var(--bg-grey-light);
+  border-top: 1px solid var(--border-grey);
+  border-bottom: 1px solid var(--border-grey);
+}
+
+.day_header_toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+  padding: 6px 4px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  text-align: left;
+}
+
+.day_chevron {
+  display: flex;
+  align-items: center;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.day_date {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.day_label {
+  font-size: 13px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.day_pill {
+  font-size: 12px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.day_age_pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  background-color: var(--bg-grey);
+  color: var(--text-secondary);
+}
+
+.day_age_pill_warn {
+  background-color: #fef6e7;
+  color: #b45309;
+}
+
+.day_age_pill_alert {
+  background-color: #fef2f2;
+  color: #dc2626;
+}
+
+.day_filter_btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 24px;
+  border-radius: 7px;
+  border: 1px solid var(--border-grey);
+  background-color: var(--bg-white);
+  color: var(--text-secondary);
+  cursor: pointer;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.day_filter_btn:hover {
+  background-color: var(--bg-grey);
+  color: var(--text-primary);
+}
+
+/* The day header owns margin-left: auto on its filter button, so the Select All
+   button (shared with the batch header) must not claim it a second time. */
+.day_header .batch_group_select_btn {
+  margin-left: 0;
+}
+
+.day_body {
+  padding-bottom: 6px;
+}
+
+/* Flat layout inside a day (Groups off, or a stage tab active) — mirrors the
+   breathing room .batch_group gives its cards. */
+.day_body > .card:first-child {
+  margin-top: 12px;
+}
+
+.day_body > .card:last-child {
+  margin-bottom: 12px;
+}
+
 /* ===== ROLLBACK MODAL ===== */
 
 .reason_dropdown_trigger {
