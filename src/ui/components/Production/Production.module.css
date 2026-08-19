@@ -1335,24 +1335,25 @@
   min-height: 46px;
   background-color: var(--bg-grey-light);
   border-bottom: 1px solid var(--border-grey);
-  /* Rounded on all four corners, not just the top: the bar is sticky, so it
-     floats over the cards while scrolling and reads as its own element.
-     One step above the cards' 10px, since the day is the outer group. */
-  border-radius: 12px;
+  /* Rounded on the right only. The left edge stays square so the accent bar can
+     run the full height as a true rectangle — a rounded left edge would either
+     clip the bar's ends or force it to curve along with them. Radius is one step
+     above the cards' 10px, since the day is the outer group. */
+  border-radius: 0 12px 12px 0;
 }
 
 /* The accent is a pseudo-element, NOT a border-left: a border follows the
    border-radius and curves at both ends. This stays a true rectangle.
    It anchors to .day_header because `position: sticky` already makes that a
    containing block — do not add `position: relative`, it would kill the stick.
-   Inset 10px top/bottom so the bar sits within the straight part of the left
-   edge and never pokes out past the rounded corners. */
+   bottom: -1px reaches past the padding box over the 1px border-bottom, so the
+   bar matches the header's full outer height rather than stopping 1px short. */
 .day_header::before {
   content: "";
   position: absolute;
   left: 0;
-  top: 10px;
-  bottom: 10px;
+  top: 0;
+  bottom: -1px;
   width: 4px;
   background-color: var(--bg-black);
 }
