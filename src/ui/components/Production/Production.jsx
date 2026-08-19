@@ -38,6 +38,7 @@ import {
   dayKeyFromBatchPath,
   getDayLabel,
   compareDayKeysDesc,
+  compareDayKeysAsc,
   daysSinceDayKey,
 } from "../../utils/dayKey";
 import ContextMenu from "../ContextMenu/ContextMenu";
@@ -49,6 +50,26 @@ import OrderView from "./OrderView";
 import SewingReceive from "./SewingReceive";
 import style from "./Production.module.css";
 
+// ── "Stuck" (backlog) ────────────────────────────────────────────────────────
+// Staleness here is time since the file last MOVED, which is a different
+// question from the day header's "N days in production" (time since it was
+// printed). The source is file_stages.updated_at — rewritten by every stage
+// transition and set at insert, so for a file that never moved it equals the
+// submit time. It already rides along on every row (SELECT * in the stage
+// handlers) and useStageTransition refreshes it optimistically, so a file drops
+// out of the backlog the moment it is passed on, without waiting for the poll.
+const STUCK_TAB_KEY = "stuck";
+const STUCK_DAYS = 3; // matches the day header's amber threshold (STALE_DAYS_WARN)
+
+// Math.floor, like getFileAgeInDays: a file moved 23h ago is 0 days idle, not 1.
+const idleDaysOf = (row, now) =>
+  row?.updated_at ? Math.floor((now - Date.parse(row.updated_at)) / 86_400_000) : null;
+
+// Shipped is the only excluded stage — it is finished work, and it is also the
+// bulk of the table, so counting it would drown the tab.
+const isStuck = (row, now) =>
+  row.stage !== PRODUCTION_STAGE.SHIPPED && (idleDaysOf(row, now) ?? 0) >= STUCK_DAYS;
+
 const FILTER_TABS = [
   { key: "all", label: "All" },
   { key: PRODUCTION_STAGE.PRINTED, label: STAGE_LABEL.printed },
@@ -57,6 +78,10 @@ const FILTER_TABS = [
   { key: PRODUCTION_STAGE.TO_SEWING, label: "Sew Out" },
   { key: PRODUCTION_STAGE.PACKED, label: STAGE_LABEL.packed },
   { key: PRODUCTION_STAGE.SHIPPED, label: STAGE_LABEL.shipped },
+  // Not a stage — a cross-cutting lens over every unshipped file (see isStuck).
+  // Like "all", it needs an explicit branch in `filtered` AND in `counts`,
+  // because every other tab key is compared straight against row.stage.
+  { key: STUCK_TAB_KEY, label: "Stuck" },
 ];
 
 const POLL_INTERVAL = 15_000;
@@ -1082,12 +1107,20 @@ const Production = () => {
 
   // Memoized because day grouping now sorts on top of this — recomputing the
   // filter on every render would defeat the grouping memo below.
-  const filtered = useMemo(
-    () =>
-      allRows.filter((row) => {
+  // One clock reading per render, shared by the tab counts and the idle badges.
+  // The `filtered` memo takes its own inside the callback so that `now` never
+  // has to enter the dependency array (it changes every render, which would
+  // defeat the memo entirely).
+  const now = Date.now();
+
+  const filtered = useMemo(() => {
+    const memoNow = Date.now();
+    return allRows.filter((row) => {
         if (batchFilter && row.batch_path !== batchFilter) return false;
         if (dayFilter && dayKeyFromBatchPath(row.batch_path) !== dayFilter) return false;
-        if (stageFilter !== "all" && row.stage !== stageFilter) return false;
+        if (stageFilter === STUCK_TAB_KEY) {
+          if (!isStuck(row, memoNow)) return false;
+        } else if (stageFilter !== "all" && row.stage !== stageFilter) return false;
         if (search.trim()) {
           const q = search.trim().toLowerCase();
           return (
@@ -1097,9 +1130,8 @@ const Production = () => {
           );
         }
         return true;
-      }),
-    [allRows, batchFilter, dayFilter, stageFilter, search],
-  );
+    });
+  }, [allRows, batchFilter, dayFilter, stageFilter, search]);
 
   // Tab counts reflect the current batch/day filter when active
   const countableRows = useMemo(
@@ -1114,7 +1146,11 @@ const Production = () => {
   const counts = Object.fromEntries(
     FILTER_TABS.map((tab) => [
       tab.key,
-      tab.key === "all" ? countableRows.length : countableRows.filter((r) => r.stage === tab.key).length,
+      tab.key === "all"
+        ? countableRows.length
+        : tab.key === STUCK_TAB_KEY
+          ? countableRows.filter((r) => isStuck(r, now)).length
+          : countableRows.filter((r) => r.stage === tab.key).length,
     ]),
   );
   const isGrouped = groupingEnabled && (stageFilter === "all" || batchFilter !== null);
@@ -1129,8 +1165,12 @@ const Production = () => {
       if (!byDay.has(key)) byDay.set(key, []);
       byDay.get(key).push(row);
     }
+    // The Stuck tab is a backlog list, so it flips to oldest-day-first — the
+    // worst offenders belong at the top, not buried at the bottom. Every other
+    // tab keeps newest-first.
+    const compareDays = stageFilter === STUCK_TAB_KEY ? compareDayKeysAsc : compareDayKeysDesc;
     return [...byDay.entries()]
-      .sort(([a], [b]) => compareDayKeysDesc(a, b))
+      .sort(([a], [b]) => compareDays(a, b))
       .map(([dayKey, rows]) => {
         const byBatch = new Map();
         for (const row of rows) {
@@ -1151,7 +1191,7 @@ const Production = () => {
           batches,
         };
       });
-  }, [filtered]);
+  }, [filtered, stageFilter]);
 
   // One card definition for both layouts inside a day (batch groups / flat).
   const renderCard = (row) => (
@@ -1163,6 +1203,10 @@ const Production = () => {
       selected={selectedFileIds.has(row.file_id)}
       awaitingQc={workstationRole === "qc" && row.stage === PRODUCTION_STAGE.HEATPRESS}
       ripError={ripErrors[row.file_id]}
+      // null unless the row is actually stuck — the card stays presentational
+      // and never learns the threshold or reads a clock, same as awaitingQc.
+      idleDays={isStuck(row, now) ? idleDaysOf(row, now) : null}
+      idleAlert={(idleDaysOf(row, now) ?? 0) >= STALE_DAYS_ALERT}
       onRipBadgeClick={(error, x, y) => setRipPopover({ error, x, y })}
       onSelect={toggleProductionSelect}
       onContextMenu={(r, x, y) => setContextMenu({ row: r, x, y })}
@@ -1493,7 +1537,13 @@ const Production = () => {
                   onClick={() => setStageFilter(tab.key)}
                 >
                   {tab.label}
-                  {counts[tab.key] > 0 && <span className={style.tab_count}>{counts[tab.key]}</span>}
+                  {counts[tab.key] > 0 && (
+                    <span
+                      className={`${style.tab_count} ${tab.key === STUCK_TAB_KEY ? style.tab_count_alert : ""}`}
+                    >
+                      {counts[tab.key]}
+                    </span>
+                  )}
                 </button>
               ))}
             </div>

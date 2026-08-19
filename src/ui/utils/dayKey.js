@@ -66,6 +66,18 @@ export const compareDayKeysDesc = (a, b) => {
   return db.getTime() - da.getTime();
 };
 
+// Oldest day first — the backlog order used by the Production "Stuck" tab.
+// NOT `[...days].sort(compareDayKeysDesc).reverse()`: reversing would drag the
+// unparsable bucket to the TOP. Unparsable keys stay last in both directions.
+export const compareDayKeysAsc = (a, b) => {
+  const da = parseDayKey(a);
+  const db = parseDayKey(b);
+  if (!da && !db) return 0;
+  if (!da) return 1;
+  if (!db) return -1;
+  return da.getTime() - db.getTime();
+};
+
 // Whole days between that day and today (0 = today). null when unparsable.
 export const daysSinceDayKey = (key) => {
   const date = parseDayKey(key);

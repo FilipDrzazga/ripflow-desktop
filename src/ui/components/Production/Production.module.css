@@ -93,6 +93,13 @@
   color: inherit;
 }
 
+/* The backlog count has to read as a warning without opening the tab. Only on
+   the inactive tab — once the tab is active it inherits the active styling. */
+.tab:not(.tab_active) .tab_count_alert {
+  background-color: #fef6e7;
+  color: #b45309;
+}
+
 .tab_printer_badge {
   font-size: 9px;
   font-weight: 700;
@@ -807,6 +814,30 @@
   font-size: 11px;
   font-weight: 600;
   white-space: nowrap;
+}
+
+/* "Nd idle" — time since the file last moved a stage. Only rendered once the
+   row is past the stuck threshold, so it stays invisible on a healthy board.
+   Same amber/red pair as the day header's stale pill — one warning palette. */
+.card_type_badge_idle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  padding: 2px 7px 2px 5px;
+  border-radius: 6px;
+  background: #fef6e7;
+  border: 1px solid rgba(180, 83, 9, 0.35);
+  color: #b45309;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.card_type_badge_idle_alert {
+  background: #fef2f2;
+  border-color: rgba(220, 38, 38, 0.4);
+  color: #dc2626;
 }
 
 .card_type_badge_reprint {

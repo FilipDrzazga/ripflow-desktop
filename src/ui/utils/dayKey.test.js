@@ -5,6 +5,7 @@ import {
   parseDayKey,
   getDayLabel,
   compareDayKeysDesc,
+  compareDayKeysAsc,
   daysSinceDayKey,
 } from "./dayKey";
 
@@ -88,6 +89,20 @@ describe("compareDayKeysDesc", () => {
 
   it("keeps two unparsable keys equal", () => {
     expect(compareDayKeysDesc(UNKNOWN_DAY_KEY, "nope")).toBe(0);
+  });
+});
+
+describe("compareDayKeysAsc", () => {
+  it("sorts oldest first", () => {
+    const keys = ["19-08-2026", "17-08-2026", "18-08-2026"];
+    expect([...keys].sort(compareDayKeysAsc)).toEqual(["17-08-2026", "18-08-2026", "19-08-2026"]);
+  });
+
+  // The reason this is a function and not `.reverse()` of the desc sort.
+  it("still pushes unparsable keys last, not first", () => {
+    const keys = ["19-08-2026", UNKNOWN_DAY_KEY, "17-08-2026"];
+    expect([...keys].sort(compareDayKeysAsc)).toEqual(["17-08-2026", "19-08-2026", UNKNOWN_DAY_KEY]);
+    expect([...keys].sort(compareDayKeysDesc).reverse()).not.toEqual([...keys].sort(compareDayKeysAsc));
   });
 });
 
