@@ -1220,13 +1220,16 @@
   accent-color: var(--bg-black);
 }
 
+/* White with a hairline rule, one step BELOW the day header's --bg-grey — the
+   day is the outer group and has to stay the heavier of the two. */
 .batch_group_header {
   display: flex;
   align-items: center;
   gap: 10px;
   padding: 5px 16px;
-  min-height: 24px;
-  background-color: var(--bg-grey);
+  min-height: 26px;
+  background-color: var(--bg-white);
+  border-bottom: 1px solid var(--border-grey);
 }
 
 
@@ -1321,20 +1324,21 @@
    which day the visible cards belong to. Batch headers stay non-sticky —
    two sticky levels buy nothing and complicate the layout.
 
-   Dark bar on purpose: the day is the OUTERMOST group, so it must outrank the
-   batch header (--bg-grey) and the white cards. A light day header reads as
-   less important than the batch rows nested inside it. Same --bg-black token
-   the Analytics/Details headers and the active DataFilters buttons use. */
+   Tonal order follows the nesting order: the day is the OUTERMOST group, so it
+   takes the heavier grey (--bg-grey) and the batch header below it drops to
+   white with a hairline rule. Do not make the day lighter than the batch header
+   again — it then reads as less important than the rows nested inside it. */
 .day_header {
   position: sticky;
   top: 0;
   z-index: 2;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   padding: 0 12px 0 8px;
-  min-height: 38px;
-  background-color: var(--bg-black);
+  min-height: 44px;
+  background-color: var(--bg-grey);
+  border-bottom: 1px solid var(--border-grey);
 }
 
 /* Breathing room between consecutive days — without it the dark bars of two
@@ -1358,44 +1362,43 @@
 }
 
 .day_header_toggle:hover {
-  background-color: rgb(255 255 255 / 8%);
+  background-color: rgb(0 0 0 / 5%);
 }
 
 .day_chevron {
   display: flex;
   align-items: center;
-  color: rgb(255 255 255 / 70%);
+  color: var(--text-primary);
   flex-shrink: 0;
 }
 
+/* The day carries the weight through type size, not through a colour block. */
 .day_date {
-  font-size: 15px;
+  font-size: 19px;
   font-weight: 700;
-  letter-spacing: 0.01em;
-  color: var(--text-white);
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
   white-space: nowrap;
   flex-shrink: 0;
 }
 
 .day_label {
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: rgb(255 255 255 / 65%);
+  letter-spacing: 0.07em;
+  color: var(--text-secondary);
   white-space: nowrap;
   flex-shrink: 0;
 }
 
 .day_pill {
   font-size: 12px;
-  color: rgb(255 255 255 / 55%);
+  color: var(--text-secondary);
   white-space: nowrap;
   flex-shrink: 0;
 }
 
-/* Neutral variant only — the warn/alert variants below keep their light
-   backgrounds, which is exactly what makes them jump off the dark bar. */
 .day_age_pill {
   display: inline-flex;
   align-items: center;
@@ -1404,8 +1407,8 @@
   font-size: 11px;
   font-weight: 600;
   white-space: nowrap;
-  background-color: rgb(255 255 255 / 14%);
-  color: rgb(255 255 255 / 80%);
+  background-color: var(--bg-white);
+  color: var(--text-secondary);
 }
 
 .day_age_pill_warn {
@@ -1425,18 +1428,17 @@
   width: 26px;
   height: 24px;
   border-radius: 7px;
-  border: 1px solid rgb(255 255 255 / 25%);
-  background-color: transparent;
-  color: rgb(255 255 255 / 70%);
+  border: 1px solid var(--border-grey);
+  background-color: var(--bg-white);
+  color: var(--text-secondary);
   cursor: pointer;
   flex-shrink: 0;
   margin-left: auto;
 }
 
 .day_filter_btn:hover {
-  background-color: rgb(255 255 255 / 14%);
-  border-color: rgb(255 255 255 / 45%);
-  color: var(--text-white);
+  border-color: var(--text-secondary);
+  color: var(--text-primary);
 }
 
 .day_body {
