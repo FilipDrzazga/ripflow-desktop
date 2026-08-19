@@ -1220,16 +1220,13 @@
   accent-color: var(--bg-black);
 }
 
-/* White with a hairline rule, one step BELOW the day header's --bg-grey — the
-   day is the outer group and has to stay the heavier of the two. */
 .batch_group_header {
   display: flex;
   align-items: center;
   gap: 10px;
   padding: 5px 16px;
-  min-height: 26px;
-  background-color: var(--bg-white);
-  border-bottom: 1px solid var(--border-grey);
+  min-height: 24px;
+  background-color: var(--bg-grey);
 }
 
 
@@ -1324,10 +1321,9 @@
    which day the visible cards belong to. Batch headers stay non-sticky —
    two sticky levels buy nothing and complicate the layout.
 
-   Tonal order follows the nesting order: the day is the OUTERMOST group, so it
-   takes the heavier grey (--bg-grey) and the batch header below it drops to
-   white with a hairline rule. Do not make the day lighter than the batch header
-   again — it then reads as less important than the rows nested inside it. */
+   The day is separated by an accent rule + type scale rather than by a tonal
+   step, so it can stay light. The background must still be opaque — a sticky
+   element with a transparent background lets the scrolled content show through. */
 .day_header {
   position: sticky;
   top: 0;
@@ -1335,9 +1331,10 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 0 12px 0 8px;
-  min-height: 44px;
-  background-color: var(--bg-grey);
+  padding: 6px 12px 6px 10px;
+  min-height: 54px;
+  background-color: var(--bg-grey-light);
+  border-left: 4px solid var(--bg-black);
   border-bottom: 1px solid var(--border-grey);
 }
 
@@ -1350,10 +1347,10 @@
 .day_header_toggle {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   flex: 1;
   min-width: 0;
-  padding: 7px 6px;
+  padding: 6px;
   border: none;
   border-radius: 8px;
   background: none;
@@ -1372,10 +1369,26 @@
   flex-shrink: 0;
 }
 
+/* Two stacked rows inside the toggle: title (date + label), then meta. */
+.day_text {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.day_title_row,
+.day_meta_row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 /* The day carries the weight through type size, not through a colour block. */
 .day_date {
-  font-size: 19px;
+  font-size: 20px;
   font-weight: 700;
+  line-height: 1.1;
   letter-spacing: -0.01em;
   color: var(--text-primary);
   white-space: nowrap;
