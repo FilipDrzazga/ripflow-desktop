@@ -1331,8 +1331,8 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 6px 12px 6px 10px;
-  min-height: 54px;
+  padding: 4px 12px 4px 10px;
+  min-height: 46px;
   background-color: var(--bg-grey-light);
   border-left: 4px solid var(--bg-black);
   border-bottom: 1px solid var(--border-grey);
@@ -1348,10 +1348,12 @@
   margin-top: 10px;
 }
 
+/* Single row: chevron, date, label, counts, stale pill — all on one baseline. */
 .day_header_toggle {
   display: flex;
   align-items: center;
-  gap: 8px;
+  flex-wrap: wrap;
+  gap: 6px 12px;
   flex: 1;
   min-width: 0;
   padding: 6px;
@@ -1371,21 +1373,6 @@
   align-items: center;
   color: var(--text-primary);
   flex-shrink: 0;
-}
-
-/* Two stacked rows inside the toggle: title (date + label), then meta. */
-.day_text {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  min-width: 0;
-}
-
-.day_title_row,
-.day_meta_row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
 }
 
 /* The day carries the weight through type size, not through a colour block. */

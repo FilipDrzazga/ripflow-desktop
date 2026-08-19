@@ -153,24 +153,16 @@ const DayGroupHeader = ({ day, collapsed, onToggle, onFilter }) => {
         <span className={style.day_chevron}>
           {collapsed ? <LuChevronRight size={18} /> : <LuChevronDown size={18} />}
         </span>
-        {/* Two lines: identity on top, volume below — the counts stop competing
-            with the date for the same horizontal band. */}
-        <span className={style.day_text}>
-          <span className={style.day_title_row}>
-            <span className={style.day_date}>{isUnknown ? "Unknown day" : dayKey}</span>
-            {label && <span className={style.day_label}>{label}</span>}
-          </span>
-          <span className={style.day_meta_row}>
-            <span className={style.day_pill}>
-              {batchCount} {batchCount === 1 ? "batch" : "batches"} · {fileCount} {fileCount === 1 ? "file" : "files"}
-            </span>
-            {showStale && (
-              <span className={`${style.day_age_pill} ${staleClass}`}>
-                {staleDays} {staleDays === 1 ? "day" : "days"} in production
-              </span>
-            )}
-          </span>
+        <span className={style.day_date}>{isUnknown ? "Unknown day" : dayKey}</span>
+        {label && <span className={style.day_label}>{label}</span>}
+        <span className={style.day_pill}>
+          {batchCount} {batchCount === 1 ? "batch" : "batches"} · {fileCount} {fileCount === 1 ? "file" : "files"}
         </span>
+        {showStale && (
+          <span className={`${style.day_age_pill} ${staleClass}`}>
+            {staleDays} {staleDays === 1 ? "day" : "days"} in production
+          </span>
+        )}
       </button>
       {!isUnknown && (
         <button type="button" className={style.day_filter_btn} onClick={onFilter} title="Show only this day">
