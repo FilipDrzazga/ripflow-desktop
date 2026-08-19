@@ -1331,15 +1331,30 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 4px 12px 4px 10px;
+  padding: 4px 12px 4px 14px;
   min-height: 46px;
   background-color: var(--bg-grey-light);
-  border-left: 4px solid var(--bg-black);
   border-bottom: 1px solid var(--border-grey);
   /* Rounded on all four corners, not just the top: the bar is sticky, so it
      floats over the cards while scrolling and reads as its own element.
      One step above the cards' 10px, since the day is the outer group. */
   border-radius: 12px;
+}
+
+/* The accent is a pseudo-element, NOT a border-left: a border follows the
+   border-radius and curves at both ends. This stays a true rectangle.
+   It anchors to .day_header because `position: sticky` already makes that a
+   containing block — do not add `position: relative`, it would kill the stick.
+   Inset 10px top/bottom so the bar sits within the straight part of the left
+   edge and never pokes out past the rounded corners. */
+.day_header::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 10px;
+  bottom: 10px;
+  width: 4px;
+  background-color: var(--bg-black);
 }
 
 /* Breathing room between consecutive days — without it the dark bars of two
