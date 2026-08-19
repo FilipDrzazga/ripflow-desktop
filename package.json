@@ -1,7 +1,7 @@
 {
   "name": "ripflow-desktop",
   "private": true,
-  "version": "1.0.18",
+  "version": "1.0.19",
   "author": "Filip Drzazga",
   "type": "module",
   "main": "src/electron/main.js",

@@ -1,5 +1,31 @@
 [
   {
+    "version": "1.0.19",
+    "date": "2026-08-19",
+    "changes": [
+      {
+        "text": "Production is now grouped by the day each batch was printed - every group has a header with the date, a Today/Yesterday marker and how many batches and files it holds, and you can collapse a day you are done with. Days are always shown, whether or not the Groups switch is on and whichever stage tab you are in",
+        "clients": ["all"]
+      },
+      {
+        "text": "A day that still has unfinished work shows how long it has been sitting in production - the badge turns amber after 3 days and red after 7, so jobs that got stuck are easy to spot. A day where everything has already shipped is not flagged",
+        "clients": ["all"]
+      },
+      {
+        "text": "Narrow Production down to a single day with the filter button on the day header - it works alongside the batch filter and the stage tab counts follow it",
+        "clients": ["all"]
+      },
+      {
+        "text": "Scanning a barcode now opens the day the batch or file belongs to, so a scan never lands on a card hidden inside a collapsed day",
+        "clients": ["all"]
+      },
+      {
+        "text": "In Analytics, the fabric and reasons panels now share the space evenly instead of the fabric panel taking only as much as its contents needed",
+        "clients": ["all"]
+      }
+    ]
+  },
+  {
     "version": "1.0.18",
     "date": "2026-07-30",
     "changes": [
