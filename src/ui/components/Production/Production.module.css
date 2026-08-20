@@ -427,6 +427,11 @@
   flex: 1;
   overflow: auto;
   padding: 0 0 40px;
+  /* useScrollAnchor restores the position by hand after a filter change.
+     Chromium's built-in scroll anchoring corrects scrollTop on its own when
+     content above changes, and two mechanisms correcting the same thing give a
+     non-deterministic result — so the browser's is turned off deliberately. */
+  overflow-anchor: none;
 }
 
 .empty_state {
@@ -726,7 +731,9 @@
   align-items: center;
   gap: 12px;
   flex-shrink: 0;
-  transition: background-color 0.15s ease;
+  /* box-shadow at 0.4s to match the Orders lens fade; background stays quick so
+     selection feedback is not slowed down. */
+  transition: background-color 0.15s ease, box-shadow 0.4s ease;
   /* Keep the normal arrow cursor even over the selectable order number (no I-beam). */
   cursor: default;
 }
@@ -777,6 +784,18 @@
   font-weight: 600;
   white-space: nowrap;
   /* bg + color injected inline via STAGE_COLOR[HEATPRESS] */
+}
+
+/* "You were here" — the card the scroll anchor pulled the view back to. Same
+   amber pair the Orders lens uses for its focus highlight (.order_highlight),
+   so the two views speak one language. Deliberately softer than the scan
+   highlight, which is a GSAP flash from #fff3cd.
+   The RING is the load-bearing half: the scan flash leaves an inline
+   background-color on any card it has touched, and an inline style would win
+   over this class — box-shadow is untouched by it. */
+.card_restored {
+  background-color: #fff8e6;
+  box-shadow: 0 0 0 2px #f5d98b;
 }
 
 .card_selected {

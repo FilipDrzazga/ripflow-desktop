@@ -35,6 +35,7 @@ import { getSettings } from "../../services/settingsService";
 import { notify } from "@/utils/notify";
 import { usePdfPreview } from "../../hooks/usePdfPreview";
 import { useStageTransition } from "../../hooks/useStageTransition";
+import { useScrollAnchor } from "../../hooks/useScrollAnchor";
 import { PRINTER_COLORS } from "../../constants/printerColors";
 import { VIEW_MODE } from "../../constants/viewModes";
 import { UNKNOWN_ORDER_KEY } from "../../utils/groupByOrder";
@@ -95,6 +96,10 @@ const FILTER_TABS = [
 ];
 
 const POLL_INTERVAL = 15_000;
+
+// How long the "you were here" accent stays on the restored card. Same 1.5s the
+// Orders lens uses for its focus highlight.
+const RESTORE_FLASH_MS = 1500;
 
 const STAGE_PIPELINE_ORDER = [
   PRODUCTION_STAGE.PRINTED,
@@ -279,6 +284,11 @@ const Production = () => {
 
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [highlightedId, setHighlightedId] = useState(null);
+  // Softer than highlightedId: that one is the scan's "found it" flash, this
+  // one only says "you were here" after the view was pulled back.
+  const [restoredId, setRestoredId] = useState(null);
+
+  const cardsWrapperRef = useRef(null);
   const handleScanRef = useRef(null);
 
   // Multi-select for bulk rollback
@@ -698,6 +708,21 @@ const Production = () => {
   // that arrives later from polling shows up open without any auto-expand logic.
   const [collapsedDays, setCollapsedDays] = useState(new Set());
   const [dayFilter, setDayFilter] = useState(null);
+
+  // Keeps the operator's place when a filter is applied or cleared. Must sit
+  // below every piece of state it reads — dayFilter is declared here, so the
+  // call cannot live up with cardsWrapperRef near the other refs.
+  // The key is the filter tuple only: collapsedDays is deliberately NOT in it,
+  // because collapsing a day is done while looking at that spot and pulling the
+  // scroll back afterwards would fight the operator.
+  const restoreFlashTimer = useRef(null);
+  useScrollAnchor(cardsWrapperRef, `${search}|${stageFilter}|${batchFilter ?? ""}|${dayFilter ?? ""}`, (fileId) => {
+    setRestoredId(fileId);
+    clearTimeout(restoreFlashTimer.current);
+    restoreFlashTimer.current = setTimeout(() => setRestoredId(null), RESTORE_FLASH_MS);
+  });
+
+  useEffect(() => () => clearTimeout(restoreFlashTimer.current), []);
 
   const toggleDay = useCallback((dayKey) => {
     setCollapsedDays((prev) => {
@@ -1271,6 +1296,7 @@ const Production = () => {
       stage={row}
       history={stageHistory[row.file_id] ?? []}
       highlighted={highlightedId === row.file_id}
+      restored={restoredId === row.file_id}
       selected={selectedFileIds.has(row.file_id)}
       awaitingQc={workstationRole === "qc" && row.stage === PRODUCTION_STAGE.HEATPRESS}
       ripError={ripErrors[row.file_id]}
@@ -1738,7 +1764,7 @@ const Production = () => {
         )}
       </div>
 
-      <div className={style.cards_wrapper}>
+      <div className={style.cards_wrapper} ref={cardsWrapperRef}>
         {/* Receive owns its own empty/loading states — it must not fall through
             into the Batches-lens isLoading / filtered.length branches below. */}
         {viewMode === VIEW_MODE.RECEIVE ? (
@@ -1765,8 +1791,10 @@ const Production = () => {
         ) : (
           groupedDays.map((day) => {
             const collapsed = collapsedDays.has(day.dayKey);
+            // data-day-key is the scroll anchor's fallback when the anchored
+            // card is gone (another stage tab, a collapsed day).
             return (
-              <div key={day.dayKey} className={style.day_group}>
+              <div key={day.dayKey} data-day-key={day.dayKey} className={style.day_group}>
                 <DayGroupHeader
                   day={day}
                   collapsed={collapsed}
