@@ -281,12 +281,7 @@ const Production = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [highlightedId, setHighlightedId] = useState(null);
 
-  // Keeps the operator's place when a filter is applied or cleared. The key is
-  // the filter tuple only — collapsedDays is deliberately NOT in it: collapsing
-  // a day is a deliberate act performed while looking at that spot, and pulling
-  // the scroll back afterwards would fight the operator.
   const cardsWrapperRef = useRef(null);
-  useScrollAnchor(cardsWrapperRef, `${search}|${stageFilter}|${batchFilter ?? ""}|${dayFilter ?? ""}`);
   const handleScanRef = useRef(null);
 
   // Multi-select for bulk rollback
@@ -706,6 +701,14 @@ const Production = () => {
   // that arrives later from polling shows up open without any auto-expand logic.
   const [collapsedDays, setCollapsedDays] = useState(new Set());
   const [dayFilter, setDayFilter] = useState(null);
+
+  // Keeps the operator's place when a filter is applied or cleared. Must sit
+  // below every piece of state it reads — dayFilter is declared here, so the
+  // call cannot live up with cardsWrapperRef near the other refs.
+  // The key is the filter tuple only: collapsedDays is deliberately NOT in it,
+  // because collapsing a day is done while looking at that spot and pulling the
+  // scroll back afterwards would fight the operator.
+  useScrollAnchor(cardsWrapperRef, `${search}|${stageFilter}|${batchFilter ?? ""}|${dayFilter ?? ""}`);
 
   const toggleDay = useCallback((dayKey) => {
     setCollapsedDays((prev) => {
