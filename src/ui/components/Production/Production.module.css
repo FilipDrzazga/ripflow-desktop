@@ -213,7 +213,9 @@
 
 .search_input {
   width: 100%;
-  height: 36px;
+  /* 40px to match the toolbar buttons beside it — a 36px field next to 40px
+     buttons leaves the row visibly uneven. */
+  height: 40px;
   padding: 8px 36px 8px 34px;
   border-radius: 10px;
   border: 1px solid var(--bg-grey-light);
@@ -317,7 +319,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 36px;
+  height: 40px;
+  min-width: 40px;
   padding: 0 12px;
   border-radius: 10px;
   border: 1px solid var(--border-grey);
@@ -1314,13 +1317,16 @@
 
 /* Shared geometry for the topbar toggles (Groups, collapse-all). Matches
    .refresh_btn exactly so the three sit as one row of equal controls; the
-   hover stays neutral because refresh owns the green one. */
+   hover stays neutral because refresh owns the green one. 40px box with an
+   18px glyph, the same scale as the Batches view's collapse button — at 36/15
+   the icons read as undersized next to it. */
 .toolbar_btn {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
-  height: 36px;
+  height: 40px;
+  min-width: 40px;
   padding: 0 12px;
   border-radius: 10px;
   border: 1px solid var(--border-grey);

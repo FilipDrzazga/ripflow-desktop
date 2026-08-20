@@ -1655,7 +1655,7 @@ const Production = () => {
                       uses it for batch-level things (CustomOrderCard header, the
                       history row, the Batch nav tab), and what this toggles IS
                       batch grouping. */}
-                  <LuLayers size={16} />
+                  <LuLayers size={18} />
                 </button>
                 <button
                   type="button"
@@ -1664,7 +1664,7 @@ const Production = () => {
                   disabled={groupedDays.length === 0}
                   title={allDaysCollapsed ? "Expand all days" : "Collapse all days"}
                 >
-                  {allDaysCollapsed ? <LuChevronsUpDown size={15} /> : <LuChevronsDownUp size={15} />}
+                  {allDaysCollapsed ? <LuChevronsUpDown size={18} /> : <LuChevronsDownUp size={18} />}
                 </button>
                 <div className={style.topbar_right_sep} />
               </>
@@ -1711,7 +1711,7 @@ const Production = () => {
               )}
             </div>
             <button type="button" className={style.refresh_btn} onClick={handleRefresh} disabled={isRefreshing}>
-              {isRefreshing ? <span className={style.spinner} /> : <LuRefreshCw size={15} />}
+              {isRefreshing ? <span className={style.spinner} /> : <LuRefreshCw size={18} />}
             </button>
           </div>
         </div>
