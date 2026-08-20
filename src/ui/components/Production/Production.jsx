@@ -17,6 +17,7 @@ import {
   LuChevronsDownUp,
   LuChevronsUpDown,
   LuFilter,
+  LuLayers,
 } from "react-icons/lu";
 import { useStore } from "../../store/useStore";
 import {
@@ -1642,18 +1643,19 @@ const Production = () => {
           <div className={style.topbar_right}>
             {viewMode === VIEW_MODE.BATCHES && (
               <>
-                <label className={style.group_toggle}>
-                  <input
-                    type="checkbox"
-                    checked={groupingEnabled}
-                    onChange={(e) => setGroupingEnabled(e.target.checked)}
-                    className={style.group_toggle_checkbox}
-                  />
-                  Groups
-                </label>
                 <button
                   type="button"
-                  className={style.collapse_btn}
+                  className={`${style.toolbar_btn} ${groupingEnabled ? style.toolbar_btn_active : ""}`}
+                  onClick={() => setGroupingEnabled((v) => !v)}
+                  aria-pressed={groupingEnabled}
+                  title={groupingEnabled ? "Turn batch grouping off" : "Turn batch grouping on"}
+                >
+                  <LuLayers size={15} />
+                  Groups
+                </button>
+                <button
+                  type="button"
+                  className={style.toolbar_btn}
                   onClick={toggleAllDays}
                   disabled={groupedDays.length === 0}
                   title={allDaysCollapsed ? "Expand all days" : "Collapse all days"}

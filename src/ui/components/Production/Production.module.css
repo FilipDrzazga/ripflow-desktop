@@ -1312,51 +1312,51 @@
   margin: 0 4px;
 }
 
-/* Collapse-all / expand-all, sits next to the Groups checkbox. Same geometry as
-   .refresh_btn but a neutral hover — refresh owns the green one. */
-.collapse_btn {
+/* Shared geometry for the topbar toggles (Groups, collapse-all). Matches
+   .refresh_btn exactly so the three sit as one row of equal controls; the
+   hover stays neutral because refresh owns the green one. */
+.toolbar_btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 30px;
-  padding: 0 9px;
-  margin-left: 10px;
-  border-radius: 9px;
+  gap: 6px;
+  height: 36px;
+  padding: 0 12px;
+  border-radius: 10px;
   border: 1px solid var(--border-grey);
   background-color: var(--bg-white);
+  box-shadow: var(--card-shadow);
   color: var(--text-secondary);
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
   cursor: pointer;
   transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 }
 
-.collapse_btn:hover:not(:disabled) {
+.toolbar_btn:hover:not(:disabled) {
   background-color: var(--bg-grey);
   border-color: var(--text-secondary);
   color: var(--text-primary);
 }
 
-.collapse_btn:disabled {
+/* On/off state for Groups — the same filled-dark treatment the lens toggle
+   uses for its active tab, so "pressed" reads the same across the view. */
+.toolbar_btn_active {
+  background-color: var(--bg-black);
+  border-color: var(--border-black);
+  color: var(--text-white);
+}
+
+.toolbar_btn_active:hover:not(:disabled) {
+  background-color: var(--bg-black);
+  border-color: var(--border-black);
+  color: var(--text-white);
+}
+
+.toolbar_btn:disabled {
   opacity: 0.4;
   cursor: default;
-}
-
-.group_toggle {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text-secondary);
-  cursor: pointer;
-  user-select: none;
-  white-space: nowrap;
-}
-
-.group_toggle_checkbox {
-  width: 15px;
-  height: 15px;
-  cursor: pointer;
-  accent-color: var(--bg-black);
 }
 
 .batch_group_header {
