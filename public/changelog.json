@@ -1,5 +1,27 @@
 [
   {
+    "version": "1.0.20",
+    "date": "2026-08-20",
+    "changes": [
+      {
+        "text": "New Stuck tab in Production collects everything that has not moved for 3 days or more, so a job that quietly got left behind is one click away instead of something you have to notice. Shipped files are never counted, and the tab lists the oldest days first so the worst cases are at the top",
+        "clients": ["all"]
+      },
+      {
+        "text": "Files past that point carry an \"idle\" badge showing how many days they have been sitting - amber from 3 days, red from 7. It only appears on files that are actually stuck, so a healthy board looks the same as before",
+        "clients": ["all"]
+      },
+      {
+        "text": "The Production filter buttons were rebuilt around the numbers - the count now comes first and large, with the name beside it, and the active filter is marked by an underline that slides across as you switch. Stuck is set apart by a divider and its own red count",
+        "clients": ["all"]
+      },
+      {
+        "text": "New button to collapse or expand every day group at once, instead of clicking through the day headers one by one",
+        "clients": ["all"]
+      }
+    ]
+  },
+  {
     "version": "1.0.19",
     "date": "2026-08-19",
     "changes": [
