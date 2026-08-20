@@ -84,13 +84,103 @@
   color: var(--text-white);
 }
 
-.tab_count {
-  font-size: 11px;
-  font-weight: 600;
-  padding: 1px 6px;
-  border-radius: 10px;
-  background-color: rgba(255, 255, 255, 0.2);
+/* ===== STAGE FILTER TABS =====
+   Separate from .tab above, which still dresses the lens toggle (Batches /
+   Orders / Receive). Here the COUNT is the content and the label is the
+   caption, so the number leads and is set large; the chrome (border, shadow,
+   filled active pill) is dropped in favour of one underline that slides
+   between tabs. */
+
+.stage_tabs {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* Padding is near-symmetric on purpose. With a 22px number and only a few px
+   above it, the text block's optical centre sat above the box centre and the
+   row read as sitting higher than the lens toggle next to it, which centres
+   14px text in its own box. Balancing the padding lets the topbar's
+   align-items: center line the two rows up. The extra 2px at the bottom is
+   clearance for the underline. */
+.stage_tab {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 8px 14px 10px;
+  border: none;
+  background: none;
+  box-shadow: none;
+  border-radius: 8px 8px 0 0;
+  color: var(--text-secondary);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 0.12s ease, background-color 0.12s ease;
+}
+
+.stage_tab:hover {
+  background-color: var(--bg-grey-light);
+  color: var(--text-primary);
+}
+
+.stage_tab_count {
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.02em;
   color: inherit;
+}
+
+/* Zero is shown, not hidden — but it must not shout like a real backlog. */
+.stage_tab_count_zero {
+  opacity: 0.35;
+}
+
+.stage_tab_label {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* Only the active tab gets full-strength ink. With eight large numbers in one
+   row, letting them all go dark would flatten the hierarchy and bury Stuck. */
+.stage_tab_active {
+  color: var(--text-primary);
+}
+
+/* Backlog keeps its red whatever the active tab is — that is the accent. Same
+   #dc2626 the RIP-error badge and the day-header alert pill already use. */
+.stage_tab_stuck .stage_tab_count {
+  color: #dc2626;
+}
+
+/* Margins wider than the inter-tab gap, so the rule still reads as a break in
+   the row rather than as one more gap. */
+.stage_tab_sep {
+  width: 1px;
+  align-self: stretch;
+  margin: 8px 12px 12px;
+  background: var(--border-grey);
+  flex-shrink: 0;
+}
+
+/* Positioned by GSAP (x / y / width) — left/top stay at 0 so the transform is
+   the single source of truth. y is used rather than bottom because .stage_tabs
+   can wrap to a second row. */
+.stage_tab_indicator {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 0;
+  height: 3px;
+  border-radius: 3px;
+  background: var(--bg-black);
+  pointer-events: none;
+}
+
+.stage_tab_indicator_alert {
+  background: #dc2626;
 }
 
 .tab_printer_badge {
@@ -102,9 +192,6 @@
   flex-shrink: 0;
 }
 
-.tab_active .tab_count {
-  background-color: rgba(255, 255, 255, 0.25);
-}
 
 /* ===== TOOLBAR ===== */
 
@@ -126,7 +213,9 @@
 
 .search_input {
   width: 100%;
-  height: 36px;
+  /* 40px to match the toolbar buttons beside it — a 36px field next to 40px
+     buttons leaves the row visibly uneven. */
+  height: 40px;
   padding: 8px 36px 8px 34px;
   border-radius: 10px;
   border: 1px solid var(--bg-grey-light);
@@ -230,7 +319,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 36px;
+  height: 40px;
+  min-width: 40px;
   padding: 0 12px;
   border-radius: 10px;
   border: 1px solid var(--border-grey);
@@ -809,6 +899,30 @@
   white-space: nowrap;
 }
 
+/* "Nd idle" — time since the file last moved a stage. Only rendered once the
+   row is past the stuck threshold, so it stays invisible on a healthy board.
+   Same amber/red pair as the day header's stale pill — one warning palette. */
+.card_type_badge_idle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  padding: 2px 7px 2px 5px;
+  border-radius: 6px;
+  background: #fef6e7;
+  border: 1px solid rgba(180, 83, 9, 0.35);
+  color: #b45309;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.card_type_badge_idle_alert {
+  background: #fef2f2;
+  border-color: rgba(220, 38, 38, 0.4);
+  color: #dc2626;
+}
+
 .card_type_badge_reprint {
   display: inline-flex;
   align-items: center;
@@ -1201,23 +1315,54 @@
   margin: 0 4px;
 }
 
-.group_toggle {
+/* Shared geometry for the topbar toggles (Groups, collapse-all). Matches
+   .refresh_btn exactly so the three sit as one row of equal controls; the
+   hover stays neutral because refresh owns the green one. 40px box with an
+   18px glyph, the same scale as the Batches view's collapse button — at 36/15
+   the icons read as undersized next to it. */
+.toolbar_btn {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
+  height: 40px;
+  min-width: 40px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border-grey);
+  background-color: var(--bg-white);
+  box-shadow: var(--card-shadow);
+  color: var(--text-secondary);
   font-size: 14px;
   font-weight: 600;
-  color: var(--text-secondary);
-  cursor: pointer;
-  user-select: none;
   white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 }
 
-.group_toggle_checkbox {
-  width: 15px;
-  height: 15px;
-  cursor: pointer;
-  accent-color: var(--bg-black);
+.toolbar_btn:hover:not(:disabled) {
+  background-color: var(--bg-grey);
+  border-color: var(--text-secondary);
+  color: var(--text-primary);
+}
+
+/* On/off state for Groups — the same filled-dark treatment the lens toggle
+   uses for its active tab, so "pressed" reads the same across the view. */
+.toolbar_btn_active {
+  background-color: var(--bg-black);
+  border-color: var(--border-black);
+  color: var(--text-white);
+}
+
+.toolbar_btn_active:hover:not(:disabled) {
+  background-color: var(--bg-black);
+  border-color: var(--border-black);
+  color: var(--text-white);
+}
+
+.toolbar_btn:disabled {
+  opacity: 0.4;
+  cursor: default;
 }
 
 .batch_group_header {

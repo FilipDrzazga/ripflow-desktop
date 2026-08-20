@@ -3,7 +3,7 @@ import gsap from "gsap";
 import {
   LuScissors,
   LuPrinter, LuThermometer, LuSearch, LuPackage, LuTruck,
-  LuFileText, LuCheck, LuRotateCcw, LuTriangleAlert,
+  LuFileText, LuCheck, LuRotateCcw, LuTriangleAlert, LuClock,
 } from "react-icons/lu";
 import {
   PRODUCTION_STAGE, STAGE_LABEL, STAGE_SHORT_LABEL, STAGE_COLOR,
@@ -66,7 +66,7 @@ const StagePill = ({ stageKey, status, company, title }) => {
 // The card must not learn about pdfjs, file paths or PdfThumb — a lens that wants
 // a thumbnail builds the element and hands it over. Lenses that pass nothing
 // render exactly as before and pay for no SMB reads.
-const ProductionCard = ({ stage: row, history = [], highlighted, selected, awaitingQc, ripError, thumbnail, onRipBadgeClick, onSelect, onContextMenu }) => {
+const ProductionCard = ({ stage: row, history = [], highlighted, selected, awaitingQc, ripError, idleDays = null, idleAlert = false, thumbnail, onRipBadgeClick, onSelect, onContextMenu }) => {
   const cardRef  = useRef(null);
   // Where the mouse went down, so a click that ends a text-selection drag doesn't toggle the card.
   const pointerDownRef = useRef(null);
@@ -141,6 +141,12 @@ const ProductionCard = ({ stage: row, history = [], highlighted, selected, await
           >
             <LuTriangleAlert size={12} />
             RIP Error
+          </span>
+        )}
+        {idleDays != null && (
+          <span className={`${style.card_type_badge_idle} ${idleAlert ? style.card_type_badge_idle_alert : ""}`}>
+            <LuClock size={12} />
+            {idleDays}d idle
           </span>
         )}
         {row.print_type === "LM"
