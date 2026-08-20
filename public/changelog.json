@@ -1,5 +1,19 @@
 [
   {
+    "version": "1.0.21",
+    "date": "2026-08-20",
+    "changes": [
+      {
+        "text": "Production no longer throws you back to the top of the list when you filter. Search for an order, deal with it, clear the search - and you come back to exactly where you were, instead of scrolling to find your place again. The same applies to the day and batch chips and to switching between the stage tabs",
+        "clients": ["all"]
+      },
+      {
+        "text": "The card you are brought back to is briefly highlighted, so your eye finds the spot without hunting for it",
+        "clients": ["all"]
+      }
+    ]
+  },
+  {
     "version": "1.0.20",
     "date": "2026-08-20",
     "changes": [
