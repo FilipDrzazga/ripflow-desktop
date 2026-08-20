@@ -1,5 +1,7 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo, Fragment } from "react";
 import { createPortal } from "react-dom";
+import gsap from "gsap";
+import { useGSAP } from "@gsap/react";
 import { HiMagnifyingGlass, HiXMark } from "react-icons/hi2";
 import {
   LuArrowRight,
@@ -49,6 +51,11 @@ import ProductionRollbackModal from "./ProductionRollbackModal";
 import OrderView from "./OrderView";
 import SewingReceive from "./SewingReceive";
 import style from "./Production.module.css";
+
+gsap.registerPlugin(useGSAP);
+
+// Height of the sliding active-tab underline, kept in sync with .tab_indicator.
+const TAB_INDICATOR_H = 3;
 
 // ── "Stuck" (backlog) ────────────────────────────────────────────────────────
 // Staleness here is time since the file last MOVED, which is a different
@@ -1143,6 +1150,33 @@ const Production = () => {
       ),
     [allRows, batchFilter, dayFilter],
   );
+  // ─── Active-tab underline ────────────────────────────────────────────────
+  const tabsRef = useRef(null);
+  const tabRefs = useRef({});
+  const indicatorRef = useRef(null);
+  // Which indicator DOM node we have already positioned. The tabs unmount
+  // whenever the lens leaves BATCHES, so comparing the node identity — not a
+  // boolean — is what tells a real first paint from a tab switch. Without it a
+  // remounted indicator would slide in from x:0/width:0.
+  const positionedNodeRef = useRef(null);
+
+  const positionIndicator = useCallback(
+    (animate) => {
+      const bar = indicatorRef.current;
+      const el = tabRefs.current[stageFilter];
+      if (!bar || !el) return;
+      // offsetTop, not a fixed bottom: .tabs can wrap to a second row.
+      const to = {
+        x: el.offsetLeft,
+        y: el.offsetTop + el.offsetHeight - TAB_INDICATOR_H,
+        width: el.offsetWidth,
+      };
+      if (animate) gsap.to(bar, { ...to, duration: 0.28, ease: "power3.out" });
+      else gsap.set(bar, to);
+    },
+    [stageFilter],
+  );
+
   const counts = Object.fromEntries(
     FILTER_TABS.map((tab) => [
       tab.key,
@@ -1153,6 +1187,30 @@ const Production = () => {
           : countableRows.filter((r) => r.stage === tab.key).length,
     ]),
   );
+
+  // The counts ARE the tab widths now, so the underline has to re-measure when
+  // a number changes, not only when the tab does. A joined string, because
+  // `counts` is a fresh object on every render and would fire the effect
+  // constantly as a dependency.
+  const countsKey = FILTER_TABS.map((t) => counts[t.key] ?? 0).join(",");
+
+  useGSAP(
+    () => {
+      const bar = indicatorRef.current;
+      if (!bar) return;
+      const firstPaint = positionedNodeRef.current !== bar;
+      positionedNodeRef.current = bar;
+      positionIndicator(!firstPaint);
+    },
+    { dependencies: [stageFilter, viewMode, countsKey, positionIndicator] },
+  );
+
+  useEffect(() => {
+    const onResize = () => positionIndicator(false);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, [positionIndicator]);
+
   const isGrouped = groupingEnabled && (stageFilter === "all" || batchFilter !== null);
 
   // Day → batch → cards. The day layer is ALWAYS built (it must survive the
@@ -1527,25 +1585,45 @@ const Production = () => {
 
           {viewMode === VIEW_MODE.BATCHES && <div className={style.topbar_sep} />}
 
+          {/* Deliberately NOT the .tab classes above: those still dress the lens
+              toggle, which has no sliding indicator and would lose its active
+              state entirely if this restyle bled into it. */}
           {viewMode === VIEW_MODE.BATCHES && (
-            <div className={style.tabs}>
-              {FILTER_TABS.map((tab) => (
-                <button
-                  key={tab.key}
-                  type="button"
-                  className={`${style.tab} ${stageFilter === tab.key ? style.tab_active : ""}`}
-                  onClick={() => setStageFilter(tab.key)}
-                >
-                  {tab.label}
-                  {counts[tab.key] > 0 && (
-                    <span
-                      className={`${style.tab_count} ${tab.key === STUCK_TAB_KEY ? style.tab_count_alert : ""}`}
+            <div className={style.stage_tabs} ref={tabsRef}>
+              {FILTER_TABS.map((tab) => {
+                const isStuckTab = tab.key === STUCK_TAB_KEY;
+                const count = counts[tab.key] ?? 0;
+                return (
+                  <Fragment key={tab.key}>
+                    {/* Backlog is not one of the pipeline stages — a rule sets it apart. */}
+                    {isStuckTab && <span className={style.stage_tab_sep} />}
+                    <button
+                      type="button"
+                      ref={(el) => {
+                        tabRefs.current[tab.key] = el;
+                      }}
+                      className={`${style.stage_tab} ${stageFilter === tab.key ? style.stage_tab_active : ""} ${
+                        isStuckTab ? style.stage_tab_stuck : ""
+                      }`}
+                      onClick={() => setStageFilter(tab.key)}
                     >
-                      {counts[tab.key]}
-                    </span>
-                  )}
-                </button>
-              ))}
+                      {/* The number leads: it is what an operator reads across the
+                          room. Zero is rendered, not hidden — dropping it would
+                          leave a bare label and break the row's rhythm. */}
+                      <span className={`${style.stage_tab_count} ${count === 0 ? style.stage_tab_count_zero : ""}`}>
+                        {count}
+                      </span>
+                      <span className={style.stage_tab_label}>{tab.label}</span>
+                    </button>
+                  </Fragment>
+                );
+              })}
+              <span
+                ref={indicatorRef}
+                className={`${style.stage_tab_indicator} ${
+                  stageFilter === STUCK_TAB_KEY ? style.stage_tab_indicator_alert : ""
+                }`}
+              />
             </div>
           )}
 

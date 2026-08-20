@@ -84,20 +84,94 @@
   color: var(--text-white);
 }
 
-.tab_count {
-  font-size: 11px;
-  font-weight: 600;
-  padding: 1px 6px;
-  border-radius: 10px;
-  background-color: rgba(255, 255, 255, 0.2);
+/* ===== STAGE FILTER TABS =====
+   Separate from .tab above, which still dresses the lens toggle (Batches /
+   Orders / Receive). Here the COUNT is the content and the label is the
+   caption, so the number leads and is set large; the chrome (border, shadow,
+   filled active pill) is dropped in favour of one underline that slides
+   between tabs. */
+
+.stage_tabs {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  flex-wrap: wrap;
+}
+
+.stage_tab {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 4px 12px 11px;
+  border: none;
+  background: none;
+  box-shadow: none;
+  border-radius: 8px 8px 0 0;
+  color: var(--text-secondary);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 0.12s ease, background-color 0.12s ease;
+}
+
+.stage_tab:hover {
+  background-color: var(--bg-grey-light);
+  color: var(--text-primary);
+}
+
+.stage_tab_count {
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.02em;
   color: inherit;
 }
 
-/* The backlog count has to read as a warning without opening the tab. Only on
-   the inactive tab — once the tab is active it inherits the active styling. */
-.tab:not(.tab_active) .tab_count_alert {
-  background-color: #fef6e7;
+/* Zero is shown, not hidden — but it must not shout like a real backlog. */
+.stage_tab_count_zero {
+  opacity: 0.35;
+}
+
+.stage_tab_label {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* Only the active tab gets full-strength ink. With eight large numbers in one
+   row, letting them all go dark would flatten the hierarchy and bury Stuck. */
+.stage_tab_active {
+  color: var(--text-primary);
+}
+
+/* Backlog keeps its amber whatever the active tab is — that is the accent. */
+.stage_tab_stuck .stage_tab_count {
   color: #b45309;
+}
+
+.stage_tab_sep {
+  width: 1px;
+  align-self: stretch;
+  margin: 8px 10px 12px;
+  background: var(--border-grey);
+  flex-shrink: 0;
+}
+
+/* Positioned by GSAP (x / y / width) — left/top stay at 0 so the transform is
+   the single source of truth. y is used rather than bottom because .stage_tabs
+   can wrap to a second row. */
+.stage_tab_indicator {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 0;
+  height: 3px;
+  border-radius: 3px;
+  background: var(--bg-black);
+  pointer-events: none;
+}
+
+.stage_tab_indicator_alert {
+  background: #b45309;
 }
 
 .tab_printer_badge {
@@ -109,9 +183,6 @@
   flex-shrink: 0;
 }
 
-.tab_active .tab_count {
-  background-color: rgba(255, 255, 255, 0.25);
-}
 
 /* ===== TOOLBAR ===== */
 
