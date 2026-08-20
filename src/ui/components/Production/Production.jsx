@@ -14,6 +14,8 @@ import {
   LuPackageCheck,
   LuChevronDown,
   LuChevronRight,
+  LuChevronsDownUp,
+  LuChevronsUpDown,
   LuFilter,
 } from "react-icons/lu";
 import { useStore } from "../../store/useStore";
@@ -1251,6 +1253,16 @@ const Production = () => {
       });
   }, [filtered, stageFilter]);
 
+  // Collapse-all / expand-all. One button that flips by what is on screen:
+  // while any day is still open it collapses everything, and once they are all
+  // collapsed it reopens them. Scoped to the days currently rendered, so under
+  // an active day filter it acts on that day alone.
+  const allDaysCollapsed = groupedDays.length > 0 && groupedDays.every((d) => collapsedDays.has(d.dayKey));
+
+  const toggleAllDays = () => {
+    setCollapsedDays(allDaysCollapsed ? new Set() : new Set(groupedDays.map((d) => d.dayKey)));
+  };
+
   // One card definition for both layouts inside a day (batch groups / flat).
   const renderCard = (row) => (
     <ProductionCard
@@ -1639,6 +1651,15 @@ const Production = () => {
                   />
                   Groups
                 </label>
+                <button
+                  type="button"
+                  className={style.collapse_btn}
+                  onClick={toggleAllDays}
+                  disabled={groupedDays.length === 0}
+                  title={allDaysCollapsed ? "Expand all days" : "Collapse all days"}
+                >
+                  {allDaysCollapsed ? <LuChevronsUpDown size={15} /> : <LuChevronsDownUp size={15} />}
+                </button>
                 <div className={style.topbar_right_sep} />
               </>
             )}

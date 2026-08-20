@@ -1312,6 +1312,34 @@
   margin: 0 4px;
 }
 
+/* Collapse-all / expand-all, sits next to the Groups checkbox. Same geometry as
+   .refresh_btn but a neutral hover — refresh owns the green one. */
+.collapse_btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 30px;
+  padding: 0 9px;
+  margin-left: 10px;
+  border-radius: 9px;
+  border: 1px solid var(--border-grey);
+  background-color: var(--bg-white);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.collapse_btn:hover:not(:disabled) {
+  background-color: var(--bg-grey);
+  border-color: var(--text-secondary);
+  color: var(--text-primary);
+}
+
+.collapse_btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
 .group_toggle {
   display: flex;
   align-items: center;
