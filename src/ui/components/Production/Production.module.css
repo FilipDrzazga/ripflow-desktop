@@ -95,15 +95,21 @@
   position: relative;
   display: flex;
   align-items: flex-end;
-  gap: 2px;
+  gap: 8px;
   flex-wrap: wrap;
 }
 
+/* Padding is near-symmetric on purpose. With a 22px number and only a few px
+   above it, the text block's optical centre sat above the box centre and the
+   row read as sitting higher than the lens toggle next to it, which centres
+   14px text in its own box. Balancing the padding lets the topbar's
+   align-items: center line the two rows up. The extra 2px at the bottom is
+   clearance for the underline. */
 .stage_tab {
   display: flex;
   align-items: baseline;
   gap: 6px;
-  padding: 4px 12px 11px;
+  padding: 8px 14px 10px;
   border: none;
   background: none;
   box-shadow: none;
@@ -143,15 +149,18 @@
   color: var(--text-primary);
 }
 
-/* Backlog keeps its amber whatever the active tab is — that is the accent. */
+/* Backlog keeps its red whatever the active tab is — that is the accent. Same
+   #dc2626 the RIP-error badge and the day-header alert pill already use. */
 .stage_tab_stuck .stage_tab_count {
-  color: #b45309;
+  color: #dc2626;
 }
 
+/* Margins wider than the inter-tab gap, so the rule still reads as a break in
+   the row rather than as one more gap. */
 .stage_tab_sep {
   width: 1px;
   align-self: stretch;
-  margin: 8px 10px 12px;
+  margin: 8px 12px 12px;
   background: var(--border-grey);
   flex-shrink: 0;
 }
@@ -171,7 +180,7 @@
 }
 
 .stage_tab_indicator_alert {
-  background: #b45309;
+  background: #dc2626;
 }
 
 .tab_printer_badge {
