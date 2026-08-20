@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useLayoutEffect, useRef } from "react";
 
+// Below this many pixels a "restore" did not really move anything, so it is not
+// worth reporting to the caller.
+const MIN_REPORT_DELTA = 8;
+
 // Keeps the operator's place in a scrolling list across filter changes.
 //
 // The problem it solves: when a filter narrows the list, the content shrinks,
@@ -17,13 +21,21 @@ import { useCallback, useEffect, useLayoutEffect, useRef } from "react";
 // containerRef — the scrolling element.
 // filterKey    — any string describing the current filter. A CHANGE to it means
 //                "restore now"; while it is stable the anchor keeps updating.
-export const useScrollAnchor = (containerRef, filterKey) => {
+// onRestore    — optional, called with the file id the view was pulled back to,
+//                so the caller can flash it. Only fires when the scroll actually
+//                moved (see MIN_REPORT_DELTA) and only for a card anchor, never
+//                for the day-level fallback.
+export const useScrollAnchor = (containerRef, filterKey, onRestore) => {
   // { fileId, dayKey, offset } — offset is the row's top edge relative to the
   // container's, so a partially scrolled row is restored partially scrolled.
   const anchorRef = useRef(null);
   const prevKeyRef = useRef(filterKey);
   const isRestoringRef = useRef(false);
   const rafRef = useRef(0);
+  // Kept in a ref so a caller passing an inline arrow does not have to be
+  // memoised and cannot go stale. Refreshed inside the layout effect below, not
+  // during render — assigning a ref while rendering is a React-hooks violation.
+  const onRestoreRef = useRef(onRestore);
 
   const capture = useCallback(() => {
     const el = containerRef.current;
@@ -52,6 +64,7 @@ export const useScrollAnchor = (containerRef, filterKey) => {
     if (!el || !anchor) return;
 
     let target = anchor.fileId ? el.querySelector(`[data-file-id="${CSS.escape(anchor.fileId)}"]`) : null;
+    const onCard = target !== null;
     // Fallback one level out: the anchored file may not exist under the new
     // filter (another stage tab) or may be inside a collapsed day.
     if (!target && anchor.dayKey) {
@@ -66,6 +79,11 @@ export const useScrollAnchor = (containerRef, filterKey) => {
     requestAnimationFrame(() => {
       isRestoringRef.current = false;
     });
+
+    // Report only a restore that actually moved the view. When the anchored row
+    // was already sitting where it belongs there is nothing to point the eye
+    // at, and flashing it on every filter keystroke would be noise.
+    if (onCard && Math.abs(delta) >= MIN_REPORT_DELTA) onRestoreRef.current?.(anchor.fileId);
   }, [containerRef]);
 
   // Runs after EVERY commit, on purpose: restore on the commit where the filter
@@ -77,6 +95,7 @@ export const useScrollAnchor = (containerRef, filterKey) => {
   // useLayoutEffect, not requestAnimationFrame: rAF would let the browser paint
   // one frame at the wrong offset, which reads as a visible jump.
   useLayoutEffect(() => {
+    onRestoreRef.current = onRestore;
     if (filterKey !== prevKeyRef.current) {
       prevKeyRef.current = filterKey;
       restore();

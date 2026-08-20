@@ -97,6 +97,10 @@ const FILTER_TABS = [
 
 const POLL_INTERVAL = 15_000;
 
+// How long the "you were here" accent stays on the restored card. Same 1.5s the
+// Orders lens uses for its focus highlight.
+const RESTORE_FLASH_MS = 1500;
+
 const STAGE_PIPELINE_ORDER = [
   PRODUCTION_STAGE.PRINTED,
   PRODUCTION_STAGE.HEATPRESS,
@@ -280,6 +284,9 @@ const Production = () => {
 
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [highlightedId, setHighlightedId] = useState(null);
+  // Softer than highlightedId: that one is the scan's "found it" flash, this
+  // one only says "you were here" after the view was pulled back.
+  const [restoredId, setRestoredId] = useState(null);
 
   const cardsWrapperRef = useRef(null);
   const handleScanRef = useRef(null);
@@ -708,7 +715,14 @@ const Production = () => {
   // The key is the filter tuple only: collapsedDays is deliberately NOT in it,
   // because collapsing a day is done while looking at that spot and pulling the
   // scroll back afterwards would fight the operator.
-  useScrollAnchor(cardsWrapperRef, `${search}|${stageFilter}|${batchFilter ?? ""}|${dayFilter ?? ""}`);
+  const restoreFlashTimer = useRef(null);
+  useScrollAnchor(cardsWrapperRef, `${search}|${stageFilter}|${batchFilter ?? ""}|${dayFilter ?? ""}`, (fileId) => {
+    setRestoredId(fileId);
+    clearTimeout(restoreFlashTimer.current);
+    restoreFlashTimer.current = setTimeout(() => setRestoredId(null), RESTORE_FLASH_MS);
+  });
+
+  useEffect(() => () => clearTimeout(restoreFlashTimer.current), []);
 
   const toggleDay = useCallback((dayKey) => {
     setCollapsedDays((prev) => {
@@ -1282,6 +1296,7 @@ const Production = () => {
       stage={row}
       history={stageHistory[row.file_id] ?? []}
       highlighted={highlightedId === row.file_id}
+      restored={restoredId === row.file_id}
       selected={selectedFileIds.has(row.file_id)}
       awaitingQc={workstationRole === "qc" && row.stage === PRODUCTION_STAGE.HEATPRESS}
       ripError={ripErrors[row.file_id]}

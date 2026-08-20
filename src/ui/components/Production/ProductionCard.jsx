@@ -66,7 +66,7 @@ const StagePill = ({ stageKey, status, company, title }) => {
 // The card must not learn about pdfjs, file paths or PdfThumb — a lens that wants
 // a thumbnail builds the element and hands it over. Lenses that pass nothing
 // render exactly as before and pay for no SMB reads.
-const ProductionCard = ({ stage: row, history = [], highlighted, selected, awaitingQc, ripError, idleDays = null, idleAlert = false, thumbnail, onRipBadgeClick, onSelect, onContextMenu }) => {
+const ProductionCard = ({ stage: row, history = [], highlighted, restored = false, selected, awaitingQc, ripError, idleDays = null, idleAlert = false, thumbnail, onRipBadgeClick, onSelect, onContextMenu }) => {
   const cardRef  = useRef(null);
   // Where the mouse went down, so a click that ends a text-selection drag doesn't toggle the card.
   const pointerDownRef = useRef(null);
@@ -116,7 +116,7 @@ const ProductionCard = ({ stage: row, history = [], highlighted, selected, await
 
   return (
     <div
-      className={`${style.card} ${thumbnail ? style.card_with_thumb : ""} ${selected ? style.card_selected : ""} ${awaitingQc ? style.card_awaiting : ""}`}
+      className={`${style.card} ${thumbnail ? style.card_with_thumb : ""} ${selected ? style.card_selected : ""} ${awaitingQc ? style.card_awaiting : ""} ${restored ? style.card_restored : ""}`}
       ref={cardRef}
       data-file-id={row.file_id}
       onMouseDown={handlePointerDown}
