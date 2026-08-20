@@ -1648,10 +1648,14 @@ const Production = () => {
                   className={`${style.toolbar_btn} ${groupingEnabled ? style.toolbar_btn_active : ""}`}
                   onClick={() => setGroupingEnabled((v) => !v)}
                   aria-pressed={groupingEnabled}
+                  aria-label="Batch grouping"
                   title={groupingEnabled ? "Turn batch grouping off" : "Turn batch grouping on"}
                 >
-                  <LuLayers size={15} />
-                  Groups
+                  {/* LuLayers, not a generic "group" glyph: this project already
+                      uses it for batch-level things (CustomOrderCard header, the
+                      history row, the Batch nav tab), and what this toggles IS
+                      batch grouping. */}
+                  <LuLayers size={16} />
                 </button>
                 <button
                   type="button"
