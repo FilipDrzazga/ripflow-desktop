@@ -70,6 +70,10 @@ src/ui/
   hooks/usePdfPreview.js   # Modal preview state only — delegates rendering to utils/pdfRender.js
   hooks/useStageTransition.js # Shared store-core for Production stage moves; classifies IPC
                            #   result vs guarded UPDATE → "applied" | "rejected" | "failed"
+  hooks/useScrollAnchor.js # useScrollAnchor(containerRef, filterKey) — keeps the
+                           #   operator's place in a scrolling list across filter
+                           #   changes; anchors on data-file-id, falls back to
+                           #   data-day-key (see Production scroll anchoring)
   utils/dayKey.js          # Day derivation from batch_path for the Production view:
                            #   dayKeyFromBatchPath / parseDayKey / getDayLabel /
                            #   compareDayKeysDesc / compareDayKeysAsc /
@@ -460,6 +464,14 @@ DB tables: `file_stages` (one row per active file), `file_stage_history` (append
 - **`shipped` is the only excluded stage** — finished work, and the bulk of the table, so counting it would drown the tab. `to_sewing` is deliberately included: on real data it contributes 2 rows, not a flood.
 - **The Stuck tab is the ONE place that reverses day order** (`compareDayKeysAsc`), because it is a backlog list and the worst offenders belong on top. `compareDayKeysAsc` is a real function, not `.reverse()` of the desc sort — reversing would drag `UNKNOWN_DAY_KEY` to the top instead of leaving it last.
 - `idleDays`/`idleAlert` are computed in `Production.jsx` and passed as props; `ProductionCard` never reads a clock or learns the threshold, same contract as `awaitingQc`/`ripError`. `SewingReceive` passes neither, so the badge does not appear there.
+
+**Scroll anchoring across filter changes (`hooks/useScrollAnchor.js`)** — filtering used to throw the operator back to the top of the board. Cause: narrowing the list shrinks the content, the browser **clamps `scrollTop`** to the new `scrollHeight` and the old value is lost; clearing the filter grows the content back but `scrollTop` stays clamped. An empty result is the worst case — the list is replaced by a short `.empty_state`, forcing 0.
+- **An anchor, not a remembered `scrollTop`** — the pixel offset is meaningless once the content height changed. The hook records WHICH row was at the top of the viewport plus how far into it we were (`{ fileId, dayKey, offset }`), then puts that row back at the same offset. Primary anchor is `data-file-id` (already on every card, also used by the scan path); the fallback is `data-day-key` on `.day_group`, for when the anchored card is not in the new DOM (another stage tab, a collapsed day). Neither found → the view is left alone, never a blind jump.
+- **The restore reads the anchor captured under the PREVIOUS filter**, and that single rule produces both wanted behaviours: applying a filter tries to hold the same row in view, clearing it returns to the row just worked on. The hook takes a `filterKey` string; a change to it means "restore", a stable value means "keep capturing".
+- **An empty capture must not clear the anchor.** When no card is in the DOM the hook keeps the previous value — that is precisely the "filter with no matches → clear it" path where the anchor is about to be needed.
+- **`collapsedDays` is deliberately NOT in `filterKey`** — collapsing a day is done while looking at that spot, so pulling the scroll back afterwards would fight the operator.
+- **`useLayoutEffect`, not `requestAnimationFrame`** — rAF would let one frame paint at the wrong offset, which reads as a jump. The scan path keeps its own rAF `scrollIntoView` and wins over the restore because it runs later.
+- **`.cards_wrapper` carries `overflow-anchor: none`** — Chromium's built-in scroll anchoring corrects `scrollTop` on its own; two mechanisms correcting the same thing are non-deterministic.
 
 **Stage-filter tab UI** — the count is the content, the label is the caption: the number comes first at 22px/700 and the tab has no border, shadow or filled active pill. Active state is a single 3px underline that **slides** between tabs.
 - **`.stage_tab*` and `.tab*` are two different controls in the same file.** `.tab` / `.tab_active` still dress the LENS toggle (Batches / Orders / Receive), which has no indicator element — restyling `.tab` for the filters would leave the lens toggle with no active state at all. Keep them separate.

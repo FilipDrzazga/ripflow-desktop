@@ -427,6 +427,11 @@
   flex: 1;
   overflow: auto;
   padding: 0 0 40px;
+  /* useScrollAnchor restores the position by hand after a filter change.
+     Chromium's built-in scroll anchoring corrects scrollTop on its own when
+     content above changes, and two mechanisms correcting the same thing give a
+     non-deterministic result — so the browser's is turned off deliberately. */
+  overflow-anchor: none;
 }
 
 .empty_state {

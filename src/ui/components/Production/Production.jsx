@@ -35,6 +35,7 @@ import { getSettings } from "../../services/settingsService";
 import { notify } from "@/utils/notify";
 import { usePdfPreview } from "../../hooks/usePdfPreview";
 import { useStageTransition } from "../../hooks/useStageTransition";
+import { useScrollAnchor } from "../../hooks/useScrollAnchor";
 import { PRINTER_COLORS } from "../../constants/printerColors";
 import { VIEW_MODE } from "../../constants/viewModes";
 import { UNKNOWN_ORDER_KEY } from "../../utils/groupByOrder";
@@ -279,6 +280,13 @@ const Production = () => {
 
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [highlightedId, setHighlightedId] = useState(null);
+
+  // Keeps the operator's place when a filter is applied or cleared. The key is
+  // the filter tuple only — collapsedDays is deliberately NOT in it: collapsing
+  // a day is a deliberate act performed while looking at that spot, and pulling
+  // the scroll back afterwards would fight the operator.
+  const cardsWrapperRef = useRef(null);
+  useScrollAnchor(cardsWrapperRef, `${search}|${stageFilter}|${batchFilter ?? ""}|${dayFilter ?? ""}`);
   const handleScanRef = useRef(null);
 
   // Multi-select for bulk rollback
@@ -1738,7 +1746,7 @@ const Production = () => {
         )}
       </div>
 
-      <div className={style.cards_wrapper}>
+      <div className={style.cards_wrapper} ref={cardsWrapperRef}>
         {/* Receive owns its own empty/loading states — it must not fall through
             into the Batches-lens isLoading / filtered.length branches below. */}
         {viewMode === VIEW_MODE.RECEIVE ? (
@@ -1765,8 +1773,10 @@ const Production = () => {
         ) : (
           groupedDays.map((day) => {
             const collapsed = collapsedDays.has(day.dayKey);
+            // data-day-key is the scroll anchor's fallback when the anchored
+            // card is gone (another stage tab, a collapsed day).
             return (
-              <div key={day.dayKey} className={style.day_group}>
+              <div key={day.dayKey} data-day-key={day.dayKey} className={style.day_group}>
                 <DayGroupHeader
                   day={day}
                   collapsed={collapsed}
