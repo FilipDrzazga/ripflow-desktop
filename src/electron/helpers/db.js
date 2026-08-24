@@ -270,12 +270,16 @@ export const initDb = () => {
     `);
     // Backfill the alias column on existing DBs created before it was introduced.
     ensureFabricAliasColumn();
-    // Insert OR IGNORE — seeds on first run, backfills new defaults on existing DBs without overwriting user edits
-    const stmtF = db.prepare(
-      "INSERT OR IGNORE INTO fabrics (name, type, xml_width, roll_width, is_velvet, is_linen, is_blossom) VALUES (?, ?, ?, ?, ?, ?, ?)",
-    );
-    for (const f of DEFAULT_FABRICS) {
-      stmtF.run(f.name, f.type, f.xmlWidth, f.rollWidth, f.isVelvet, f.isLinen, f.isBlossom);
+    // Seed the default catalog on first run only — an existing catalog is the shop's own data,
+    // so a fabric the operator deleted must not come back on the next startup.
+    const fabricsCount = db.prepare("SELECT COUNT(*) AS c FROM fabrics").get().c;
+    if (fabricsCount === 0) {
+      const stmtF = db.prepare(
+        "INSERT OR IGNORE INTO fabrics (name, type, xml_width, roll_width, is_velvet, is_linen, is_blossom) VALUES (?, ?, ?, ?, ?, ?, ?)",
+      );
+      for (const f of DEFAULT_FABRICS) {
+        stmtF.run(f.name, f.type, f.xmlWidth, f.rollWidth, f.isVelvet, f.isLinen, f.isBlossom);
+      }
     }
 
     // ── file_stages ───────────────────────────────────────────────────────────
