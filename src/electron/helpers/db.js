@@ -273,7 +273,7 @@ export const initDb = () => {
     // Seed the default catalog on first run only — an existing catalog is the shop's own data,
     // so a fabric the operator deleted must not come back on the next startup.
     const fabricsCount = db.prepare("SELECT COUNT(*) AS c FROM fabrics").get().c;
-    if (fabricsCount === 0) {
+    if (fabricsCount === 0 && DEFAULT_FABRICS.length > 0) {
       const stmtF = db.prepare(
         "INSERT OR IGNORE INTO fabrics (name, type, xml_width, roll_width, is_velvet, is_linen, is_blossom) VALUES (?, ?, ?, ?, ?, ?, ?)",
       );
@@ -751,13 +751,17 @@ export const setFabricGlobals = (globals) => {
 
 // ── fabrics ──────────────────────────────────────────────────────────────────
 
+// null = the catalog could not be read at all (DB unavailable, or the SELECT threw).
+// [] = the table is genuinely empty. loadFabricCache needs that distinction to tell a
+// degraded start (fall back to static typing) apart from a fresh install (no materials
+// yet). Callers that need a plain array normalize with `?? []` at the call site.
 export const getAllFabrics = () => {
-  if (!db) return DEFAULT_FABRICS.map((f) => ({ ...f }));
+  if (!db) return null;
   try {
     return db.prepare("SELECT name, type, xml_width AS xmlWidth, roll_width AS rollWidth, is_velvet AS isVelvet, is_linen AS isLinen, is_blossom AS isBlossom, alias FROM fabrics ORDER BY type ASC, name ASC").all();
   } catch (err) {
     console.error("[db] getAllFabrics failed:", err);
-    return DEFAULT_FABRICS.map((f) => ({ ...f }));
+    return null;
   }
 };
 

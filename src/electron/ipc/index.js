@@ -428,7 +428,7 @@ export function registerIpcHandlers() {
   });
 
   ipcMain.handle("fabrics:getAll", () => {
-    return { success: true, data: getAllFabrics() };
+    return { success: true, data: getAllFabrics() ?? [] };
   });
 
   ipcMain.handle("fabrics:save", (_event, { oldName, fabric }) => {

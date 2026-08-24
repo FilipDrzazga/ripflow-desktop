@@ -3,8 +3,6 @@ import {
   LM_ROLL_POLY, LM_ROLL_COTTON, LM_ROLL_COTTON_DEFAULT,
 } from "../../shared/printWidths.js";
 
-const flag = (name, keyword) => (name.toLowerCase().includes(keyword) ? 1 : 0);
-
 const COTTON_NAMES = [
   "Cotton Slub",
   "Stretch Lycra French Terry",
@@ -132,26 +130,12 @@ const POLY_NAMES = [
   "Stretch Jersey",
 ];
 
-export const DEFAULT_FABRICS = [
-  ...COTTON_NAMES.map((name) => ({
-    name,
-    type: "Cottons",
-    xmlWidth: LM_XML_COTTON[name] ?? LM_XML_COTTON_DEFAULT,
-    rollWidth: LM_ROLL_COTTON[name] ?? LM_ROLL_COTTON_DEFAULT,
-    isVelvet: 0,
-    isLinen: flag(name, "linen"),
-    isBlossom: flag(name, "blossom"),
-  })),
-  ...POLY_NAMES.map((name) => ({
-    name,
-    type: "Polyesters",
-    xmlWidth: LM_XML_POLY,
-    rollWidth: LM_ROLL_POLY,
-    isVelvet: flag(name, "velvet"),
-    isLinen: flag(name, "linen"),
-    isBlossom: 0,
-  })),
-];
+// Ships empty on purpose: a fresh install starts with no materials. The fabric catalog
+// is the shop's own data, entered in Settings > Fabrics or imported from a profile file
+// (see profiles/). Seeding is guarded on this being non-empty, so it is a no-op today.
+// COTTON_NAMES / POLY_NAMES above are now unused; they are removed in ETAP 2h together
+// with the rest of the baked-in catalog.
+export const DEFAULT_FABRICS = [];
 
 export const DEFAULT_FABRIC_GLOBALS = {
   marginCotton: 10,
