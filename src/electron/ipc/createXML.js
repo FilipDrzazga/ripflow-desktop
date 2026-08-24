@@ -238,3 +238,6 @@ export async function submitBatchToPrintFactory(batch, createdBatchId, batchFold
   }
   return result;
 }
+
+// Exported for the golden XML regression harness (scripts/golden). Not used by the app.
+export { buildPFJobXML };
