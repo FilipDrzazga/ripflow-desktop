@@ -1,0 +1,1322 @@
+[
+  {
+    "name": "Calico Plain Cotton",
+    "type": "Cottons",
+    "xmlWidth": 1420,
+    "rollWidth": 1420,
+    "isVelvet": 0,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "Chloe Linen Natural",
+    "type": "Cottons",
+    "xmlWidth": 1370,
+    "rollWidth": 1420,
+    "isVelvet": 0,
+    "isLinen": 1,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "Cotton Denim",
+    "type": "Cottons",
+    "xmlWidth": 1420,
+    "rollWidth": 1420,
+    "isVelvet": 0,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "Cotton Slub",
+    "type": "Cottons",
+    "xmlWidth": 1420,
+    "rollWidth": 1420,
+    "isVelvet": 0,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "DSTK - Organic Jersey Interlock",
+    "type": "Cottons",
+    "xmlWidth": 1420,
+    "rollWidth": 1420,
+    "isVelvet": 0,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "DSTK - Stretch Lycra French Terry",
+    "type": "Cottons",
+    "xmlWidth": 1420,
+    "rollWidth": 1420,
+    "isVelvet": 0,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "Drill",
+    "type": "Cottons",
+    "xmlWidth": 1420,
+    "rollWidth": 1420,
+    "isVelvet": 0,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "Eco Astra Ramie",
+    "type": "Cottons",
+    "xmlWidth": 1370,
+    "rollWidth": 1420,
+    "isVelvet": 0,
+    "isLinen": 1,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "Eco Ochra Ramie",
+    "type": "Cottons",
+    "xmlWidth": 1370,
+    "rollWidth": 1420,
+    "isVelvet": 0,
+    "isLinen": 1,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "Hector Linen",
+    "type": "Cottons",
+    "xmlWidth": 1420,
+    "rollWidth": 1460,
+    "isVelvet": 0,
+    "isLinen": 1,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "Light Twill",
+    "type": "Cottons",
+    "xmlWidth": 1420,
+    "rollWidth": 1420,
+    "isVelvet": 0,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "Limani Linen",
+    "type": "Cottons",
+    "xmlWidth": 1370,
+    "rollWidth": 1420,
+    "isVelvet": 0,
+    "isLinen": 1,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "Melino Linen",
+    "type": "Cottons",
+    "xmlWidth": 1370,
+    "rollWidth": 1420,
+    "isVelvet": 0,
+    "isLinen": 1,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "Optic White Organic Panama",
+    "type": "Cottons",
+    "xmlWidth": 1420,
+    "rollWidth": 1420,
+    "isVelvet": 0,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "Organic Blossom Muslin Gauze",
+    "type": "Cottons",
+    "xmlWidth": 1270,
+    "rollWidth": 1270,
+    "isVelvet": 0,
+    "isLinen": 0,
+    "isBlossom": 1,
+    "alias": null
+  },
+  {
+    "name": "Organic Calico Natural",
+    "type": "Cottons",
+    "xmlWidth": 1420,
+    "rollWidth": 1420,
+    "isVelvet": 0,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "Organic Drill Natural",
+    "type": "Cottons",
+    "xmlWidth": 1420,
+    "rollWidth": 1420,
+    "isVelvet": 0,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "Organic Drill Optic",
+    "type": "Cottons",
+    "xmlWidth": 1420,
+    "rollWidth": 1420,
+    "isVelvet": 0,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "Organic Iris Jersey",
+    "type": "Cottons",
+    "xmlWidth": 1420,
+    "rollWidth": 1420,
+    "isVelvet": 0,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "Organic Jasmine Lycra Jersey",
+    "type": "Cottons",
+    "xmlWidth": 1420,
+    "rollWidth": 1420,
+    "isVelvet": 0,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "Organic Jersey Interlock",
+    "type": "Cottons",
+    "xmlWidth": 1420,
+    "rollWidth": 1420,
+    "isVelvet": 0,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "Organic Leve Cotton Panama Natural",
+    "type": "Cottons",
+    "xmlWidth": 1420,
+    "rollWidth": 1420,
+    "isVelvet": 0,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "Organic Leve Panama Natural",
+    "type": "Cottons",
+    "xmlWidth": 1420,
+    "rollWidth": 1420,
+    "isVelvet": 0,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "Organic Nimbus Linen",
+    "type": "Cottons",
+    "xmlWidth": 1370,
+    "rollWidth": 1370,
+    "isVelvet": 0,
+    "isLinen": 1,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "Organic Optic Calico",
+    "type": "Cottons",
+    "xmlWidth": 1420,
+    "rollWidth": 1420,
+    "isVelvet": 0,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "Organic Panama Natural",
+    "type": "Cottons",
+    "xmlWidth": 1420,
+    "rollWidth": 1420,
+    "isVelvet": 0,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "Organic Poplin",
+    "type": "Cottons",
+    "xmlWidth": 1420,
+    "rollWidth": 1420,
+    "isVelvet": 0,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "Organic Satin",
+    "type": "Cottons",
+    "xmlWidth": 1420,
+    "rollWidth": 1420,
+    "isVelvet": 0,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "Organic Stratos Linen",
+    "type": "Cottons",
+    "xmlWidth": 1370,
+    "rollWidth": 1370,
+    "isVelvet": 0,
+    "isLinen": 1,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "Panama",
+    "type": "Cottons",
+    "xmlWidth": 1420,
+    "rollWidth": 1420,
+    "isVelvet": 0,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "Poplin",
+    "type": "Cottons",
+    "xmlWidth": 1420,
+    "rollWidth": 1420,
+    "isVelvet": 0,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "Poppy Lycra Jersey",
+    "type": "Cottons",
+    "xmlWidth": 1420,
+    "rollWidth": 1420,
+    "isVelvet": 0,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "Satin",
+    "type": "Cottons",
+    "xmlWidth": 1400,
+    "rollWidth": 1420,
+    "isVelvet": 0,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "Single Cotton Elastane Jersey",
+    "type": "Cottons",
+    "xmlWidth": 1420,
+    "rollWidth": 1420,
+    "isVelvet": 0,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "Stretch Lycra French Terry",
+    "type": "Cottons",
+    "xmlWidth": 1420,
+    "rollWidth": 1420,
+    "isVelvet": 0,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "Top Sateen",
+    "type": "Cottons",
+    "xmlWidth": 1420,
+    "rollWidth": 1420,
+    "isVelvet": 0,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "3-Pass Blackout FR",
+    "type": "Polyesters",
+    "xmlWidth": 1420,
+    "rollWidth": 1550,
+    "isVelvet": 0,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "Active Eco Lycra",
+    "type": "Polyesters",
+    "xmlWidth": 1420,
+    "rollWidth": 1550,
+    "isVelvet": 0,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "Aqua Plain Tex - PUL (Water Repellant)",
+    "type": "Polyesters",
+    "xmlWidth": 1420,
+    "rollWidth": 1550,
+    "isVelvet": 0,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "Avio Cotton Mix",
+    "type": "Polyesters",
+    "xmlWidth": 1420,
+    "rollWidth": 1550,
+    "isVelvet": 0,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "Bayeux Upholstery",
+    "type": "Polyesters",
+    "xmlWidth": 1420,
+    "rollWidth": 1550,
+    "isVelvet": 0,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "Chiffon",
+    "type": "Polyesters",
+    "xmlWidth": 1420,
+    "rollWidth": 1550,
+    "isVelvet": 0,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "Cora Canvas",
+    "type": "Polyesters",
+    "xmlWidth": 1420,
+    "rollWidth": 1550,
+    "isVelvet": 0,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "Crepe de Chine",
+    "type": "Polyesters",
+    "xmlWidth": 1420,
+    "rollWidth": 1550,
+    "isVelvet": 0,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "Crinkle Gauze",
+    "type": "Polyesters",
+    "xmlWidth": 1420,
+    "rollWidth": 1550,
+    "isVelvet": 0,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "DSTK - Eco Bridal Twill",
+    "type": "Polyesters",
+    "xmlWidth": 1420,
+    "rollWidth": 1550,
+    "isVelvet": 0,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "DSTK - Eco Jersey",
+    "type": "Polyesters",
+    "xmlWidth": 1420,
+    "rollWidth": 1550,
+    "isVelvet": 0,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "DSTK - Eco Legging",
+    "type": "Polyesters",
+    "xmlWidth": 1420,
+    "rollWidth": 1550,
+    "isVelvet": 0,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "DSTK - Eco Pique",
+    "type": "Polyesters",
+    "xmlWidth": 1420,
+    "rollWidth": 1550,
+    "isVelvet": 0,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "DSTK - Flat Velvet",
+    "type": "Polyesters",
+    "xmlWidth": 1420,
+    "rollWidth": 1550,
+    "isVelvet": 1,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "DSTK - Fluid Twill",
+    "type": "Polyesters",
+    "xmlWidth": 1420,
+    "rollWidth": 1550,
+    "isVelvet": 0,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "DSTK - Heavy Bandage Crepe",
+    "type": "Polyesters",
+    "xmlWidth": 1420,
+    "rollWidth": 1550,
+    "isVelvet": 0,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "DSTK - Heavy Chenille",
+    "type": "Polyesters",
+    "xmlWidth": 1420,
+    "rollWidth": 1550,
+    "isVelvet": 0,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "DSTK - Micro Linen",
+    "type": "Polyesters",
+    "xmlWidth": 1420,
+    "rollWidth": 1550,
+    "isVelvet": 0,
+    "isLinen": 1,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "DSTK - Paros Stretch Twill",
+    "type": "Polyesters",
+    "xmlWidth": 1420,
+    "rollWidth": 1550,
+    "isVelvet": 0,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "DSTK - Poly Tulle",
+    "type": "Polyesters",
+    "xmlWidth": 1420,
+    "rollWidth": 1550,
+    "isVelvet": 0,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "DSTK - Recycled Ripstop",
+    "type": "Polyesters",
+    "xmlWidth": 1420,
+    "rollWidth": 1550,
+    "isVelvet": 0,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "DSTK - Shark Satin",
+    "type": "Polyesters",
+    "xmlWidth": 1420,
+    "rollWidth": 1550,
+    "isVelvet": 0,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "DSTK - Shimmer Velvet",
+    "type": "Polyesters",
+    "xmlWidth": 1420,
+    "rollWidth": 1550,
+    "isVelvet": 1,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "DSTK - Slub Chiffon",
+    "type": "Polyesters",
+    "xmlWidth": 1420,
+    "rollWidth": 1550,
+    "isVelvet": 0,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "DSTK - SoftShell Ultra",
+    "type": "Polyesters",
+    "xmlWidth": 1420,
+    "rollWidth": 1550,
+    "isVelvet": 0,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "DSTK - Velvet Satin",
+    "type": "Polyesters",
+    "xmlWidth": 1420,
+    "rollWidth": 1550,
+    "isVelvet": 1,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "Diago Stretch",
+    "type": "Polyesters",
+    "xmlWidth": 1420,
+    "rollWidth": 1550,
+    "isVelvet": 0,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "Duchess Satin",
+    "type": "Polyesters",
+    "xmlWidth": 1420,
+    "rollWidth": 1550,
+    "isVelvet": 0,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "Dupioni FR",
+    "type": "Polyesters",
+    "xmlWidth": 1420,
+    "rollWidth": 1550,
+    "isVelvet": 0,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "Easy Care Panama",
+    "type": "Polyesters",
+    "xmlWidth": 1420,
+    "rollWidth": 1550,
+    "isVelvet": 0,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "Easy Care Twill",
+    "type": "Polyesters",
+    "xmlWidth": 1420,
+    "rollWidth": 1550,
+    "isVelvet": 0,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "Eco Basketweave",
+    "type": "Polyesters",
+    "xmlWidth": 1420,
+    "rollWidth": 1550,
+    "isVelvet": 0,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "Eco Boucle",
+    "type": "Polyesters",
+    "xmlWidth": 1420,
+    "rollWidth": 1550,
+    "isVelvet": 0,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "Eco Chiffon",
+    "type": "Polyesters",
+    "xmlWidth": 1420,
+    "rollWidth": 1550,
+    "isVelvet": 0,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "Eco Display FR",
+    "type": "Polyesters",
+    "xmlWidth": 1420,
+    "rollWidth": 1550,
+    "isVelvet": 0,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "Eco Dynamica Lycra",
+    "type": "Polyesters",
+    "xmlWidth": 1420,
+    "rollWidth": 1550,
+    "isVelvet": 0,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "Eco Faux Silky Satin",
+    "type": "Polyesters",
+    "xmlWidth": 1420,
+    "rollWidth": 1550,
+    "isVelvet": 0,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "Eco Fleece",
+    "type": "Polyesters",
+    "xmlWidth": 1420,
+    "rollWidth": 1550,
+    "isVelvet": 0,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "Eco Glitter Dot Lycra",
+    "type": "Polyesters",
+    "xmlWidth": 1420,
+    "rollWidth": 1550,
+    "isVelvet": 0,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "Eco Gloss Satin",
+    "type": "Polyesters",
+    "xmlWidth": 1420,
+    "rollWidth": 1550,
+    "isVelvet": 0,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "Eco Jersey",
+    "type": "Polyesters",
+    "xmlWidth": 1420,
+    "rollWidth": 1550,
+    "isVelvet": 0,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "Eco Jogger Fleece Back",
+    "type": "Polyesters",
+    "xmlWidth": 1420,
+    "rollWidth": 1550,
+    "isVelvet": 0,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "Eco Linen Look",
+    "type": "Polyesters",
+    "xmlWidth": 1420,
+    "rollWidth": 1550,
+    "isVelvet": 0,
+    "isLinen": 1,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "Eco Lotus Twill (Water Repellant)",
+    "type": "Polyesters",
+    "xmlWidth": 1420,
+    "rollWidth": 1550,
+    "isVelvet": 0,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": "Lotus"
+  },
+  {
+    "name": "Eco Mali Crepe",
+    "type": "Polyesters",
+    "xmlWidth": 1420,
+    "rollWidth": 1550,
+    "isVelvet": 0,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "Eco Micro Jersey",
+    "type": "Polyesters",
+    "xmlWidth": 1420,
+    "rollWidth": 1550,
+    "isVelvet": 0,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "Eco Pique",
+    "type": "Polyesters",
+    "xmlWidth": 1420,
+    "rollWidth": 1550,
+    "isVelvet": 0,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "Eco Power Net",
+    "type": "Polyesters",
+    "xmlWidth": 1420,
+    "rollWidth": 1550,
+    "isVelvet": 0,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "Eco Recycled Ripstop",
+    "type": "Polyesters",
+    "xmlWidth": 1420,
+    "rollWidth": 1550,
+    "isVelvet": 0,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "Eco Satin Flow",
+    "type": "Polyesters",
+    "xmlWidth": 1420,
+    "rollWidth": 1550,
+    "isVelvet": 0,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "Eco Silk Twill",
+    "type": "Polyesters",
+    "xmlWidth": 1420,
+    "rollWidth": 1550,
+    "isVelvet": 0,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "Eco Soft Tulle",
+    "type": "Polyesters",
+    "xmlWidth": 1420,
+    "rollWidth": 1550,
+    "isVelvet": 0,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "Eco Sprint Knit",
+    "type": "Polyesters",
+    "xmlWidth": 1420,
+    "rollWidth": 1550,
+    "isVelvet": 0,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "Eco Super Fine Chiffon",
+    "type": "Polyesters",
+    "xmlWidth": 1420,
+    "rollWidth": 1550,
+    "isVelvet": 0,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "Eco Surf Pro",
+    "type": "Polyesters",
+    "xmlWidth": 1420,
+    "rollWidth": 1550,
+    "isVelvet": 0,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "Eco Taffeta",
+    "type": "Polyesters",
+    "xmlWidth": 1420,
+    "rollWidth": 1550,
+    "isVelvet": 0,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "Eco Telis Velvet - Domestic FR",
+    "type": "Polyesters",
+    "xmlWidth": 1420,
+    "rollWidth": 1550,
+    "isVelvet": 1,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "Eco Telis Velvet - Non FR",
+    "type": "Polyesters",
+    "xmlWidth": 1420,
+    "rollWidth": 1550,
+    "isVelvet": 1,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "Eco Upholstery FR",
+    "type": "Polyesters",
+    "xmlWidth": 1420,
+    "rollWidth": 1550,
+    "isVelvet": 0,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "Eco Velvet",
+    "type": "Polyesters",
+    "xmlWidth": 1420,
+    "rollWidth": 1550,
+    "isVelvet": 1,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "Eco Wyclef Velvet FR",
+    "type": "Polyesters",
+    "xmlWidth": 1420,
+    "rollWidth": 1550,
+    "isVelvet": 1,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "Eco rPet Canvas",
+    "type": "Polyesters",
+    "xmlWidth": 1420,
+    "rollWidth": 1550,
+    "isVelvet": 0,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "Emperor Twill",
+    "type": "Polyesters",
+    "xmlWidth": 1420,
+    "rollWidth": 1550,
+    "isVelvet": 0,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "Faux Silky Satin",
+    "type": "Polyesters",
+    "xmlWidth": 1420,
+    "rollWidth": 1550,
+    "isVelvet": 0,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "Fine Stripe Chiffon",
+    "type": "Polyesters",
+    "xmlWidth": 1420,
+    "rollWidth": 1550,
+    "isVelvet": 0,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "Georgette",
+    "type": "Polyesters",
+    "xmlWidth": 1420,
+    "rollWidth": 1550,
+    "isVelvet": 0,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "Gloss Satin",
+    "type": "Polyesters",
+    "xmlWidth": 1420,
+    "rollWidth": 1550,
+    "isVelvet": 0,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "Heavy Lycra 210",
+    "type": "Polyesters",
+    "xmlWidth": 1420,
+    "rollWidth": 1550,
+    "isVelvet": 0,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "Heavy Satin FR",
+    "type": "Polyesters",
+    "xmlWidth": 1420,
+    "rollWidth": 1550,
+    "isVelvet": 0,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "Leos Cotton Mix",
+    "type": "Polyesters",
+    "xmlWidth": 1420,
+    "rollWidth": 1550,
+    "isVelvet": 0,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "Ligos Velvet",
+    "type": "Polyesters",
+    "xmlWidth": 1420,
+    "rollWidth": 1550,
+    "isVelvet": 1,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "Lining",
+    "type": "Polyesters",
+    "xmlWidth": 1420,
+    "rollWidth": 1550,
+    "isVelvet": 0,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "Luxe Velvet",
+    "type": "Polyesters",
+    "xmlWidth": 1380,
+    "rollWidth": 1550,
+    "isVelvet": 1,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "Massey Crepe",
+    "type": "Polyesters",
+    "xmlWidth": 1420,
+    "rollWidth": 1550,
+    "isVelvet": 0,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "Metallic Silver Satin Twill",
+    "type": "Polyesters",
+    "xmlWidth": 1420,
+    "rollWidth": 1550,
+    "isVelvet": 0,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "Micro Linen",
+    "type": "Polyesters",
+    "xmlWidth": 1420,
+    "rollWidth": 1550,
+    "isVelvet": 0,
+    "isLinen": 1,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "Neraki Waterproof Canvas FR (Water Repellant)",
+    "type": "Polyesters",
+    "xmlWidth": 1420,
+    "rollWidth": 1550,
+    "isVelvet": 0,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "Neraki Waterproof FR",
+    "type": "Polyesters",
+    "xmlWidth": 1420,
+    "rollWidth": 1550,
+    "isVelvet": 0,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": "Neraki"
+  },
+  {
+    "name": "Organza",
+    "type": "Polyesters",
+    "xmlWidth": 1420,
+    "rollWidth": 1550,
+    "isVelvet": 0,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "Oslo FR",
+    "type": "Polyesters",
+    "xmlWidth": 1420,
+    "rollWidth": 1550,
+    "isVelvet": 0,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "Palatine Velvet FR",
+    "type": "Polyesters",
+    "xmlWidth": 1420,
+    "rollWidth": 1550,
+    "isVelvet": 1,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "Panama FR",
+    "type": "Polyesters",
+    "xmlWidth": 1420,
+    "rollWidth": 1550,
+    "isVelvet": 0,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "Plainweave FR",
+    "type": "Polyesters",
+    "xmlWidth": 1420,
+    "rollWidth": 1550,
+    "isVelvet": 0,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "Plutus Velvet FR",
+    "type": "Polyesters",
+    "xmlWidth": 1420,
+    "rollWidth": 1550,
+    "isVelvet": 1,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "Recycled Eco Lycra",
+    "type": "Polyesters",
+    "xmlWidth": 1420,
+    "rollWidth": 1550,
+    "isVelvet": 0,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "Sartor Wool Effect SR",
+    "type": "Polyesters",
+    "xmlWidth": 1420,
+    "rollWidth": 1550,
+    "isVelvet": 0,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "Scuba Bodyfit",
+    "type": "Polyesters",
+    "xmlWidth": 1420,
+    "rollWidth": 1550,
+    "isVelvet": 0,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "Slub Chiffon",
+    "type": "Polyesters",
+    "xmlWidth": 1420,
+    "rollWidth": 1550,
+    "isVelvet": 0,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "Squidge Plush",
+    "type": "Polyesters",
+    "xmlWidth": 1420,
+    "rollWidth": 1550,
+    "isVelvet": 0,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "Stretch Jersey",
+    "type": "Polyesters",
+    "xmlWidth": 1420,
+    "rollWidth": 1550,
+    "isVelvet": 0,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "Summer Voile",
+    "type": "Polyesters",
+    "xmlWidth": 1420,
+    "rollWidth": 1550,
+    "isVelvet": 0,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "Tentex (Water Repellant)",
+    "type": "Polyesters",
+    "xmlWidth": 1420,
+    "rollWidth": 1550,
+    "isVelvet": 0,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "Upholstery Twill FR",
+    "type": "Polyesters",
+    "xmlWidth": 1420,
+    "rollWidth": 1550,
+    "isVelvet": 0,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "Velvet",
+    "type": "Polyesters",
+    "xmlWidth": 1420,
+    "rollWidth": 1550,
+    "isVelvet": 1,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "Voile FR",
+    "type": "Polyesters",
+    "xmlWidth": 1420,
+    "rollWidth": 1550,
+    "isVelvet": 0,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  },
+  {
+    "name": "Waterproof Suede FR",
+    "type": "Polyesters",
+    "xmlWidth": 1420,
+    "rollWidth": 1550,
+    "isVelvet": 0,
+    "isLinen": 0,
+    "isBlossom": 0,
+    "alias": null
+  }
+]
