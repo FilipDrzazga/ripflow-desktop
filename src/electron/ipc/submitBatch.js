@@ -7,6 +7,7 @@ import { insertFileStage } from "../helpers/db.js";
 import { getSettings } from "../helpers/getSettings.js";
 import { printBatchLabel } from "../helpers/labelPrinter.js";
 import { getMaterialType } from "../helpers/getMaterialType.js";
+import { getEstimateConfig } from "../helpers/fabricCache.js";
 import { estimatePrintLength } from "../../shared/estimatePrintLength.js";
 
 const toSubmitBatchError = (error, stage, fallbackTitle = "Batch submission failed") =>
@@ -85,7 +86,7 @@ export const submitBatch = async (batch) => {
       const printerMatch = batchName.match(/-(DGEN|YOKO|YUMI)$/i);
       const batchPrinter = printerMatch ? printerMatch[1].toUpperCase() : "UNKNOWN";
       const parsedForLength = batch.map((item) => ({ ...item, materialType: getMaterialType(item.material) }));
-      const { fixedTotalLengthM } = estimatePrintLength(parsedForLength);
+      const { fixedTotalLengthM } = estimatePrintLength(parsedForLength, getEstimateConfig());
       printBatchLabel({
         batchPath,
         batchName,

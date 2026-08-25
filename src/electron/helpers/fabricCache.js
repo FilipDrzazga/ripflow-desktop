@@ -26,6 +26,13 @@ export const getCachedFabrics = () => cachedFabrics ?? [];
 
 export const getCachedGlobals = () => cachedGlobals ?? { ...DEFAULT_FABRIC_GLOBALS };
 
+// Config for estimatePrintLength: the DB-backed globals plus the catalog, or null when
+// the cache is not loaded. Deliberately null and NOT { fabrics: [] } - an empty array is
+// truthy, so the estimator would enter its DB branch with an empty catalog and lose the
+// static per-material roll widths. null keeps it on the printWidths.js fallbacks.
+export const getEstimateConfig = () =>
+  cachedFabrics === null ? null : { globals: getCachedGlobals(), fabrics: cachedFabrics };
+
 export const getFabricByName = (name) => {
   if (cachedFabrics === null) return null;
   return cachedFabrics.find((f) => f.name === name) ?? null;

@@ -10,7 +10,7 @@ import { parseBatchFolderName, normalizeOverrideEntry } from "./readPrintedFolde
 import { insertRollbackReason, insertReprintRequest, clearFileStage, resolveRipErrorsByFile } from "../helpers/db.js";
 import { getSettings } from "../helpers/getSettings.js";
 import { GROUP_NAME_OVERRIDES_REVERSE } from "../helpers/createBatchIds.js";
-import { getCachedFabrics, getCachedGlobals } from "../helpers/fabricCache.js";
+import { getEstimateConfig } from "../helpers/fabricCache.js";
 import { estimatePrintLength } from "../../shared/estimatePrintLength.js";
 
 const toError = (err, title = "Operation failed") => toIpcError(err, "unknown", title);
@@ -114,7 +114,7 @@ export const rollbackBatchFromHistory = async ({ batchPath, reason } = {}) => {
           const parsed = p ? { ...p, materialType: p.material ? getMaterialType(p.material) : "Unknown" } : null;
           const fileFabric = parsed?.material ?? null;
           const metersResult = parsed
-            ? estimatePrintLength([parsed], { globals: getCachedGlobals(), fabrics: getCachedFabrics() })
+            ? estimatePrintLength([parsed], getEstimateConfig())
             : null;
           insertRollbackReason({
             id: crypto.randomUUID(),
@@ -218,10 +218,7 @@ export const rollbackFileFromHistory = async ({ filePath, batchPath, reason, rep
           : { ...parsed, materialType }
         : null;
       const metersResult = forLength
-        ? estimatePrintLength(
-            [forLength],
-            { globals: getCachedGlobals(), fabrics: getCachedFabrics() },
-          )
+        ? estimatePrintLength([forLength], getEstimateConfig())
         : null;
       insertRollbackReason({
         id: crypto.randomUUID(),

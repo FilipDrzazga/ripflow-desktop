@@ -5,7 +5,7 @@ import fs from "fs";
 import { estimatePrintLength } from "../../shared/estimatePrintLength.js";
 import { toIpcError } from "../helpers/ipcError.js";
 import { PRINTER } from "../../shared/constants.js";
-import { getFabricByName } from "../helpers/fabricCache.js";
+import { getFabricByName, getEstimateConfig } from "../helpers/fabricCache.js";
 
 const STAGES = {
   INIT: "init",
@@ -77,7 +77,7 @@ const buildPFJobXML = (batch, batchId) => {
   const printGroup = uniquePrintGroups.length === 1 ? uniquePrintGroups[0] : "SAMPLES";
 
   const id = randomUUID();
-  const estimated = estimatePrintLength(batch);
+  const estimated = estimatePrintLength(batch, getEstimateConfig());
   const logisticGroup = `${id}_${estimated.fixedTotalLengthM}m`;
 
   const xml = `

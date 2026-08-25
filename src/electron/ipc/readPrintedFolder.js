@@ -3,6 +3,7 @@ import path from "path";
 import { getStorageRootPath } from "../helpers/getRootPath.js";
 import { parsePrintFileName } from "../helpers/parseFileName.js";
 import { getMaterialType } from "../helpers/getMaterialType.js";
+import { getEstimateConfig } from "../helpers/fabricCache.js";
 import { estimatePrintLength } from "../../shared/estimatePrintLength.js";
 import { getOpenReprintRequestsByFileIds } from "../helpers/db.js";
 import { BATCH_STATUS, FILE_STATUS } from "../../shared/constants.js";
@@ -148,7 +149,7 @@ export const readSingleBatch = async (batchPath, meta) => {
     }
   }
 
-  const { fixedTotalLengthM } = estimatePrintLength(parsedForLength);
+  const { fixedTotalLengthM } = estimatePrintLength(parsedForLength, getEstimateConfig());
 
   return {
     name: path.basename(batchPath),
