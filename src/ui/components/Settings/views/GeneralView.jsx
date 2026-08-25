@@ -179,6 +179,18 @@ const GeneralView = () => {
           </div>
           <p className={styles.hint}>Batch history loads the most recent N days upfront; older days load on demand when expanded.</p>
         </div>
+        <div className={styles.field}>
+          <label className={styles.label}>Client ID</label>
+          <div className={styles.input_row}>
+            <input
+              className={styles.input}
+              value={clientId}
+              onChange={(e) => setClientId(e.target.value)}
+              spellCheck={false}
+            />
+          </div>
+          <p className={styles.hint}>Release channel for this installation. Filters the changelog in Updates; entries marked "all" always show.</p>
+        </div>
       </div>
       <div className={styles.view_footer}>
         <button className={styles.save_btn} onClick={handleSave} disabled={isSaving || !allSettings}>
