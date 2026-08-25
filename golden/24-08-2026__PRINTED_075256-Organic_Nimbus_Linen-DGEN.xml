@@ -1,0 +1,27 @@
+
+    <RipFlowJob>
+      <BatchId>24-08-2026/PRINTED_075256-Organic Nimbus Linen-DGEN</BatchId>
+      <Printer>DGEN</Printer>
+      <NestingGroup>{{UUID}}</NestingGroup>
+      <LogisticGroup>{{UUID}}_1.01m</LogisticGroup>
+      <PhysicalGroup>Organic Nimbus Linen_1.01m</PhysicalGroup>
+      <DocumentCount>1</DocumentCount>
+      <Documents>
+          
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\24-08-2026\PRINTED_075256-Organic Nimbus Linen-DGEN\ON000051_Customer_031_1of1_Organic Nimbus Linen_1x_Linear Meter - 1m increments_XWD00000000000000000000000000000059_FF.pdf</Path>
+          <Name>ON000051_Customer_031_1of1_Organic Nimbus Linen_1x_Linear Meter - 1m increments_XWD00000000000000000000000000000059_FF.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId>XWD00000000000000000000000000000059</DocumentId>
+          <Width>1370</Width>
+          <Height>1000</Height>
+          <Material>Organic Nimbus Linen</Material>
+          <MaterialType>Cottons</MaterialType>
+          <OrderId>ON000051</OrderId>
+          <PrintTypeCode>LM</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>true</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+      </Documents>
+    </RipFlowJob>

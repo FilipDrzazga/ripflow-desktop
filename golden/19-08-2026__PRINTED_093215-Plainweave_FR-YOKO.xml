@@ -1,0 +1,91 @@
+
+    <RipFlowJob>
+      <BatchId>19-08-2026/PRINTED_093215-Plainweave FR-YOKO</BatchId>
+      <Printer>YOKO</Printer>
+      <NestingGroup>{{UUID}}</NestingGroup>
+      <LogisticGroup>{{UUID}}_5.03m</LogisticGroup>
+      <PhysicalGroup>Plainweave FR_5.03m</PhysicalGroup>
+      <DocumentCount>5</DocumentCount>
+      <Documents>
+          
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\19-08-2026\PRINTED_093215-Plainweave FR-YOKO\ON000035_Customer_045_1of5_Plainweave FR_1x_Linear Meter - 1m increments_XWD00000000000000000000000000000066_FF.pdf</Path>
+          <Name>ON000035_Customer_045_1of5_Plainweave FR_1x_Linear Meter - 1m increments_XWD00000000000000000000000000000066_FF.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId>XWD00000000000000000000000000000066</DocumentId>
+          <Width>1420</Width>
+          <Height>1000</Height>
+          <Material>Plainweave FR</Material>
+          <MaterialType>Polyesters</MaterialType>
+          <OrderId>ON000035</OrderId>
+          <PrintTypeCode>LM</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\19-08-2026\PRINTED_093215-Plainweave FR-YOKO\ON000035_Customer_045_2of5_Plainweave FR_1x_Linear Meter - 1m increments_XWD00000000000000000000000000000043_FF.pdf</Path>
+          <Name>ON000035_Customer_045_2of5_Plainweave FR_1x_Linear Meter - 1m increments_XWD00000000000000000000000000000043_FF.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId>XWD00000000000000000000000000000043</DocumentId>
+          <Width>1420</Width>
+          <Height>1000</Height>
+          <Material>Plainweave FR</Material>
+          <MaterialType>Polyesters</MaterialType>
+          <OrderId>ON000035</OrderId>
+          <PrintTypeCode>LM</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\19-08-2026\PRINTED_093215-Plainweave FR-YOKO\ON000035_Customer_045_3of5_Plainweave FR_1x_Linear Meter - 1m increments_XWD00000000000000000000000000000040_FF.pdf</Path>
+          <Name>ON000035_Customer_045_3of5_Plainweave FR_1x_Linear Meter - 1m increments_XWD00000000000000000000000000000040_FF.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId>XWD00000000000000000000000000000040</DocumentId>
+          <Width>1420</Width>
+          <Height>1000</Height>
+          <Material>Plainweave FR</Material>
+          <MaterialType>Polyesters</MaterialType>
+          <OrderId>ON000035</OrderId>
+          <PrintTypeCode>LM</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\19-08-2026\PRINTED_093215-Plainweave FR-YOKO\ON000035_Customer_045_4of5_Plainweave FR_1x_Linear Meter - 1m increments_XWD0000000000000000000000000000006f_FF.pdf</Path>
+          <Name>ON000035_Customer_045_4of5_Plainweave FR_1x_Linear Meter - 1m increments_XWD0000000000000000000000000000006f_FF.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId>XWD0000000000000000000000000000006f</DocumentId>
+          <Width>1420</Width>
+          <Height>1000</Height>
+          <Material>Plainweave FR</Material>
+          <MaterialType>Polyesters</MaterialType>
+          <OrderId>ON000035</OrderId>
+          <PrintTypeCode>LM</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\19-08-2026\PRINTED_093215-Plainweave FR-YOKO\ON000035_Customer_045_5of5_Plainweave FR_1x_Linear Meter - 1m increments_XWD00000000000000000000000000000074_FF.pdf</Path>
+          <Name>ON000035_Customer_045_5of5_Plainweave FR_1x_Linear Meter - 1m increments_XWD00000000000000000000000000000074_FF.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId>XWD00000000000000000000000000000074</DocumentId>
+          <Width>1420</Width>
+          <Height>1000</Height>
+          <Material>Plainweave FR</Material>
+          <MaterialType>Polyesters</MaterialType>
+          <OrderId>ON000035</OrderId>
+          <PrintTypeCode>LM</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+      </Documents>
+    </RipFlowJob>

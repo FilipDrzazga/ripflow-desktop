@@ -1,0 +1,43 @@
+
+    <RipFlowJob>
+      <BatchId>11-08-2026/PRINTED_220529-Organza-YOKO</BatchId>
+      <Printer>YOKO</Printer>
+      <NestingGroup>{{UUID}}</NestingGroup>
+      <LogisticGroup>{{UUID}}_44.01m</LogisticGroup>
+      <PhysicalGroup>Organza_44.01m</PhysicalGroup>
+      <DocumentCount>2</DocumentCount>
+      <Documents>
+          
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\11-08-2026\PRINTED_220529-Organza-YOKO\ON000009_Customer_003_1of8_Organza_19x_Linear Meter - 1m increments_XWD00000000000000000000000000000063_FF.pdf</Path>
+          <Name>ON000009_Customer_003_1of8_Organza_19x_Linear Meter - 1m increments_XWD00000000000000000000000000000063_FF.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId>XWD00000000000000000000000000000063</DocumentId>
+          <Width>1420</Width>
+          <Height>19000</Height>
+          <Material>Organza</Material>
+          <MaterialType>Polyesters</MaterialType>
+          <OrderId>ON000009</OrderId>
+          <PrintTypeCode>LM</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\11-08-2026\PRINTED_220529-Organza-YOKO\ON000009_Customer_003_2of8_Organza_25x_Linear Meter - 1m increments_XWD00000000000000000000000000000054_FF.pdf</Path>
+          <Name>ON000009_Customer_003_2of8_Organza_25x_Linear Meter - 1m increments_XWD00000000000000000000000000000054_FF.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId>XWD00000000000000000000000000000054</DocumentId>
+          <Width>1420</Width>
+          <Height>25000</Height>
+          <Material>Organza</Material>
+          <MaterialType>Polyesters</MaterialType>
+          <OrderId>ON000009</OrderId>
+          <PrintTypeCode>LM</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+      </Documents>
+    </RipFlowJob>

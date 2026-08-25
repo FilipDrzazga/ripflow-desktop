@@ -1,0 +1,27 @@
+
+    <RipFlowJob>
+      <BatchId>20-08-2026/PRINTED_113553-Active Eco Lycra-YOKO</BatchId>
+      <Printer>YOKO</Printer>
+      <NestingGroup>{{UUID}}</NestingGroup>
+      <LogisticGroup>{{UUID}}_1m</LogisticGroup>
+      <PhysicalGroup>Active Eco Lycra_1m</PhysicalGroup>
+      <DocumentCount>1</DocumentCount>
+      <Documents>
+          
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\20-08-2026\PRINTED_113553-Active Eco Lycra-YOKO\ON000040_Customer_047_1of1_Active Eco Lycra_1x_Linear Meter - 1m increments_XWD00000000000000000000000000000058_FF.pdf</Path>
+          <Name>ON000040_Customer_047_1of1_Active Eco Lycra_1x_Linear Meter - 1m increments_XWD00000000000000000000000000000058_FF.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId>XWD00000000000000000000000000000058</DocumentId>
+          <Width>1420</Width>
+          <Height>1000</Height>
+          <Material>Active Eco Lycra</Material>
+          <MaterialType>Polyesters</MaterialType>
+          <OrderId>ON000040</OrderId>
+          <PrintTypeCode>LM</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+      </Documents>
+    </RipFlowJob>

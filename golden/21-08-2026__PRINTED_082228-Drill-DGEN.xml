@@ -1,0 +1,171 @@
+
+    <RipFlowJob>
+      <BatchId>21-08-2026/PRINTED_082228-Drill-DGEN</BatchId>
+      <Printer>DGEN</Printer>
+      <NestingGroup>{{UUID}}</NestingGroup>
+      <LogisticGroup>{{UUID}}_5.61m</LogisticGroup>
+      <PhysicalGroup>Drill_5.61m</PhysicalGroup>
+      <DocumentCount>10</DocumentCount>
+      <Documents>
+          
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\21-08-2026\PRINTED_082228-Drill-DGEN\ON000048_Customer_069_10of10_Custom Tea Towel_Drill _ Fully Sewn_6_FF_4116.pdf</Path>
+          <Name>ON000048_Customer_069_10of10_Custom Tea Towel_Drill _ Fully Sewn_6_FF_4116.pdf</Name>
+          <Copies>6</Copies>
+          <DocumentId></DocumentId>
+          <Width>700</Width>
+          <Height>500</Height>
+          <Material>Drill</Material>
+          <MaterialType>Cottons</MaterialType>
+          <OrderId>ON000048</OrderId>
+          <PrintTypeCode>TEA_TOWEL</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\21-08-2026\PRINTED_082228-Drill-DGEN\ON000048_Customer_069_1of10_Custom Tea Towel_Drill _ Fully Sewn_2_FF_4137.pdf</Path>
+          <Name>ON000048_Customer_069_1of10_Custom Tea Towel_Drill _ Fully Sewn_2_FF_4137.pdf</Name>
+          <Copies>2</Copies>
+          <DocumentId></DocumentId>
+          <Width>700</Width>
+          <Height>500</Height>
+          <Material>Drill</Material>
+          <MaterialType>Cottons</MaterialType>
+          <OrderId>ON000048</OrderId>
+          <PrintTypeCode>TEA_TOWEL</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\21-08-2026\PRINTED_082228-Drill-DGEN\ON000048_Customer_069_2of10_Custom Tea Towel_Drill _ Fully Sewn_2_FF_4136.pdf</Path>
+          <Name>ON000048_Customer_069_2of10_Custom Tea Towel_Drill _ Fully Sewn_2_FF_4136.pdf</Name>
+          <Copies>2</Copies>
+          <DocumentId></DocumentId>
+          <Width>700</Width>
+          <Height>500</Height>
+          <Material>Drill</Material>
+          <MaterialType>Cottons</MaterialType>
+          <OrderId>ON000048</OrderId>
+          <PrintTypeCode>TEA_TOWEL</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\21-08-2026\PRINTED_082228-Drill-DGEN\ON000048_Customer_069_3of10_Custom Tea Towel_Drill _ Fully Sewn_1_FF_4135.pdf</Path>
+          <Name>ON000048_Customer_069_3of10_Custom Tea Towel_Drill _ Fully Sewn_1_FF_4135.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId></DocumentId>
+          <Width>700</Width>
+          <Height>500</Height>
+          <Material>Drill</Material>
+          <MaterialType>Cottons</MaterialType>
+          <OrderId>ON000048</OrderId>
+          <PrintTypeCode>TEA_TOWEL</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\21-08-2026\PRINTED_082228-Drill-DGEN\ON000048_Customer_069_4of10_Custom Tea Towel_Drill _ Fully Sewn_2_FF_4134.pdf</Path>
+          <Name>ON000048_Customer_069_4of10_Custom Tea Towel_Drill _ Fully Sewn_2_FF_4134.pdf</Name>
+          <Copies>2</Copies>
+          <DocumentId></DocumentId>
+          <Width>700</Width>
+          <Height>500</Height>
+          <Material>Drill</Material>
+          <MaterialType>Cottons</MaterialType>
+          <OrderId>ON000048</OrderId>
+          <PrintTypeCode>TEA_TOWEL</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\21-08-2026\PRINTED_082228-Drill-DGEN\ON000048_Customer_069_5of10_Custom Tea Towel_Drill _ Fully Sewn_1_FF_4133.pdf</Path>
+          <Name>ON000048_Customer_069_5of10_Custom Tea Towel_Drill _ Fully Sewn_1_FF_4133.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId></DocumentId>
+          <Width>700</Width>
+          <Height>500</Height>
+          <Material>Drill</Material>
+          <MaterialType>Cottons</MaterialType>
+          <OrderId>ON000048</OrderId>
+          <PrintTypeCode>TEA_TOWEL</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\21-08-2026\PRINTED_082228-Drill-DGEN\ON000048_Customer_069_6of10_Custom Tea Towel_Drill _ Fully Sewn_2_FF_4132.pdf</Path>
+          <Name>ON000048_Customer_069_6of10_Custom Tea Towel_Drill _ Fully Sewn_2_FF_4132.pdf</Name>
+          <Copies>2</Copies>
+          <DocumentId></DocumentId>
+          <Width>700</Width>
+          <Height>500</Height>
+          <Material>Drill</Material>
+          <MaterialType>Cottons</MaterialType>
+          <OrderId>ON000048</OrderId>
+          <PrintTypeCode>TEA_TOWEL</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\21-08-2026\PRINTED_082228-Drill-DGEN\ON000048_Customer_069_7of10_Custom Tea Towel_Drill _ Fully Sewn_1_FF_4120.pdf</Path>
+          <Name>ON000048_Customer_069_7of10_Custom Tea Towel_Drill _ Fully Sewn_1_FF_4120.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId></DocumentId>
+          <Width>700</Width>
+          <Height>500</Height>
+          <Material>Drill</Material>
+          <MaterialType>Cottons</MaterialType>
+          <OrderId>ON000048</OrderId>
+          <PrintTypeCode>TEA_TOWEL</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\21-08-2026\PRINTED_082228-Drill-DGEN\ON000048_Customer_069_8of10_Custom Tea Towel_Drill _ Fully Sewn_2_FF_4118.pdf</Path>
+          <Name>ON000048_Customer_069_8of10_Custom Tea Towel_Drill _ Fully Sewn_2_FF_4118.pdf</Name>
+          <Copies>2</Copies>
+          <DocumentId></DocumentId>
+          <Width>700</Width>
+          <Height>500</Height>
+          <Material>Drill</Material>
+          <MaterialType>Cottons</MaterialType>
+          <OrderId>ON000048</OrderId>
+          <PrintTypeCode>TEA_TOWEL</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\21-08-2026\PRINTED_082228-Drill-DGEN\ON000048_Customer_069_9of10_Custom Tea Towel_Drill _ Fully Sewn_3_FF_4117.pdf</Path>
+          <Name>ON000048_Customer_069_9of10_Custom Tea Towel_Drill _ Fully Sewn_3_FF_4117.pdf</Name>
+          <Copies>3</Copies>
+          <DocumentId></DocumentId>
+          <Width>700</Width>
+          <Height>500</Height>
+          <Material>Drill</Material>
+          <MaterialType>Cottons</MaterialType>
+          <OrderId>ON000048</OrderId>
+          <PrintTypeCode>TEA_TOWEL</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+      </Documents>
+    </RipFlowJob>

@@ -1,0 +1,27 @@
+
+    <RipFlowJob>
+      <BatchId>17-08-2026/PRINTED_142443-Eco rPet Canvas-YUMI</BatchId>
+      <Printer>YUMI</Printer>
+      <NestingGroup>{{UUID}}</NestingGroup>
+      <LogisticGroup>{{UUID}}_2m</LogisticGroup>
+      <PhysicalGroup>Eco rPet Canvas_2m</PhysicalGroup>
+      <DocumentCount>1</DocumentCount>
+      <Documents>
+          
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\17-08-2026\PRINTED_142443-Eco rPet Canvas-YUMI\ON000021_Customer_060_2of2_Eco rPet Canvas_2x_Linear Meter - 1m increments_XWD00000000000000000000000000000021_FF.pdf</Path>
+          <Name>ON000021_Customer_060_2of2_Eco rPet Canvas_2x_Linear Meter - 1m increments_XWD00000000000000000000000000000021_FF.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId>XWD00000000000000000000000000000021</DocumentId>
+          <Width>1420</Width>
+          <Height>2000</Height>
+          <Material>Eco rPet Canvas</Material>
+          <MaterialType>Polyesters</MaterialType>
+          <OrderId>ON000021</OrderId>
+          <PrintTypeCode>LM</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+      </Documents>
+    </RipFlowJob>

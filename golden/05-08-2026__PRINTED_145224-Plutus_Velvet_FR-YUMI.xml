@@ -1,0 +1,27 @@
+
+    <RipFlowJob>
+      <BatchId>05-08-2026/PRINTED_145224-Plutus Velvet FR-YUMI</BatchId>
+      <Printer>YUMI</Printer>
+      <NestingGroup>{{UUID}}</NestingGroup>
+      <LogisticGroup>{{UUID}}_22m</LogisticGroup>
+      <PhysicalGroup>Plutus Velvet FR_22m</PhysicalGroup>
+      <DocumentCount>1</DocumentCount>
+      <Documents>
+          
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\05-08-2026\PRINTED_145224-Plutus Velvet FR-YUMI\ON000002_Customer_024_1of1_Plutus Velvet FR_22x_Linear Meter - 1m increments_XWD0000000000000000000000000000004d_FF.pdf</Path>
+          <Name>ON000002_Customer_024_1of1_Plutus Velvet FR_22x_Linear Meter - 1m increments_XWD0000000000000000000000000000004d_FF.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId>XWD0000000000000000000000000000004d</DocumentId>
+          <Width>1420</Width>
+          <Height>22000</Height>
+          <Material>Plutus Velvet FR</Material>
+          <MaterialType>Polyesters</MaterialType>
+          <OrderId>ON000002</OrderId>
+          <PrintTypeCode>LM</PrintTypeCode>
+          <IsVelvet>true</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+      </Documents>
+    </RipFlowJob>

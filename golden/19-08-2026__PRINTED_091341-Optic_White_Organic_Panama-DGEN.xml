@@ -1,0 +1,27 @@
+
+    <RipFlowJob>
+      <BatchId>19-08-2026/PRINTED_091341-Optic White Organic Panama-DGEN</BatchId>
+      <Printer>DGEN</Printer>
+      <NestingGroup>{{UUID}}</NestingGroup>
+      <LogisticGroup>{{UUID}}_1.01m</LogisticGroup>
+      <PhysicalGroup>Optic White Organic Panama_1.01m</PhysicalGroup>
+      <DocumentCount>1</DocumentCount>
+      <Documents>
+          
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\19-08-2026\PRINTED_091341-Optic White Organic Panama-DGEN\ON000025_Customer_013_2of2_Optic White Organic Panama_1x_Linear Meter - 1m increments_XWD00000000000000000000000000000039_FF.pdf</Path>
+          <Name>ON000025_Customer_013_2of2_Optic White Organic Panama_1x_Linear Meter - 1m increments_XWD00000000000000000000000000000039_FF.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId>XWD00000000000000000000000000000039</DocumentId>
+          <Width>1420</Width>
+          <Height>1000</Height>
+          <Material>Optic White Organic Panama</Material>
+          <MaterialType>Cottons</MaterialType>
+          <OrderId>ON000025</OrderId>
+          <PrintTypeCode>LM</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+      </Documents>
+    </RipFlowJob>

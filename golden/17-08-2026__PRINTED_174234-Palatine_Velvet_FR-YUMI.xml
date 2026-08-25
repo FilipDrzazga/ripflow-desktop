@@ -1,0 +1,59 @@
+
+    <RipFlowJob>
+      <BatchId>17-08-2026/PRINTED_174234-Palatine Velvet FR-YUMI</BatchId>
+      <Printer>YUMI</Printer>
+      <NestingGroup>{{UUID}}</NestingGroup>
+      <LogisticGroup>{{UUID}}_1.49m</LogisticGroup>
+      <PhysicalGroup>Palatine Velvet FR_1.49m</PhysicalGroup>
+      <DocumentCount>3</DocumentCount>
+      <Documents>
+          
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\17-08-2026\PRINTED_174234-Palatine Velvet FR-YUMI\ON000017_Customer_076_1of2_Palatine Velvet FR_1x_Fat Quarter - 65 x 48 cm_XWD00000000000000000000000000000008_FF.pdf</Path>
+          <Name>ON000017_Customer_076_1of2_Palatine Velvet FR_1x_Fat Quarter - 65 x 48 cm_XWD00000000000000000000000000000008_FF.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId>XWD00000000000000000000000000000008</DocumentId>
+          <Width>670</Width>
+          <Height>480</Height>
+          <Material>Palatine Velvet FR</Material>
+          <MaterialType>Polyesters</MaterialType>
+          <OrderId>ON000017</OrderId>
+          <PrintTypeCode>FQ</PrintTypeCode>
+          <IsVelvet>true</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\17-08-2026\PRINTED_174234-Palatine Velvet FR-YUMI\ON000017_Customer_076_2of2_Palatine Velvet FR_1x_Fat Quarter - 65 x 48 cm_XWD0000000000000000000000000000000e_FF.pdf</Path>
+          <Name>ON000017_Customer_076_2of2_Palatine Velvet FR_1x_Fat Quarter - 65 x 48 cm_XWD0000000000000000000000000000000e_FF.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId>XWD0000000000000000000000000000000e</DocumentId>
+          <Width>670</Width>
+          <Height>480</Height>
+          <Material>Palatine Velvet FR</Material>
+          <MaterialType>Polyesters</MaterialType>
+          <OrderId>ON000017</OrderId>
+          <PrintTypeCode>FQ</PrintTypeCode>
+          <IsVelvet>true</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\17-08-2026\PRINTED_174234-Palatine Velvet FR-YUMI\ON000023_Customer_059_1of1_Palatine Velvet FR_1x_Linear Meter - 1m increments_XWD00000000000000000000000000000022_FF.pdf</Path>
+          <Name>ON000023_Customer_059_1of1_Palatine Velvet FR_1x_Linear Meter - 1m increments_XWD00000000000000000000000000000022_FF.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId>XWD00000000000000000000000000000022</DocumentId>
+          <Width>1420</Width>
+          <Height>1000</Height>
+          <Material>Palatine Velvet FR</Material>
+          <MaterialType>Polyesters</MaterialType>
+          <OrderId>ON000023</OrderId>
+          <PrintTypeCode>LM</PrintTypeCode>
+          <IsVelvet>true</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+      </Documents>
+    </RipFlowJob>

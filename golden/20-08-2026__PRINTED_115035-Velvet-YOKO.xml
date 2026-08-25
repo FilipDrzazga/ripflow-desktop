@@ -1,0 +1,91 @@
+
+    <RipFlowJob>
+      <BatchId>20-08-2026/PRINTED_115035-Velvet-YOKO</BatchId>
+      <Printer>YOKO</Printer>
+      <NestingGroup>{{UUID}}</NestingGroup>
+      <LogisticGroup>{{UUID}}_8.03m</LogisticGroup>
+      <PhysicalGroup>Velvet_8.03m</PhysicalGroup>
+      <DocumentCount>5</DocumentCount>
+      <Documents>
+          
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\20-08-2026\PRINTED_115035-Velvet-YOKO\ON000041_Customer_074_1of5_Velvet_1x_Linear Meter - 1m increments_XWD0000000000000000000000000000001f_FF.pdf</Path>
+          <Name>ON000041_Customer_074_1of5_Velvet_1x_Linear Meter - 1m increments_XWD0000000000000000000000000000001f_FF.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId>XWD0000000000000000000000000000001f</DocumentId>
+          <Width>1420</Width>
+          <Height>1000</Height>
+          <Material>Velvet</Material>
+          <MaterialType>Polyesters</MaterialType>
+          <OrderId>ON000041</OrderId>
+          <PrintTypeCode>LM</PrintTypeCode>
+          <IsVelvet>true</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\20-08-2026\PRINTED_115035-Velvet-YOKO\ON000041_Customer_074_2of5_Velvet_2x_Linear Meter - 1m increments_XWD00000000000000000000000000000070_FF.pdf</Path>
+          <Name>ON000041_Customer_074_2of5_Velvet_2x_Linear Meter - 1m increments_XWD00000000000000000000000000000070_FF.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId>XWD00000000000000000000000000000070</DocumentId>
+          <Width>1420</Width>
+          <Height>2000</Height>
+          <Material>Velvet</Material>
+          <MaterialType>Polyesters</MaterialType>
+          <OrderId>ON000041</OrderId>
+          <PrintTypeCode>LM</PrintTypeCode>
+          <IsVelvet>true</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\20-08-2026\PRINTED_115035-Velvet-YOKO\ON000041_Customer_074_3of5_Velvet_1x_Linear Meter - 1m increments_XWD0000000000000000000000000000003d_FF.pdf</Path>
+          <Name>ON000041_Customer_074_3of5_Velvet_1x_Linear Meter - 1m increments_XWD0000000000000000000000000000003d_FF.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId>XWD0000000000000000000000000000003d</DocumentId>
+          <Width>1420</Width>
+          <Height>1000</Height>
+          <Material>Velvet</Material>
+          <MaterialType>Polyesters</MaterialType>
+          <OrderId>ON000041</OrderId>
+          <PrintTypeCode>LM</PrintTypeCode>
+          <IsVelvet>true</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\20-08-2026\PRINTED_115035-Velvet-YOKO\ON000041_Customer_074_4of5_Velvet_1x_Linear Meter - 1m increments_XWD00000000000000000000000000000030_FF.pdf</Path>
+          <Name>ON000041_Customer_074_4of5_Velvet_1x_Linear Meter - 1m increments_XWD00000000000000000000000000000030_FF.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId>XWD00000000000000000000000000000030</DocumentId>
+          <Width>1420</Width>
+          <Height>1000</Height>
+          <Material>Velvet</Material>
+          <MaterialType>Polyesters</MaterialType>
+          <OrderId>ON000041</OrderId>
+          <PrintTypeCode>LM</PrintTypeCode>
+          <IsVelvet>true</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\20-08-2026\PRINTED_115035-Velvet-YOKO\ON000041_Customer_074_5of5_Velvet_3x_Linear Meter - 1m increments_XWD0000000000000000000000000000000f_FF.pdf</Path>
+          <Name>ON000041_Customer_074_5of5_Velvet_3x_Linear Meter - 1m increments_XWD0000000000000000000000000000000f_FF.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId>XWD0000000000000000000000000000000f</DocumentId>
+          <Width>1420</Width>
+          <Height>3000</Height>
+          <Material>Velvet</Material>
+          <MaterialType>Polyesters</MaterialType>
+          <OrderId>ON000041</OrderId>
+          <PrintTypeCode>LM</PrintTypeCode>
+          <IsVelvet>true</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+      </Documents>
+    </RipFlowJob>

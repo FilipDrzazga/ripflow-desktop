@@ -1,0 +1,43 @@
+
+    <RipFlowJob>
+      <BatchId>20-08-2026/PRINTED_221653-Eco Chiffon-YOKO</BatchId>
+      <Printer>YOKO</Printer>
+      <NestingGroup>{{UUID}}</NestingGroup>
+      <LogisticGroup>{{UUID}}_4.01m</LogisticGroup>
+      <PhysicalGroup>Eco Chiffon_4.01m</PhysicalGroup>
+      <DocumentCount>2</DocumentCount>
+      <Documents>
+          
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\20-08-2026\PRINTED_221653-Eco Chiffon-YOKO\ON000055_Customer_025_1of2_Eco Chiffon_2x_Linear Meter - 1m increments_XWD0000000000000000000000000000006a_FF.pdf</Path>
+          <Name>ON000055_Customer_025_1of2_Eco Chiffon_2x_Linear Meter - 1m increments_XWD0000000000000000000000000000006a_FF.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId>XWD0000000000000000000000000000006a</DocumentId>
+          <Width>1420</Width>
+          <Height>2000</Height>
+          <Material>Eco Chiffon</Material>
+          <MaterialType>Polyesters</MaterialType>
+          <OrderId>ON000055</OrderId>
+          <PrintTypeCode>LM</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\20-08-2026\PRINTED_221653-Eco Chiffon-YOKO\ON000055_Customer_025_2of2_Eco Chiffon_2x_Linear Meter - 1m increments_XWD00000000000000000000000000000017_FF.pdf</Path>
+          <Name>ON000055_Customer_025_2of2_Eco Chiffon_2x_Linear Meter - 1m increments_XWD00000000000000000000000000000017_FF.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId>XWD00000000000000000000000000000017</DocumentId>
+          <Width>1420</Width>
+          <Height>2000</Height>
+          <Material>Eco Chiffon</Material>
+          <MaterialType>Polyesters</MaterialType>
+          <OrderId>ON000055</OrderId>
+          <PrintTypeCode>LM</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+      </Documents>
+    </RipFlowJob>

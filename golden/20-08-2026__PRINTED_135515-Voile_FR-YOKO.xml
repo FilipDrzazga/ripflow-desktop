@@ -1,0 +1,43 @@
+
+    <RipFlowJob>
+      <BatchId>20-08-2026/PRINTED_135515-Voile FR-YOKO</BatchId>
+      <Printer>YOKO</Printer>
+      <NestingGroup>{{UUID}}</NestingGroup>
+      <LogisticGroup>{{UUID}}_10.01m</LogisticGroup>
+      <PhysicalGroup>Voile FR_10.01m</PhysicalGroup>
+      <DocumentCount>2</DocumentCount>
+      <Documents>
+          
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\20-08-2026\PRINTED_135515-Voile FR-YOKO\ON000042_Customer_067_1of2_Voile FR_6x_Linear Meter - 1m increments_XWD0000000000000000000000000000003b_FF.pdf</Path>
+          <Name>ON000042_Customer_067_1of2_Voile FR_6x_Linear Meter - 1m increments_XWD0000000000000000000000000000003b_FF.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId>XWD0000000000000000000000000000003b</DocumentId>
+          <Width>1420</Width>
+          <Height>6000</Height>
+          <Material>Voile FR</Material>
+          <MaterialType>Polyesters</MaterialType>
+          <OrderId>ON000042</OrderId>
+          <PrintTypeCode>LM</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\20-08-2026\PRINTED_135515-Voile FR-YOKO\ON000042_Customer_067_2of2_Voile FR_4x_Linear Meter - 1m increments_XWD00000000000000000000000000000020_FF.pdf</Path>
+          <Name>ON000042_Customer_067_2of2_Voile FR_4x_Linear Meter - 1m increments_XWD00000000000000000000000000000020_FF.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId>XWD00000000000000000000000000000020</DocumentId>
+          <Width>1420</Width>
+          <Height>4000</Height>
+          <Material>Voile FR</Material>
+          <MaterialType>Polyesters</MaterialType>
+          <OrderId>ON000042</OrderId>
+          <PrintTypeCode>LM</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+      </Documents>
+    </RipFlowJob>

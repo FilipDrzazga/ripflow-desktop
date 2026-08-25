@@ -1,0 +1,27 @@
+
+    <RipFlowJob>
+      <BatchId>20-08-2026/PRINTED_113543-Eco Velvet-YOKO</BatchId>
+      <Printer>YOKO</Printer>
+      <NestingGroup>{{UUID}}</NestingGroup>
+      <LogisticGroup>{{UUID}}_1m</LogisticGroup>
+      <PhysicalGroup>Eco Velvet_1m</PhysicalGroup>
+      <DocumentCount>1</DocumentCount>
+      <Documents>
+          
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\20-08-2026\PRINTED_113543-Eco Velvet-YOKO\ON000025_Customer_013_1of2_Eco Velvet_1x_Linear Meter - 1m increments_XWD0000000000000000000000000000005c_FF.pdf</Path>
+          <Name>ON000025_Customer_013_1of2_Eco Velvet_1x_Linear Meter - 1m increments_XWD0000000000000000000000000000005c_FF.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId>XWD0000000000000000000000000000005c</DocumentId>
+          <Width>1420</Width>
+          <Height>1000</Height>
+          <Material>Eco Velvet</Material>
+          <MaterialType>Polyesters</MaterialType>
+          <OrderId>ON000025</OrderId>
+          <PrintTypeCode>LM</PrintTypeCode>
+          <IsVelvet>true</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+      </Documents>
+    </RipFlowJob>

@@ -1,0 +1,459 @@
+
+    <RipFlowJob>
+      <BatchId>17-08-2026/PRINTED_002038-Organic Leve Panama Natural-DGEN</BatchId>
+      <Printer>DGEN</Printer>
+      <NestingGroup>{{UUID}}</NestingGroup>
+      <LogisticGroup>{{UUID}}_16.32m</LogisticGroup>
+      <PhysicalGroup>Organic Leve Panama Natural_16.32m</PhysicalGroup>
+      <DocumentCount>28</DocumentCount>
+      <Documents>
+          
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\17-08-2026\PRINTED_002038-Organic Leve Panama Natural-DGEN\ON000014_Customer_010_1of1_Custom Tea Towel_Organic Leve Panama Natural _ Fully Sewn_35_FF_4065.pdf</Path>
+          <Name>ON000014_Customer_010_1of1_Custom Tea Towel_Organic Leve Panama Natural _ Fully Sewn_35_FF_4065.pdf</Name>
+          <Copies>35</Copies>
+          <DocumentId></DocumentId>
+          <Width>700</Width>
+          <Height>500</Height>
+          <Material>Organic Leve Panama Natural</Material>
+          <MaterialType>Cottons</MaterialType>
+          <OrderId>ON000014</OrderId>
+          <PrintTypeCode>TEA_TOWEL</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\17-08-2026\PRINTED_002038-Organic Leve Panama Natural-DGEN\ON000019_Customer_056_1of1_Custom Tea Towel_Organic Leve Panama Natural _ Fully Sewn_2_FF_4067.pdf</Path>
+          <Name>ON000019_Customer_056_1of1_Custom Tea Towel_Organic Leve Panama Natural _ Fully Sewn_2_FF_4067.pdf</Name>
+          <Copies>2</Copies>
+          <DocumentId></DocumentId>
+          <Width>700</Width>
+          <Height>500</Height>
+          <Material>Organic Leve Panama Natural</Material>
+          <MaterialType>Cottons</MaterialType>
+          <OrderId>ON000019</OrderId>
+          <PrintTypeCode>TEA_TOWEL</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\17-08-2026\PRINTED_002038-Organic Leve Panama Natural-DGEN\ON000020_Customer_018_2of3_Custom Tea Towel_Organic Leve Panama Natural _ Fully Sewn_1_FF_4071.pdf</Path>
+          <Name>ON000020_Customer_018_2of3_Custom Tea Towel_Organic Leve Panama Natural _ Fully Sewn_1_FF_4071.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId></DocumentId>
+          <Width>700</Width>
+          <Height>500</Height>
+          <Material>Organic Leve Panama Natural</Material>
+          <MaterialType>Cottons</MaterialType>
+          <OrderId>ON000020</OrderId>
+          <PrintTypeCode>TEA_TOWEL</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\17-08-2026\PRINTED_002038-Organic Leve Panama Natural-DGEN\ON000020_Customer_018_3of3_Custom Tea Towel_Organic Leve Panama Natural _ Fully Sewn_1_FF_4069.pdf</Path>
+          <Name>ON000020_Customer_018_3of3_Custom Tea Towel_Organic Leve Panama Natural _ Fully Sewn_1_FF_4069.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId></DocumentId>
+          <Width>700</Width>
+          <Height>500</Height>
+          <Material>Organic Leve Panama Natural</Material>
+          <MaterialType>Cottons</MaterialType>
+          <OrderId>ON000020</OrderId>
+          <PrintTypeCode>TEA_TOWEL</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\17-08-2026\PRINTED_002038-Organic Leve Panama Natural-DGEN\ON000022_Customer_053_10of24_Custom Tea Towel_Organic Leve Panama Natural _ Fully Sewn_1_FF_4092.pdf</Path>
+          <Name>ON000022_Customer_053_10of24_Custom Tea Towel_Organic Leve Panama Natural _ Fully Sewn_1_FF_4092.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId></DocumentId>
+          <Width>700</Width>
+          <Height>500</Height>
+          <Material>Organic Leve Panama Natural</Material>
+          <MaterialType>Cottons</MaterialType>
+          <OrderId>ON000022</OrderId>
+          <PrintTypeCode>TEA_TOWEL</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\17-08-2026\PRINTED_002038-Organic Leve Panama Natural-DGEN\ON000022_Customer_053_11of24_Custom Tea Towel_Organic Leve Panama Natural _ Fully Sewn_1_FF_4091.pdf</Path>
+          <Name>ON000022_Customer_053_11of24_Custom Tea Towel_Organic Leve Panama Natural _ Fully Sewn_1_FF_4091.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId></DocumentId>
+          <Width>700</Width>
+          <Height>500</Height>
+          <Material>Organic Leve Panama Natural</Material>
+          <MaterialType>Cottons</MaterialType>
+          <OrderId>ON000022</OrderId>
+          <PrintTypeCode>TEA_TOWEL</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\17-08-2026\PRINTED_002038-Organic Leve Panama Natural-DGEN\ON000022_Customer_053_12of24_Custom Tea Towel_Organic Leve Panama Natural _ Fully Sewn_1_FF_4090.pdf</Path>
+          <Name>ON000022_Customer_053_12of24_Custom Tea Towel_Organic Leve Panama Natural _ Fully Sewn_1_FF_4090.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId></DocumentId>
+          <Width>700</Width>
+          <Height>500</Height>
+          <Material>Organic Leve Panama Natural</Material>
+          <MaterialType>Cottons</MaterialType>
+          <OrderId>ON000022</OrderId>
+          <PrintTypeCode>TEA_TOWEL</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\17-08-2026\PRINTED_002038-Organic Leve Panama Natural-DGEN\ON000022_Customer_053_13of24_Custom Tea Towel_Organic Leve Panama Natural _ Fully Sewn_1_FF_4089.pdf</Path>
+          <Name>ON000022_Customer_053_13of24_Custom Tea Towel_Organic Leve Panama Natural _ Fully Sewn_1_FF_4089.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId></DocumentId>
+          <Width>700</Width>
+          <Height>500</Height>
+          <Material>Organic Leve Panama Natural</Material>
+          <MaterialType>Cottons</MaterialType>
+          <OrderId>ON000022</OrderId>
+          <PrintTypeCode>TEA_TOWEL</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\17-08-2026\PRINTED_002038-Organic Leve Panama Natural-DGEN\ON000022_Customer_053_14of24_Custom Tea Towel_Organic Leve Panama Natural _ Fully Sewn_1_FF_4088.pdf</Path>
+          <Name>ON000022_Customer_053_14of24_Custom Tea Towel_Organic Leve Panama Natural _ Fully Sewn_1_FF_4088.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId></DocumentId>
+          <Width>700</Width>
+          <Height>500</Height>
+          <Material>Organic Leve Panama Natural</Material>
+          <MaterialType>Cottons</MaterialType>
+          <OrderId>ON000022</OrderId>
+          <PrintTypeCode>TEA_TOWEL</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\17-08-2026\PRINTED_002038-Organic Leve Panama Natural-DGEN\ON000022_Customer_053_15of24_Custom Tea Towel_Organic Leve Panama Natural _ Fully Sewn_1_FF_4087.pdf</Path>
+          <Name>ON000022_Customer_053_15of24_Custom Tea Towel_Organic Leve Panama Natural _ Fully Sewn_1_FF_4087.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId></DocumentId>
+          <Width>700</Width>
+          <Height>500</Height>
+          <Material>Organic Leve Panama Natural</Material>
+          <MaterialType>Cottons</MaterialType>
+          <OrderId>ON000022</OrderId>
+          <PrintTypeCode>TEA_TOWEL</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\17-08-2026\PRINTED_002038-Organic Leve Panama Natural-DGEN\ON000022_Customer_053_16of24_Custom Tea Towel_Organic Leve Panama Natural _ Fully Sewn_1_FF_4086.pdf</Path>
+          <Name>ON000022_Customer_053_16of24_Custom Tea Towel_Organic Leve Panama Natural _ Fully Sewn_1_FF_4086.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId></DocumentId>
+          <Width>700</Width>
+          <Height>500</Height>
+          <Material>Organic Leve Panama Natural</Material>
+          <MaterialType>Cottons</MaterialType>
+          <OrderId>ON000022</OrderId>
+          <PrintTypeCode>TEA_TOWEL</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\17-08-2026\PRINTED_002038-Organic Leve Panama Natural-DGEN\ON000022_Customer_053_17of24_Custom Tea Towel_Organic Leve Panama Natural _ Fully Sewn_1_FF_4085.pdf</Path>
+          <Name>ON000022_Customer_053_17of24_Custom Tea Towel_Organic Leve Panama Natural _ Fully Sewn_1_FF_4085.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId></DocumentId>
+          <Width>700</Width>
+          <Height>500</Height>
+          <Material>Organic Leve Panama Natural</Material>
+          <MaterialType>Cottons</MaterialType>
+          <OrderId>ON000022</OrderId>
+          <PrintTypeCode>TEA_TOWEL</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\17-08-2026\PRINTED_002038-Organic Leve Panama Natural-DGEN\ON000022_Customer_053_18of24_Custom Tea Towel_Organic Leve Panama Natural _ Fully Sewn_1_FF_4084.pdf</Path>
+          <Name>ON000022_Customer_053_18of24_Custom Tea Towel_Organic Leve Panama Natural _ Fully Sewn_1_FF_4084.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId></DocumentId>
+          <Width>700</Width>
+          <Height>500</Height>
+          <Material>Organic Leve Panama Natural</Material>
+          <MaterialType>Cottons</MaterialType>
+          <OrderId>ON000022</OrderId>
+          <PrintTypeCode>TEA_TOWEL</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\17-08-2026\PRINTED_002038-Organic Leve Panama Natural-DGEN\ON000022_Customer_053_19of24_Custom Tea Towel_Organic Leve Panama Natural _ Fully Sewn_1_FF_4083.pdf</Path>
+          <Name>ON000022_Customer_053_19of24_Custom Tea Towel_Organic Leve Panama Natural _ Fully Sewn_1_FF_4083.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId></DocumentId>
+          <Width>700</Width>
+          <Height>500</Height>
+          <Material>Organic Leve Panama Natural</Material>
+          <MaterialType>Cottons</MaterialType>
+          <OrderId>ON000022</OrderId>
+          <PrintTypeCode>TEA_TOWEL</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\17-08-2026\PRINTED_002038-Organic Leve Panama Natural-DGEN\ON000022_Customer_053_1of24_Custom Tea Towel_Organic Leve Panama Natural _ Fully Sewn_1_FF_4100.pdf</Path>
+          <Name>ON000022_Customer_053_1of24_Custom Tea Towel_Organic Leve Panama Natural _ Fully Sewn_1_FF_4100.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId></DocumentId>
+          <Width>700</Width>
+          <Height>500</Height>
+          <Material>Organic Leve Panama Natural</Material>
+          <MaterialType>Cottons</MaterialType>
+          <OrderId>ON000022</OrderId>
+          <PrintTypeCode>TEA_TOWEL</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\17-08-2026\PRINTED_002038-Organic Leve Panama Natural-DGEN\ON000022_Customer_053_20of24_Custom Tea Towel_Organic Leve Panama Natural _ Fully Sewn_1_FF_4082.pdf</Path>
+          <Name>ON000022_Customer_053_20of24_Custom Tea Towel_Organic Leve Panama Natural _ Fully Sewn_1_FF_4082.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId></DocumentId>
+          <Width>700</Width>
+          <Height>500</Height>
+          <Material>Organic Leve Panama Natural</Material>
+          <MaterialType>Cottons</MaterialType>
+          <OrderId>ON000022</OrderId>
+          <PrintTypeCode>TEA_TOWEL</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\17-08-2026\PRINTED_002038-Organic Leve Panama Natural-DGEN\ON000022_Customer_053_21of24_Custom Tea Towel_Organic Leve Panama Natural _ Fully Sewn_1_FF_4081.pdf</Path>
+          <Name>ON000022_Customer_053_21of24_Custom Tea Towel_Organic Leve Panama Natural _ Fully Sewn_1_FF_4081.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId></DocumentId>
+          <Width>700</Width>
+          <Height>500</Height>
+          <Material>Organic Leve Panama Natural</Material>
+          <MaterialType>Cottons</MaterialType>
+          <OrderId>ON000022</OrderId>
+          <PrintTypeCode>TEA_TOWEL</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\17-08-2026\PRINTED_002038-Organic Leve Panama Natural-DGEN\ON000022_Customer_053_22of24_Custom Tea Towel_Organic Leve Panama Natural _ Fully Sewn_1_FF_4080.pdf</Path>
+          <Name>ON000022_Customer_053_22of24_Custom Tea Towel_Organic Leve Panama Natural _ Fully Sewn_1_FF_4080.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId></DocumentId>
+          <Width>700</Width>
+          <Height>500</Height>
+          <Material>Organic Leve Panama Natural</Material>
+          <MaterialType>Cottons</MaterialType>
+          <OrderId>ON000022</OrderId>
+          <PrintTypeCode>TEA_TOWEL</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\17-08-2026\PRINTED_002038-Organic Leve Panama Natural-DGEN\ON000022_Customer_053_23of24_Custom Tea Towel_Organic Leve Panama Natural _ Fully Sewn_1_FF_4078.pdf</Path>
+          <Name>ON000022_Customer_053_23of24_Custom Tea Towel_Organic Leve Panama Natural _ Fully Sewn_1_FF_4078.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId></DocumentId>
+          <Width>700</Width>
+          <Height>500</Height>
+          <Material>Organic Leve Panama Natural</Material>
+          <MaterialType>Cottons</MaterialType>
+          <OrderId>ON000022</OrderId>
+          <PrintTypeCode>TEA_TOWEL</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\17-08-2026\PRINTED_002038-Organic Leve Panama Natural-DGEN\ON000022_Customer_053_24of24_Custom Tea Towel_Organic Leve Panama Natural _ Fully Sewn_1_FF_4077.pdf</Path>
+          <Name>ON000022_Customer_053_24of24_Custom Tea Towel_Organic Leve Panama Natural _ Fully Sewn_1_FF_4077.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId></DocumentId>
+          <Width>700</Width>
+          <Height>500</Height>
+          <Material>Organic Leve Panama Natural</Material>
+          <MaterialType>Cottons</MaterialType>
+          <OrderId>ON000022</OrderId>
+          <PrintTypeCode>TEA_TOWEL</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\17-08-2026\PRINTED_002038-Organic Leve Panama Natural-DGEN\ON000022_Customer_053_2of24_Custom Tea Towel_Organic Leve Panama Natural _ Fully Sewn_1_FF_4100.pdf</Path>
+          <Name>ON000022_Customer_053_2of24_Custom Tea Towel_Organic Leve Panama Natural _ Fully Sewn_1_FF_4100.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId></DocumentId>
+          <Width>700</Width>
+          <Height>500</Height>
+          <Material>Organic Leve Panama Natural</Material>
+          <MaterialType>Cottons</MaterialType>
+          <OrderId>ON000022</OrderId>
+          <PrintTypeCode>TEA_TOWEL</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\17-08-2026\PRINTED_002038-Organic Leve Panama Natural-DGEN\ON000022_Customer_053_3of24_Custom Tea Towel_Organic Leve Panama Natural _ Fully Sewn_1_FF_4099.pdf</Path>
+          <Name>ON000022_Customer_053_3of24_Custom Tea Towel_Organic Leve Panama Natural _ Fully Sewn_1_FF_4099.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId></DocumentId>
+          <Width>700</Width>
+          <Height>500</Height>
+          <Material>Organic Leve Panama Natural</Material>
+          <MaterialType>Cottons</MaterialType>
+          <OrderId>ON000022</OrderId>
+          <PrintTypeCode>TEA_TOWEL</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\17-08-2026\PRINTED_002038-Organic Leve Panama Natural-DGEN\ON000022_Customer_053_4of24_Custom Tea Towel_Organic Leve Panama Natural _ Fully Sewn_1_FF_4098.pdf</Path>
+          <Name>ON000022_Customer_053_4of24_Custom Tea Towel_Organic Leve Panama Natural _ Fully Sewn_1_FF_4098.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId></DocumentId>
+          <Width>700</Width>
+          <Height>500</Height>
+          <Material>Organic Leve Panama Natural</Material>
+          <MaterialType>Cottons</MaterialType>
+          <OrderId>ON000022</OrderId>
+          <PrintTypeCode>TEA_TOWEL</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\17-08-2026\PRINTED_002038-Organic Leve Panama Natural-DGEN\ON000022_Customer_053_5of24_Custom Tea Towel_Organic Leve Panama Natural _ Fully Sewn_1_FF_4097.pdf</Path>
+          <Name>ON000022_Customer_053_5of24_Custom Tea Towel_Organic Leve Panama Natural _ Fully Sewn_1_FF_4097.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId></DocumentId>
+          <Width>700</Width>
+          <Height>500</Height>
+          <Material>Organic Leve Panama Natural</Material>
+          <MaterialType>Cottons</MaterialType>
+          <OrderId>ON000022</OrderId>
+          <PrintTypeCode>TEA_TOWEL</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\17-08-2026\PRINTED_002038-Organic Leve Panama Natural-DGEN\ON000022_Customer_053_6of24_Custom Tea Towel_Organic Leve Panama Natural _ Fully Sewn_1_FF_4096.pdf</Path>
+          <Name>ON000022_Customer_053_6of24_Custom Tea Towel_Organic Leve Panama Natural _ Fully Sewn_1_FF_4096.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId></DocumentId>
+          <Width>700</Width>
+          <Height>500</Height>
+          <Material>Organic Leve Panama Natural</Material>
+          <MaterialType>Cottons</MaterialType>
+          <OrderId>ON000022</OrderId>
+          <PrintTypeCode>TEA_TOWEL</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\17-08-2026\PRINTED_002038-Organic Leve Panama Natural-DGEN\ON000022_Customer_053_7of24_Custom Tea Towel_Organic Leve Panama Natural _ Fully Sewn_1_FF_4095.pdf</Path>
+          <Name>ON000022_Customer_053_7of24_Custom Tea Towel_Organic Leve Panama Natural _ Fully Sewn_1_FF_4095.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId></DocumentId>
+          <Width>700</Width>
+          <Height>500</Height>
+          <Material>Organic Leve Panama Natural</Material>
+          <MaterialType>Cottons</MaterialType>
+          <OrderId>ON000022</OrderId>
+          <PrintTypeCode>TEA_TOWEL</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\17-08-2026\PRINTED_002038-Organic Leve Panama Natural-DGEN\ON000022_Customer_053_8of24_Custom Tea Towel_Organic Leve Panama Natural _ Fully Sewn_1_FF_4094.pdf</Path>
+          <Name>ON000022_Customer_053_8of24_Custom Tea Towel_Organic Leve Panama Natural _ Fully Sewn_1_FF_4094.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId></DocumentId>
+          <Width>700</Width>
+          <Height>500</Height>
+          <Material>Organic Leve Panama Natural</Material>
+          <MaterialType>Cottons</MaterialType>
+          <OrderId>ON000022</OrderId>
+          <PrintTypeCode>TEA_TOWEL</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\17-08-2026\PRINTED_002038-Organic Leve Panama Natural-DGEN\ON000022_Customer_053_9of24_Custom Tea Towel_Organic Leve Panama Natural _ Fully Sewn_1_FF_4093.pdf</Path>
+          <Name>ON000022_Customer_053_9of24_Custom Tea Towel_Organic Leve Panama Natural _ Fully Sewn_1_FF_4093.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId></DocumentId>
+          <Width>700</Width>
+          <Height>500</Height>
+          <Material>Organic Leve Panama Natural</Material>
+          <MaterialType>Cottons</MaterialType>
+          <OrderId>ON000022</OrderId>
+          <PrintTypeCode>TEA_TOWEL</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+      </Documents>
+    </RipFlowJob>

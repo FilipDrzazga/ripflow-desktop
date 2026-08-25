@@ -1,0 +1,59 @@
+
+    <RipFlowJob>
+      <BatchId>20-08-2026/PRINTED_221722-SAMPLES-YUMI</BatchId>
+      <Printer>YUMI</Printer>
+      <NestingGroup>{{UUID}}</NestingGroup>
+      <LogisticGroup>{{UUID}}_0.2m</LogisticGroup>
+      <PhysicalGroup>SAMPLES_0.2m</PhysicalGroup>
+      <DocumentCount>3</DocumentCount>
+      <Documents>
+          
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\20-08-2026\PRINTED_221722-SAMPLES-YUMI\ON000046_Customer_016_1of3_DSTK - Paros Stretch Twill_1x_Sample Print - 20 x 20 cm_XWD0000000000000000000000000000004f_FF.pdf</Path>
+          <Name>ON000046_Customer_016_1of3_DSTK - Paros Stretch Twill_1x_Sample Print - 20 x 20 cm_XWD0000000000000000000000000000004f_FF.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId>XWD0000000000000000000000000000004f</DocumentId>
+          <Width>220</Width>
+          <Height>200</Height>
+          <Material>DSTK - Paros Stretch Twill</Material>
+          <MaterialType>Polyesters</MaterialType>
+          <OrderId>ON000046</OrderId>
+          <PrintTypeCode>SAMPLE</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\20-08-2026\PRINTED_221722-SAMPLES-YUMI\ON000046_Customer_016_2of3_Eco Velvet_1x_Sample Print - 20 x 20 cm_XWD0000000000000000000000000000004e_FF.pdf</Path>
+          <Name>ON000046_Customer_016_2of3_Eco Velvet_1x_Sample Print - 20 x 20 cm_XWD0000000000000000000000000000004e_FF.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId>XWD0000000000000000000000000000004e</DocumentId>
+          <Width>220</Width>
+          <Height>200</Height>
+          <Material>Eco Velvet</Material>
+          <MaterialType>Polyesters</MaterialType>
+          <OrderId>ON000046</OrderId>
+          <PrintTypeCode>SAMPLE</PrintTypeCode>
+          <IsVelvet>true</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\20-08-2026\PRINTED_221722-SAMPLES-YUMI\ON000046_Customer_016_3of3_Diago Stretch_1x_Sample Print - 20 x 20 cm_XWD00000000000000000000000000000025_FF.pdf</Path>
+          <Name>ON000046_Customer_016_3of3_Diago Stretch_1x_Sample Print - 20 x 20 cm_XWD00000000000000000000000000000025_FF.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId>XWD00000000000000000000000000000025</DocumentId>
+          <Width>220</Width>
+          <Height>200</Height>
+          <Material>Diago Stretch</Material>
+          <MaterialType>Polyesters</MaterialType>
+          <OrderId>ON000046</OrderId>
+          <PrintTypeCode>SAMPLE</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+      </Documents>
+    </RipFlowJob>

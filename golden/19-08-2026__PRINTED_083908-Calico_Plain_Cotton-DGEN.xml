@@ -1,0 +1,43 @@
+
+    <RipFlowJob>
+      <BatchId>19-08-2026/PRINTED_083908-Calico Plain Cotton-DGEN</BatchId>
+      <Printer>DGEN</Printer>
+      <NestingGroup>{{UUID}}</NestingGroup>
+      <LogisticGroup>{{UUID}}_1.22m</LogisticGroup>
+      <PhysicalGroup>Calico Plain Cotton_1.22m</PhysicalGroup>
+      <DocumentCount>2</DocumentCount>
+      <Documents>
+          
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\19-08-2026\PRINTED_083908-Calico Plain Cotton-DGEN\ON000029_Customer_050_1of2_Calico Plain Cotton_1x_Linear Meter - 1m increments_XWD0000000000000000000000000000003f_FF.pdf</Path>
+          <Name>ON000029_Customer_050_1of2_Calico Plain Cotton_1x_Linear Meter - 1m increments_XWD0000000000000000000000000000003f_FF.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId>XWD0000000000000000000000000000003f</DocumentId>
+          <Width>1420</Width>
+          <Height>1000</Height>
+          <Material>Calico Plain Cotton</Material>
+          <MaterialType>Cottons</MaterialType>
+          <OrderId>ON000029</OrderId>
+          <PrintTypeCode>LM</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\19-08-2026\PRINTED_083908-Calico Plain Cotton-DGEN\ON000029_Customer_050_2of2_Calico Plain Cotton_1x_Sample Print - 20 x 20 cm_XWD00000000000000000000000000000052_FF.pdf</Path>
+          <Name>ON000029_Customer_050_2of2_Calico Plain Cotton_1x_Sample Print - 20 x 20 cm_XWD00000000000000000000000000000052_FF.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId>XWD00000000000000000000000000000052</DocumentId>
+          <Width>220</Width>
+          <Height>200</Height>
+          <Material>Calico Plain Cotton</Material>
+          <MaterialType>Cottons</MaterialType>
+          <OrderId>ON000029</OrderId>
+          <PrintTypeCode>SAMPLE</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+      </Documents>
+    </RipFlowJob>

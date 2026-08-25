@@ -1,0 +1,75 @@
+
+    <RipFlowJob>
+      <BatchId>11-08-2026/PRINTED_221826-Cora Canvas-YUMI</BatchId>
+      <Printer>YUMI</Printer>
+      <NestingGroup>{{UUID}}</NestingGroup>
+      <LogisticGroup>{{UUID}}_4.02m</LogisticGroup>
+      <PhysicalGroup>Cora Canvas_4.02m</PhysicalGroup>
+      <DocumentCount>4</DocumentCount>
+      <Documents>
+          
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\11-08-2026\PRINTED_221826-Cora Canvas-YUMI\ON000009_Customer_003_5of8_Cora Canvas_1x_Linear Meter - 1m increments_XWD00000000000000000000000000000009_FF.pdf</Path>
+          <Name>ON000009_Customer_003_5of8_Cora Canvas_1x_Linear Meter - 1m increments_XWD00000000000000000000000000000009_FF.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId>XWD00000000000000000000000000000009</DocumentId>
+          <Width>1420</Width>
+          <Height>1000</Height>
+          <Material>Cora Canvas</Material>
+          <MaterialType>Polyesters</MaterialType>
+          <OrderId>ON000009</OrderId>
+          <PrintTypeCode>LM</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\11-08-2026\PRINTED_221826-Cora Canvas-YUMI\ON000009_Customer_003_6of8_Cora Canvas_1x_Linear Meter - 1m increments_XWD00000000000000000000000000000055_FF.pdf</Path>
+          <Name>ON000009_Customer_003_6of8_Cora Canvas_1x_Linear Meter - 1m increments_XWD00000000000000000000000000000055_FF.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId>XWD00000000000000000000000000000055</DocumentId>
+          <Width>1420</Width>
+          <Height>1000</Height>
+          <Material>Cora Canvas</Material>
+          <MaterialType>Polyesters</MaterialType>
+          <OrderId>ON000009</OrderId>
+          <PrintTypeCode>LM</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\11-08-2026\PRINTED_221826-Cora Canvas-YUMI\ON000009_Customer_003_7of8_Cora Canvas_1x_Linear Meter - 1m increments_XWD0000000000000000000000000000006c_FF.pdf</Path>
+          <Name>ON000009_Customer_003_7of8_Cora Canvas_1x_Linear Meter - 1m increments_XWD0000000000000000000000000000006c_FF.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId>XWD0000000000000000000000000000006c</DocumentId>
+          <Width>1420</Width>
+          <Height>1000</Height>
+          <Material>Cora Canvas</Material>
+          <MaterialType>Polyesters</MaterialType>
+          <OrderId>ON000009</OrderId>
+          <PrintTypeCode>LM</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\11-08-2026\PRINTED_221826-Cora Canvas-YUMI\ON000009_Customer_003_8of8_Cora Canvas_1x_Linear Meter - 1m increments_XWD00000000000000000000000000000029_FF.pdf</Path>
+          <Name>ON000009_Customer_003_8of8_Cora Canvas_1x_Linear Meter - 1m increments_XWD00000000000000000000000000000029_FF.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId>XWD00000000000000000000000000000029</DocumentId>
+          <Width>1420</Width>
+          <Height>1000</Height>
+          <Material>Cora Canvas</Material>
+          <MaterialType>Polyesters</MaterialType>
+          <OrderId>ON000009</OrderId>
+          <PrintTypeCode>LM</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+      </Documents>
+    </RipFlowJob>

@@ -1,0 +1,43 @@
+
+    <RipFlowJob>
+      <BatchId>24-08-2026/PRINTED_073933-Eco Velvet-YUMI</BatchId>
+      <Printer>YUMI</Printer>
+      <NestingGroup>{{UUID}}</NestingGroup>
+      <LogisticGroup>{{UUID}}_1.61m</LogisticGroup>
+      <PhysicalGroup>Eco Velvet_1.61m</PhysicalGroup>
+      <DocumentCount>2</DocumentCount>
+      <Documents>
+          
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\24-08-2026\PRINTED_073933-Eco Velvet-YUMI\ON000047_Customer_002_8of8_Custom Square Cushion_Eco Velvet _ 60 x 60 cm _ Print both sides_1_FF_4121.pdf</Path>
+          <Name>ON000047_Customer_002_8of8_Custom Square Cushion_Eco Velvet _ 60 x 60 cm _ Print both sides_1_FF_4121.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId></DocumentId>
+          <Width>600</Width>
+          <Height>600</Height>
+          <Material>Eco Velvet</Material>
+          <MaterialType>Polyesters</MaterialType>
+          <OrderId>ON000047</OrderId>
+          <PrintTypeCode>CUSHION</PrintTypeCode>
+          <IsVelvet>true</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\24-08-2026\PRINTED_073933-Eco Velvet-YUMI\ON000076_Customer_073_1of1_Eco Velvet_1x_Linear Meter - 1m increments_XWD00000000000000000000000000000053_FF.pdf</Path>
+          <Name>ON000076_Customer_073_1of1_Eco Velvet_1x_Linear Meter - 1m increments_XWD00000000000000000000000000000053_FF.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId>XWD00000000000000000000000000000053</DocumentId>
+          <Width>1420</Width>
+          <Height>1000</Height>
+          <Material>Eco Velvet</Material>
+          <MaterialType>Polyesters</MaterialType>
+          <OrderId>ON000076</OrderId>
+          <PrintTypeCode>LM</PrintTypeCode>
+          <IsVelvet>true</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+      </Documents>
+    </RipFlowJob>

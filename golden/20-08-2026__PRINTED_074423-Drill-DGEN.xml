@@ -1,0 +1,43 @@
+
+    <RipFlowJob>
+      <BatchId>20-08-2026/PRINTED_074423-Drill-DGEN</BatchId>
+      <Printer>DGEN</Printer>
+      <NestingGroup>{{UUID}}</NestingGroup>
+      <LogisticGroup>{{UUID}}_1.02m</LogisticGroup>
+      <PhysicalGroup>Drill_1.02m</PhysicalGroup>
+      <DocumentCount>2</DocumentCount>
+      <Documents>
+          
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\20-08-2026\PRINTED_074423-Drill-DGEN\ON000033_Customer_032_1of2_Custom Tea Towel_Drill _ DIY Sew at Home_2_FF_4104.pdf</Path>
+          <Name>ON000033_Customer_032_1of2_Custom Tea Towel_Drill _ DIY Sew at Home_2_FF_4104.pdf</Name>
+          <Copies>2</Copies>
+          <DocumentId></DocumentId>
+          <Width>700</Width>
+          <Height>500</Height>
+          <Material>Drill</Material>
+          <MaterialType>Cottons</MaterialType>
+          <OrderId>ON000033</OrderId>
+          <PrintTypeCode>TEA_TOWEL</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\20-08-2026\PRINTED_074423-Drill-DGEN\ON000033_Customer_032_2of2_Custom Tea Towel_Drill _ DIY Sew at Home_2_FF_4103.pdf</Path>
+          <Name>ON000033_Customer_032_2of2_Custom Tea Towel_Drill _ DIY Sew at Home_2_FF_4103.pdf</Name>
+          <Copies>2</Copies>
+          <DocumentId></DocumentId>
+          <Width>700</Width>
+          <Height>500</Height>
+          <Material>Drill</Material>
+          <MaterialType>Cottons</MaterialType>
+          <OrderId>ON000033</OrderId>
+          <PrintTypeCode>TEA_TOWEL</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+      </Documents>
+    </RipFlowJob>

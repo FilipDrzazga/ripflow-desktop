@@ -1,0 +1,27 @@
+
+    <RipFlowJob>
+      <BatchId>18-08-2026/PRINTED_110808-Cotton Denim-DGEN</BatchId>
+      <Printer>DGEN</Printer>
+      <NestingGroup>{{UUID}}</NestingGroup>
+      <LogisticGroup>{{UUID}}_0.49m</LogisticGroup>
+      <PhysicalGroup>Cotton Denim_0.49m</PhysicalGroup>
+      <DocumentCount>1</DocumentCount>
+      <Documents>
+          
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\18-08-2026\PRINTED_110808-Cotton Denim-DGEN\ON000016_Customer_033_3of6_Cotton Denim_1x_Fat Quarter - 65 x 48 cm_XWD0000000000000000000000000000003a_FF.pdf</Path>
+          <Name>ON000016_Customer_033_3of6_Cotton Denim_1x_Fat Quarter - 65 x 48 cm_XWD0000000000000000000000000000003a_FF.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId>XWD0000000000000000000000000000003a</DocumentId>
+          <Width>670</Width>
+          <Height>480</Height>
+          <Material>Cotton Denim</Material>
+          <MaterialType>Cottons</MaterialType>
+          <OrderId>ON000016</OrderId>
+          <PrintTypeCode>FQ</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+      </Documents>
+    </RipFlowJob>

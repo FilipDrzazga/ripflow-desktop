@@ -1,0 +1,59 @@
+
+    <RipFlowJob>
+      <BatchId>18-08-2026/PRINTED_110823-Organic Nimbus Linen-DGEN</BatchId>
+      <Printer>DGEN</Printer>
+      <NestingGroup>{{UUID}}</NestingGroup>
+      <LogisticGroup>{{UUID}}_0.98m</LogisticGroup>
+      <PhysicalGroup>Organic Nimbus Linen_0.98m</PhysicalGroup>
+      <DocumentCount>3</DocumentCount>
+      <Documents>
+          
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\18-08-2026\PRINTED_110823-Organic Nimbus Linen-DGEN\ON000013_Customer_066_2of9_Organic Nimbus Linen_1x_Fat Quarter - 65 x 48 cm_XWD0000000000000000000000000000004c_FF.pdf</Path>
+          <Name>ON000013_Customer_066_2of9_Organic Nimbus Linen_1x_Fat Quarter - 65 x 48 cm_XWD0000000000000000000000000000004c_FF.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId>XWD0000000000000000000000000000004c</DocumentId>
+          <Width>670</Width>
+          <Height>480</Height>
+          <Material>Organic Nimbus Linen</Material>
+          <MaterialType>Cottons</MaterialType>
+          <OrderId>ON000013</OrderId>
+          <PrintTypeCode>FQ</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>true</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\18-08-2026\PRINTED_110823-Organic Nimbus Linen-DGEN\ON000013_Customer_066_4of9_Organic Nimbus Linen_1x_Fat Quarter - 65 x 48 cm_XWD00000000000000000000000000000011_FF.pdf</Path>
+          <Name>ON000013_Customer_066_4of9_Organic Nimbus Linen_1x_Fat Quarter - 65 x 48 cm_XWD00000000000000000000000000000011_FF.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId>XWD00000000000000000000000000000011</DocumentId>
+          <Width>670</Width>
+          <Height>480</Height>
+          <Material>Organic Nimbus Linen</Material>
+          <MaterialType>Cottons</MaterialType>
+          <OrderId>ON000013</OrderId>
+          <PrintTypeCode>FQ</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>true</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\18-08-2026\PRINTED_110823-Organic Nimbus Linen-DGEN\ON000013_Customer_066_6of9_Organic Nimbus Linen_1x_Fat Quarter - 65 x 48 cm_XWD00000000000000000000000000000003_FF.pdf</Path>
+          <Name>ON000013_Customer_066_6of9_Organic Nimbus Linen_1x_Fat Quarter - 65 x 48 cm_XWD00000000000000000000000000000003_FF.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId>XWD00000000000000000000000000000003</DocumentId>
+          <Width>670</Width>
+          <Height>480</Height>
+          <Material>Organic Nimbus Linen</Material>
+          <MaterialType>Cottons</MaterialType>
+          <OrderId>ON000013</OrderId>
+          <PrintTypeCode>FQ</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>true</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+      </Documents>
+    </RipFlowJob>

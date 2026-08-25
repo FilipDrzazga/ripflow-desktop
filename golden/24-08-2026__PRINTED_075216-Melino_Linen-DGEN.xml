@@ -1,0 +1,75 @@
+
+    <RipFlowJob>
+      <BatchId>24-08-2026/PRINTED_075216-Melino Linen-DGEN</BatchId>
+      <Printer>DGEN</Printer>
+      <NestingGroup>{{UUID}}</NestingGroup>
+      <LogisticGroup>{{UUID}}_3.03m</LogisticGroup>
+      <PhysicalGroup>Melino Linen_3.03m</PhysicalGroup>
+      <DocumentCount>4</DocumentCount>
+      <Documents>
+          
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\24-08-2026\PRINTED_075216-Melino Linen-DGEN\ON000057_Customer_011_1of3_Custom Tea Towel_Melino Linen _ DIY Sew at Home_1_FF_4170.pdf</Path>
+          <Name>ON000057_Customer_011_1of3_Custom Tea Towel_Melino Linen _ DIY Sew at Home_1_FF_4170.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId></DocumentId>
+          <Width>700</Width>
+          <Height>500</Height>
+          <Material>Melino Linen</Material>
+          <MaterialType>Cottons</MaterialType>
+          <OrderId>ON000057</OrderId>
+          <PrintTypeCode>TEA_TOWEL</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>true</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\24-08-2026\PRINTED_075216-Melino Linen-DGEN\ON000057_Customer_011_2of3_Custom Tea Towel_Melino Linen _ DIY Sew at Home_1_FF_4169.pdf</Path>
+          <Name>ON000057_Customer_011_2of3_Custom Tea Towel_Melino Linen _ DIY Sew at Home_1_FF_4169.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId></DocumentId>
+          <Width>700</Width>
+          <Height>500</Height>
+          <Material>Melino Linen</Material>
+          <MaterialType>Cottons</MaterialType>
+          <OrderId>ON000057</OrderId>
+          <PrintTypeCode>TEA_TOWEL</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>true</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\24-08-2026\PRINTED_075216-Melino Linen-DGEN\ON000057_Customer_011_3of3_Custom Tea Towel_Melino Linen _ DIY Sew at Home_1_FF_4168.pdf</Path>
+          <Name>ON000057_Customer_011_3of3_Custom Tea Towel_Melino Linen _ DIY Sew at Home_1_FF_4168.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId></DocumentId>
+          <Width>700</Width>
+          <Height>500</Height>
+          <Material>Melino Linen</Material>
+          <MaterialType>Cottons</MaterialType>
+          <OrderId>ON000057</OrderId>
+          <PrintTypeCode>TEA_TOWEL</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>true</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\24-08-2026\PRINTED_075216-Melino Linen-DGEN\ON000068_Customer_048_2of2_Melino Linen_2x_Linear Meter - 1m increments_XWD0000000000000000000000000000004a_FF.pdf</Path>
+          <Name>ON000068_Customer_048_2of2_Melino Linen_2x_Linear Meter - 1m increments_XWD0000000000000000000000000000004a_FF.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId>XWD0000000000000000000000000000004a</DocumentId>
+          <Width>1370</Width>
+          <Height>2000</Height>
+          <Material>Melino Linen</Material>
+          <MaterialType>Cottons</MaterialType>
+          <OrderId>ON000068</OrderId>
+          <PrintTypeCode>LM</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>true</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+      </Documents>
+    </RipFlowJob>

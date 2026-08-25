@@ -1,0 +1,43 @@
+
+    <RipFlowJob>
+      <BatchId>24-08-2026/PRINTED_075243-Organic Stratos Linen-DGEN</BatchId>
+      <Printer>DGEN</Printer>
+      <NestingGroup>{{UUID}}</NestingGroup>
+      <LogisticGroup>{{UUID}}_2.02m</LogisticGroup>
+      <PhysicalGroup>Organic Stratos Linen_2.02m</PhysicalGroup>
+      <DocumentCount>2</DocumentCount>
+      <Documents>
+          
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\24-08-2026\PRINTED_075243-Organic Stratos Linen-DGEN\ON000072_Customer_030_1of2_Organic Stratos Linen_1x_Linear Meter - 1m increments_XWD0000000000000000000000000000000b_FF.pdf</Path>
+          <Name>ON000072_Customer_030_1of2_Organic Stratos Linen_1x_Linear Meter - 1m increments_XWD0000000000000000000000000000000b_FF.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId>XWD0000000000000000000000000000000b</DocumentId>
+          <Width>1370</Width>
+          <Height>1000</Height>
+          <Material>Organic Stratos Linen</Material>
+          <MaterialType>Cottons</MaterialType>
+          <OrderId>ON000072</OrderId>
+          <PrintTypeCode>LM</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>true</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\24-08-2026\PRINTED_075243-Organic Stratos Linen-DGEN\ON000072_Customer_030_2of2_Organic Stratos Linen_1x_Linear Meter - 1m increments_XWD00000000000000000000000000000026_FF.pdf</Path>
+          <Name>ON000072_Customer_030_2of2_Organic Stratos Linen_1x_Linear Meter - 1m increments_XWD00000000000000000000000000000026_FF.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId>XWD00000000000000000000000000000026</DocumentId>
+          <Width>1370</Width>
+          <Height>1000</Height>
+          <Material>Organic Stratos Linen</Material>
+          <MaterialType>Cottons</MaterialType>
+          <OrderId>ON000072</OrderId>
+          <PrintTypeCode>LM</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>true</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+      </Documents>
+    </RipFlowJob>

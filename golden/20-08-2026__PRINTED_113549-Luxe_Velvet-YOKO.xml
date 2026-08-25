@@ -1,0 +1,27 @@
+
+    <RipFlowJob>
+      <BatchId>20-08-2026/PRINTED_113549-Luxe Velvet-YOKO</BatchId>
+      <Printer>YOKO</Printer>
+      <NestingGroup>{{UUID}}</NestingGroup>
+      <LogisticGroup>{{UUID}}_1m</LogisticGroup>
+      <PhysicalGroup>Luxe Velvet_1m</PhysicalGroup>
+      <DocumentCount>1</DocumentCount>
+      <Documents>
+          
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\20-08-2026\PRINTED_113549-Luxe Velvet-YOKO\ON000039_Customer_027_1of1_Luxe Velvet_1x_Linear Meter - 1m increments_XWD00000000000000000000000000000049_FF.pdf</Path>
+          <Name>ON000039_Customer_027_1of1_Luxe Velvet_1x_Linear Meter - 1m increments_XWD00000000000000000000000000000049_FF.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId>XWD00000000000000000000000000000049</DocumentId>
+          <Width>1380</Width>
+          <Height>1000</Height>
+          <Material>Luxe Velvet</Material>
+          <MaterialType>Polyesters</MaterialType>
+          <OrderId>ON000039</OrderId>
+          <PrintTypeCode>LM</PrintTypeCode>
+          <IsVelvet>true</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+      </Documents>
+    </RipFlowJob>

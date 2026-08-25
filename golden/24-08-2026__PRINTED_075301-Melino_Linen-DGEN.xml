@@ -1,0 +1,27 @@
+
+    <RipFlowJob>
+      <BatchId>24-08-2026/PRINTED_075301-Melino Linen-DGEN</BatchId>
+      <Printer>DGEN</Printer>
+      <NestingGroup>{{UUID}}</NestingGroup>
+      <LogisticGroup>{{UUID}}_0.51m</LogisticGroup>
+      <PhysicalGroup>Melino Linen_0.51m</PhysicalGroup>
+      <DocumentCount>1</DocumentCount>
+      <Documents>
+          
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\24-08-2026\PRINTED_075301-Melino Linen-DGEN\ON000077_Customer_029_1of1_Custom Tea Towel_Melino Linen _ Fully Sewn_2_FF_4219.pdf</Path>
+          <Name>ON000077_Customer_029_1of1_Custom Tea Towel_Melino Linen _ Fully Sewn_2_FF_4219.pdf</Name>
+          <Copies>2</Copies>
+          <DocumentId></DocumentId>
+          <Width>700</Width>
+          <Height>500</Height>
+          <Material>Melino Linen</Material>
+          <MaterialType>Cottons</MaterialType>
+          <OrderId>ON000077</OrderId>
+          <PrintTypeCode>TEA_TOWEL</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>true</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+      </Documents>
+    </RipFlowJob>

@@ -1,0 +1,43 @@
+
+    <RipFlowJob>
+      <BatchId>19-08-2026/PRINTED_083136-Organic Satin-DGEN</BatchId>
+      <Printer>DGEN</Printer>
+      <NestingGroup>{{UUID}}</NestingGroup>
+      <LogisticGroup>{{UUID}}_5.02m</LogisticGroup>
+      <PhysicalGroup>Organic Satin_5.02m</PhysicalGroup>
+      <DocumentCount>2</DocumentCount>
+      <Documents>
+          
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\19-08-2026\PRINTED_083136-Organic Satin-DGEN\ON000021_Customer_060_1of2_Organic Satin_2x_Linear Meter - 1m increments_XWD00000000000000000000000000000069_FF.pdf</Path>
+          <Name>ON000021_Customer_060_1of2_Organic Satin_2x_Linear Meter - 1m increments_XWD00000000000000000000000000000069_FF.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId>XWD00000000000000000000000000000069</DocumentId>
+          <Width>1420</Width>
+          <Height>2000</Height>
+          <Material>Organic Satin</Material>
+          <MaterialType>Cottons</MaterialType>
+          <OrderId>ON000021</OrderId>
+          <PrintTypeCode>LM</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\19-08-2026\PRINTED_083136-Organic Satin-DGEN\ON000031_Customer_001_1of1_Organic Satin_3x_Linear Meter - 1m increments_XWD00000000000000000000000000000038_FF.pdf</Path>
+          <Name>ON000031_Customer_001_1of1_Organic Satin_3x_Linear Meter - 1m increments_XWD00000000000000000000000000000038_FF.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId>XWD00000000000000000000000000000038</DocumentId>
+          <Width>1420</Width>
+          <Height>3000</Height>
+          <Material>Organic Satin</Material>
+          <MaterialType>Cottons</MaterialType>
+          <OrderId>ON000031</OrderId>
+          <PrintTypeCode>LM</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+      </Documents>
+    </RipFlowJob>

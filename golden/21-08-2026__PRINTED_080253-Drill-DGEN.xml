@@ -1,0 +1,27 @@
+
+    <RipFlowJob>
+      <BatchId>21-08-2026/PRINTED_080253-Drill-DGEN</BatchId>
+      <Printer>DGEN</Printer>
+      <NestingGroup>{{UUID}}</NestingGroup>
+      <LogisticGroup>{{UUID}}_5.1m</LogisticGroup>
+      <PhysicalGroup>Drill_5.1m</PhysicalGroup>
+      <DocumentCount>1</DocumentCount>
+      <Documents>
+          
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\21-08-2026\PRINTED_080253-Drill-DGEN\ON000045_Customer_037_1of1_Custom Tea Towel_Drill _ Fully Sewn_20_FF_4111.pdf</Path>
+          <Name>ON000045_Customer_037_1of1_Custom Tea Towel_Drill _ Fully Sewn_20_FF_4111.pdf</Name>
+          <Copies>20</Copies>
+          <DocumentId></DocumentId>
+          <Width>700</Width>
+          <Height>500</Height>
+          <Material>Drill</Material>
+          <MaterialType>Cottons</MaterialType>
+          <OrderId>ON000045</OrderId>
+          <PrintTypeCode>TEA_TOWEL</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+      </Documents>
+    </RipFlowJob>

@@ -1,0 +1,91 @@
+
+    <RipFlowJob>
+      <BatchId>20-08-2026/PRINTED_122757-Organic Calico Natural-DGEN</BatchId>
+      <Printer>DGEN</Printer>
+      <NestingGroup>{{UUID}}</NestingGroup>
+      <LogisticGroup>{{UUID}}_4.25m</LogisticGroup>
+      <PhysicalGroup>Organic Calico Natural_4.25m</PhysicalGroup>
+      <DocumentCount>5</DocumentCount>
+      <Documents>
+          
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\20-08-2026\PRINTED_122757-Organic Calico Natural-DGEN\ON000038_Customer_008_1of5_Organic Calico Natural_1x_Linear Meter - 1m increments_XWD00000000000000000000000000000057_FF.pdf</Path>
+          <Name>ON000038_Customer_008_1of5_Organic Calico Natural_1x_Linear Meter - 1m increments_XWD00000000000000000000000000000057_FF.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId>XWD00000000000000000000000000000057</DocumentId>
+          <Width>1420</Width>
+          <Height>1000</Height>
+          <Material>Organic Calico Natural</Material>
+          <MaterialType>Cottons</MaterialType>
+          <OrderId>ON000038</OrderId>
+          <PrintTypeCode>LM</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\20-08-2026\PRINTED_122757-Organic Calico Natural-DGEN\ON000038_Customer_008_2of5_Organic Calico Natural_1x_Linear Meter - 1m increments_XWD00000000000000000000000000000002_FF.pdf</Path>
+          <Name>ON000038_Customer_008_2of5_Organic Calico Natural_1x_Linear Meter - 1m increments_XWD00000000000000000000000000000002_FF.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId>XWD00000000000000000000000000000002</DocumentId>
+          <Width>1420</Width>
+          <Height>1000</Height>
+          <Material>Organic Calico Natural</Material>
+          <MaterialType>Cottons</MaterialType>
+          <OrderId>ON000038</OrderId>
+          <PrintTypeCode>LM</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\20-08-2026\PRINTED_122757-Organic Calico Natural-DGEN\ON000038_Customer_008_3of5_Organic Calico Natural_1x_Linear Meter - 1m increments_XWD00000000000000000000000000000034_FF.pdf</Path>
+          <Name>ON000038_Customer_008_3of5_Organic Calico Natural_1x_Linear Meter - 1m increments_XWD00000000000000000000000000000034_FF.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId>XWD00000000000000000000000000000034</DocumentId>
+          <Width>1420</Width>
+          <Height>1000</Height>
+          <Material>Organic Calico Natural</Material>
+          <MaterialType>Cottons</MaterialType>
+          <OrderId>ON000038</OrderId>
+          <PrintTypeCode>LM</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\20-08-2026\PRINTED_122757-Organic Calico Natural-DGEN\ON000038_Customer_008_4of5_Organic Calico Natural_1x_Linear Meter - 1m increments_XWD00000000000000000000000000000068_FF.pdf</Path>
+          <Name>ON000038_Customer_008_4of5_Organic Calico Natural_1x_Linear Meter - 1m increments_XWD00000000000000000000000000000068_FF.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId>XWD00000000000000000000000000000068</DocumentId>
+          <Width>1420</Width>
+          <Height>1000</Height>
+          <Material>Organic Calico Natural</Material>
+          <MaterialType>Cottons</MaterialType>
+          <OrderId>ON000038</OrderId>
+          <PrintTypeCode>LM</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\20-08-2026\PRINTED_122757-Organic Calico Natural-DGEN\ON000038_Customer_008_5of5_Organic Calico Natural_2x_Sample Print - 20 x 20 cm_XWD0000000000000000000000000000006b_FF.pdf</Path>
+          <Name>ON000038_Customer_008_5of5_Organic Calico Natural_2x_Sample Print - 20 x 20 cm_XWD0000000000000000000000000000006b_FF.pdf</Name>
+          <Copies>2</Copies>
+          <DocumentId>XWD0000000000000000000000000000006b</DocumentId>
+          <Width>220</Width>
+          <Height>200</Height>
+          <Material>Organic Calico Natural</Material>
+          <MaterialType>Cottons</MaterialType>
+          <OrderId>ON000038</OrderId>
+          <PrintTypeCode>SAMPLE</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+      </Documents>
+    </RipFlowJob>

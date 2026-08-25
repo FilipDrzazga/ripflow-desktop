@@ -1,0 +1,27 @@
+
+    <RipFlowJob>
+      <BatchId>18-08-2026/PRINTED_094326-Organic Leve Panama Natural-DGEN</BatchId>
+      <Printer>DGEN</Printer>
+      <NestingGroup>{{UUID}}</NestingGroup>
+      <LogisticGroup>{{UUID}}_0.51m</LogisticGroup>
+      <PhysicalGroup>Organic Leve Panama Natural_0.51m</PhysicalGroup>
+      <DocumentCount>1</DocumentCount>
+      <Documents>
+          
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\18-08-2026\PRINTED_094326-Organic Leve Panama Natural-DGEN\ON000026_Customer_014_1of1_Custom Tea Towel_Organic Leve Panama Natural _ Fully Sewn_1_FF_4102.pdf</Path>
+          <Name>ON000026_Customer_014_1of1_Custom Tea Towel_Organic Leve Panama Natural _ Fully Sewn_1_FF_4102.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId></DocumentId>
+          <Width>700</Width>
+          <Height>500</Height>
+          <Material>Organic Leve Panama Natural</Material>
+          <MaterialType>Cottons</MaterialType>
+          <OrderId>ON000026</OrderId>
+          <PrintTypeCode>TEA_TOWEL</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+      </Documents>
+    </RipFlowJob>

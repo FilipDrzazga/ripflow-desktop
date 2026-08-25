@@ -1,0 +1,59 @@
+
+    <RipFlowJob>
+      <BatchId>24-08-2026/PRINTED_073834-Eco Dynamica Lycra-YOKO</BatchId>
+      <Printer>YOKO</Printer>
+      <NestingGroup>{{UUID}}</NestingGroup>
+      <LogisticGroup>{{UUID}}_4.01m</LogisticGroup>
+      <PhysicalGroup>Eco Dynamica Lycra_4.01m</PhysicalGroup>
+      <DocumentCount>3</DocumentCount>
+      <Documents>
+          
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\24-08-2026\PRINTED_073834-Eco Dynamica Lycra-YOKO\ON000067_Customer_034_1of3_Eco Dynamica Lycra_1x_Linear Meter - 1m increments_XWD0000000000000000000000000000004b_FF.pdf</Path>
+          <Name>ON000067_Customer_034_1of3_Eco Dynamica Lycra_1x_Linear Meter - 1m increments_XWD0000000000000000000000000000004b_FF.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId>XWD0000000000000000000000000000004b</DocumentId>
+          <Width>1420</Width>
+          <Height>1000</Height>
+          <Material>Eco Dynamica Lycra</Material>
+          <MaterialType>Polyesters</MaterialType>
+          <OrderId>ON000067</OrderId>
+          <PrintTypeCode>LM</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\24-08-2026\PRINTED_073834-Eco Dynamica Lycra-YOKO\ON000067_Customer_034_2of3_Eco Dynamica Lycra_2x_Linear Meter - 1m increments_XWD0000000000000000000000000000002f_FF.pdf</Path>
+          <Name>ON000067_Customer_034_2of3_Eco Dynamica Lycra_2x_Linear Meter - 1m increments_XWD0000000000000000000000000000002f_FF.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId>XWD0000000000000000000000000000002f</DocumentId>
+          <Width>1420</Width>
+          <Height>2000</Height>
+          <Material>Eco Dynamica Lycra</Material>
+          <MaterialType>Polyesters</MaterialType>
+          <OrderId>ON000067</OrderId>
+          <PrintTypeCode>LM</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\24-08-2026\PRINTED_073834-Eco Dynamica Lycra-YOKO\ON000067_Customer_034_3of3_Eco Dynamica Lycra_1x_Linear Meter - 1m increments_XWD00000000000000000000000000000033_FF.pdf</Path>
+          <Name>ON000067_Customer_034_3of3_Eco Dynamica Lycra_1x_Linear Meter - 1m increments_XWD00000000000000000000000000000033_FF.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId>XWD00000000000000000000000000000033</DocumentId>
+          <Width>1420</Width>
+          <Height>1000</Height>
+          <Material>Eco Dynamica Lycra</Material>
+          <MaterialType>Polyesters</MaterialType>
+          <OrderId>ON000067</OrderId>
+          <PrintTypeCode>LM</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+      </Documents>
+    </RipFlowJob>

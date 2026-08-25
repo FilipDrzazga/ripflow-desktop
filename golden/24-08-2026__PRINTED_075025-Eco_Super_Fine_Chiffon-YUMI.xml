@@ -1,0 +1,59 @@
+
+    <RipFlowJob>
+      <BatchId>24-08-2026/PRINTED_075025-Eco Super Fine Chiffon-YUMI</BatchId>
+      <Printer>YUMI</Printer>
+      <NestingGroup>{{UUID}}</NestingGroup>
+      <LogisticGroup>{{UUID}}_2.21m</LogisticGroup>
+      <PhysicalGroup>Eco Super Fine Chiffon_2.21m</PhysicalGroup>
+      <DocumentCount>3</DocumentCount>
+      <Documents>
+          
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\24-08-2026\PRINTED_075025-Eco Super Fine Chiffon-YUMI\ON000069_Customer_058_2of3_Eco Super Fine Chiffon_1x_Linear Meter - 1m increments_XWD00000000000000000000000000000027_FF.pdf</Path>
+          <Name>ON000069_Customer_058_2of3_Eco Super Fine Chiffon_1x_Linear Meter - 1m increments_XWD00000000000000000000000000000027_FF.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId>XWD00000000000000000000000000000027</DocumentId>
+          <Width>1420</Width>
+          <Height>1000</Height>
+          <Material>Eco Super Fine Chiffon</Material>
+          <MaterialType>Polyesters</MaterialType>
+          <OrderId>ON000069</OrderId>
+          <PrintTypeCode>LM</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\24-08-2026\PRINTED_075025-Eco Super Fine Chiffon-YUMI\ON000069_Customer_058_3of3_Eco Super Fine Chiffon_1x_Sample Print - 20 x 20 cm_XWD00000000000000000000000000000028_FF.pdf</Path>
+          <Name>ON000069_Customer_058_3of3_Eco Super Fine Chiffon_1x_Sample Print - 20 x 20 cm_XWD00000000000000000000000000000028_FF.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId>XWD00000000000000000000000000000028</DocumentId>
+          <Width>220</Width>
+          <Height>200</Height>
+          <Material>Eco Super Fine Chiffon</Material>
+          <MaterialType>Polyesters</MaterialType>
+          <OrderId>ON000069</OrderId>
+          <PrintTypeCode>SAMPLE</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\24-08-2026\PRINTED_075025-Eco Super Fine Chiffon-YUMI\ON000075_Customer_028_1of3_Eco Super Fine Chiffon_1x_Linear Meter - 1m increments_XWD00000000000000000000000000000046_FF.pdf</Path>
+          <Name>ON000075_Customer_028_1of3_Eco Super Fine Chiffon_1x_Linear Meter - 1m increments_XWD00000000000000000000000000000046_FF.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId>XWD00000000000000000000000000000046</DocumentId>
+          <Width>1420</Width>
+          <Height>1000</Height>
+          <Material>Eco Super Fine Chiffon</Material>
+          <MaterialType>Polyesters</MaterialType>
+          <OrderId>ON000075</OrderId>
+          <PrintTypeCode>LM</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+      </Documents>
+    </RipFlowJob>

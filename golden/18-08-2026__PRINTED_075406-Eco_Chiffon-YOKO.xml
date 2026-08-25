@@ -1,0 +1,27 @@
+
+    <RipFlowJob>
+      <BatchId>18-08-2026/PRINTED_075406-Eco Chiffon-YOKO</BatchId>
+      <Printer>YOKO</Printer>
+      <NestingGroup>{{UUID}}</NestingGroup>
+      <LogisticGroup>{{UUID}}_1m</LogisticGroup>
+      <PhysicalGroup>Eco Chiffon_1m</PhysicalGroup>
+      <DocumentCount>1</DocumentCount>
+      <Documents>
+          
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\18-08-2026\PRINTED_075406-Eco Chiffon-YOKO\ON000011_Customer_072_2of2_Eco Chiffon_1x_Linear Meter - 1m increments_XWD00000000000000000000000000000018_FF.pdf</Path>
+          <Name>ON000011_Customer_072_2of2_Eco Chiffon_1x_Linear Meter - 1m increments_XWD00000000000000000000000000000018_FF.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId>XWD00000000000000000000000000000018</DocumentId>
+          <Width>1420</Width>
+          <Height>1000</Height>
+          <Material>Eco Chiffon</Material>
+          <MaterialType>Polyesters</MaterialType>
+          <OrderId>ON000011</OrderId>
+          <PrintTypeCode>LM</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+      </Documents>
+    </RipFlowJob>

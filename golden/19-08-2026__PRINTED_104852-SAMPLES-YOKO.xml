@@ -1,0 +1,43 @@
+
+    <RipFlowJob>
+      <BatchId>19-08-2026/PRINTED_104852-SAMPLES-YOKO</BatchId>
+      <Printer>YOKO</Printer>
+      <NestingGroup>{{UUID}}</NestingGroup>
+      <LogisticGroup>{{UUID}}_0.2m</LogisticGroup>
+      <PhysicalGroup>SAMPLES_0.2m</PhysicalGroup>
+      <DocumentCount>2</DocumentCount>
+      <Documents>
+          
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\19-08-2026\PRINTED_104852-SAMPLES-YOKO\ON000027_Customer_052_1of2_Eco Super Fine Chiffon_1x_Sample Print - 20 x 20 cm_XWD0000000000000000000000000000001d_FF.pdf</Path>
+          <Name>ON000027_Customer_052_1of2_Eco Super Fine Chiffon_1x_Sample Print - 20 x 20 cm_XWD0000000000000000000000000000001d_FF.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId>XWD0000000000000000000000000000001d</DocumentId>
+          <Width>220</Width>
+          <Height>200</Height>
+          <Material>Eco Super Fine Chiffon</Material>
+          <MaterialType>Polyesters</MaterialType>
+          <OrderId>ON000027</OrderId>
+          <PrintTypeCode>SAMPLE</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\19-08-2026\PRINTED_104852-SAMPLES-YOKO\ON000027_Customer_052_2of2_Organza_1x_Sample Print - 20 x 20 cm_XWD00000000000000000000000000000032_FF.pdf</Path>
+          <Name>ON000027_Customer_052_2of2_Organza_1x_Sample Print - 20 x 20 cm_XWD00000000000000000000000000000032_FF.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId>XWD00000000000000000000000000000032</DocumentId>
+          <Width>220</Width>
+          <Height>200</Height>
+          <Material>Organza</Material>
+          <MaterialType>Polyesters</MaterialType>
+          <OrderId>ON000027</OrderId>
+          <PrintTypeCode>SAMPLE</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+      </Documents>
+    </RipFlowJob>

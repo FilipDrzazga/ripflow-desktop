@@ -1,0 +1,27 @@
+
+    <RipFlowJob>
+      <BatchId>17-08-2026/PRINTED_114937-Melino Linen-DGEN</BatchId>
+      <Printer>DGEN</Printer>
+      <NestingGroup>{{UUID}}</NestingGroup>
+      <LogisticGroup>{{UUID}}_0.46m</LogisticGroup>
+      <PhysicalGroup>Melino Linen_0.46m</PhysicalGroup>
+      <DocumentCount>1</DocumentCount>
+      <Documents>
+          
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\17-08-2026\PRINTED_114937-Melino Linen-DGEN\ON000011_Customer_072_1of2_Custom Square Cushion_Melino Linen _ 45 x 45 cm _ Print both sides_1_FF_4055.pdf</Path>
+          <Name>ON000011_Customer_072_1of2_Custom Square Cushion_Melino Linen _ 45 x 45 cm _ Print both sides_1_FF_4055.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId></DocumentId>
+          <Width>450</Width>
+          <Height>450</Height>
+          <Material>Melino Linen</Material>
+          <MaterialType>Cottons</MaterialType>
+          <OrderId>ON000011</OrderId>
+          <PrintTypeCode>CUSHION</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>true</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+      </Documents>
+    </RipFlowJob>

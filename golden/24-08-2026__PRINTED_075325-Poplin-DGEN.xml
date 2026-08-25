@@ -1,0 +1,27 @@
+
+    <RipFlowJob>
+      <BatchId>24-08-2026/PRINTED_075325-Poplin-DGEN</BatchId>
+      <Printer>DGEN</Printer>
+      <NestingGroup>{{UUID}}</NestingGroup>
+      <LogisticGroup>{{UUID}}_0.21m</LogisticGroup>
+      <PhysicalGroup>Poplin_0.21m</PhysicalGroup>
+      <DocumentCount>1</DocumentCount>
+      <Documents>
+          
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\24-08-2026\PRINTED_075325-Poplin-DGEN\ON000037_Customer_012_1of1_Poplin_1x_Sample Print - 20 x 20 cm_XWD00000000000000000000000000000010_FF.pdf</Path>
+          <Name>ON000037_Customer_012_1of1_Poplin_1x_Sample Print - 20 x 20 cm_XWD00000000000000000000000000000010_FF.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId>XWD00000000000000000000000000000010</DocumentId>
+          <Width>220</Width>
+          <Height>200</Height>
+          <Material>Poplin</Material>
+          <MaterialType>Cottons</MaterialType>
+          <OrderId>ON000037</OrderId>
+          <PrintTypeCode>SAMPLE</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+      </Documents>
+    </RipFlowJob>

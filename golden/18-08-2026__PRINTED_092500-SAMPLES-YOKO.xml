@@ -1,0 +1,155 @@
+
+    <RipFlowJob>
+      <BatchId>18-08-2026/PRINTED_092500-SAMPLES-YOKO</BatchId>
+      <Printer>YOKO</Printer>
+      <NestingGroup>{{UUID}}</NestingGroup>
+      <LogisticGroup>{{UUID}}_0.69m</LogisticGroup>
+      <PhysicalGroup>SAMPLES_0.69m</PhysicalGroup>
+      <DocumentCount>9</DocumentCount>
+      <Documents>
+          
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\18-08-2026\PRINTED_092500-SAMPLES-YOKO\ON000015_Customer_070_1of3_Avio Cotton Mix_1x_Fat Quarter - 65 x 48 cm_XWD00000000000000000000000000000007_FF.pdf</Path>
+          <Name>ON000015_Customer_070_1of3_Avio Cotton Mix_1x_Fat Quarter - 65 x 48 cm_XWD00000000000000000000000000000007_FF.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId>XWD00000000000000000000000000000007</DocumentId>
+          <Width>670</Width>
+          <Height>480</Height>
+          <Material>Avio Cotton Mix</Material>
+          <MaterialType>Polyesters</MaterialType>
+          <OrderId>ON000015</OrderId>
+          <PrintTypeCode>FQ</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\18-08-2026\PRINTED_092500-SAMPLES-YOKO\ON000016_Customer_033_2of6_Emperor Twill_1x_Fat Quarter - 65 x 48 cm_XWD0000000000000000000000000000000c_FF.pdf</Path>
+          <Name>ON000016_Customer_033_2of6_Emperor Twill_1x_Fat Quarter - 65 x 48 cm_XWD0000000000000000000000000000000c_FF.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId>XWD0000000000000000000000000000000c</DocumentId>
+          <Width>670</Width>
+          <Height>480</Height>
+          <Material>Emperor Twill</Material>
+          <MaterialType>Polyesters</MaterialType>
+          <OrderId>ON000016</OrderId>
+          <PrintTypeCode>FQ</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\18-08-2026\PRINTED_092500-SAMPLES-YOKO\ON000028_Customer_049_1of7_3-Pass Blackout FR_1x_Sample Print - 20 x 20 cm_XWD0000000000000000000000000000005b_FF.pdf</Path>
+          <Name>ON000028_Customer_049_1of7_3-Pass Blackout FR_1x_Sample Print - 20 x 20 cm_XWD0000000000000000000000000000005b_FF.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId>XWD0000000000000000000000000000005b</DocumentId>
+          <Width>220</Width>
+          <Height>200</Height>
+          <Material>3-Pass Blackout FR</Material>
+          <MaterialType>Polyesters</MaterialType>
+          <OrderId>ON000028</OrderId>
+          <PrintTypeCode>SAMPLE</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\18-08-2026\PRINTED_092500-SAMPLES-YOKO\ON000028_Customer_049_2of7_3-Pass Blackout FR_1x_Sample Print - 20 x 20 cm_XWD0000000000000000000000000000005a_FF.pdf</Path>
+          <Name>ON000028_Customer_049_2of7_3-Pass Blackout FR_1x_Sample Print - 20 x 20 cm_XWD0000000000000000000000000000005a_FF.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId>XWD0000000000000000000000000000005a</DocumentId>
+          <Width>220</Width>
+          <Height>200</Height>
+          <Material>3-Pass Blackout FR</Material>
+          <MaterialType>Polyesters</MaterialType>
+          <OrderId>ON000028</OrderId>
+          <PrintTypeCode>SAMPLE</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\18-08-2026\PRINTED_092500-SAMPLES-YOKO\ON000028_Customer_049_3of7_3-Pass Blackout FR_1x_Sample Print - 20 x 20 cm_XWD0000000000000000000000000000005e_FF.pdf</Path>
+          <Name>ON000028_Customer_049_3of7_3-Pass Blackout FR_1x_Sample Print - 20 x 20 cm_XWD0000000000000000000000000000005e_FF.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId>XWD0000000000000000000000000000005e</DocumentId>
+          <Width>220</Width>
+          <Height>200</Height>
+          <Material>3-Pass Blackout FR</Material>
+          <MaterialType>Polyesters</MaterialType>
+          <OrderId>ON000028</OrderId>
+          <PrintTypeCode>SAMPLE</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\18-08-2026\PRINTED_092500-SAMPLES-YOKO\ON000028_Customer_049_4of7_3-Pass Blackout FR_1x_Sample Print - 20 x 20 cm_XWD00000000000000000000000000000005_FF.pdf</Path>
+          <Name>ON000028_Customer_049_4of7_3-Pass Blackout FR_1x_Sample Print - 20 x 20 cm_XWD00000000000000000000000000000005_FF.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId>XWD00000000000000000000000000000005</DocumentId>
+          <Width>220</Width>
+          <Height>200</Height>
+          <Material>3-Pass Blackout FR</Material>
+          <MaterialType>Polyesters</MaterialType>
+          <OrderId>ON000028</OrderId>
+          <PrintTypeCode>SAMPLE</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\18-08-2026\PRINTED_092500-SAMPLES-YOKO\ON000028_Customer_049_5of7_3-Pass Blackout FR_1x_Sample Print - 20 x 20 cm_XWD0000000000000000000000000000001b_FF.pdf</Path>
+          <Name>ON000028_Customer_049_5of7_3-Pass Blackout FR_1x_Sample Print - 20 x 20 cm_XWD0000000000000000000000000000001b_FF.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId>XWD0000000000000000000000000000001b</DocumentId>
+          <Width>220</Width>
+          <Height>200</Height>
+          <Material>3-Pass Blackout FR</Material>
+          <MaterialType>Polyesters</MaterialType>
+          <OrderId>ON000028</OrderId>
+          <PrintTypeCode>SAMPLE</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\18-08-2026\PRINTED_092500-SAMPLES-YOKO\ON000028_Customer_049_6of7_3-Pass Blackout FR_1x_Sample Print - 20 x 20 cm_XWD00000000000000000000000000000013_FF.pdf</Path>
+          <Name>ON000028_Customer_049_6of7_3-Pass Blackout FR_1x_Sample Print - 20 x 20 cm_XWD00000000000000000000000000000013_FF.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId>XWD00000000000000000000000000000013</DocumentId>
+          <Width>220</Width>
+          <Height>200</Height>
+          <Material>3-Pass Blackout FR</Material>
+          <MaterialType>Polyesters</MaterialType>
+          <OrderId>ON000028</OrderId>
+          <PrintTypeCode>SAMPLE</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\18-08-2026\PRINTED_092500-SAMPLES-YOKO\ON000028_Customer_049_7of7_3-Pass Blackout FR_1x_Sample Print - 20 x 20 cm_XWD00000000000000000000000000000065_FF.pdf</Path>
+          <Name>ON000028_Customer_049_7of7_3-Pass Blackout FR_1x_Sample Print - 20 x 20 cm_XWD00000000000000000000000000000065_FF.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId>XWD00000000000000000000000000000065</DocumentId>
+          <Width>220</Width>
+          <Height>200</Height>
+          <Material>3-Pass Blackout FR</Material>
+          <MaterialType>Polyesters</MaterialType>
+          <OrderId>ON000028</OrderId>
+          <PrintTypeCode>SAMPLE</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+      </Documents>
+    </RipFlowJob>

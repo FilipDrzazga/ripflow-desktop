@@ -1,0 +1,27 @@
+
+    <RipFlowJob>
+      <BatchId>18-08-2026/PRINTED_135343-Eco Astra Ramie-DGEN</BatchId>
+      <Printer>DGEN</Printer>
+      <NestingGroup>{{UUID}}</NestingGroup>
+      <LogisticGroup>{{UUID}}_0.21m</LogisticGroup>
+      <PhysicalGroup>Eco Astra Ramie_0.21m</PhysicalGroup>
+      <DocumentCount>1</DocumentCount>
+      <Documents>
+          
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\18-08-2026\PRINTED_135343-Eco Astra Ramie-DGEN\ON000013_Customer_066_1of9_Eco Astra Ramie_1x_Sample Print - 20 x 20 cm_XWD00000000000000000000000000000050_FF.pdf</Path>
+          <Name>ON000013_Customer_066_1of9_Eco Astra Ramie_1x_Sample Print - 20 x 20 cm_XWD00000000000000000000000000000050_FF.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId>XWD00000000000000000000000000000050</DocumentId>
+          <Width>220</Width>
+          <Height>200</Height>
+          <Material>Eco Astra Ramie</Material>
+          <MaterialType>Cottons</MaterialType>
+          <OrderId>ON000013</OrderId>
+          <PrintTypeCode>SAMPLE</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>true</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+      </Documents>
+    </RipFlowJob>

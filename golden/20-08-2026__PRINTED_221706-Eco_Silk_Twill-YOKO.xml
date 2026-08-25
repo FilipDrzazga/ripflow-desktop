@@ -1,0 +1,27 @@
+
+    <RipFlowJob>
+      <BatchId>20-08-2026/PRINTED_221706-Eco Silk Twill-YOKO</BatchId>
+      <Printer>YOKO</Printer>
+      <NestingGroup>{{UUID}}</NestingGroup>
+      <LogisticGroup>{{UUID}}_10.01m</LogisticGroup>
+      <PhysicalGroup>Eco Silk Twill_10.01m</PhysicalGroup>
+      <DocumentCount>1</DocumentCount>
+      <Documents>
+          
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\20-08-2026\PRINTED_221706-Eco Silk Twill-YOKO\ON000056_Customer_006_1of1_Eco Silk Twill_10x_Linear Meter - 1m increments_XWD00000000000000000000000000000001_FF.pdf</Path>
+          <Name>ON000056_Customer_006_1of1_Eco Silk Twill_10x_Linear Meter - 1m increments_XWD00000000000000000000000000000001_FF.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId>XWD00000000000000000000000000000001</DocumentId>
+          <Width>1420</Width>
+          <Height>10000</Height>
+          <Material>Eco Silk Twill</Material>
+          <MaterialType>Polyesters</MaterialType>
+          <OrderId>ON000056</OrderId>
+          <PrintTypeCode>LM</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+      </Documents>
+    </RipFlowJob>

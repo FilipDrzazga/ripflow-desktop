@@ -1,0 +1,27 @@
+
+    <RipFlowJob>
+      <BatchId>13-08-2026/PRINTED_094417-Avio Cotton Mix-YOKO</BatchId>
+      <Printer>YOKO</Printer>
+      <NestingGroup>{{UUID}}</NestingGroup>
+      <LogisticGroup>{{UUID}}_1m</LogisticGroup>
+      <PhysicalGroup>Avio Cotton Mix_1m</PhysicalGroup>
+      <DocumentCount>1</DocumentCount>
+      <Documents>
+          
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\13-08-2026\PRINTED_094417-Avio Cotton Mix-YOKO\ON000010_Customer_007_1of3_Avio Cotton Mix_1x_Linear Meter - 1m increments_XWD00000000000000000000000000000016_FF.pdf</Path>
+          <Name>ON000010_Customer_007_1of3_Avio Cotton Mix_1x_Linear Meter - 1m increments_XWD00000000000000000000000000000016_FF.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId>XWD00000000000000000000000000000016</DocumentId>
+          <Width>1420</Width>
+          <Height>1000</Height>
+          <Material>Avio Cotton Mix</Material>
+          <MaterialType>Polyesters</MaterialType>
+          <OrderId>ON000010</OrderId>
+          <PrintTypeCode>LM</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+      </Documents>
+    </RipFlowJob>

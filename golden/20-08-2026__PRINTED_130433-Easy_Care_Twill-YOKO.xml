@@ -1,0 +1,27 @@
+
+    <RipFlowJob>
+      <BatchId>20-08-2026/PRINTED_130433-Easy Care Twill-YOKO</BatchId>
+      <Printer>YOKO</Printer>
+      <NestingGroup>{{UUID}}</NestingGroup>
+      <LogisticGroup>{{UUID}}_1m</LogisticGroup>
+      <PhysicalGroup>Easy Care Twill_1m</PhysicalGroup>
+      <DocumentCount>1</DocumentCount>
+      <Documents>
+          
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\20-08-2026\PRINTED_130433-Easy Care Twill-YOKO\ON000003_Customer_019_1of1_Easy Care Twill_1x_Linear Meter - 1m increments_XWD0000000000000000000000000000002e_FF.pdf</Path>
+          <Name>ON000003_Customer_019_1of1_Easy Care Twill_1x_Linear Meter - 1m increments_XWD0000000000000000000000000000002e_FF.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId>XWD0000000000000000000000000000002e</DocumentId>
+          <Width>1420</Width>
+          <Height>1000</Height>
+          <Material>Easy Care Twill</Material>
+          <MaterialType>Polyesters</MaterialType>
+          <OrderId>ON000003</OrderId>
+          <PrintTypeCode>LM</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+      </Documents>
+    </RipFlowJob>

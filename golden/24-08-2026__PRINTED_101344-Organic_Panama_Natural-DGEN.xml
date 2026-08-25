@@ -1,0 +1,43 @@
+
+    <RipFlowJob>
+      <BatchId>24-08-2026/PRINTED_101344-Organic Panama Natural-DGEN</BatchId>
+      <Printer>DGEN</Printer>
+      <NestingGroup>{{UUID}}</NestingGroup>
+      <LogisticGroup>{{UUID}}_5.02m</LogisticGroup>
+      <PhysicalGroup>Organic Panama Natural_5.02m</PhysicalGroup>
+      <DocumentCount>2</DocumentCount>
+      <Documents>
+          
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\24-08-2026\PRINTED_101344-Organic Panama Natural-DGEN\ON000080_Customer_004_3of4_Organic Panama Natural_3x_Linear Meter - 1m increments_XWD00000000000000000000000000000072_FF.pdf</Path>
+          <Name>ON000080_Customer_004_3of4_Organic Panama Natural_3x_Linear Meter - 1m increments_XWD00000000000000000000000000000072_FF.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId>XWD00000000000000000000000000000072</DocumentId>
+          <Width>1420</Width>
+          <Height>3000</Height>
+          <Material>Organic Panama Natural</Material>
+          <MaterialType>Cottons</MaterialType>
+          <OrderId>ON000080</OrderId>
+          <PrintTypeCode>LM</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\24-08-2026\PRINTED_101344-Organic Panama Natural-DGEN\ON000080_Customer_004_4of4_Organic Panama Natural_2x_Linear Meter - 1m increments_XWD00000000000000000000000000000060_FF.pdf</Path>
+          <Name>ON000080_Customer_004_4of4_Organic Panama Natural_2x_Linear Meter - 1m increments_XWD00000000000000000000000000000060_FF.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId>XWD00000000000000000000000000000060</DocumentId>
+          <Width>1420</Width>
+          <Height>2000</Height>
+          <Material>Organic Panama Natural</Material>
+          <MaterialType>Cottons</MaterialType>
+          <OrderId>ON000080</OrderId>
+          <PrintTypeCode>LM</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+      </Documents>
+    </RipFlowJob>

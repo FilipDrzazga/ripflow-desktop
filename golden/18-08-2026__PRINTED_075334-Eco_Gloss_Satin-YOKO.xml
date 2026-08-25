@@ -1,0 +1,27 @@
+
+    <RipFlowJob>
+      <BatchId>18-08-2026/PRINTED_075334-Eco Gloss Satin-YOKO</BatchId>
+      <Printer>YOKO</Printer>
+      <NestingGroup>{{UUID}}</NestingGroup>
+      <LogisticGroup>{{UUID}}_2m</LogisticGroup>
+      <PhysicalGroup>Eco Gloss Satin_2m</PhysicalGroup>
+      <DocumentCount>1</DocumentCount>
+      <Documents>
+          
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\18-08-2026\PRINTED_075334-Eco Gloss Satin-YOKO\ON000030_Customer_041_1of2_Eco Gloss Satin_2x_Linear Meter - 1m increments_XWD0000000000000000000000000000006d_FF.pdf</Path>
+          <Name>ON000030_Customer_041_1of2_Eco Gloss Satin_2x_Linear Meter - 1m increments_XWD0000000000000000000000000000006d_FF.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId>XWD0000000000000000000000000000006d</DocumentId>
+          <Width>1420</Width>
+          <Height>2000</Height>
+          <Material>Eco Gloss Satin</Material>
+          <MaterialType>Polyesters</MaterialType>
+          <OrderId>ON000030</OrderId>
+          <PrintTypeCode>LM</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+      </Documents>
+    </RipFlowJob>

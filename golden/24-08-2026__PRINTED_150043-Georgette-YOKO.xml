@@ -1,0 +1,43 @@
+
+    <RipFlowJob>
+      <BatchId>24-08-2026/PRINTED_150043-Georgette-YOKO</BatchId>
+      <Printer>YOKO</Printer>
+      <NestingGroup>{{UUID}}</NestingGroup>
+      <LogisticGroup>{{UUID}}_4.01m</LogisticGroup>
+      <PhysicalGroup>Georgette_4.01m</PhysicalGroup>
+      <DocumentCount>2</DocumentCount>
+      <Documents>
+          
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\24-08-2026\PRINTED_150043-Georgette-YOKO\ON000001_Customer_054_1of1_Georgette_3x_Linear Meter - 1m increments_XWD0000000000000000000000000000002d_FF.pdf</Path>
+          <Name>ON000001_Customer_054_1of1_Georgette_3x_Linear Meter - 1m increments_XWD0000000000000000000000000000002d_FF.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId>XWD0000000000000000000000000000002d</DocumentId>
+          <Width>1420</Width>
+          <Height>3000</Height>
+          <Material>Georgette</Material>
+          <MaterialType>Polyesters</MaterialType>
+          <OrderId>ON000001</OrderId>
+          <PrintTypeCode>LM</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\24-08-2026\PRINTED_150043-Georgette-YOKO\ON000075_Customer_028_2of3_Georgette_1x_Linear Meter - 1m increments_XWD0000000000000000000000000000000a_FF.pdf</Path>
+          <Name>ON000075_Customer_028_2of3_Georgette_1x_Linear Meter - 1m increments_XWD0000000000000000000000000000000a_FF.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId>XWD0000000000000000000000000000000a</DocumentId>
+          <Width>1420</Width>
+          <Height>1000</Height>
+          <Material>Georgette</Material>
+          <MaterialType>Polyesters</MaterialType>
+          <OrderId>ON000075</OrderId>
+          <PrintTypeCode>LM</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+      </Documents>
+    </RipFlowJob>

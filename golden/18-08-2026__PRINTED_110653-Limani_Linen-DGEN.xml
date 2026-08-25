@@ -1,0 +1,43 @@
+
+    <RipFlowJob>
+      <BatchId>18-08-2026/PRINTED_110653-Limani Linen-DGEN</BatchId>
+      <Printer>DGEN</Printer>
+      <NestingGroup>{{UUID}}</NestingGroup>
+      <LogisticGroup>{{UUID}}_0.49m</LogisticGroup>
+      <PhysicalGroup>Limani Linen_0.49m</PhysicalGroup>
+      <DocumentCount>2</DocumentCount>
+      <Documents>
+          
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\18-08-2026\PRINTED_110653-Limani Linen-DGEN\ON000013_Customer_066_3of9_Limani Linen_1x_Fat Quarter - 65 x 48 cm_XWD0000000000000000000000000000003c_FF.pdf</Path>
+          <Name>ON000013_Customer_066_3of9_Limani Linen_1x_Fat Quarter - 65 x 48 cm_XWD0000000000000000000000000000003c_FF.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId>XWD0000000000000000000000000000003c</DocumentId>
+          <Width>670</Width>
+          <Height>480</Height>
+          <Material>Limani Linen</Material>
+          <MaterialType>Cottons</MaterialType>
+          <OrderId>ON000013</OrderId>
+          <PrintTypeCode>FQ</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>true</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\18-08-2026\PRINTED_110653-Limani Linen-DGEN\ON000013_Customer_066_7of9_Limani Linen_1x_Fat Quarter - 65 x 48 cm_XWD00000000000000000000000000000071_FF.pdf</Path>
+          <Name>ON000013_Customer_066_7of9_Limani Linen_1x_Fat Quarter - 65 x 48 cm_XWD00000000000000000000000000000071_FF.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId>XWD00000000000000000000000000000071</DocumentId>
+          <Width>670</Width>
+          <Height>480</Height>
+          <Material>Limani Linen</Material>
+          <MaterialType>Cottons</MaterialType>
+          <OrderId>ON000013</OrderId>
+          <PrintTypeCode>FQ</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>true</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+      </Documents>
+    </RipFlowJob>

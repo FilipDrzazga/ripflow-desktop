@@ -1,0 +1,59 @@
+
+    <RipFlowJob>
+      <BatchId>19-08-2026/PRINTED_080257-SAMPLES-YOKO</BatchId>
+      <Printer>YOKO</Printer>
+      <NestingGroup>{{UUID}}</NestingGroup>
+      <LogisticGroup>{{UUID}}_0.2m</LogisticGroup>
+      <PhysicalGroup>SAMPLES_0.2m</PhysicalGroup>
+      <DocumentCount>3</DocumentCount>
+      <Documents>
+          
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\19-08-2026\PRINTED_080257-SAMPLES-YOKO\ON000032_Customer_015_2of4_Stretch Jersey_1x_Sample Print - 20 x 20 cm_XWD00000000000000000000000000000051_FF.pdf</Path>
+          <Name>ON000032_Customer_015_2of4_Stretch Jersey_1x_Sample Print - 20 x 20 cm_XWD00000000000000000000000000000051_FF.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId>XWD00000000000000000000000000000051</DocumentId>
+          <Width>220</Width>
+          <Height>200</Height>
+          <Material>Stretch Jersey</Material>
+          <MaterialType>Polyesters</MaterialType>
+          <OrderId>ON000032</OrderId>
+          <PrintTypeCode>SAMPLE</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\19-08-2026\PRINTED_080257-SAMPLES-YOKO\ON000032_Customer_015_3of4_Eco Lotus Twill (Water Repellant)_1x_Sample Print - 20 x 20 cm_XWD00000000000000000000000000000064_FF.pdf</Path>
+          <Name>ON000032_Customer_015_3of4_Eco Lotus Twill (Water Repellant)_1x_Sample Print - 20 x 20 cm_XWD00000000000000000000000000000064_FF.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId>XWD00000000000000000000000000000064</DocumentId>
+          <Width>220</Width>
+          <Height>200</Height>
+          <Material>Eco Lotus Twill (Water Repellant)</Material>
+          <MaterialType>Polyesters</MaterialType>
+          <OrderId>ON000032</OrderId>
+          <PrintTypeCode>SAMPLE</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\19-08-2026\PRINTED_080257-SAMPLES-YOKO\ON000032_Customer_015_4of4_Aqua Plain Tex - PUL (Water Repellant)_1x_Sample Print - 20 x 20 cm_XWD00000000000000000000000000000019_FF.pdf</Path>
+          <Name>ON000032_Customer_015_4of4_Aqua Plain Tex - PUL (Water Repellant)_1x_Sample Print - 20 x 20 cm_XWD00000000000000000000000000000019_FF.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId>XWD00000000000000000000000000000019</DocumentId>
+          <Width>220</Width>
+          <Height>200</Height>
+          <Material>Aqua Plain Tex - PUL (Water Repellant)</Material>
+          <MaterialType>Polyesters</MaterialType>
+          <OrderId>ON000032</OrderId>
+          <PrintTypeCode>SAMPLE</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+      </Documents>
+    </RipFlowJob>

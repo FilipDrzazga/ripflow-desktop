@@ -1,0 +1,107 @@
+
+    <RipFlowJob>
+      <BatchId>20-08-2026/PRINTED_130403-Eco Satin Flow-YOKO</BatchId>
+      <Printer>YOKO</Printer>
+      <NestingGroup>{{UUID}}</NestingGroup>
+      <LogisticGroup>{{UUID}}_3.46m</LogisticGroup>
+      <PhysicalGroup>Eco Satin Flow_3.46m</PhysicalGroup>
+      <DocumentCount>6</DocumentCount>
+      <Documents>
+          
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\20-08-2026\PRINTED_130403-Eco Satin Flow-YOKO\ON000007_Customer_023_1of1_Eco Satin Flow_2x_Linear Meter - 1m increments_XWD00000000000000000000000000000035_FF.pdf</Path>
+          <Name>ON000007_Customer_023_1of1_Eco Satin Flow_2x_Linear Meter - 1m increments_XWD00000000000000000000000000000035_FF.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId>XWD00000000000000000000000000000035</DocumentId>
+          <Width>1420</Width>
+          <Height>2000</Height>
+          <Material>Eco Satin Flow</Material>
+          <MaterialType>Polyesters</MaterialType>
+          <OrderId>ON000007</OrderId>
+          <PrintTypeCode>LM</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\20-08-2026\PRINTED_130403-Eco Satin Flow-YOKO\ON000018_Customer_026_11of11_Eco Satin Flow_1x_Fat Quarter - 65 x 48 cm_XWD00000000000000000000000000000004_FF.pdf</Path>
+          <Name>ON000018_Customer_026_11of11_Eco Satin Flow_1x_Fat Quarter - 65 x 48 cm_XWD00000000000000000000000000000004_FF.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId>XWD00000000000000000000000000000004</DocumentId>
+          <Width>670</Width>
+          <Height>480</Height>
+          <Material>Eco Satin Flow</Material>
+          <MaterialType>Polyesters</MaterialType>
+          <OrderId>ON000018</OrderId>
+          <PrintTypeCode>FQ</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\20-08-2026\PRINTED_130403-Eco Satin Flow-YOKO\ON000018_Customer_026_1of11_Eco Satin Flow_1x_Fat Quarter - 65 x 48 cm_XWD00000000000000000000000000000045_FF.pdf</Path>
+          <Name>ON000018_Customer_026_1of11_Eco Satin Flow_1x_Fat Quarter - 65 x 48 cm_XWD00000000000000000000000000000045_FF.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId>XWD00000000000000000000000000000045</DocumentId>
+          <Width>670</Width>
+          <Height>480</Height>
+          <Material>Eco Satin Flow</Material>
+          <MaterialType>Polyesters</MaterialType>
+          <OrderId>ON000018</OrderId>
+          <PrintTypeCode>FQ</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\20-08-2026\PRINTED_130403-Eco Satin Flow-YOKO\ON000018_Customer_026_2of11_Eco Satin Flow_1x_Fat Quarter - 65 x 48 cm_XWD00000000000000000000000000000031_FF.pdf</Path>
+          <Name>ON000018_Customer_026_2of11_Eco Satin Flow_1x_Fat Quarter - 65 x 48 cm_XWD00000000000000000000000000000031_FF.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId>XWD00000000000000000000000000000031</DocumentId>
+          <Width>670</Width>
+          <Height>480</Height>
+          <Material>Eco Satin Flow</Material>
+          <MaterialType>Polyesters</MaterialType>
+          <OrderId>ON000018</OrderId>
+          <PrintTypeCode>FQ</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\20-08-2026\PRINTED_130403-Eco Satin Flow-YOKO\ON000018_Customer_026_3of11_Eco Satin Flow_1x_Fat Quarter - 65 x 48 cm_XWD0000000000000000000000000000002b_FF.pdf</Path>
+          <Name>ON000018_Customer_026_3of11_Eco Satin Flow_1x_Fat Quarter - 65 x 48 cm_XWD0000000000000000000000000000002b_FF.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId>XWD0000000000000000000000000000002b</DocumentId>
+          <Width>670</Width>
+          <Height>480</Height>
+          <Material>Eco Satin Flow</Material>
+          <MaterialType>Polyesters</MaterialType>
+          <OrderId>ON000018</OrderId>
+          <PrintTypeCode>FQ</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\20-08-2026\PRINTED_130403-Eco Satin Flow-YOKO\ON000018_Customer_026_9of11_Eco Satin Flow_1x_Fat Quarter - 65 x 48 cm_XWD00000000000000000000000000000023_FF.pdf</Path>
+          <Name>ON000018_Customer_026_9of11_Eco Satin Flow_1x_Fat Quarter - 65 x 48 cm_XWD00000000000000000000000000000023_FF.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId>XWD00000000000000000000000000000023</DocumentId>
+          <Width>670</Width>
+          <Height>480</Height>
+          <Material>Eco Satin Flow</Material>
+          <MaterialType>Polyesters</MaterialType>
+          <OrderId>ON000018</OrderId>
+          <PrintTypeCode>FQ</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+      </Documents>
+    </RipFlowJob>

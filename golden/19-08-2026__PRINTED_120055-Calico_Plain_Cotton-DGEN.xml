@@ -1,0 +1,27 @@
+
+    <RipFlowJob>
+      <BatchId>19-08-2026/PRINTED_120055-Calico Plain Cotton-DGEN</BatchId>
+      <Printer>DGEN</Printer>
+      <NestingGroup>{{UUID}}</NestingGroup>
+      <LogisticGroup>{{UUID}}_1.01m</LogisticGroup>
+      <PhysicalGroup>Calico Plain Cotton_1.01m</PhysicalGroup>
+      <DocumentCount>1</DocumentCount>
+      <Documents>
+          
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\19-08-2026\PRINTED_120055-Calico Plain Cotton-DGEN\ON000036_Customer_001_1of1_Calico Plain Cotton_1x_Linear Meter - 1m increments_XWD00000000000000000000000000000012_FF.pdf</Path>
+          <Name>ON000036_Customer_001_1of1_Calico Plain Cotton_1x_Linear Meter - 1m increments_XWD00000000000000000000000000000012_FF.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId>XWD00000000000000000000000000000012</DocumentId>
+          <Width>1420</Width>
+          <Height>1000</Height>
+          <Material>Calico Plain Cotton</Material>
+          <MaterialType>Cottons</MaterialType>
+          <OrderId>ON000036</OrderId>
+          <PrintTypeCode>LM</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+      </Documents>
+    </RipFlowJob>

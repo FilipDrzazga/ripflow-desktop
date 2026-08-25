@@ -1,0 +1,27 @@
+
+    <RipFlowJob>
+      <BatchId>24-08-2026/PRINTED_080248-Massey Crepe-YUMI</BatchId>
+      <Printer>YUMI</Printer>
+      <NestingGroup>{{UUID}}</NestingGroup>
+      <LogisticGroup>{{UUID}}_6m</LogisticGroup>
+      <PhysicalGroup>Massey Crepe_6m</PhysicalGroup>
+      <DocumentCount>1</DocumentCount>
+      <Documents>
+          
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\24-08-2026\PRINTED_080248-Massey Crepe-YUMI\ON000074_Customer_044_1of2_Massey Crepe_6x_Linear Meter - 1m increments_XWD00000000000000000000000000000036_FF.pdf</Path>
+          <Name>ON000074_Customer_044_1of2_Massey Crepe_6x_Linear Meter - 1m increments_XWD00000000000000000000000000000036_FF.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId>XWD00000000000000000000000000000036</DocumentId>
+          <Width>1420</Width>
+          <Height>6000</Height>
+          <Material>Massey Crepe</Material>
+          <MaterialType>Polyesters</MaterialType>
+          <OrderId>ON000074</OrderId>
+          <PrintTypeCode>LM</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+      </Documents>
+    </RipFlowJob>

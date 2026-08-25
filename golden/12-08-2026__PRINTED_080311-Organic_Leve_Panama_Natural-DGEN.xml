@@ -1,0 +1,43 @@
+
+    <RipFlowJob>
+      <BatchId>12-08-2026/PRINTED_080311-Organic Leve Panama Natural-DGEN</BatchId>
+      <Printer>DGEN</Printer>
+      <NestingGroup>{{UUID}}</NestingGroup>
+      <LogisticGroup>{{UUID}}_1.53m</LogisticGroup>
+      <PhysicalGroup>Organic Leve Panama Natural_1.53m</PhysicalGroup>
+      <DocumentCount>2</DocumentCount>
+      <Documents>
+          
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\12-08-2026\PRINTED_080311-Organic Leve Panama Natural-DGEN\ON000006_Customer_042_1of1_Custom Tea Towel_Organic Leve Panama Natural _ Fully Sewn_5_FF_4036.pdf</Path>
+          <Name>ON000006_Customer_042_1of1_Custom Tea Towel_Organic Leve Panama Natural _ Fully Sewn_5_FF_4036.pdf</Name>
+          <Copies>5</Copies>
+          <DocumentId></DocumentId>
+          <Width>700</Width>
+          <Height>500</Height>
+          <Material>Organic Leve Panama Natural</Material>
+          <MaterialType>Cottons</MaterialType>
+          <OrderId>ON000006</OrderId>
+          <PrintTypeCode>TEA_TOWEL</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+
+        <Document>
+          <Path>{{XMLROOT}}\PRINTED\12-08-2026\PRINTED_080311-Organic Leve Panama Natural-DGEN\ON000008_Customer_055_1of1_Custom Tea Towel_Organic Leve Panama Natural _ Fully Sewn_1_FF_4047.pdf</Path>
+          <Name>ON000008_Customer_055_1of1_Custom Tea Towel_Organic Leve Panama Natural _ Fully Sewn_1_FF_4047.pdf</Name>
+          <Copies>1</Copies>
+          <DocumentId></DocumentId>
+          <Width>700</Width>
+          <Height>500</Height>
+          <Material>Organic Leve Panama Natural</Material>
+          <MaterialType>Cottons</MaterialType>
+          <OrderId>ON000008</OrderId>
+          <PrintTypeCode>TEA_TOWEL</PrintTypeCode>
+          <IsVelvet>false</IsVelvet>
+          <IsLinen>false</IsLinen>
+          <IsBlossom>false</IsBlossom>
+        </Document>
+      </Documents>
+    </RipFlowJob>
