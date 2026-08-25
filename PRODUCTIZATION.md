@@ -36,7 +36,7 @@ Baseline przed startem: `npm run test` = 107 passed / 8 files, `npm run lint` cz
   - `src/electron/helpers/db.js` (~:273-279), idiom jak seed `fabric_globals` (~:250)
   - dowod no-op: Alex ma 132 wiersze -> guard false -> seed nie leci
   - commit: `fix(db): seed default fabrics only when the table is empty`
-- [ ] **BUG 2** - kontrolka `clientId` w UI (zalezy od BUG 1)
+- [x] **BUG 2** - kontrolka `clientId` w UI (zalezy od BUG 1)
   - `src/ui/components/Settings/views/GeneralView.jsx` (input jak "Workstation Name")
   - commit: `fix(settings): add a clientId field to the General settings view`
 - [x] **Eksport katalogu Alexa do pliku** (siatka bezpieczenstwa, PRZED oproznieniem)
@@ -69,7 +69,7 @@ Baseline przed startem: `npm run test` = 107 passed / 8 files, `npm run lint` cz
   - weryfikacja: golden-diff XML bajt w bajt na kopii bazy Alexa
   - rozwaz rozbicie na 2 commity (main / renderer) dla pewniejszego przegladu diffa
   - commit: `fix(estimate): feed DB fabric config into every print-length consumer`
-- [ ] Usunac `tmp_pathcheck.js` / `tmp_sim.js` z roota repo
+- [x] Usunac `tmp_pathcheck.js` / `tmp_sim.js` z roota repo
 
 **Bramka Etapu 0:** 107 testow przechodzi bez modyfikacji, lint czysty, Alex ma dalej
 132 tkaniny, swieza baza jest pusta, XML Alexa bajt w bajt bez zmian.
