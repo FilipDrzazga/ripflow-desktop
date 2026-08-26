@@ -52,6 +52,7 @@ const STATUS_MAP = {
 
 const DataList = () => {
   const filteredFiles = useStore((state) => state.filteredFiles);
+  const fabricConfig = useStore((state) => state.fabricConfig);
   const selectedIds = useStore((state) => state.selectedIds);
   const isBatchSubmitting = useStore((state) => state.isBatchSubmitting);
   const heldIds = useStore((state) => state.heldIds);
@@ -248,7 +249,7 @@ const DataList = () => {
                 onChange={(e) => handleGroupCheckboxChange(e, group)}
               />
               {group.printGroup}
-              <div className={style.estimated_length}>{estimatePrintLength(group.items).fixedTotalLengthM} m</div>
+              <div className={style.estimated_length}>{estimatePrintLength(group.items, fabricConfig).fixedTotalLengthM} m</div>
             </label>
             <ul className={style.list_items}>
               {group.items.map((item) => {

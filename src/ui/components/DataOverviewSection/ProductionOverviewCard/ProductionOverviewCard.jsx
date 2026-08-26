@@ -29,6 +29,7 @@ const MATERIAL_COLORS = {
 
 const ProductionPrintCard = () => {
   const files = useStore((state) => state.files);
+  const fabricConfig = useStore((state) => state.fabricConfig);
   const lastFilesRefreshAt = useStore((state) => state.lastFilesRefreshAt);
   const [now, setNow] = useState(() => Date.now());
   const allItems = useMemo(() => files.flatMap((group) => group.items), [files]);
@@ -50,11 +51,11 @@ const ProductionPrintCard = () => {
 
   const materialLengths = useMemo(() => {
     return {
-      Cottons: estimateMaterialLengthByGroups(files, "Cottons"),
-      Polyesters: estimateMaterialLengthByGroups(files, "Polyesters"),
-      Unknown: estimateMaterialLengthByGroups(files, "Unknown"),
+      Cottons: estimateMaterialLengthByGroups(files, "Cottons", fabricConfig),
+      Polyesters: estimateMaterialLengthByGroups(files, "Polyesters", fabricConfig),
+      Unknown: estimateMaterialLengthByGroups(files, "Unknown", fabricConfig),
     };
-  }, [files]);
+  }, [files, fabricConfig]);
 
   const cottonsLength = materialLengths.Cottons ?? 0;
   const polyestersLength = materialLengths.Polyesters ?? 0;

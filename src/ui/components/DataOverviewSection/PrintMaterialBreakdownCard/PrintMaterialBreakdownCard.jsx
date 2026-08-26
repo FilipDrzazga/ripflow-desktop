@@ -25,12 +25,12 @@ const formatPercentage = (value) => {
   return `${value.toFixed(1)}%`;
 };
 
-const getSectionData = (files, materialType, sectionConfig) => {
+const getSectionData = (files, materialType, sectionConfig, config) => {
   const sortedGroups = files
     .filter((group) => group.items.some((item) => item.materialType === materialType))
     .map((group) => {
       const groupItems = group.items.filter((item) => item.materialType === materialType);
-      const length = estimatePrintLength(groupItems).fixedTotalLengthM;
+      const length = estimatePrintLength(groupItems, config).fixedTotalLengthM;
 
       return {
         label: group.printGroup,
@@ -80,14 +80,15 @@ const getSectionData = (files, materialType, sectionConfig) => {
 
 const PrintMaterialBreakdownCard = () => {
   const files = useStore((state) => state.files);
+  const fabricConfig = useStore((state) => state.fabricConfig);
 
   const sections = useMemo(
     () =>
       MATERIAL_SECTIONS.map((section) => ({
         ...section,
-        ...getSectionData(files, section.label, section),
+        ...getSectionData(files, section.label, section, fabricConfig),
       })),
-    [files],
+    [files, fabricConfig],
   );
 
   return (

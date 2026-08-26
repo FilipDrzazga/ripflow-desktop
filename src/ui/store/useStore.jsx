@@ -12,11 +12,11 @@ import { getFabricGlobals as getFabricGlobalsApi, getFabrics as getFabricsApi } 
 import { getStagesByBatch as getStagesByBatchApi, getAllStages as getAllStagesApi, getStagesAfter as getStagesAfterApi, getAllStageHistory as getAllStageHistoryApi, clearAllProductionStages as clearAllProductionStagesApi, getOpenReprints as getOpenReprintsApi } from "../services/productionService";
 import { scanRipErrors as scanRipErrorsApi, resolveRipError as resolveRipErrorApi } from "../services/ripErrorService";
 
-const applySort = (groups, sortOrder) => {
+const applySort = (groups, sortOrder, config = null) => {
   if (!sortOrder) return groups;
   if (sortOrder === "meters_desc") {
     return [...groups]
-      .map((g) => ({ g, _len: estimatePrintLength(g.items).fixedTotalLengthM }))
+      .map((g) => ({ g, _len: estimatePrintLength(g.items, config).fixedTotalLengthM }))
       .sort((a, b) => b._len - a._len)
       .map(({ g }) => g);
   }
@@ -30,7 +30,7 @@ const applySort = (groups, sortOrder) => {
   return groups;
 };
 
-const applyFilters = (files, activeTab, searchQuery, sortOrder, printTypeFilter) => {
+const applyFilters = (files, activeTab, searchQuery, sortOrder, printTypeFilter, config = null) => {
   const query = searchQuery.trim().toLowerCase();
 
   const filtered = files
@@ -50,7 +50,7 @@ const applyFilters = (files, activeTab, searchQuery, sortOrder, printTypeFilter)
     }))
     .filter((group) => group.items.length > 0);
 
-  return applySort(filtered, sortOrder);
+  return applySort(filtered, sortOrder, config);
 };
 
 export const getLastBatch = (batchDays) => {
@@ -74,25 +74,25 @@ export const useStore = create(
     setActiveTab: (tab) =>
       set((state) => ({
         activeTab: tab,
-        filteredFiles: applyFilters(state.files, tab, state.searchQuery, state.sortOrder, state.printTypeFilter),
+        filteredFiles: applyFilters(state.files, tab, state.searchQuery, state.sortOrder, state.printTypeFilter, state.fabricConfig),
       })),
     searchQuery: "",
     setSearchQuery: (query) =>
       set((state) => ({
         searchQuery: query,
-        filteredFiles: applyFilters(state.files, state.activeTab, query, state.sortOrder, state.printTypeFilter),
+        filteredFiles: applyFilters(state.files, state.activeTab, query, state.sortOrder, state.printTypeFilter, state.fabricConfig),
       })),
     sortOrder: null,
     setSortOrder: (order) =>
       set((state) => ({
         sortOrder: order,
-        filteredFiles: applyFilters(state.files, state.activeTab, state.searchQuery, order, state.printTypeFilter),
+        filteredFiles: applyFilters(state.files, state.activeTab, state.searchQuery, order, state.printTypeFilter, state.fabricConfig),
       })),
     printTypeFilter: [],
     setPrintTypeFilter: (printType) =>
       set((state) => ({
         printTypeFilter: printType,
-        filteredFiles: applyFilters(state.files, state.activeTab, state.searchQuery, state.sortOrder, printType),
+        filteredFiles: applyFilters(state.files, state.activeTab, state.searchQuery, state.sortOrder, printType, state.fabricConfig),
       })),
     alerts: [],
     setAlert: (alert) => {
@@ -162,7 +162,7 @@ export const useStore = create(
     setFiles: (files) =>
       set((state) => ({
         files,
-        filteredFiles: applyFilters(files, state.activeTab, state.searchQuery, state.sortOrder, state.printTypeFilter),
+        filteredFiles: applyFilters(files, state.activeTab, state.searchQuery, state.sortOrder, state.printTypeFilter, state.fabricConfig),
       })),
     heldIds: new Set(),
     heldReasons: new Map(),
@@ -515,7 +515,7 @@ export const useStore = create(
           // and are no longer seeded into the override map here.
           set((state) => ({
             files: res.data,
-            filteredFiles: applyFilters(res.data, state.activeTab, state.searchQuery, state.sortOrder, state.printTypeFilter),
+            filteredFiles: applyFilters(res.data, state.activeTab, state.searchQuery, state.sortOrder, state.printTypeFilter, state.fabricConfig),
             selectedIds: clearSelection ? new Set() : state.selectedIds,
             lastFilesRefreshAt: new Date().toISOString(),
           }));
