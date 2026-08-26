@@ -57,8 +57,9 @@ Baseline przed startem: `npm run test` = 107 passed / 8 files, `npm run lint` cz
     Sufiks `_Nm` (metry) porownywany BAJT W BAJT - to jest cel siatki
   - uruchomienie: `ELECTRON_RUN_AS_NODE=1 ./node_modules/.bin/electron scripts/golden/compare-golden.mjs`
   - commit `9a35b33`: `test(golden): capture anonymised baseline XML for regression diffing`
-- [ ] **BUG 4** - `fabricConfig` do WSZYSTKICH 7 konsumentow (najwyzsze ryzyko, ostatni)
-  - main (3): `createXML.js:80`, `submitBatch.js:88`, `readPrintedFolder.js:151`
+- [x] **BUG 4** - `fabricConfig` do WSZYSTKICH 7 konsumentow (najwyzsze ryzyko, ostatni)
+  - main (4): `createXML.js:80`, `submitBatch.js:89`, `readPrintedFolder.js:152`,
+    `batchHistoryHandlers.js:117,221`
   - renderer (4): `useStore.jsx:19` (sort), `DataList.jsx:251`,
     `ProductionOverviewCard.jsx:53`, `PrintMaterialBreakdownCard.jsx:33`
   - UWAGA: `ProductionOverviewCard` NIE wola `estimatePrintLength` wprost - idzie przez
@@ -66,6 +67,12 @@ Baseline przed startem: `npm run test` = 107 passed / 8 files, `npm run lint` cz
     TRZECIEJ pozycji, nie drugiej (`estimatePrintLength.js:95`)
   - helper `getEstimateConfig()` w `fabricCache.js` (null gdy cache niezaladowany - NIE `[]`)
   - ZMIANA ZACHOWANIA (zamierzona): edycja marginesu w Settings zacznie wplywac na XML
+  - ZNANY KSZTALT (`Eco Astra Ramie`): bawelna obecna w bazie, ale NIEOBECNA w mapie
+    `LM_ROLL_COTTON` (`printWidths.js`). Dzis nieszkodliwa - baza ma dla niej 1420, czyli
+    dokladnie to, co zwraca fallback `LM_ROLL_COTTON_DEFAULT`, wiec oba tryby licza tak
+    samo. Gdy ktos wpisze jej w Settings niestandardowy rollWidth, tryb normalny (config
+    z bazy) i awaryjny (cache niezaladowany) zaczna sie rozjezdzac. Golden-diff to zlapie.
+    Domyka to Etap 2h (mapy z `printWidths.js` do profilu)
   - weryfikacja: golden-diff XML bajt w bajt na kopii bazy Alexa
   - rozwaz rozbicie na 2 commity (main / renderer) dla pewniejszego przegladu diffa
   - commit: `fix(estimate): feed DB fabric config into every print-length consumer`
