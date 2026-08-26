@@ -3,25 +3,28 @@
 # RipFlow Desktop — Project Context for Claude
 
 ## Overview
+
 **RipFlow Desktop** — Electron + React app automating print workflow for PrintFactory machines.
 **Platform:** Windows only (network paths, backslashes) | **Users:** production operators | **Code comments:** English
 
 ## Stack
-| Layer | Tech |
-|---|---|
-| Shell | Electron 40.1.0 — frameless window, starts maximized |
-| Frontend | React 19.2.0 + Vite 7.2.4 (port 5173 strictPort, alias `@` → `./src/ui`) |
-| State | Zustand 5.0.11 (subscribeWithSelector) |
-| Styling | CSS Modules + global.css (`--navbar-width: 104px`) |
-| Animations | GSAP 2.1.2 + @gsap/react |
-| Icons | React Icons 5.5.0 (Lucide `Lu*`, hi2 `Hi*`, fi `Fi*`, pi `Pi*`) |
-| PDF copy | pdf-lib 1.17.1 (page 1 only) |
-| PDF preview | pdfjs-dist **v4 only** — v5 breaks in Electron 40 Chromium |
-| XML parse | fast-xml-parser 5.x — main process only (RIP-error ingest); generation stays hand-rolled string templates |
-| Settings | electron-store → `%APPDATA%\ripflow-desktop\config.json` — **machine-specific only** |
-| DB | better-sqlite3 → `ripflow.db` in **storagePath** (NOT userData) — **shared across all PCs** |
+
+| Layer       | Tech                                                                                                      |
+| ----------- | --------------------------------------------------------------------------------------------------------- |
+| Shell       | Electron 40.1.0 — frameless window, starts maximized                                                      |
+| Frontend    | React 19.2.0 + Vite 7.2.4 (port 5173 strictPort, alias `@` → `./src/ui`)                                  |
+| State       | Zustand 5.0.11 (subscribeWithSelector)                                                                    |
+| Styling     | CSS Modules + global.css (`--navbar-width: 104px`)                                                        |
+| Animations  | GSAP 2.1.2 + @gsap/react                                                                                  |
+| Icons       | React Icons 5.5.0 (Lucide `Lu*`, hi2 `Hi*`, fi `Fi*`, pi `Pi*`)                                           |
+| PDF copy    | pdf-lib 1.17.1 (page 1 only)                                                                              |
+| PDF preview | pdfjs-dist **v4 only** — v5 breaks in Electron 40 Chromium                                                |
+| XML parse   | fast-xml-parser 5.x — main process only (RIP-error ingest); generation stays hand-rolled string templates |
+| Settings    | electron-store → `%APPDATA%\ripflow-desktop\config.json` — **machine-specific only**                      |
+| DB          | better-sqlite3 → `ripflow.db` in **storagePath** (NOT userData) — **shared across all PCs**               |
 
 ## Key Files
+
 ```
 src/electron/
   main.js                  # Frameless window, starts maximized, DEV:5173 PROD:dist/index.html
@@ -37,6 +40,7 @@ src/electron/
                            # DB errors log via console.error — silent catches removed
     defaultFabrics.js      # Default seed data: 33 cotton + 87 poly materials with widths/flags
     fabricCache.js         # In-memory cache of fabrics+globals; load on startup, invalidate on save
+                           # getEstimateConfig() — the ONE config source for estimatePrintLength
     fabricCache.test.js    # Vitest — getAliasFromCache sanitization (mocks ./db.js)
     createBatchIds.js      # GROUP_NAME_OVERRIDES + GROUP_NAME_OVERRIDES_REVERSE (both exported)
     ipcError.js            # toIpcError(err, stage, title)
@@ -155,19 +159,27 @@ src/ui/
 src/shared/
   estimatePrintLength.js        # Used in both electron and UI
                                 # Signature: estimatePrintLength(files, config = null)
-                                # config = { globals: {...}, fabrics: [...] } — optional DB-backed values
+                                # config = { globals: {...}, fabrics: [...] } — optional in the signature,
+                                # but SUPPLIED BY EVERY CALL SITE since BUG 4 (see Print Widths below)
   estimatePrintLength.test.js   # Vitest unit tests — 15 tests
   printWidths.js                # Hardcoded defaults (still used as fallback; DB is primary)
                                 # Fixed dims stay hardcoded: SAMPLE 220×200, FQ 670×480, TEA_TOWEL 700×500
   constants.js                  # BATCH_STATUS, FILE_STATUS, PRINTER, CUSTOM_ORDER_STATUS
                                # PRODUCTION_STAGE, STAGE_NEXT, STAGE_PREV, STAGE_LABEL, STAGE_COLOR
                                # QC_ACTION, SEWING_SUGGESTED_TYPES (["CUSHION", "TEA_TOWEL"]) — kept for backward-compat; no longer used in UI after QCModal removal (like REJECTED/OVERRIDDEN)
+
+golden/                         # 70 anonymised baseline XML + _inputs.json — byte-for-byte net
+scripts/golden/                 # capture/compare + loader & db/settings stubs (offline, never live DB)
+profiles/                       # fashion-formula-fabrics.json — Alex's 132-fabric catalog, exported
+                                # in ETAP 0 before DEFAULT_FABRICS was emptied; feeds the golden stub
 ```
 
 ## Workflow
+
 ```
 INBOX → PARSE FILENAME → UI → SELECT FILES+PRINTER → CREATE BATCH+XML → PRINTFACTORY → PRINT
 ```
+
 1. Scan `storagePath` (default `O:\SPPrintReadyArtwork`)
 2. Parse PDF filenames → extract metadata (product type, material, qty, dimensions)
 3. Operator selects files + printer → submit
@@ -175,23 +187,26 @@ INBOX → PARSE FILENAME → UI → SELECT FILES+PRINTER → CREATE BATCH+XML �
 5. Generate XML for PrintFactory to network `xmlPath`
 
 ## Views (`activeView` in App.jsx)
-| View | Components |
-|---|---|
-| `"print"` | DataOverviewSection + DataFilters + DataList (wrapped in ErrorBoundary) |
-| `"batch"` | BatchHistory (wrapped in ErrorBoundary) |
-| `"analytics"` | Analytics (wrapped in ErrorBoundary) |
-| `"logs"` | SessionLogs |
-| `"settings"` | Settings (sidebar: General / Paths / Fabrics / Rollback Reasons / Database / Maintenance / Updates) |
-| `"customOrder"` | CustomOrder (CustomOrderCard + CustomOrderHistory) |
-| `"production"` | Production (ProductionCard + ProductionRollbackModal) |
+
+| View            | Components                                                                                          |
+| --------------- | --------------------------------------------------------------------------------------------------- |
+| `"print"`       | DataOverviewSection + DataFilters + DataList (wrapped in ErrorBoundary)                             |
+| `"batch"`       | BatchHistory (wrapped in ErrorBoundary)                                                             |
+| `"analytics"`   | Analytics (wrapped in ErrorBoundary)                                                                |
+| `"logs"`        | SessionLogs                                                                                         |
+| `"settings"`    | Settings (sidebar: General / Paths / Fabrics / Rollback Reasons / Database / Maintenance / Updates) |
+| `"customOrder"` | CustomOrder (CustomOrderCard + CustomOrderHistory)                                                  |
+| `"production"`  | Production (ProductionCard + ProductionRollbackModal)                                               |
 
 ## File Types (`parseFileName.js`)
+
 - **LM** — Linear Meter | **FQ** — Fat Quarter | **SAMPLE** — Sample Print
 - **CUSHION** — Custom Square Cushion | **TEA_TOWEL** — Custom Tea Towel
 
 Tokenize by `_`, detect CUSHION/TEA_TOWEL by keyword, others by XWD hex token.
 
 **Return shape — CRITICAL (`file` is nested):**
+
 ```js
 {
   file: { name, ext, dir, fullPath },  // access as item.file.name, NOT item.name
@@ -206,10 +221,12 @@ Tokenize by `_`, detect CUSHION/TEA_TOWEL by keyword, others by XWD hex token.
 ## Storage — Two-tier config
 
 **electron-store** (per-machine, `%APPDATA%\ripflow-desktop\config.json`):
+
 - `storagePath`, `xmlPath`, `workstationName`, `customOrderFolderPath`, `workstationRole`, `labelPrinterName`, `shippedRetentionDays`, `batchHistoryEagerDays`, `labelPrintMode`, `clientId`
 - `batchHistoryEagerDays` — per-machine, default 7, min 1; how many most-recent days BatchHistory eager-loads (rest are lazy skeletons, loaded on expand)
 
 **ripflow.db** (shared across all PCs via network `storagePath`):
+
 - Operational: `logs`, `held_files`, `rollback_reasons`, `custom_order_history`
 - Shared config: `reason_definitions`, `fabric_globals`, `fabrics`
 
@@ -225,6 +242,7 @@ Derived paths:
 ```
 
 ## SQLite (`helpers/db.js`)
+
 Tables: `logs`, `held_files`, `rollback_reasons`, `custom_order_history`, `reason_definitions`, `fabric_globals`, `fabrics`, `file_stages`, `file_stage_history`, `reprint_requests`, `rip_errors`
 
 - `rollback_reasons.file_id = null` → whole batch reason; `= filename-without-ext` → single file
@@ -244,31 +262,36 @@ Tables: `logs`, `held_files`, `rollback_reasons`, `custom_order_history`, `reaso
 **`rip_errors`** (RIP-error tracking): one row per **errored file**. Columns: `id` TEXT PK (`crypto.randomUUID`), `job_guid` TEXT NOT NULL, `file_id` TEXT NOT NULL (filename stem, matches `file_stages.file_id`), `batch_id`, `nesting_group`, `failed_node`, `error_message`, `document_id` (XWD, nullable backup key), `detected_at` (ISO ingest time), `created_at` (`<Created>` from xml, nullable), `resolved_at` (NULL = open; **set on rollback** by `resolveRipErrorsByFile` — rollback is the only resolve path). `UNIQUE(job_guid, file_id)` + `INSERT OR IGNORE` → a pre-split failure shares one `job_guid` across N files (N rows), and re-scans don't duplicate. The **same `file_id` may hold multiple open errors** (different `job_guid` = distinct events); `getOpenRipErrors` orders `detected_at DESC` and the store keeps only the most recent per file. See **RIP Errors** section.
 
 ## Fabric Config (`fabricCache.js`)
+
 In-memory cache loaded at startup (`loadFabricCache()` called in `ipc/index.js` after `initDb()`).
 Invalidated and reloaded after every `fabrics:save`, `fabrics:delete`, `fabrics:setAll`, `fabricGlobals:set`.
 
 ```js
-loadFabricCache()        // load from DB into memory
-invalidateFabricCache()  // clear cache (call before reloading)
-getFabricByName(name)    // → fabric object | null
-getFabricTypeFromCache(name) // → "Cottons" | "Polyesters" | "Unknown" | null (null = cache not loaded)
-getXmlWidthFromCache(name, isPoly) // → number (per-material or global default)
-getAliasFromCache(name)  // → short path-safe alias | null (null = no/unusable alias or cache not loaded)
-getCachedFabrics()       // → fabric[]
-getCachedGlobals()       // → { marginCotton, marginPoly, defaultXmlWidthCotton, ... }
+loadFabricCache(); // load from DB into memory
+invalidateFabricCache(); // clear cache (call before reloading)
+getFabricByName(name); // → fabric object | null
+getFabricTypeFromCache(name); // → "Cottons" | "Polyesters" | "Unknown" | null (null = cache not loaded)
+getXmlWidthFromCache(name, isPoly); // → number (per-material or global default)
+getAliasFromCache(name); // → short path-safe alias | null (null = no/unusable alias or cache not loaded)
+getCachedFabrics(); // → fabric[]
+getCachedGlobals(); // → { marginCotton, marginPoly, defaultXmlWidthCotton, ... }
+getEstimateConfig(); // → { globals, fabrics } | null (null = cache not loaded — NEVER { fabrics: [] })
 ```
 
 **Fallback chain (getMaterialType.js):**
+
 1. fabricCache loaded → use DB result
 2. Cache not loaded (before initDb) → fall back to static COTTON_MATERIALS / POLY_MATERIALS sets
 
 **Alias sanitization — single gate:** `getAliasFromCache` strips everything outside `[a-zA-Z0-9_-]` (and trims) at the point of use, returning `null` if nothing usable remains. This is the ONE gate, independent of the UI `onChange` — so a dirty alias entering via `setAllFabrics`/import or a hand-edited `ripflow.db` can never reach the PRINTED folder name / `<Path>`.
 
 **Fallback chain (parseFileName.js `applyLmDimensions`):**
+
 1. `getXmlWidthFromCache(material, isPoly)` → per-material `fabric.xmlWidth` from the cache
 2. No per-material match (or cache not loaded) → global default from `getCachedGlobals()` (`defaultXmlWidthPoly` / `defaultXmlWidthCotton`), which falls back to `DEFAULT_FABRIC_GLOBALS` (`defaultFabrics.js`) when the cache is empty, with a final `?? 1420`. parseFileName.js no longer imports `printWidths.js` `LM_XML_*` constants (removed in lint cleanup).
 
 ## Atomic File Move (`createBatch.js`)
+
 VALIDATE → LOCK (`.lock` file) → DESTINATION_STRUCTURE → COPY (pdf-lib p.1) → VERIFY → COMMIT (rename + write `_batch_info.json { originalGroup, overrides? }`) → DELETE_SOURCE → ROLLBACK on fail
 
 **LOCK stage — stale-lock removal via RENAME, not unlink.** A stale `.lock` (age > `STALE_LOCK_MS` = 90s on the NAS clock via probe file; 5min conservative fallback when the probe fails) is cleared by `removeStaleLock(lockPath)`: `rename(.lock → .lock.dead-<pid>-<ts>)` then `unlink` of that unique name — **NOT** a destructive `unlink(.lock)` by name. Why: two stations racing to clear the SAME stale lock via unlink-by-name could have station B delete station A's freshly-created lock (TOCTOU) → both enter COPY of the same sources → double print. `rename` is source-consuming: exactly one station wins it; the loser gets `ENOENT` → `removeStaleLock` returns `false` → falls through to `open(.lock, "wx")`, where O_EXCL picks the single winner (EEXIST → "Source folder locked"). Both call-sites (NAS-probe branch + 5min fallback) go through `removeStaleLock`. Leftover `.dead-*` (crash between rename and unlink) is inert — never named `.lock`, so it never blocks a batch; NOT swept by `sweepOrphanTemps` (that scans `PRINTED\<day>\` dirs, not inbox source folders).
@@ -284,6 +307,7 @@ VALIDATE → LOCK (`.lock` file) → DESTINATION_STRUCTURE → COPY (pdf-lib p.1
 `_rollback_snapshot.json`: written in the batch folder on rollback (`{ rolledBackAt, type: "batch"|"file", files: [] }`). `readSingleBatch` reads it so already-`rolled_back` files still render (with reason badges) even after their PDF has moved back to the inbox.
 
 ## IPC API (`window.api`)
+
 ```js
 // Inbox
 readFolders() / onReadFoldersProgress(cb) / submitBatch(batch)
@@ -374,6 +398,7 @@ update.onAvailable(cb) / update.onProgress(cb) / update.onReady(cb) / update.onN
 ```
 
 ## Zustand Store (`useStore.jsx`)
+
 ```js
 {
   activeTab, searchQuery, sortOrder, printTypeFilter,
@@ -393,6 +418,7 @@ update.onAvailable(cb) / update.onProgress(cb) / update.onReady(cb) / update.onN
 ```
 
 **Production store actions:**
+
 - `loadAllStages()` — full reload from DB into `productionStages`
 - `loadStagesAfter(since)` → `{ success: bool }` — incremental poll; merges updates
 - `loadStagesForBatch(batchPath)` — merge single batch rows (used by BatchHistory)
@@ -401,14 +427,16 @@ update.onAvailable(cb) / update.onProgress(cb) / update.onReady(cb) / update.onN
 - `loadAllStageHistory()` — load full history; groups by fileId
 - `addStageHistoryEntry(fileId, stage, enteredAt)` — optimistic append
 - `clearAllStages()` — dev/admin reset; clears both `productionStages` and `stageHistory`
-Key: `getLastBatch(batchDays)` exported helper. `applyFilters()` internal helper.
+  Key: `getLastBatch(batchDays)` exported helper. `applyFilters()` internal helper.
 
 **RIP-error store action:**
+
 - `loadRipErrors()` → `{ success: bool }` — calls `ripErrorService.scanRipErrors()`, maps rows into `ripErrors` keyed `fileId → row` (open only). DECISION: one row per file — most recent wins (DB may hold multiple open errors per file; the store/badge surfaces only the latest). Driven by a global 30s poll in `App.jsx` (initial load in the startup effect), session-wide so badges stay fresh in both views.
 - `removeRipError(fileId)` / `clearRipErrorsForFiles(ids)` — optimistic removal from `ripErrors` after a rollback resolves the file's errors (badge + batch-header count clear at once; the next poll reconciles). Mirrors `removeStageFromStore`.
 - `resolveRipError(fileId)` → `{ success, error? }` — the manual resolve path (popover "Resolved" button). Writes to the DB via `ripErrorService.resolveRipError` FIRST and calls `removeRipError(fileId)` only on `success`, so a failed write leaves the badge in place. Returns the outcome to the UI and never notifies itself.
 
 **Startup load order (App.jsx):**
+
 ```js
 loadLogsFromDb()        // non-awaited
 loadReasonDefinitions() // non-awaited — DB → store.reasonDefinitions
@@ -421,31 +449,93 @@ refreshBatchDays()      // non-awaited
 **DataFilters:** call `loadHeldFiles()` BEFORE `refreshFiles()` — order is critical.
 
 ## Print Widths — Hardcoded vs DB
+
 `printWidths.js` values are now **fallbacks only**. DB (`fabric_globals` + `fabrics`) is the primary source.
 
-| Config | DB table | Fallback |
-|---|---|---|
-| Margins (cotton/poly) | `fabric_globals` | `MARGIN_COTTON=10`, `MARGIN_POLY=5` |
-| Default XML widths | `fabric_globals` | `LM_XML_POLY=1420`, `LM_XML_COTTON_DEFAULT=1420` |
-| Default roll widths | `fabric_globals` | `LM_ROLL_POLY=1550`, `LM_ROLL_COTTON_DEFAULT=1420` |
-| Per-material XML width | `fabrics.xml_width` | `LM_XML_COTTON[name]` map |
-| Per-material roll width | `fabrics.roll_width` | `LM_ROLL_COTTON[name]` map |
-| Material type routing | `fabrics.type` | static Sets in getMaterialType.js |
-| XML flags (velvet/linen/blossom) | `fabrics.is_velvet/is_linen/is_blossom` | string-contains fallback |
+| Config                           | DB table                                | Fallback                                           |
+| -------------------------------- | --------------------------------------- | -------------------------------------------------- |
+| Margins (cotton/poly)            | `fabric_globals`                        | `MARGIN_COTTON=10`, `MARGIN_POLY=5`                |
+| Default XML widths               | `fabric_globals`                        | `LM_XML_POLY=1420`, `LM_XML_COTTON_DEFAULT=1420`   |
+| Default roll widths              | `fabric_globals`                        | `LM_ROLL_POLY=1550`, `LM_ROLL_COTTON_DEFAULT=1420` |
+| Per-material XML width           | `fabrics.xml_width`                     | `LM_XML_COTTON[name]` map                          |
+| Per-material roll width          | `fabrics.roll_width`                    | `LM_ROLL_COTTON[name]` map                         |
+| Material type routing            | `fabrics.type`                          | static Sets in getMaterialType.js                  |
+| XML flags (velvet/linen/blossom) | `fabrics.is_velvet/is_linen/is_blossom` | string-contains fallback                           |
 
 **Fixed product dims stay hardcoded** (never user-editable):
+
 - SAMPLE 220×200mm, FQ 670×480mm, TEA_TOWEL 700×500mm
 
+### Who supplies the config (BUG 4, ETAP 0)
+
+`estimatePrintLength(files, config)` and `estimateMaterialLengthByGroups(groups, materialType, config)`
+take the DB values as an **optional** argument — and for a long time only 2 of 9 call sites passed
+one. The result was a split brain: editing a margin or a roll width in Settings moved the
+BatchHistory header and nothing else — not the XML sent to PrintFactory, not the label, not the
+inbox estimates. All 9 call sites now pass a config:
+
+- **main process** → `getEstimateConfig()` from `fabricCache.js` (`createXML.js`, `submitBatch.js`,
+  `readPrintedFolder.js`, `batchHistoryHandlers.js` ×2)
+- **renderer** → `store.fabricConfig` (`useStore.applySort`, `DataList`,
+  `PrintMaterialBreakdownCard`, `ProductionOverviewCard` — the last one passes it **third**, after
+  `materialType`)
+
+**`getEstimateConfig()` returns `null`, never `{ fabrics: [] }`, when the cache is not loaded.** An
+empty array is truthy, so the estimator would take its DB branch with an empty catalog and silently
+lose the per-material roll widths from `LM_ROLL_COTTON`. `null` keeps the degraded path on
+`printWidths.js`. Same sentinel discipline as `cachedFabrics === null` everywhere else in that file.
+The two pre-existing call sites in `batchHistoryHandlers.js` built that exact unsafe shape by hand
+(`{ globals: getCachedGlobals(), fabrics: getCachedFabrics() }`) and were converted to the helper.
+
+**This is deliberately NOT a pure no-op:** from here a Settings edit reaches the XML. It was proven
+numerically neutral on today's data (see the golden net below) because Alex's DB currently agrees
+with the static fallbacks for all 132 fabrics — `mismatches: 0`. The moment someone edits a width
+in Settings, the two sources diverge on purpose.
+
+`Eco Astra Ramie` is the known shape to watch: a cotton in the DB that is **absent** from
+`LM_ROLL_COTTON`. Today both modes yield 1420, so it is harmless; give it a non-default roll width
+and the normal and degraded paths part ways. ETAP 2h (moving those maps into the shop profile)
+closes it.
+
+### Golden XML regression net (`golden/` + `scripts/golden/`)
+
+70 real batches, anonymised, rendered by the **production** `buildPFJobXML` and stored as the
+byte-for-byte baseline. Run it after ANY change that could touch print-length maths or the XML
+template:
+
+```bash
+ELECTRON_RUN_AS_NODE=1 ./node_modules/.bin/electron scripts/golden/compare-golden.mjs
+# 0 differences across 70 batches
+```
+
+- Offline and reproducible: inputs come from `golden/_inputs.json`, and `scripts/golden/stub-db.mjs`
+  feeds `fabricCache` from `profiles/fashion-formula-fabrics.json` — the harness NEVER opens the
+  live `ripflow.db` (`initDb()` writes, and the baseline must not depend on one machine).
+- Customer names, order numbers and XWD ids are pseudonymised **at the source**; mappings are derived
+  from sorted distinct values, so a re-capture reproduces an identical baseline.
+- Only three things are masked before diffing: the random UUID in `<NestingGroup>`, the same UUID
+  inside `<LogisticGroup>`, and the path root. **The `_Nm` metre suffix is compared byte for byte** —
+  that is the whole point of the net.
+- **Never regenerate the baseline to make a diff go away.** A difference is a finding: decide
+  fix-vs-regression first, with a manual calculation, then re-capture only if the new value is
+  provably the correct one.
+- The golden net does NOT see the six non-XML consumers. For those, compare
+  `estimatePrintLength(items)` against `estimatePrintLength(items, config)` over real rows at file,
+  material-group and batch level — the shapes the different consumers actually use.
+
 ## Production — Key Behaviors
+
 DB tables: `file_stages` (one row per active file), `file_stage_history` (append-only per stage transition).
 
 **viewMode goes through `VIEW_MODE`, never a bare string** (`constants/viewModes.js`: `BATCHES` | `ORDERS` | `RECEIVE`). `Production.jsx` is the only consumer; all three lenses are live (see **Sewing Receive Lens** below for `RECEIVE`).
+
 - **`handleScan` no longer forces the lens.** It flips `ORDERS → BATCHES` (so the scan result is visible instead of silently mutating the hidden Batches state) and leaves `BATCHES`/`RECEIVE` alone. Written as a functional `setViewMode` updater so `viewMode` stays OUT of the `useCallback` deps (reading it directly would re-create the callback on every lens switch and re-point `handleScanRef`).
 - **The `RECEIVE` branch inside `handleScan` sits ABOVE the `workstationRole` blocks and returns early** — it calls `addBatchToSessionRef.current(batchPath)` and nothing else. This ordering is a **data-safety requirement, not tidiness**: below it live the role branches, so at a QC station a scan performed while unpacking a sewing delivery would advance that batch's `heatpress` files to `qc`. The current lens is read through `viewModeRef` because putting `viewMode` in `handleScan`'s deps would re-create the callback and re-point `handleScanRef` on every tab switch.
 - **A file-level scan in `RECEIVE`** returns a "Scan a batch barcode" warning instead of clearing filters and scrolling the hidden Batches lens — that lens works batch by batch.
 - **Scan from the search box is a whitelist** — `viewMode !== BATCHES && viewMode !== RECEIVE → return`. Deny is the default **on purpose**: `handleScan` MUTATES the DB (per `workstationRole` it advances stages), so a future fourth lens must not inherit access to a state-changing path merely by existing. Do not flip this back to a blacklist (`=== ORDERS`).
 
 **Day grouping (BATCHES lens)** — cards are grouped `day → batch → card`. The day layer is built **always**; the batch layer only when `isGrouped` (`groupingEnabled && (stageFilter === "all" || batchFilter)`), otherwise the day renders its cards flat. This is the point of the feature: the day must survive both the "Groups" toggle and the stage tabs.
+
 - **The day comes from `batch_path`, never from a timestamp.** `file_stages` has **NO** creation column — `updated_at` is rewritten on every stage transition, so it is the shipping/last-move time, not the print day. The day is the `PRINTED\DD-MM-YYYY\` segment (`batch_path.split(/[/\\]/).at(-2)`), read through `dayKeyFromBatchPath` (`utils/dayKey.js`). Same key BatchHistory groups by → both views agree on "the day". `withLocalBatchPath` (main) only re-roots the path, so the day/batch segments survive verbatim. Rows with no parsable day fall into the exported `UNKNOWN_DAY_KEY` bucket, sorted last — never dropped.
 - **Topbar toggles are buttons, not checkboxes** — "Groups" and collapse-all share `.toolbar_btn`, whose geometry matches `.refresh_btn` exactly so the three read as one row of equal controls. Groups carries its on/off state as `.toolbar_btn_active` (the same filled-dark treatment the lens toggle uses) plus `aria-pressed`. Note BatchHistory has its own, unrelated `.collapse_btn` in its own module — collapse-only, no expand — and CSS Modules keep the two scoped apart.
 - **Collapse-all / expand-all** — one button next to the "Groups" toggle, flipping on `allDaysCollapsed`: while any rendered day is open it collapses everything, once all are collapsed it reopens them. It is scoped to `groupedDays`, i.e. what is on screen, so under an active day filter it acts on that day alone. Consistent with the inverse-set model below, a day that arrives from the poll AFTER a collapse-all shows up expanded — it was never in the set.
@@ -459,13 +549,15 @@ DB tables: `file_stages` (one row per active file), `file_stage_history` (append
 - **KNOWN LIMIT (retention):** `cleanupShippedStages` purges on `updated_at`, i.e. time-since-shipped, so a batch printed weeks ago but marked shipped yesterday survives and shows up as an old day with a red stale pill. Print-day-based retention is a separate, not-yet-made decision.
 
 **"Stuck" tab (backlog lens)** — `STUCK_TAB_KEY` (`"stuck"`) is a `FILTER_TABS` entry that is **not a stage**. Every other tab key is compared straight against `row.stage`, so — exactly like `"all"` — it needs an explicit branch in **both** `filtered` and `counts`; adding one and forgetting the other yields a tab that filters but shows no count, or counts but shows everything.
-- **Staleness here is time since the file last MOVED, from `file_stages.updated_at`** — a different question from the day header's "N days in production" (time since it was *printed*, from `batch_path`). Both numbers can be on screen at once and they mean different things. `updated_at` is rewritten by every stage transition and set at insert, so for a file that never moved it equals the submit time. It already rides on every row (`SELECT *` in the stage handlers) and `useStageTransition` refreshes it optimistically, so a file leaves the backlog the instant it is passed on — no waiting for the 15s poll. That optimistic write is what test 3 in the plan exercises; if a future handler stops setting `updated_at`, the Stuck tab silently goes stale.
+
+- **Staleness here is time since the file last MOVED, from `file_stages.updated_at`** — a different question from the day header's "N days in production" (time since it was _printed_, from `batch_path`). Both numbers can be on screen at once and they mean different things. `updated_at` is rewritten by every stage transition and set at insert, so for a file that never moved it equals the submit time. It already rides on every row (`SELECT *` in the stage handlers) and `useStageTransition` refreshes it optimistically, so a file leaves the backlog the instant it is passed on — no waiting for the 15s poll. That optimistic write is what test 3 in the plan exercises; if a future handler stops setting `updated_at`, the Stuck tab silently goes stale.
 - `STUCK_DAYS` = 3 (matching `STALE_DAYS_WARN`); the badge turns red at `STALE_DAYS_ALERT`. `idleDaysOf` uses `Math.floor` like `getFileAgeInDays` — moved 23h ago is 0 days idle. A row with a missing/unparsable `updated_at` degrades to "moved today" and can never enter the backlog.
 - **`shipped` is the only excluded stage** — finished work, and the bulk of the table, so counting it would drown the tab. `to_sewing` is deliberately included: on real data it contributes 2 rows, not a flood.
 - **The Stuck tab is the ONE place that reverses day order** (`compareDayKeysAsc`), because it is a backlog list and the worst offenders belong on top. `compareDayKeysAsc` is a real function, not `.reverse()` of the desc sort — reversing would drag `UNKNOWN_DAY_KEY` to the top instead of leaving it last.
 - `idleDays`/`idleAlert` are computed in `Production.jsx` and passed as props; `ProductionCard` never reads a clock or learns the threshold, same contract as `awaitingQc`/`ripError`. `SewingReceive` passes neither, so the badge does not appear there.
 
 **Scroll anchoring across filter changes (`hooks/useScrollAnchor.js`)** — filtering used to throw the operator back to the top of the board. Cause: narrowing the list shrinks the content, the browser **clamps `scrollTop`** to the new `scrollHeight` and the old value is lost; clearing the filter grows the content back but `scrollTop` stays clamped. An empty result is the worst case — the list is replaced by a short `.empty_state`, forcing 0.
+
 - **An anchor, not a remembered `scrollTop`** — the pixel offset is meaningless once the content height changed. The hook records WHICH row was at the top of the viewport plus how far into it we were (`{ fileId, dayKey, offset }`), then puts that row back at the same offset. Primary anchor is `data-file-id` (already on every card, also used by the scan path); the fallback is `data-day-key` on `.day_group`, for when the anchored card is not in the new DOM (another stage tab, a collapsed day). Neither found → the view is left alone, never a blind jump.
 - **The restore reads the anchor captured under the PREVIOUS filter**, and that single rule produces both wanted behaviours: applying a filter tries to hold the same row in view, clearing it returns to the row just worked on. The hook takes a `filterKey` string; a change to it means "restore", a stable value means "keep capturing".
 - **An empty capture must not clear the anchor.** When no card is in the DOM the hook keeps the previous value — that is precisely the "filter with no matches → clear it" path where the anchor is about to be needed.
@@ -475,6 +567,7 @@ DB tables: `file_stages` (one row per active file), `file_stage_history` (append
 - **"You were here" accent** — the hook's optional third argument reports the file id it landed on, and `Production.jsx` flashes that card via `restoredId` → `ProductionCard`'s `restored` prop → `.card_restored` for `RESTORE_FLASH_MS` (1500ms). Same amber pair and 0.4s fade as the Orders lens `.order_highlight`, deliberately softer than the scan's GSAP flash. **The RING is the load-bearing half**: the scan flash leaves an inline `background-color` on any card it has touched and an inline style beats a class, but `box-shadow` is untouched by it. Reported only when the restore actually moved the view (`MIN_REPORT_DELTA` 8px) and never for the day-level fallback — otherwise a card already in place would flash on every keystroke.
 
 **Stage-filter tab UI** — the count is the content, the label is the caption: the number comes first at 22px/700 and the tab has no border, shadow or filled active pill. Active state is a single 3px underline that **slides** between tabs.
+
 - **`.stage_tab*` and `.tab*` are two different controls in the same file.** `.tab` / `.tab_active` still dress the LENS toggle (Batches / Orders / Receive), which has no indicator element — restyling `.tab` for the filters would leave the lens toggle with no active state at all. Keep them separate.
 - **The underline is positioned by GSAP** (`x` / `y` / `width`; `left`/`top` stay 0 so the transform is the only source of truth). `y` rather than `bottom`, because `.stage_tabs` can wrap to a second row.
 - **First paint vs tab switch is decided by DOM-node identity** (`positionedNodeRef`), not a boolean: the tabs unmount whenever the lens leaves `BATCHES`, and a boolean would let a remounted indicator animate in from `x:0/width:0`. Node identity distinguishes a fresh mount (`gsap.set`) from a switch (`gsap.to`).
@@ -494,6 +587,7 @@ DB tables: `file_stages` (one row per active file), `file_stage_history` (append
 **Polling** — `POLL_INTERVAL = 15s`; `loadStagesAfter(since)` returns `{ success: bool }`. Update `lastPollAt` only on success so a network failure retries the same window on the next tick.
 
 **Workstation roles** (`workstationRole` in electron-store, per-machine):
+
 - `"cotton"` — scanner advances `printed → heatpress` (stops at `heatpress`, like polyester; the cotton roll heat-press has no scanner, so the QC station completes `heatpress → qc`)
 - `"polyester"` — scanner advances `printed → heatpress`
 - `"rollpress"` — scanner advances `heatpress → qc`
@@ -521,6 +615,7 @@ DB tables: `file_stages` (one row per active file), `file_stage_history` (append
 **Stage counts in tabs** — when `batchFilter` is active, tab counts reflect only that batch's files.
 
 **Context menu** — stage-aware across the WHOLE selection (`selectedFileIds`; falls back to the clicked row when selection is empty). A stage action shows only when valid for EVERY target file (common availability). Order — stage actions first, then a separator, then tools:
+
 - **Pass** (advance per `STAGE_NEXT`; `from_sewing → packed`) — every file has `STAGE_NEXT[stage]` and `stage` ∉ {`TO_SEWING`, `SHIPPED`}. Label: "Pass to {STAGE_LABEL[next]}" when all on one stage, else "Pass to next stage". Single → `handleAdvance`, bulk → `handleBulkAdvance`.
 - **Receive from sewing** (`to_sewing → packed`, `setSewingReceived`) — every file `stage === TO_SEWING`. Lands directly in `packed` (skips `from_sewing`) and fulfills open reprints. Single → `handleReceive`, bulk → `handleBulkReceive`.
 - **Send to Sewing ▸** (submenu Olya | Vagabond, `setSewingSent`) — every file `stage === QC`. Single → `handleSewing`, bulk → `handleBulkSewing`.
@@ -530,6 +625,7 @@ DB tables: `file_stages` (one row per active file), `file_stage_history` (append
 - **Show in Orders** — also in the tools group, but **consciously operates on the selection** (exception to the "tools always operate on the clicked row" rule above). Maps the target rows (selection when the clicked row is in it, else the clicked row) → `order_id` → order key, using the SAME logic as `groupByOrder.js`. The unknown-order key comes from the **exported `UNKNOWN_ORDER_KEY`** (`groupByOrder.js`), imported by both `Production.jsx` and `OrderView.jsx` — one definition, zero hand-copied literals. `groupByOrder.js` exports `groupByOrder`, `ORDER_STAGE_PIPELINE`, `UNKNOWN_ORDER_LABEL` and `UNKNOWN_ORDER_KEY`. Clears `search`, switches `viewMode → VIEW_MODE.ORDERS`, and signals `OrderView` via `focusOrders={ keys, nonce }` (the `nonce` makes a repeat click on the same order re-fire the effect). `OrderView` expands all keys and scroll+highlights the first one (`data-order-key` on the `OrderRow` root; amber `.order_highlight`, no GSAP). A scan on the Orders lens pulls the view back to Batches — known interaction, not a bug (see the viewMode note below).
 
 ## Sewing Receive Lens
+
 `viewMode === VIEW_MODE.RECEIVE` (`SewingReceive.jsx` + `SewingReceive.module.css`). The operator unpacks a parcel returned from a sewing company: they scan the barcodes of the batches that went out, then work order by order. Receiving an item is `to_sewing → packed`.
 
 **The batch basket is CUMULATIVE** — one parcel usually collects several dispatches, so a scan **adds** a batch to the session instead of replacing the list. A repeat scan of the same batch is rejected with a warning; a batch with zero `to_sewing` rows is rejected too (nothing to receive).
@@ -557,6 +653,7 @@ DB tables: `file_stages` (one row per active file), `file_stage_history` (append
 **KNOWN DEBT:** the `` `${batch_path}\\${file_id}.pdf` `` path pattern now appears in **4 places** (3× `Production.jsx`, 1× `SewingReceive.jsx`). To be extracted in a change of its own — deliberately not mixed into a feature commit.
 
 ## BatchHistory — Key Behaviors
+
 - Call `stopBatchWatcher()` on unmount
 - Click anywhere on batch row to expand/collapse; action buttons use `e.stopPropagation()`
 - Whole batch rollback: watcher sends `"removed"` → no manual reload needed. Both the optimistic update and the `"removed"` handler keep `files` in state as `ROLLED_BACK` (with `fileCount: 0`), NOT cleared to `files: []` — this matches `readSingleBatch` (live↔reload parity) so a rolled-back batch stays matchable by search (filter checks `file.name`). Do not revert to `files: []` — that re-breaks search after rollback.
@@ -571,9 +668,11 @@ DB tables: `file_stages` (one row per active file), `file_stage_history` (append
 - Watcher race condition handled: `readSingleBatch` wrapped in try/catch; `ENOENT` → sends `"removed"` event
 
 ### Lazy-load (Phase 1 + 2)
+
 The full PRINTED scan (35 days / ~580 batches → ~2050 SMB roundtrips) used to run at startup, after every submit, and on every view entry. Lazy-load cuts it down.
 
 **`readPrintedFolder.js` structure** — `readSingleBatch` is **unchanged**. The per-day mapping is extracted into `buildDayGroup(dayFolder)` (readdir batches → `readSingleBatch` per batch). Three exports:
+
 - `readPrintedFolder()` — composed from `buildDayGroup`; **identical result** to before (+ additive `dayFolder`/`loaded:true` on each day object). Legacy full scan.
 - `readPrintedDays()` — enumeration only (`readdir` root + each day, ZERO `readFile`/DB); returns sorted-desc skeletons `{ dayFolder, date, label, totalBatches, totalFiles:null, batches:[], loaded:false }`. Each per-day `readdir` is wrapped in try/catch → a bad day (ENOENT/EPERM/…) becomes a `totalBatches:0` skeleton instead of sinking the whole enumeration.
 - `readPrintedDay(dayFolder)` — one day's full content via `buildDayGroup` (`loaded:true`).
@@ -591,11 +690,13 @@ The full PRINTED scan (35 days / ~580 batches → ~2050 SMB roundtrips) used to 
 **Load-all-on-search** — while a search is active, unloaded skeleton days are pulled in via the existing `loadDayContent` so search spans the **whole** history (e.g. an order number / `ON` that only appears in an old day's filename), not just the eager head. Trigger: a `useEffect([searchQuery])` (deps intentionally `[searchQuery]` only via `eslint-disable-line` — `loadDayContent` is stable, and adding `dayGroups` would re-fire on every merge) with a **350 ms debounce** (`"3"→"3p"→"3pa"` collapses to one sweep). The sweep is **sequential + progressive**: it snapshots the skeleton `dayFolder`s at start, then `await loadDayContent(df)` one by one — each merge flips `loaded:false→true` and `filteredDayGroups` recomputes, so matches surface as days arrive. A `cancelled` flag (set in the effect cleanup) **aborts** the sweep on query change/clear, checked after every await; `loadAllRunningRef` guards against overlapping sweeps. A footer-spinner "Searching older days…" (`.search_loading_more`) shows when there are already matches above but the rest is still loading. After loading, days stay `loaded:true` — **natural cache**: clearing the search does NOT unload them, and the next search won't re-pull (guard: `dayGroupsRef.current.every(d => d.loaded === true)` → return); the only reset is a manual Refresh / `loadData` (rebuilds skeletons beyond the eager head). **Accepted edge** (see the comment above the `loadAllRunningRef` guard in `runLoadAll`): if the query changes while a sweep is mid-await on a slow SMB, the new trigger may hit `running === true` and skip, so load-all won't finish for the new query until the next query change — rare (debounce collapses typing), non-blocking (re-type resumes), consciously left as-is.
 
 **Watcher loaded-aware (Phase 2b)** — day key unified on `dayFolder` (`date === dayFolder` by format):
+
 - `new-file` / `removed` skip days where `loaded !== true` (skeletons untouched — ends the global `totalFiles` zeroing).
 - `new-batch` on an existing skeleton is a no-op (content arrives on expand); on a loaded day it merges as before; a watcher-created new day is built with `dayFolder` + `loaded:true`.
 - **Degraded mode**: the fallback interval calls `reloadLoadedDays()` (re-reads only `loaded:true` days via `readPrintedDay` → merge), NOT the full `readPrintedFolder`. `dayGroupsRef` holds the current `dayGroups` so the interval reads a fresh list (stale-closure-safe).
 
 ## Custom Order — Key Behaviors
+
 Per-file checkbox selection inside a `CustomOrderCard`, so an operator can exclude specific files from a single imported CSV batch before generating its XML.
 
 **State is card-local, not lifted.** `selectedFiles` is a `Set` of `fileName` (from the CSV row), held in `CustomOrderCard.jsx`'s own `useState` — it is NOT lifted to `CustomOrder.jsx` (which only owns the `csvGroups` array) and NOT persisted to the DB or `custom_order_history`. Scope is exactly one imported CSV / one card.
@@ -623,9 +724,11 @@ Per-file checkbox selection inside a `CustomOrderCard`, so an operator can exclu
 **Even row-internal spacing** — checkbox → file icon → filename now step at a consistent 10px each: `.cell_checkbox`'s left padding, the filename column's left padding (targeted via the structural `.file_row td:nth-child(2)` — no dedicated class needed, the row always renders exactly 3 fixed `<td>`s), and `file_name_wrap`'s flex `gap` are all `10px`.
 
 ## RIP Errors
+
 Surfaces PrintFactory job failures on the affected files. PrintFactory drops a per-failed-job pair into `{storagePath}\AUTOMATION_WORKFLOW_ERROR\`: `<name>.tif` (ignored) + `<name>.xml` (parsed). Because the workflow has a Split node (`SplitOn=Document`), each failed document gets its own xml with its own `<JobGUID>`. New dependency: **fast-xml-parser** (main process only). Folder name has ONE source of truth: `RIP_ERROR_FOLDER` + `getRipErrorRootPath()` in `getRootPath.js`.
 
 **Parser (`parseRipErrorXml.js`)** — `fast-xml-parser` (`attributeNamePrefix:"@_"`, `ignoreAttributes:false`, entity-decoding on). Returns an **ARRAY** of error rows; never throws (missing → null, malformed/non-error → `[]`, logged).
+
 - **Detection:** any node `WorkflowResult="Fail"` OR `Job.WFState` has `@_Error`; else `[]`.
 - **errorMessage** = `WFState@Error` (fallback: the Journal entry carrying `@_Error`). **failedNode** = that Journal entry's `@_Process` (Shape B → `"Hotfolder"`).
 - **Two shapes:**
@@ -651,7 +754,9 @@ Surfaces PrintFactory job failures on the affected files. PrintFactory drops a p
 **PrintFactory side (operational context):** a single Export node wired to every workflow port writes the per-failed-job `<name>.tif` + `<name>.xml` into `AUTOMATION_WORKFLOW_ERROR/`. The Export uses `Content=Layout` + Export XML (Document/Original was abandoned — it couldn't access the `PRINTED/` pdf). RipFlow reads only the `*.xml`. **TIFF cleanup is out of scope for RipFlow** — a separate scheduled task should prune old TIFFs; RipFlow never deletes from the shared share.
 
 ## Rollback Reasons
+
 14 codes: `MISSING_JOB`, `PRINTER_LINES`, `WRONG_SIZE`, `WRONG_MATERIAL`, `FABRIC_FAULT`, `PRESSING_FAULT`, `FABRIC_CREASE`, `GHOSTING`, `LINT_MARK`, `WRONG_COLOURS`, `AUTOMATION_FAULT`, `RERUN`, `ARTWORK_ISSUE`, `OTHER`
+
 - Labels and icons are stored in `reason_definitions` DB table — **shared across all PCs**
 - `ROLLBACK_REASONS` in `constants/rollbackReasons.js` is the static fallback only (used before DB loads)
 - `WRONG_MATERIAL` displays as "Wrong Fabric" (label changed; code kept for DB backwards-compat)
@@ -660,22 +765,25 @@ Surfaces PrintFactory job failures on the affected files. PrintFactory drops a p
 - New reasons can be added via Settings → Rollback Reasons; immediately available in RollbackModal, BatchHistory, Analytics
 
 ## Settings Architecture
+
 Left-sidebar + content-area layout. `Settings.jsx` routes via `SECTIONS` array + `VIEWS` map.
 
-| Section | View | Notes |
-|---|---|---|
-| General | `GeneralView` | workstationName, workstationRole, shippedRetentionDays, batchHistoryEagerDays (per-machine; eager-load days default 7, min 1) |
-| Paths | `PathsView` | storagePath, xmlPath, customOrderFolderPath |
-| Fabrics | `FabricsView` | Global params + Materials CRUD (DB-backed, shared); per-material "Alias (skrót w ścieżce XML)" field with `onChange` sanitization (`[a-zA-Z0-9_-]`) — empty = full name |
-| Rollback Reasons | `RollbackReasonsView` | label+icon per reason; add/edit; DB-backed, shared |
-| Database | `DatabaseView` | manual `backupDb`; auto-backup on startup, last 7 days kept |
-| Maintenance | `MaintenanceView` | clear rollback history / custom-order history / all production stages (destructive) |
-| Updates | `UpdatesView` | auto-updater: check/install, progress, changelog, app version, `clientId` release channel |
+| Section          | View                  | Notes                                                                                                                                                                   |
+| ---------------- | --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| General          | `GeneralView`         | workstationName, workstationRole, shippedRetentionDays, batchHistoryEagerDays, clientId (all per-machine; eager-load days default 7, min 1)                             |
+| Paths            | `PathsView`           | storagePath, xmlPath, customOrderFolderPath                                                                                                                             |
+| Fabrics          | `FabricsView`         | Global params + Materials CRUD (DB-backed, shared); per-material "Alias (skrót w ścieżce XML)" field with `onChange` sanitization (`[a-zA-Z0-9_-]`) — empty = full name |
+| Rollback Reasons | `RollbackReasonsView` | label+icon per reason; add/edit; DB-backed, shared                                                                                                                      |
+| Database         | `DatabaseView`        | manual `backupDb`; auto-backup on startup, last 7 days kept                                                                                                             |
+| Maintenance      | `MaintenanceView`     | clear rollback history / custom-order history / all production stages (destructive)                                                                                     |
+| Updates          | `UpdatesView`         | auto-updater: check/install, progress, changelog, app version, `clientId` release channel                                                                               |
 
 All views share `SettingsView.module.css` for base layout (`.view`, `.view_header`, etc.).
 
 ## GROUP_NAME_OVERRIDES (`createBatchIds.js`)
+
 Maps long group names → short folder names. `resolveOriginalGroup(batchPath, shortGroup)`:
+
 1. Read `_batch_info.json` from batch folder
 2. Fallback: `GROUP_NAME_OVERRIDES_REVERSE[shortGroup]`
 3. Last fallback: `shortGroup` unchanged
@@ -683,6 +791,7 @@ Maps long group names → short folder names. `resolveOriginalGroup(batchPath, s
 **printGroup resolution (single group)** — `getAliasFromCache(group) ?? GROUP_NAME_OVERRIDES[group] ?? group`. The per-material DB `alias` is **primary**; `GROUP_NAME_OVERRIDES` is the **fallback** (legacy "Neraki" / old batches); raw group name is last. `printGroup` = inbox folder name = material `fabrics.name`. Multi-group batches stay `"SAMPLES"` (unchanged). **The alias shortens only the PRINTED folder + `.xml` filename + `<PhysicalGroup>`/`<Path>` — NOT the PDF filename (intentional).** It is a MAX_PATH mitigation, not elimination.
 
 ## pdfRender.js — shared PDF rendering
+
 `src/ui/utils/pdfRender.js` owns the whole renderer-side PDF path: IPC read → base64 → `Uint8Array` → `pdfjsLib.getDocument` → page 1 → canvas → JPEG data URL. **`pdfjsLib.GlobalWorkerOptions.workerSrc` is set here**, so any module that renders a PDF gets the worker by importing from this file rather than depending on `usePdfPreview` happening to be imported first.
 
 ```js
@@ -702,6 +811,7 @@ clearPdfCache()            // drop every cached render, both maps (manual re-tes
 - Covered by `pdfRender.test.js` (node env, pdfjs + fileService mocked): de-duplication, cache isolation, LRU order, failure-not-cached, in-flight cleanup on failure, destroy lifecycle, queue serialisation.
 
 ## usePdfPreview Hook
+
 - **Does not render any more** — it owns modal state only and delegates to `renderPdfToJpeg`, passing `PREVIEW_SCALE` 0.75 and `PREVIEW_QUALITY` 0.85 **explicitly** (pinned to the hook, so a future change to the module defaults cannot silently alter the preview)
 - Shares the module-level LRU cache in `pdfRender.js` with every other caller
 - Returns: `{ openPreview, closePreview, navigate, isOpen, isLoading, imgSrc, error, currentPath, currentIndex, fileList }`
@@ -709,15 +819,20 @@ clearPdfCache()            // drop every cached render, both maps (manual re-tes
 - `DataList` has its own instance — separate hook state, but the render cache is shared (a file previewed in DataList opens instantly in BatchHistory)
 
 ## Dev Commands
+
 ```bash
 npm run dev        # Vite + Electron concurrently (wait-on)
 npm run build      # Vite → dist/
 npm run lint       # ESLint flat config v9 — separate rules for ui/ and electron/
 npm run test       # Vitest — runs src/**/*.test.js (node environment)
 npm run test:watch # Vitest watch mode
+
+# Golden XML regression net (see below) — offline, reads golden/_inputs.json, never the live DB
+ELECTRON_RUN_AS_NODE=1 ./node_modules/.bin/electron scripts/golden/compare-golden.mjs
 ```
 
 ## Critical Rules
+
 1. **Always grep before deleting** — audit reports miss non-obvious imports
 2. `parseFileName` returns `file: { name, ext, dir, fullPath }` — use `item.file.name`, not `item.name`
 3. `rollbackBatch`/`rollbackFile` take object `{ ..., reason }` — not positional args
@@ -740,3 +855,26 @@ npm run test:watch # Vitest watch mode
 20. **`viewMode` values go exclusively through `VIEW_MODE`** (`src/ui/constants/viewModes.js`) — never a bare `"batches"`/`"orders"`/`"receive"` string, in a comparison or an assignment. Note that `"batches"` also occurs as plain UI text elsewhere (e.g. the BatchHistory day-pill plural) — that is not a viewMode value and is not covered by this rule.
 21. **Every stage move in the Receive lens goes through the SAME `receiveFiles`/`undoReceiveFiles` in `Production.jsx`.** Do not add a second receive path inside `SewingReceive.jsx` — one lived there and was merged away precisely because two loops mutating the same rows have to be kept in agreement by hand, and the first change to receive logic would have been applied to only one of them. `SewingReceive` receives the implementation as the `onReceive` prop; the context menu calls it directly.
 22. **"The day a file entered production" is derived from `batch_path`, never from a `file_stages` timestamp.** The table has no creation column and `updated_at` moves on every stage transition — using it as a day silently reports the last stage move instead. Go through `dayKeyFromBatchPath` (`src/ui/utils/dayKey.js`); do not hand-roll another `split(/[/\\]/).at(-2)`. Any new day-aware UI must also keep the scanner contract: clear `dayFilter` and expand the target day before scrolling to a card.
+23. **Every `estimatePrintLength` / `estimateMaterialLengthByGroups` call passes a config** — `getEstimateConfig()` in the main process, `store.fabricConfig` in the renderer (third argument for `estimateMaterialLengthByGroups`). A call site that omits it silently reverts to the `printWidths.js` fallbacks and re-splits the app between two sets of numbers, which is exactly the bug BUG 4 closed. `getEstimateConfig()` must keep returning `null` — never `{ fabrics: [] }` — when the cache is not loaded: an empty array is truthy and drags the estimator into its DB branch with an empty catalog. Run the golden net after any change here.
+
+## Productization Tracking (PRODUCTIZATION.md)
+
+Progress on the multi-tenant / decoupling work is tracked in `PRODUCTIZATION.md`
+(repo root). Claude Code maintains it so Filip does not tick boxes by hand.
+
+Rules:
+
+1. Tick a box `[ ]` -> `[x]` ONLY after Filip has confirmed the step passed its full
+   gate (npm run test 107/107 unmodified, npm run lint clean, golden-diff XML
+   byte-for-byte, raw git diff reviewed) AND the step is committed. Never tick on
+   "code written" or "works on my machine" - `[x]` means "safe in Alex's production".
+2. Claude Code does NOT self-approve. The tick happens on Filip's explicit "gate
+   passed, commit it", not when Claude Code judges the work done.
+3. The checklist update is a SEPARATE commit from the code change (same discipline as
+   version/changelog). ASCII-only message, e.g.
+   `docs(productization): mark BUG 1 (clientId in settings:set) done`.
+4. Use the right status marker, do not collapse them:
+   `[ ]` todo | `[~]` in progress | `[x]` done+gated | `[!]` blocked (external dep)
+   | `[=]` consciously frozen (waiting on real client #2). Frozen != todo.
+5. If a step reveals new sub-tasks, add them as new `[ ]` lines under the same stage
+   rather than silently expanding an existing box - the list must stay auditable.
