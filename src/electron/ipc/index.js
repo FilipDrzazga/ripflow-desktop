@@ -16,8 +16,9 @@ import { getStorageRootPath } from "../helpers/getRootPath.js";
 import { assertStorageFilePath } from "../helpers/validateStoragePath.js";
 import { parsePrintFileName } from "../helpers/parseFileName.js";
 import { getSettings, setSettings, getRollbackDefinitions, clearRollbackDefinitions } from "../helpers/getSettings.js";
-import { initDb, insertLog, getAllLogs, clearAllLogs, holdFile, unholdFile, getHeldFiles, pruneOrphanHeldFiles, getRollbackReasonsByBatch, getRollbackReasonsByFile, getRollbackStats, getRollbackDetails, clearAllRollbackReasons, deleteRollbackReason, getLatestRollbackReasonsForFileIds, getReasonDefinitions, setReasonDefinitions as setReasonDefinitionsDb, migrateReasonDefinitions, getAllFabrics, saveFabric, deleteFabric as deleteFabricDb, setAllFabrics, getFabricGlobals, setFabricGlobals, backupDb, cleanupShippedStages, getDbDegraded } from "../helpers/db.js";
+import { initDb, insertLog, getAllLogs, clearAllLogs, holdFile, unholdFile, getHeldFiles, pruneOrphanHeldFiles, getRollbackReasonsByBatch, getRollbackReasonsByFile, getRollbackStats, getRollbackDetails, clearAllRollbackReasons, deleteRollbackReason, getLatestRollbackReasonsForFileIds, getReasonDefinitions, setReasonDefinitions as setReasonDefinitionsDb, migrateReasonDefinitions, getAllFabrics, saveFabric, deleteFabric as deleteFabricDb, setAllFabrics, getFabricGlobals, setFabricGlobals, setShopProfile, backupDb, cleanupShippedStages, getDbDegraded } from "../helpers/db.js";
 import { loadFabricCache, invalidateFabricCache } from "../helpers/fabricCache.js";
+import { loadShopProfile, invalidateShopProfile, getProfile } from "../helpers/shopProfile.js";
 
 const DAY_FOLDER_RE = /^\d{2}-\d{2}-\d{4}$/;
 
@@ -164,6 +165,9 @@ export function registerIpcHandlers() {
     clearRollbackDefinitions();
   }
 
+  // Before loadFabricCache: the profile carries the material classes and hotfolder
+  // names the fabric layer will read once those consumers land (ETAP 2).
+  loadShopProfile();
   loadFabricCache();
   registerCustomOrderHandlers();
   registerProductionHandlers();
@@ -453,6 +457,34 @@ export function registerIpcHandlers() {
     invalidateFabricCache();
     loadFabricCache();
     return { success: ok };
+  });
+
+  // ── shop profile ───────────────────────────────────────────────────────────
+  // Its own pair of handlers on purpose: settings:set writes per-machine values to
+  // electron-store, while the profile is shop-wide and lives in the shared DB.
+  ipcMain.handle("profile:get", () => {
+    // null when the DB was unreachable at startup — the caller is told that, not
+    // handed a default that would look like a real profile.
+    return { success: true, data: getProfile() };
+  });
+
+  ipcMain.handle("profile:set", (_event, profile) => {
+    if (!profile || typeof profile !== "object" || Array.isArray(profile)) {
+      return { success: false, error: "Profile must be an object." };
+    }
+    let ok = false;
+    let error = null;
+    try {
+      ok = setShopProfile(profile, getSettings().workstationName);
+    } catch (err) {
+      console.error("[ipc] profile:set failed:", err);
+      error = err?.message ?? "Could not save the shop profile.";
+    }
+    // Reload either way, so the cache reflects what the DB actually holds now -
+    // after a failed write that is the previous row, not the rejected one.
+    invalidateShopProfile();
+    loadShopProfile();
+    return error ? { success: false, error } : { success: ok };
   });
 
   ipcMain.handle("db:backup", async () => {

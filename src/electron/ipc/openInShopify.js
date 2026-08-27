@@ -1,6 +1,17 @@
 import { shell } from "electron";
 import { toIpcError } from "../helpers/ipcError.js";
-import { SHOPIFY_STORE_HANDLE } from "../helpers/shopifyConfig.js";
+import { getProfile } from "../helpers/shopProfile.js";
+import { DEFAULT_PROFILE } from "../helpers/defaultProfile.js";
+
+// The shop-wide profile is the source; DEFAULT_PROFILE is the degraded-mode fallback,
+// used when the cache is null (DB unreachable) or the row carries no handle. Falling
+// back keeps the link working instead of stopping the operator - and it is the SAME
+// literal the profile is seeded from, so there is one definition, not two.
+// Empty string counts as missing, hence || rather than ??: an empty handle would build
+// a valid-looking URL pointing at no store.
+const getStoreHandle = () =>
+  getProfile()?.integrations?.shopify?.storeHandle ||
+  DEFAULT_PROFILE.integrations.shopify.storeHandle;
 
 const STAGES = {
   INIT: "init",
@@ -30,7 +41,7 @@ export const openInShopify = async (orderName) => {
 
     stage = STAGES.OPEN;
 
-    const url = `https://admin.shopify.com/store/${SHOPIFY_STORE_HANDLE}/orders/?query=${encodeURIComponent(orderName)}`;
+    const url = `https://admin.shopify.com/store/${getStoreHandle()}/orders/?query=${encodeURIComponent(orderName)}`;
     await shell.openExternal(url);
 
     result.success = true;
