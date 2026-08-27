@@ -9,6 +9,7 @@ import { getLogs, clearLogs as clearLogsApi, getHeldFiles, holdFile as holdFileA
 import { getRollbackReasonsForFiles as getRollbackReasonsForFilesApi } from "../services/analyticsService";
 import { getRollbackDefinitions as getRollbackDefinitionsApi } from "../services/reasonDefsService";
 import { getFabricGlobals as getFabricGlobalsApi, getFabrics as getFabricsApi } from "../services/fabricService";
+import { getShopProfile as getShopProfileApi } from "../services/profileService";
 import { getStagesByBatch as getStagesByBatchApi, getAllStages as getAllStagesApi, getStagesAfter as getStagesAfterApi, getAllStageHistory as getAllStageHistoryApi, clearAllProductionStages as clearAllProductionStagesApi, getOpenReprints as getOpenReprintsApi } from "../services/productionService";
 import { scanRipErrors as scanRipErrorsApi, resolveRipError as resolveRipErrorApi } from "../services/ripErrorService";
 
@@ -185,6 +186,18 @@ export const useStore = create(
           set({ fabricConfig: { globals: globalsRes.data, fabrics: fabricsRes.data } });
         }
       } catch (err) { console.error("[store] loadFabricConfig failed:", err); }
+    },
+
+    // Shop-wide profile (printers, hotfolders, features). null until loaded, exactly
+    // like fabricConfig above — a consumer can tell "not loaded yet" from "loaded".
+    shopProfile: null,
+    loadShopProfile: async () => {
+      try {
+        const res = await getShopProfileApi();
+        // data is null when the main process could not read the DB; keep the null
+        // sentinel rather than storing an empty object that would look loaded.
+        if (res?.success && res.data) set({ shopProfile: res.data });
+      } catch (err) { console.error("[store] loadShopProfile failed:", err); }
     },
     productionStages: {},
     loadStagesForBatch: async (batchPath) => {

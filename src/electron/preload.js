@@ -128,6 +128,13 @@ const api = Object.freeze({
     if (!Array.isArray(fabrics)) throw new TypeError("Fabrics must be an array.");
     return ipcRenderer.invoke("fabrics:setAll", fabrics);
   },
+  profile: {
+    get: () => ipcRenderer.invoke("profile:get"),
+    set: (profile) => {
+      if (!isPlainObject(profile)) throw new TypeError("Profile must be a plain object.");
+      return ipcRenderer.invoke("profile:set", profile);
+    },
+  },
   getSettings: () => ipcRenderer.invoke("settings:get"),
   setSettings: (settings) => {
     if (!isPlainObject(settings)) throw new TypeError("Settings must be a plain object.");

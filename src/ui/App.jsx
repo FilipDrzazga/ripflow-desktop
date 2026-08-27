@@ -28,6 +28,7 @@ const App = () => {
   const loadHeldFiles = useStore((state) => state.loadHeldFiles);
   const loadReasonDefinitions = useStore((state) => state.loadReasonDefinitions);
   const loadFabricConfig = useStore((state) => state.loadFabricConfig);
+  const loadShopProfile = useStore((state) => state.loadShopProfile);
   const loadRipErrors = useStore((state) => state.loadRipErrors);
   const loadAllStages = useStore((state) => state.loadAllStages);
   const loadAllStageHistory = useStore((state) => state.loadAllStageHistory);
@@ -63,6 +64,7 @@ const App = () => {
       loadLogsFromDb();
       loadReasonDefinitions();
       loadFabricConfig();
+      loadShopProfile();
       loadRipErrors();
       // Full base load of production data so the print-view OverviewPanel has real
       // counts immediately (cheap SQLite reads, NOT SMB scans). The 30s poll below only
@@ -83,7 +85,7 @@ const App = () => {
     fetchFolders();
 
     return () => clearTimeout(safetyTimerRef.current);
-  }, [refreshFiles, refreshBatchDays, loadLogsFromDb, loadHeldFiles, loadReasonDefinitions, loadFabricConfig, loadRipErrors, loadAllStages, loadAllStageHistory, loadOpenReprints, finishStartup, checkDbDegraded]);
+  }, [refreshFiles, refreshBatchDays, loadLogsFromDb, loadHeldFiles, loadReasonDefinitions, loadFabricConfig, loadShopProfile, loadRipErrors, loadAllStages, loadAllStageHistory, loadOpenReprints, finishStartup, checkDbDegraded]);
 
   // Global 30s poll — keeps the "RIP Error" badge and the print-view OverviewPanel
   // counts fresh session-wide, independent of activeView. RIP errors re-scan in full;
