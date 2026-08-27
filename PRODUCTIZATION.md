@@ -28,6 +28,8 @@ udowadniamy golden-diff (XML bajt w bajt) na kopii jego bazy, nie na oko.
 ## ETAP 0 - Niezalezne bugfixy + odciecie katalogu (u samego Alexa)
 
 Baseline przed startem: `npm run test` = 107 passed / 8 files, `npm run lint` czysty.
+Baseline PO ETAPIE 1: `npm run test` = 125 passed / 9 files (+18 z `shopProfile.test.js`,
+zero modyfikacji istniejacych testow).
 
 - [x] **BUG 1** - `clientId` przechodzi przez `settings:set`
   - `src/electron/ipc/index.js` (~:469 destrukturyzacja, ~:490 przekazanie)
@@ -87,19 +89,19 @@ Baseline przed startem: `npm run test` = 107 passed / 8 files, `npm run lint` cz
 
 Wzorzec kopiowany 1:1 z `fabricCache.js`. Nie wymyslamy nowego mechanizmu.
 
-- [ ] Tabela `shop_profile` (jeden wiersz, JSON blob) w `db.js`, idempotentnie
-- [ ] `db.js`: `getShopProfile()` / `setShopProfile(obj, workstation)` (bool, bez runWrite)
-- [ ] `helpers/shopProfile.js`: `loadShopProfile` / `invalidateShopProfile` / `getProfile`
+- [x] Tabela `shop_profile` (jeden wiersz, JSON blob) w `db.js`, idempotentnie
+- [x] `db.js`: `getShopProfile()` / `setShopProfile(obj, workstation)` (bool, bez runWrite)
+- [x] `helpers/shopProfile.js`: `loadShopProfile` / `invalidateShopProfile` / `getProfile`
       / `getPrinters` / `getPrinterByCode` / `getFeature(name)`; sentinel `null`, fallback `DEFAULT_PROFILE`
-- [ ] IPC `profile:get` / `profile:set` (WLASNY handler, nie doklejac do `settings:set`)
-- [ ] `loadShopProfile()` w `registerIpcHandlers` PRZED `loadFabricCache()`
-- [ ] `services/profileService.js` (5s/30s) + `preload.js` z `isPlainObject`
-- [ ] Store: `shopProfile` + `loadShopProfile()` obok `loadFabricConfig`
-- [ ] **Podpiac konsumentow OD RAZU** (inaczej powtorzymy buga martwego `fabricConfig`)
-- [ ] Migracja: brak wiersza -> zbuduj profil FF ze STALYCH w kodzie (PRINTER,
+- [x] IPC `profile:get` / `profile:set` (WLASNY handler, nie doklejac do `settings:set`)
+- [x] `loadShopProfile()` w `registerIpcHandlers` PRZED `loadFabricCache()`
+- [x] `services/profileService.js` (5s/30s) + `preload.js` z `isPlainObject`
+- [x] Store: `shopProfile` + `loadShopProfile()` obok `loadFabricConfig`
+- [x] **Podpiac konsumentow OD RAZU** (inaczej powtorzymy buga martwego `fabricConfig`)
+- [x] Migracja: brak wiersza -> zbuduj profil FF ze STALYCH w kodzie (PRINTER,
       printerColors, hotfoldery, DEFAULT_FABRIC_GLOBALS, role, DIMS, Olya/Vagabond,
       SHOPIFY_STORE_HANDLE, wszystkie flagi true)
-- [ ] `shopProfile.test.js` (fallbacki, sentinel null)
+- [x] `shopProfile.test.js` (fallbacki, sentinel null)
 
 **Bramka Etapu 1:** FF dziala identycznie, `profile:get` zwraca kompletny profil,
 golden-diff czysty.
@@ -115,9 +117,14 @@ golden-diff czysty.
 - [ ] **2c - Flagi funkcji + filtr NavBar:** `customOrders`, `analytics`, `ripErrors`,
       `labelPrinting`; `NavBar.TOP_ITEMS` filtrowany; bezpiecznik na widoku (nie tylko przycisk)
 - [ ] **2d - Nazwy hotfolderow** do profilu (`createXML.js`, `customOrderHandlers.js`, `getRootPath.js`)
-- [ ] **2e - Drukarki -> `printers[]`** (NAJSZERSZY zasieg, 12 miejsc, w tym regexy widocznosci)
+- [ ] **2e - Drukarki -> `printers[]`** (NAJSZERSZY zasieg, 53 wystapienia w 12 plikach,
+      w tym regexy widocznosci - zmierzone grepem, nie oszacowane)
   - regex na "ostatni segment po ostatnim -" + walidacja kodu `[A-Z0-9_]+`
   - test reczny: submit -> XML -> PRINTED -> BatchHistory -> Production dla KAZDEJ drukarki
+  - [ ] getPrinterByCode jest case-insensitive (shopProfile.js, ETAP 1 krok 2),
+        ale PRINTER.* porownuje sie scisle - ten sam kod przechodzi lookup i odbija
+        sie od porownania. Przy 2e znormalizowac kod na WEJSCIU (uppercase przy
+        wyciaganiu z nazwy folderu) i zaostrzyc lookup, zamiast luzowac go dalej.
 - [ ] **2f - `scanRules[]`** zamiast 4 galezi `workstationRole` (upraszcza `Production.jsx`)
 - [ ] **2g - Klasy materialu** (2 sloty, konfig etykiet+przynaleznosci) + typy produktow + wymiary
       (`productTypes[]`, dzis SAMPLE/FQ/TEA_TOWEL zaszyte)
@@ -164,6 +171,10 @@ Baza pozostaje jedynym zywym zrodlem prawdy; JSON to tylko transport na wdrozeni
   - [ ] ostrzezenie o niezgodnosci z danymi na dysku (ile rekordow zniknie z widoku)
   - [ ] `showConfirm()` + `backupDb(true)` przed nadpisaniem
 - [ ] Import NIE dotyka `fabrics` (katalog ma wlasny `setAllFabrics`)
+- [ ] Seed vs migracja: DEFAULT_PROFILE dzis seeduje KAZDA nowa baze danymi FF
+      (db.js, ETAP 1 krok 1). Po zbudowaniu importu rozstrzygnac: albo pusty
+      profil-szkielet dla nowej instalacji, albo swiadomie zostawic FF jako
+      "demo do nadpisania importem". Dzis nieszkodliwe - Alex ma juz wiersz.
 
 ---
 
@@ -181,6 +192,13 @@ Baza pozostaje jedynym zywym zrodlem prawdy; JSON to tylko transport na wdrozeni
       OFFLINE. Klucz prywatny nigdy w repo/buildzie
 - [ ] **Lagodna degradacja** po `validUntil`: produkcja dziala dalej (druk/batche/XML/
       rollback); gasnie tylko Analytics/auto-update + baner. Karencja przed wylaczeniem
+- [ ] Cache nie wstaje po odzyskaniu bazy: shopProfile i fabricCache laduja sie
+      raz na starcie; jesli baza byla nieosiagalna, oba zostaja na sentinelu null
+      do restartu aplikacji, nawet gdy NAS wroci minute pozniej. Dzis maskowane
+      fallbackami (literal Shopify, printWidths.js), ale przy rosnacej liczbie
+      konsumentow profilu roznica miedzy "profil z bazy" a "fallback z kodu"
+      bedzie coraz wieksza. Rozwazyc lazy retry przy odczycie albo ponowna probe
+      przy odzyskaniu polaczenia. Jeden mechanizm dla obu cache, nie dwa.
 - [ ] **Export diagnostics** - zip: ostatnie 500 logow, `shop_profile`, wersja, sciezki
       (bez zawartosci plikow), wynik testu dostepu do hotfolderow. Bez telemetrii
 - [ ] **Kreator pierwszego uruchomienia** (sciezki -> import profilu -> test zapisu do hotfoldera)
@@ -212,7 +230,7 @@ Podejscie: NIE przepisywac. Wyodrebnic obecna logike, potem dodac druga.
 
 ## Bramka weryfikacji (PO KAZDYM etapie, bez wyjatku)
 
-- [ ] `npm run test` - 107 passed / 8 files, ZERO modyfikacji testow
+- [ ] `npm run test` - 125 passed / 9 files, ZERO modyfikacji istniejacych testow
       (modyfikacja testu = sygnal niezamierzonej zmiany zachowania -> STOP)
 - [ ] `npm run lint` - czysty
 - [ ] golden-diff: wygenerowany XML bajt w bajt vs baseline, na kopii bazy Alexa

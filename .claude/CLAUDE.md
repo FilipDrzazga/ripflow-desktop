@@ -42,6 +42,12 @@ src/electron/
     fabricCache.js         # In-memory cache of fabrics+globals; load on startup, invalidate on save
                            # getEstimateConfig() — the ONE config source for estimatePrintLength
     fabricCache.test.js    # Vitest — getAliasFromCache sanitization (mocks ./db.js)
+    defaultProfile.js      # DEFAULT_PROFILE — the FF shop profile built from the constants
+                           # that used to be hardcoded; seeded into shop_profile on first run
+    shopProfile.js         # In-memory cache of the shop profile; same pattern as fabricCache
+                           # getProfile/getPrinters/getPrinterByCode/getFeature; sentinel null
+    shopProfile.test.js    # Vitest — 18 tests: three sentinel states, fail-closed getFeature,
+                           # shape guards, case-insensitive lookup pinned as the 2e debt
     createBatchIds.js      # GROUP_NAME_OVERRIDES + GROUP_NAME_OVERRIDES_REVERSE (both exported)
     ipcError.js            # toIpcError(err, stage, title)
     validateStoragePath.js # assertStorageFilePath — validate batchPath/filePath before file ops
@@ -101,6 +107,7 @@ src/ui/
     customOrderService.js  # scanCustomOrderFolder, importCSVContent, generateCustomOrderXML,
                            #   getCustomOrderHistory, clearCustomOrderHistory, selectCustomOrderCSV
     reasonDefsService.js   # getRollbackDefinitions, setReasonDefinitions — reads/writes DB via IPC
+    profileService.js      # getShopProfile, setShopProfile — withTimeout 5s / 30s
     fabricService.js       # getFabricGlobals, setFabricGlobals, getFabrics, saveFabric,
                            #   deleteFabric, setAllFabrics
     productionService.js   # getAllStages, getStagesAfter, getStagesByBatch, advanceStage,
@@ -228,7 +235,7 @@ Tokenize by `_`, detect CUSHION/TEA_TOWEL by keyword, others by XWD hex token.
 **ripflow.db** (shared across all PCs via network `storagePath`):
 
 - Operational: `logs`, `held_files`, `rollback_reasons`, `custom_order_history`
-- Shared config: `reason_definitions`, `fabric_globals`, `fabrics`
+- Shared config: `reason_definitions`, `fabric_globals`, `fabrics`, `shop_profile`
 
 ```
 storagePath:     O:\SPPrintReadyArtwork       (default)
@@ -243,7 +250,7 @@ Derived paths:
 
 ## SQLite (`helpers/db.js`)
 
-Tables: `logs`, `held_files`, `rollback_reasons`, `custom_order_history`, `reason_definitions`, `fabric_globals`, `fabrics`, `file_stages`, `file_stage_history`, `reprint_requests`, `rip_errors`
+Tables: `logs`, `held_files`, `rollback_reasons`, `custom_order_history`, `reason_definitions`, `fabric_globals`, `fabrics`, `shop_profile`, `file_stages`, `file_stage_history`, `reprint_requests`, `rip_errors`
 
 - `rollback_reasons.file_id = null` → whole batch reason; `= filename-without-ext` → single file
 - `logs.workstation` can be NULL in old records — render conditionally
@@ -289,6 +296,69 @@ getEstimateConfig(); // → { globals, fabrics } | null (null = cache not loaded
 
 1. `getXmlWidthFromCache(material, isPoly)` → per-material `fabric.xmlWidth` from the cache
 2. No per-material match (or cache not loaded) → global default from `getCachedGlobals()` (`defaultXmlWidthPoly` / `defaultXmlWidthCotton`), which falls back to `DEFAULT_FABRIC_GLOBALS` (`defaultFabrics.js`) when the cache is empty, with a final `?? 1420`. parseFileName.js no longer imports `printWidths.js` `LM_XML_*` constants (removed in lint cleanup).
+
+## Shop Profile (`shopProfile.js`)
+
+Shop-wide configuration in one JSON blob: printers with their colours and hotfolders,
+material classes, product dimensions, folder names, workstation roles, sewing companies,
+the Shopify handle and the feature flags. Stored in `shop_profile` (one row, `CHECK id = 1`)
+in the SHARED `ripflow.db`, so every station reads the same setup.
+
+**The pattern is `fabricCache.js`, copied deliberately** — same module-level cache, same
+load-on-startup / invalidate-on-write cycle, same sentinel discipline.
+
+```js
+loadShopProfile();       // DB → memory; called in registerIpcHandlers BEFORE loadFabricCache
+invalidateShopProfile(); // clear (call before reloading)
+getProfile();            // null | DEFAULT_PROFILE | the DB row
+getPrinters();           // profile.printers, or [] when not loaded / the field is not an array
+getPrinterByCode(code);  // printer | null — case-insensitive, see the 2e debt
+getFeature(name);        // boolean, fail-closed, strict === true
+```
+
+**Three states, one sentinel.** `db.getShopProfile()` returns `null` for "no row" and
+THROWS on a DB or JSON failure — it never collapses the two. `loadShopProfile` maps them:
+a missing row is a fresh install, so `DEFAULT_PROFILE` stands in; a throw leaves
+`cachedProfile === null`, meaning "we know nothing". A failed RELOAD also drops a
+previously loaded profile — serving a stale one quietly is worse than admitting ignorance.
+
+**`loadShopProfile()` runs BEFORE `loadFabricCache()`** in `registerIpcHandlers`. Not
+style: the profile carries the material classes and hotfolder names the fabric layer will
+read once those consumers land (ETAP 2), so it has to be in memory first.
+
+**`getFeature` is fail-closed and strict.** No profile means no feature, and only a real
+boolean `true` counts — a flag written as `1` or `"true"` by a sloppy import stays off. A
+dark button is a worse experience; a live button wired to a config we could not read is a
+wrong link or a wrong path.
+
+**`DEFAULT_PROFILE` lives in `defaultProfile.js`, not in `db.js`** — same split as
+`defaultFabrics.js`. `db.js` is the edge these tests mock (`vi.mock("./db.js")` replaces
+the WHOLE module), so a constant imported from there would have to be faked too, and
+"no row falls back to the default" would be asserting against the fake.
+
+**IPC is its own pair, never bolted onto `settings:set`**: `profile:get` / `profile:set`.
+`settings:set` writes per-machine values to electron-store; the profile is shop-wide and
+lives in the shared DB. `profile:set` repeats the `fabrics:save` cycle (write, invalidate,
+reload) and reloads even after a FAILED write, so the cache mirrors what the DB holds
+rather than what was attempted. `profile:get` returns `null` when the DB was unreachable
+at startup instead of substituting a default that would read as a real profile.
+
+**First consumer: `openInShopify.js`** — the store handle comes from
+`integrations.shopify.storeHandle`, falling back to `DEFAULT_PROFILE` when the cache is
+null or the row carries no handle (`||`, not `??`, so an empty string counts as missing).
+The fallback is mandatory: degraded, never stopped. `shopifyConfig.js` was deleted — one
+consumer, and keeping it would have left the same literal in two places.
+
+**Renderer**: `store.shopProfile` (null until loaded, exactly like `fabricConfig`), loaded
+by `loadShopProfile()` in the App startup effect via `services/profileService.js`. The
+store checks `res.data` as well as `res.success`, so a null from main does not overwrite
+the sentinel with something that looks loaded. No component reads it yet — the first
+renderer consumer arrives with the NavBar feature filter at 2c.
+
+**KNOWN LIMIT:** the profile is loaded once at startup and reloaded only on `profile:set`.
+If the DB was unreachable at startup it stays `null` until a restart, even when the NAS
+comes back a minute later. `fabricCache` has the identical property — one problem, not
+two; tracked under ETAP 4.
 
 ## Atomic File Move (`createBatch.js`)
 
@@ -339,6 +409,10 @@ getFabrics()                           // → { success, data: fabric[] } — fa
 saveFabric(oldName, fabric)            // → { success } — handles rename (delete+insert) if name changed
 deleteFabric(name)                     // → { success }
 setAllFabrics(fabrics)                 // → { success } — bulk replace
+
+// Shop profile (DB-backed, shared across PCs) — own handler pair, NOT part of settings:set
+profile.get()                          // → { success, data: profile | null } — null = DB unreadable at startup
+profile.set(profile)                   // → { success } — write + invalidate + reload (reloads even on a failed write)
 
 // Settings — ALWAYS spread allSettings before overriding individual fields to avoid null overwrite
 getSettings()  // → { success, settings: { storagePath, xmlPath, workstationName, customOrderFolderPath, workstationRole, labelPrinterName, shippedRetentionDays, batchHistoryEagerDays, labelPrintMode, clientId } }
@@ -411,6 +485,7 @@ update.onAvailable(cb) / update.onProgress(cb) / update.onReady(cb) / update.onN
   alerts: [{ id, type, title, message }],
   reasonDefinitions: [{code, label, iconName}],  // loaded from DB on startup; fallback to static ROLLBACK_REASONS
   fabricConfig: { globals: {...}, fabrics: [...] } | null,  // loaded from DB on startup
+  shopProfile: { schemaVersion, printers, materialClasses, features, ... } | null, // DB on startup
   productionStages: {},         // fileId → stageRow ({ file_id, stage, batch_path, order_id, customer_name, ... })
   stageHistory: {},             // fileId → [{ stage, entered_at }] — append-only per transition
   ripErrors: {},                // fileId → ripErrorRow (open only; most-recent wins per file)
@@ -856,6 +931,7 @@ ELECTRON_RUN_AS_NODE=1 ./node_modules/.bin/electron scripts/golden/compare-golde
 21. **Every stage move in the Receive lens goes through the SAME `receiveFiles`/`undoReceiveFiles` in `Production.jsx`.** Do not add a second receive path inside `SewingReceive.jsx` — one lived there and was merged away precisely because two loops mutating the same rows have to be kept in agreement by hand, and the first change to receive logic would have been applied to only one of them. `SewingReceive` receives the implementation as the `onReceive` prop; the context menu calls it directly.
 22. **"The day a file entered production" is derived from `batch_path`, never from a `file_stages` timestamp.** The table has no creation column and `updated_at` moves on every stage transition — using it as a day silently reports the last stage move instead. Go through `dayKeyFromBatchPath` (`src/ui/utils/dayKey.js`); do not hand-roll another `split(/[/\\]/).at(-2)`. Any new day-aware UI must also keep the scanner contract: clear `dayFilter` and expand the target day before scrolling to a card.
 23. **Every `estimatePrintLength` / `estimateMaterialLengthByGroups` call passes a config** — `getEstimateConfig()` in the main process, `store.fabricConfig` in the renderer (third argument for `estimateMaterialLengthByGroups`). A call site that omits it silently reverts to the `printWidths.js` fallbacks and re-splits the app between two sets of numbers, which is exactly the bug BUG 4 closed. `getEstimateConfig()` must keep returning `null` — never `{ fabrics: [] }` — when the cache is not loaded: an empty array is truthy and drags the estimator into its DB branch with an empty catalog. Run the golden net after any change here.
+24. **The shop profile is read through `shopProfile.js`, never from `db.getShopProfile()` directly** — the helper owns the sentinel, and a call site that reads the DB itself would have to re-derive "not loaded vs no row vs failed" and would get it wrong. `getProfile()` returning `null` means the DB was unreachable: every consumer needs a fallback that keeps the operator working (see `openInShopify.js`), never a hard stop. Any new profile field must reach a consumer in the same change or the next one — `fabricConfig` sat unread for months and that was BUG 4.
 
 ## Productization Tracking (PRODUCTIZATION.md)
 
