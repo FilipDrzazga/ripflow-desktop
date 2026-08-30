@@ -316,11 +316,25 @@ getPrinterByCode(code);  // printer | null — case-insensitive, see the 2e debt
 getFeature(name);        // boolean, fail-closed, strict === true
 ```
 
-**Three states, one sentinel.** `db.getShopProfile()` returns `null` for "no row" and
-THROWS on a DB or JSON failure — it never collapses the two. `loadShopProfile` maps them:
-a missing row is a fresh install, so `DEFAULT_PROFILE` stands in; a throw leaves
-`cachedProfile === null`, meaning "we know nothing". A failed RELOAD also drops a
-previously loaded profile — serving a stale one quietly is worse than admitting ignorance.
+**Three real states in `db.getShopProfile()`, and the third one is a known defect.**
+`db.js:844-847` has three branches, not two:
+
+1. `if (!db) return null` — the DB handle is gone (`initDb` failed, e.g. a dead NAS).
+2. `SELECT … LIMIT 1` finds no row → `return null` — a fresh install.
+3. `prepare`/`get`/`JSON.parse` throws — a live handle whose read genuinely failed
+   (SQLITE_IOERR, corruption, a `data` column that is not valid JSON).
+
+`loadShopProfile` (`shopProfile.js:14-19`) maps a throw to `cachedProfile = null`
+("we know nothing") and `null` to `DEFAULT_PROFILE`. Because branch 1 returns `null`
+rather than throwing, **"the database is unreachable" is currently indistinguishable
+from "fresh install" and silently yields `DEFAULT_PROFILE` — i.e. Alex's live config.**
+That is the `??` on one value carrying two meanings, the same trap as `null` vs `[]`
+elsewhere in this file. Tracked as **2c-null** in `PRODUCTIZATION.md`, to be fixed
+before 2e (which puts printers/hotfolders on this path). `shopProfile.test.js` cannot
+catch it: it does `vi.mock("./db.js")`, so branch 1 never executes.
+
+A failed RELOAD also drops a previously loaded profile — serving a stale one quietly is
+worse than admitting ignorance.
 
 **`loadShopProfile()` runs BEFORE `loadFabricCache()`** in `registerIpcHandlers`. Not
 style: the profile carries the material classes and hotfolder names the fabric layer will
@@ -352,8 +366,15 @@ consumer, and keeping it would have left the same literal in two places.
 **Renderer**: `store.shopProfile` (null until loaded, exactly like `fabricConfig`), loaded
 by `loadShopProfile()` in the App startup effect via `services/profileService.js`. The
 store checks `res.data` as well as `res.success`, so a null from main does not overwrite
-the sentinel with something that looks loaded. No component reads it yet — the first
-renderer consumer arrives with the NavBar feature filter at 2c.
+the sentinel with something that looks loaded. First renderer consumer (2c): the NavBar
+feature filter — `App.jsx` passes `shopProfile` down as a prop and `NavBar` gates Custom
+Orders and Analytics through `isViewEnabled` (`src/ui/utils/featureVisibility.js`), a
+deliberate fail-closed, strict `=== true` mirror of `getFeature`, because `getFeature`
+is main-process only and is not exposed over IPC. `App.jsx` also guards both gated views
+in the render and corrects `activeView` back to `"print"` during render (not in an
+effect — `react-hooks/set-state-in-effect`). The profile banner is gated on
+`!isLoading`: `shopProfile` is null throughout startup, so an ungated banner would fire
+on every normal launch.
 
 **KNOWN LIMIT:** the profile is loaded once at startup and reloaded only on `profile:set`.
 If the DB was unreachable at startup it stays `null` until a restart, even when the NAS
