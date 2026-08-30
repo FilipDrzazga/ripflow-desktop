@@ -18,6 +18,7 @@ import ErrorBoundary from "./components/ErrorBoundary/ErrorBoundary";
 import CustomOrder from "./components/CustomOrder/CustomOrder";
 import Production from "./components/Production/Production";
 import { onDbError, onDbRecovered } from "./services/systemService";
+import { isViewEnabled } from "./utils/featureVisibility";
 
 const RIP_ERROR_POLL_INTERVAL = 30_000;
 
@@ -34,11 +35,18 @@ const App = () => {
   const loadAllStageHistory = useStore((state) => state.loadAllStageHistory);
   const loadStagesAfter = useStore((state) => state.loadStagesAfter);
   const loadOpenReprints = useStore((state) => state.loadOpenReprints);
+  const shopProfile = useStore((state) => state.shopProfile);
   const dbDegraded = useStore((state) => state.dbDegraded);
   const setDbDegraded = useStore((state) => state.setDbDegraded);
   const checkDbDegraded = useStore((state) => state.checkDbDegraded);
   const [isLoading, setIsLoading] = useState(true);
   const [activeView, setActiveView] = useState("print");
+  // A profile that arrives late (or one that turns a feature off) can pull the view the
+  // operator is standing on out from under them — send them back to "print" instead of
+  // leaving a blank main area. Written during render, not in an effect: React re-runs
+  // this render before committing, so the forbidden view is never painted at all, and
+  // the guards on the two gated views below close the same hole structurally.
+  if (!isViewEnabled(activeView, shopProfile)) setActiveView("print");
   const startupFinishedRef = useRef(false);
   const safetyTimerRef = useRef(null);
   // Watermark for the incremental stage poll below. Seeded at startup right after the
@@ -122,10 +130,19 @@ const App = () => {
           Database unavailable — changes may not be saved. Check the network connection.
         </div>
       )}
+      {/* Gated on !isLoading, unlike db_banner above: shopProfile is null for the whole
+          startup too (profile:get has not returned yet), so an ungated banner would cry
+          wolf on every normal launch. This way it appears in the same frame the gated
+          NavBar tabs go missing, and only then. */}
+      {!isLoading && shopProfile === null && (
+        <div className={styles.db_banner} role="alert">
+          Shop profile could not be loaded — some features are hidden. Restart the app to retry.
+        </div>
+      )}
       {isLoading && <StartupLoader onDone={finishStartup} />}
       {!isLoading && (
         <div className={styles.body}>
-          <NavBar activeView={activeView} onViewChange={setActiveView} />
+          <NavBar activeView={activeView} onViewChange={setActiveView} shopProfile={shopProfile} />
           <main className={styles.content}>
             {activeView === "print" && (
               <>
@@ -141,7 +158,7 @@ const App = () => {
                 <BatchHistory />
               </ErrorBoundary>
             )}
-            {activeView === "analytics" && (
+            {activeView === "analytics" && isViewEnabled("analytics", shopProfile) && (
               <ErrorBoundary>
                 <Analytics />
               </ErrorBoundary>
@@ -151,7 +168,7 @@ const App = () => {
                 <Production />
               </ErrorBoundary>
             )}
-            {activeView === "customOrder" && <CustomOrder />}
+            {activeView === "customOrder" && isViewEnabled("customOrder", shopProfile) && <CustomOrder />}
             {activeView === "logs" && <SessionLogs />}
             {activeView === "settings" && <Settings />}
           </main>
