@@ -114,8 +114,61 @@ golden-diff czysty.
   - usuwa jedyny literal z nazwa klienta (`SHOPIFY_STORE_HANDLE = "fashionformulauk"`)
   - pierwszy realny efekt sprzedazowy (demo nie pokazuje sklepu Alexa)
 - [ ] **2b - Szwalnie:** `sewingCompanies[]` w profilu + maly edytor (dzis: Olya/Vagabond zaszyte)
-- [ ] **2c - Flagi funkcji + filtr NavBar:** `customOrders`, `analytics`, `ripErrors`,
-      `labelPrinting`; `NavBar.TOP_ITEMS` filtrowany; bezpiecznik na widoku (nie tylko przycisk)
+- [x] **2c - Flagi funkcji + filtr NavBar (zakres ZAWEZONY do nawigacji):** `customOrders`
+      i `analytics`. `src/ui/utils/featureVisibility.js` - czysta `isViewEnabled(viewId, profile)`,
+      swiadome lustro `getFeature` (main-only, nie wystawiony po IPC), fail-closed przy
+      `null`, scisle `=== true`. `NavBar.TOP_ITEMS` filtrowany + Analytics z `nav_bottom`
+      bramkowany osobno (jest poza tablica; divider idzie razem z nim). Bezpiecznik na
+      widoku: guardy przy obu bramkowanych galeziach renderu ORAZ korekta `activeView`
+      na `"print"` pisana w trakcie renderu, nie w efekcie (`react-hooks/set-state-in-effect`
+      to blad w tym configu; `"print"` nie jest w `VIEW_FEATURE`, wiec petla renderow
+      nie powstaje - przypiete testem `VIEW_FEATURE toEqual`). Osobny baner pod `db_banner`,
+      bramkowany `!isLoading` - `shopProfile` jest `null` przez caly start, wiec baner
+      bez tej bramki krzyczalby przy kazdym normalnym uruchomieniu.
+      Dowod okablowania (nie tylko testy jednostkowe): trzy mutacje `shopProfile` w `App.jsx`
+      na zywej aplikacji - `{customOrders:false, analytics:false}` -> 5 pozycji + divider
+      znika + baner milczy; `null` -> 5 pozycji + baner; wejscie w Custom Orders, potem
+      `customOrders:false` przez HMR -> aplikacja sama wraca na Print, `main` pelny, zero
+      "Too many re-renders". Mutacje cofniete, baza produkcyjna nietkniete.
+- [ ] **2c-null - `db.js:844` zwija "brak bazy" do "brak wiersza"** (ZROBIC PO 2c, PRZED 2e)
+  - `getShopProfile` ma trzy galezie, nie dwie: `if (!db) return null`, brak wiersza ->
+    `null`, oraz throw. `loadShopProfile` mapuje `null` na `DEFAULT_PROFILE`, wiec przy
+    martwym NAS-ie klient dostaje AKTYWNA konfiguracje Alexa, a nie sentinel: `getPrinters()`
+    zwraca DGEN/YOKO/YUMI, hotfoldery `AUTOMATION_WORKFLOW_COTTON`/`_POLY`, klasy materialu
+    i `storeHandle "fashionformulauk"`.
+  - **Dlaczego przed 2e, a nie kiedykolwiek:** 2e stawia drukarki na `getPrinters()`.
+    Wejscie w 2e przed ta naprawa zamienia dzisiejszy blad kosmetyczny (widoczna zakladka)
+    w blad produkcyjny - druk na hotfolder Alexa.
+  - To czwarte wystapienie pulapki `null` vs `[]` z CLAUDE.md: jedna wartosc niesie dwa
+    znaczenia, a `??` nie ma jak ich rozroznic.
+  - Pokrewne z dlugiem "seed vs migracja" (a2cbc30): `DEFAULT_PROFILE` to dane Alexa
+    udajace neutralny stan domyslny, dokladnie jak `DEFAULT_FABRICS` przed ETAPEM 0.
+    `if (!db) throw` jest poprawka prawdziwa, ale plastrem; oproznienie `DEFAULT_PROFILE`
+    na rzecz importu to ETAP 3. Oba powiazania zanotowane, zadne nie rozstrzygniete tutaj.
+  - Naprawa wymaga testu na PRAWDZIWYM `db.js` - dzis kazdy test mockuje caly modul
+    (`vi.mock("./db.js")`), wiec galaz `!db` nigdy sie nie wykonuje. Wlasna bramka,
+    wlasny commit.
+  - Razem z tym: `status: "loading" | "loaded" | "failed"` w storze. Dzis warunek banera
+    `!isLoading && shopProfile === null` to proxy czasowe, nie fakt - jesli skan SMB
+    skonczy sie przed 5-sekundowym timeoutem z `profileService`, baner mignie i zniknie.
+    Store zwija trzy stany (jeszcze nie zapytano / w locie / nieudane) do jednego `null`.
+- [ ] **2c-bis - pozostale cztery flagi** (`ripErrors`, `labelPrinting`, `shopify`, `sewing`).
+      Swiadomie NIE w 2c: kazda ma 3-6 wejsc UI rozsianych po kilku plikach, wiec filtr
+      w NavBarze ich nie domyka. Wejscia zmierzone grepem, nie oszacowane:
+  - `ripErrors`: `Production/ProductionCard.jsx:137` (badge) + `:140` (klik);
+    `Production/Production.jsx:1302` (prop), `:1855` (popover), `:224` (store);
+    `BatchHistory/FileRow.jsx:64,67`; `BatchHistory/BatchRow.jsx:68-70` (licznik naglowka),
+    `:44-45`, `:152`; `BatchHistory/BatchHistory.jsx:1034` (popover);
+    `Production/SewingReceive.jsx:43,269`; `OverviewPanel/OverviewPanel.jsx:46,54,87` (kafel);
+    poll `App.jsx:32,68,98`
+  - `labelPrinting`: `Production/Production.jsx:1525` ("Reprint Label") -> `:1530` -> `:531,543`;
+    `BatchHistory/BatchHistory.jsx:97`; `services/productionService.js:9`
+  - `shopify`: `Production/Production.jsx:1375` (lens ORDERS) i `:1557` (lens BATCHES) -> `:671`;
+    `DataList/DataList.jsx:413` -> `:416` -> `:147`;
+    `BatchHistory/BatchHistory.jsx:1079` -> `:1083` -> `:626`; `services/fileService.js:55`
+  - `sewing`: `Production/Production.jsx:1618-1619` (zakladka RECEIVE) -> `:1770-1771` (render);
+    `:1471` ("Send to Sewing"); handlery `:364, 381, 418, 831, 864`;
+    `Production/SewingReceive.jsx:29`; `services/productionService.js:7,8`
 - [ ] **2d - Nazwy hotfolderow** do profilu (`createXML.js`, `customOrderHandlers.js`, `getRootPath.js`)
 - [ ] **2e - Drukarki -> `printers[]`** (NAJSZERSZY zasieg, 53 wystapienia w 12 plikach,
       w tym regexy widocznosci - zmierzone grepem, nie oszacowane)
@@ -199,6 +252,16 @@ Baza pozostaje jedynym zywym zrodlem prawdy; JSON to tylko transport na wdrozeni
       konsumentow profilu roznica miedzy "profil z bazy" a "fallback z kodu"
       bedzie coraz wieksza. Rozwazyc lazy retry przy odczycie albo ponowna probe
       przy odzyskaniu polaczenia. Jeden mechanizm dla obu cache, nie dwa.
+  - [ ] Przycisk ponownego wczytania ma odswiezac `shopProfile` I `fabricCache` JEDNYM
+        mechanizmem. Swiadomie pominiety w 2c - tam byloby to drugie, konkurencyjne
+        rozwiazanie tego samego problemu.
+  - [ ] Przypadek (c) z pomiaru przy 2c: `withTimeout(profile:get, 5s)` odrzuca przy
+        ZDROWEJ bazie (main zablokowany synchronicznym better-sqlite3 + `sweepOrphanTemps`
+        + `backupDb` na SMB). `dbDegraded` zostaje wtedy `false`, wiec baner o bazie nie
+        leci, a `shopProfile` jest `null` do konca sesji. Dzis nie ma z tego innego
+        wyjscia niz restart aplikacji. Asymetria do naprawy przy okazji: `getDbDegraded`
+        (`systemService.js:24`) nie ma `withTimeout` i doczeka sie odpowiedzi, `profile:get`
+        ma 5s i sie poddaje.
 - [ ] **Export diagnostics** - zip: ostatnie 500 logow, `shop_profile`, wersja, sciezki
       (bez zawartosci plikow), wynik testu dostepu do hotfolderow. Bez telemetrii
 - [ ] **Kreator pierwszego uruchomienia** (sciezki -> import profilu -> test zapisu do hotfoldera)
