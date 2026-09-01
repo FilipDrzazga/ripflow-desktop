@@ -19,6 +19,7 @@ import CustomOrder from "./components/CustomOrder/CustomOrder";
 import Production from "./components/Production/Production";
 import { onDbError, onDbRecovered } from "./services/systemService";
 import { isViewEnabled } from "./utils/featureVisibility";
+import { PROFILE_STATUS } from "./utils/profileStatus";
 
 const RIP_ERROR_POLL_INTERVAL = 30_000;
 
@@ -36,6 +37,7 @@ const App = () => {
   const loadStagesAfter = useStore((state) => state.loadStagesAfter);
   const loadOpenReprints = useStore((state) => state.loadOpenReprints);
   const shopProfile = useStore((state) => state.shopProfile);
+  const shopProfileStatus = useStore((state) => state.shopProfileStatus);
   const dbDegraded = useStore((state) => state.dbDegraded);
   const setDbDegraded = useStore((state) => state.setDbDegraded);
   const checkDbDegraded = useStore((state) => state.checkDbDegraded);
@@ -130,11 +132,10 @@ const App = () => {
           Database unavailable — changes may not be saved. Check the network connection.
         </div>
       )}
-      {/* Gated on !isLoading, unlike db_banner above: shopProfile is null for the whole
-          startup too (profile:get has not returned yet), so an ungated banner would cry
-          wolf on every normal launch. This way it appears in the same frame the gated
-          NavBar tabs go missing, and only then. */}
-      {!isLoading && shopProfile === null && (
+      {/* Reads the stored status, not the profile value. The !isLoading gate this
+          replaces was a timing proxy for "the load has finished" — the status says so
+          outright, and stays "loading" during startup instead of looking like failure. */}
+      {shopProfileStatus === PROFILE_STATUS.FAILED && (
         <div className={styles.db_banner} role="alert">
           Shop profile could not be loaded — some features are hidden. Restart the app to retry.
         </div>

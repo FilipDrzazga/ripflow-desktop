@@ -10,6 +10,7 @@ import { getRollbackReasonsForFiles as getRollbackReasonsForFilesApi } from "../
 import { getRollbackDefinitions as getRollbackDefinitionsApi } from "../services/reasonDefsService";
 import { getFabricGlobals as getFabricGlobalsApi, getFabrics as getFabricsApi } from "../services/fabricService";
 import { getShopProfile as getShopProfileApi } from "../services/profileService";
+import { PROFILE_STATUS, resolveProfileResult } from "../utils/profileStatus";
 import { getStagesByBatch as getStagesByBatchApi, getAllStages as getAllStagesApi, getStagesAfter as getStagesAfterApi, getAllStageHistory as getAllStageHistoryApi, clearAllProductionStages as clearAllProductionStagesApi, getOpenReprints as getOpenReprintsApi } from "../services/productionService";
 import { scanRipErrors as scanRipErrorsApi, resolveRipError as resolveRipErrorApi } from "../services/ripErrorService";
 
@@ -188,16 +189,24 @@ export const useStore = create(
       } catch (err) { console.error("[store] loadFabricConfig failed:", err); }
     },
 
-    // Shop-wide profile (printers, hotfolders, features). null until loaded, exactly
-    // like fabricConfig above — a consumer can tell "not loaded yet" from "loaded".
+    // Shop-wide profile (printers, hotfolders, features). The profile itself stays a
+    // plain value-or-null, but the status is stored alongside it so consumers no longer
+    // have to infer "still loading" from "null" — see utils/profileStatus.js.
     shopProfile: null,
+    shopProfileStatus: PROFILE_STATUS.LOADING,
     loadShopProfile: async () => {
       try {
         const res = await getShopProfileApi();
-        // data is null when the main process could not read the DB; keep the null
-        // sentinel rather than storing an empty object that would look loaded.
-        if (res?.success && res.data) set({ shopProfile: res.data });
-      } catch (err) { console.error("[store] loadShopProfile failed:", err); }
+        // One set() for both fields: a render that saw a loaded status next to a null
+        // profile (or the reverse) would be reading a state that never really existed.
+        const { status, profile } = resolveProfileResult(res);
+        set({ shopProfile: profile, shopProfileStatus: status });
+      } catch (err) {
+        // withTimeout REJECTS on the 5s profile:get deadline, so a hung main process
+        // arrives here rather than in resolveProfileResult. Same failed pair either way.
+        console.error("[store] loadShopProfile failed:", err);
+        set({ shopProfile: null, shopProfileStatus: PROFILE_STATUS.FAILED });
+      }
     },
     productionStages: {},
     loadStagesForBatch: async (batchPath) => {
