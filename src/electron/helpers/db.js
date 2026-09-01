@@ -837,11 +837,17 @@ export const setAllFabrics = (fabrics) => {
 
 // ── shop_profile ─────────────────────────────────────────────────────────────
 
-// Three states, on purpose: null = no row yet (fresh DB, or the seed could not run),
-// an object = the stored profile, and a throw = the DB itself failed. shopProfile.js
-// maps those onto its own "not loaded" sentinel — this layer does not guess.
+// Two answers and one throw, on purpose: null = no row yet (fresh DB whose seed did not
+// run), an object = the stored profile, and a throw = the DB could not be read at all.
+// shopProfile.js maps those onto its own "not loaded" sentinel — this layer does not guess.
+//
+// A missing handle THROWS rather than returning null. Unlike getAllFabrics above, this
+// reads a single row, so it has no spare value for "legitimately empty": null already
+// means "no row". Returning it for "no database" too would collapse the two, and
+// shopProfile.js would answer a dead NAS with DEFAULT_PROFILE — i.e. hand one client
+// another client's printers, hotfolders and store handle.
 export const getShopProfile = () => {
-  if (!db) return null;
+  if (!db) throw new Error("[db] getShopProfile: database not initialized");
   const row = db.prepare("SELECT data FROM shop_profile LIMIT 1").get();
   return row ? JSON.parse(row.data) : null;
 };
