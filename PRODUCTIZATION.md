@@ -130,28 +130,66 @@ golden-diff czysty.
       znika + baner milczy; `null` -> 5 pozycji + baner; wejscie w Custom Orders, potem
       `customOrders:false` przez HMR -> aplikacja sama wraca na Print, `main` pelny, zero
       "Too many re-renders". Mutacje cofniete, baza produkcyjna nietkniete.
-- [ ] **2c-null - `db.js:844` zwija "brak bazy" do "brak wiersza"** (ZROBIC PO 2c, PRZED 2e)
-  - `getShopProfile` ma trzy galezie, nie dwie: `if (!db) return null`, brak wiersza ->
+- [x] **2c-null-a - `db.js` sygnalizuje brak bazy zamiast braku wiersza** (jednoplikowa
+      zmiana w `db.js`, wykonana PO 2c i PRZED 2e)
+  - `getShopProfile` mial trzy galezie, nie dwie: `if (!db) return null`, brak wiersza ->
     `null`, oraz throw. `loadShopProfile` mapuje `null` na `DEFAULT_PROFILE`, wiec przy
-    martwym NAS-ie klient dostaje AKTYWNA konfiguracje Alexa, a nie sentinel: `getPrinters()`
-    zwraca DGEN/YOKO/YUMI, hotfoldery `AUTOMATION_WORKFLOW_COTTON`/`_POLY`, klasy materialu
-    i `storeHandle "fashionformulauk"`.
-  - **Dlaczego przed 2e, a nie kiedykolwiek:** 2e stawia drukarki na `getPrinters()`.
-    Wejscie w 2e przed ta naprawa zamienia dzisiejszy blad kosmetyczny (widoczna zakladka)
-    w blad produkcyjny - druk na hotfolder Alexa.
-  - To czwarte wystapienie pulapki `null` vs `[]` z CLAUDE.md: jedna wartosc niesie dwa
-    znaczenia, a `??` nie ma jak ich rozroznic.
-  - Pokrewne z dlugiem "seed vs migracja" (a2cbc30): `DEFAULT_PROFILE` to dane Alexa
-    udajace neutralny stan domyslny, dokladnie jak `DEFAULT_FABRICS` przed ETAPEM 0.
-    `if (!db) throw` jest poprawka prawdziwa, ale plastrem; oproznienie `DEFAULT_PROFILE`
-    na rzecz importu to ETAP 3. Oba powiazania zanotowane, zadne nie rozstrzygniete tutaj.
-  - Naprawa wymaga testu na PRAWDZIWYM `db.js` - dzis kazdy test mockuje caly modul
-    (`vi.mock("./db.js")`), wiec galaz `!db` nigdy sie nie wykonuje. Wlasna bramka,
-    wlasny commit.
-  - Razem z tym: `status: "loading" | "loaded" | "failed"` w storze. Dzis warunek banera
-    `!isLoading && shopProfile === null` to proxy czasowe, nie fakt - jesli skan SMB
-    skonczy sie przed 5-sekundowym timeoutem z `profileService`, baner mignie i zniknie.
-    Store zwija trzy stany (jeszcze nie zapytano / w locie / nieudane) do jednego `null`.
+    martwym NAS-ie klient dostawal AKTYWNA konfiguracje Alexa, a nie sentinel: `getPrinters()`
+    zwracalo DGEN/YOKO/YUMI, hotfoldery `AUTOMATION_WORKFLOW_COTTON`/`_POLY`, klasy materialu
+    i `storeHandle "fashionformulauk"`. Straznik `!db` rzuca teraz zwyklym `Error`.
+  - **Zmienil sie producent sygnalu, nie konsument.** `shopProfile.js` bez zmian: jego
+    `catch` (`:16-19`) juz mapowal throw na `cachedProfile = null`, a `?? DEFAULT_PROFILE`
+    (`:15`) juz obslugiwal brak wiersza. Obie galezie byly poprawne i nieosiagalne dla
+    najczestszego trybu awarii, bo `db.js` nie dotrzymywal kontraktu, ktory `shopProfile.js`
+    opisal w komentarzu. Rowniez powierzchnia importow `shopProfile.js` bez zmian, wiec
+    `shopProfile.test.js` (`vi.mock("./db.js")`) nietkniety.
+  - **Wzorzec `fabricCache` NIE dal sie tu przeniesc, i to jest ustalenie, nie wymowka.**
+    `getAllFabrics` zwija `!db` i `catch` do jednego `null`, i wolno mu, bo czyta LISTE -
+    ma zapasowa wartosc na "legalnie pusto" (`[]`). `getShopProfile` czyta JEDEN WIERSZ,
+    wiec `null` jest juz zajete przez "brak wiersza" i zapasowej wartosci nie ma.
+    Skopiowanie `getAllFabrics` linia w linie nie naprawiloby niczego - to jest dokladnie
+    to, co ta funkcja juz robila. Wspolna jest ZASADA (awaria i pustka nie moga dzielic
+    jednej wartosci), nie mechanizm.
+  - **Rozmiar wzorca: 16 z 17 sciezek odczytu w `db.js` zwija "brak bazy" do wartosci
+    wygladajacej jak poprawny pusty wynik.** `getAllFabrics` jest JEDYNA, ktora rozroznia.
+    Ta naprawa podnosi licznik 1/17 na 2/17 i NIE zmniejsza dlugu. Reszta jest dzis
+    nieszkodliwa, bo karmi liczniki i listy (`getRollbackStats` -> zerowe Analytics,
+    `getOpenReprintRequests`/`getReprintRequests`/`getRollbackDetails` -> puste listy,
+    dziesiec straznikow `if (!stmtX)` -> `[]`/`null`). Staje sie szkodliwa, gdy ktoras
+    zacznie sterowac zachowaniem - czyli w 2e i 2f.
+  - **Skutek uboczny dla dlugu "seed vs migracja" (a2cbc30):** po tej naprawie galaz
+    `?? DEFAULT_PROFILE` w `shopProfile.js` staje sie prawie martwa, bo `initDb` zasiewa
+    wiersz przy pierwszym uruchomieniu (`db.js:299-304`), a `loadShopProfile` biegnie po
+    `initDb` (`ipc/index.js:159` potem `:170`). Dzis obslugiwala niemal wylacznie martwa
+    baze; po naprawie zostaje tym, czym miala byc - obsluga swiezej instalacji, ktorej
+    seed nie zdazyl wykonac. `DEFAULT_PROFILE` to nadal dane Alexa udajace neutralny stan
+    domyslny, dokladnie jak `DEFAULT_FABRICS` przed ETAPEM 0; ta zmiana jest plastrem,
+    oproznienie `DEFAULT_PROFILE` na rzecz importu to ETAP 3.
+  - **`openInShopify` mial fallback na `DEFAULT_PROFILE` napisany w ETAPIE 1 pod scenariusz
+    "cache jest null" (`openInShopify.js:12-14`), i ta naprawa po raz pierwszy sprawia, ze
+    ten fallback naprawde sie uruchamia.** Dotad byl martwym kodem, bo cache nigdy nie
+    bywal `null` przy martwej bazie. URL dla Alexa bajt w bajt ten sam.
+  - Harness: `db.shopProfile.test.js` - PRAWDZIWY `db.js`, trzy `vi.mock` (`electron`,
+    `./getRootPath.js`, `better-sqlite3`). To test PRZEPLYWU STEROWANIA na atrapie
+    sterownika, nie test na prawdziwym SQLite - zastrzezenie stoi w naglowku pliku.
+    Golden i `scripts/` nie mogly tego pokryc: `stub-db.mjs` PODMIENIA caly `db.js`,
+    wiec ma te sama slepote co `vi.mock("./db.js")`.
+  - Bramka: 142/142, lint czysto, golden 0/70. Zdrowy NAS - 7 zakladek, zero banerow,
+    Custom Orders i Analytics otwieraja sie: czysty no-op. Martwy NAS (`storagePath` na
+    nieistniejacy dysk, zmiana USTAWIENIA, nie kodu) - 5 zakladek, dwa banery w kolejnosci
+    "Database unavailable" -> "Shop profile could not be loaded", zadnego innego wyjatku
+    w konsoli main poza zamierzonym lancuchem `initDb failed` -> `loadShopProfile failed`;
+    Print/Batch/Production renderuja sie zdegradowane, ale spojne. Ustawienie przywrocone,
+    7 zakladek wrocilo.
+- [ ] **2c-null-b - `status: "loading" | "loaded" | "failed"` w storze** (renderer)
+  - Warunek banera `!isLoading && shopProfile === null` (`App.jsx`) to proxy czasowe, nie
+    fakt: jesli skan SMB skonczy sie przed 5-sekundowym timeoutem z `profileService`,
+    baner mignie i zniknie. Store zwija trzy stany (jeszcze nie zapytano / w locie /
+    nieudane) do jednego `null`.
+  - Swiadomie NIE w 2c-null-a: tamten krok mial byc jednoplikowa zmiana w `db.js`, a -b
+    i tak przepisze ten warunek na `status`.
+  - Przy okazji decyzja UX: dzis przy martwym NAS-ie leca DWA czerwone banery naraz
+    (jeden na zdarzenie, ale zdarzenie jest jedno). Zostawione swiadomie do -b.
 - [ ] **2c-bis - pozostale cztery flagi** (`ripErrors`, `labelPrinting`, `shopify`, `sewing`).
       Swiadomie NIE w 2c: kazda ma 3-6 wejsc UI rozsianych po kilku plikach, wiec filtr
       w NavBarze ich nie domyka. Wejscia zmierzone grepem, nie oszacowane:
