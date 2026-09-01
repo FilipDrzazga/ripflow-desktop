@@ -181,15 +181,47 @@ golden-diff czysty.
     w konsoli main poza zamierzonym lancuchem `initDb failed` -> `loadShopProfile failed`;
     Print/Batch/Production renderuja sie zdegradowane, ale spojne. Ustawienie przywrocone,
     7 zakladek wrocilo.
-- [ ] **2c-null-b - `status: "loading" | "loaded" | "failed"` w storze** (renderer)
-  - Warunek banera `!isLoading && shopProfile === null` (`App.jsx`) to proxy czasowe, nie
-    fakt: jesli skan SMB skonczy sie przed 5-sekundowym timeoutem z `profileService`,
-    baner mignie i zniknie. Store zwija trzy stany (jeszcze nie zapytano / w locie /
-    nieudane) do jednego `null`.
-  - Swiadomie NIE w 2c-null-a: tamten krok mial byc jednoplikowa zmiana w `db.js`, a -b
-    i tak przepisze ten warunek na `status`.
-  - Przy okazji decyzja UX: dzis przy martwym NAS-ie leca DWA czerwone banery naraz
-    (jeden na zdarzenie, ale zdarzenie jest jedno). Zostawione swiadomie do -b.
+- [x] **2c-null-b - `status: "loading" | "loaded" | "failed"` w storze** (renderer)
+  - **Warunek banera przestal byc proxy czasowym.** Bylo:
+    `!isLoading && shopProfile === null`, czyli zgadywanie "ladowanie sie skonczylo" po
+    tym, ze zamknal sie StartupLoader. Jest: `shopProfileStatus === PROFILE_STATUS.FAILED`,
+    czyli odczyt zapisanej odpowiedzi. Stan poczatkowy to `LOADING`, wiec start nie
+    wyglada juz jak awaria i `!isLoading` bylo zbedne.
+  - `resolveProfileResult` w `utils/profileStatus.js` - czysta funkcja, wzorzec z 2c
+    (`featureVisibility.js`), fail-closed w te sama strone co `getFeature`: cokolwiek
+    niezrozumiale to `FAILED`. Wymaga `success === true` (scisle) ORAZ uzytecznego
+    profilu. `shopProfile` nadal nigdy nie dostaje obiektu udajacego wczytany.
+  - **`data === null` znaczy teraz jednoznacznie AWARIA** i to jest bezposredni zysk z
+    2c-null-a: straznik `!db` rzuca, a faktycznie brakujacy wiersz nadal daje
+    `DEFAULT_PROFILE`, wiec jedyna droga do nulla z maina jest nieodczytanie bazy.
+    Zapisane w komentarzu w pliku, zeby ktos za pol roku nie "naprawil" tego z powrotem.
+  - **Pusty obiekt `{}` liczy sie jako awaria, nie jako wczytany profil bez pol.** Nie
+    niesie zadnej konfiguracji, wiec uznanie go za wczytany chowaloby bramkowane zakladki
+    (`isViewEnabled` fail-closes bez bloku `features`) i JEDNOCZESNIE gasilo baner, ktory
+    to tlumaczy - mniej zakladek i zadnego powodu. Sprawdzenie jest celowo mechaniczne
+    (zwykly obiekt z co najmniej jednym kluczem); walidacja pol to praca schematu, nie
+    mappera statusu.
+  - Timeout nie przechodzi przez mapper: `withTimeout` (`ipcWithTimeout.js:5-15`) RZUCA,
+    wiec 5-sekundowy deadline `profile:get` laduje w `catch` w storze, ktory ustawia te
+    sama pare `{ shopProfile: null, status: FAILED }`. Oba pola jednym `set()` - render,
+    ktory zobaczylby status `LOADED` obok nullowego profilu, czytalby stan, ktory nigdy
+    nie istnial.
+  - **Decyzja o DWOCH banerach jest swiadoma i NIE jest dlugiem do naprawy.** Przy martwym
+    NAS-ie operator widzi "Database unavailable" oraz "Shop profile could not be loaded":
+    to dwie rozne konsekwencje jednej przyczyny i obie sa operacyjnie istotne (pierwsza
+    mowi, ze zapisy przepadaja; druga, ze czesc funkcji jest ukryta). Zero kodu na ich
+    laczenie - nie wpisywac tego ponownie jako TODO.
+  - `isViewEnabled`, `VIEW_FEATURE` i `featureVisibility.test.js` nietkniete.
+  - Bramka: 155/155, lint czysto, golden 0/70. Zdrowy NAS - 7 zakladek i ZERO banerow na
+    **wszystkich 14 klatkach** startu (detekcja po pikselach `#b91c1c`, detektor
+    zwalidowany kontrolnie: 57 wierszy na znanym obrazie z dwoma banerami, 0 na czystym);
+    baner nie miga mimo zdjecia `!isLoading`. Martwy NAS - 5 zakladek, dwa banery na
+    kazdej klatce, plus toast "Invalid root folder". Mutacja okablowania (wymuszony
+    `"failed"` przy zdrowym NAS-ie) - baner profilu SAM, bez banera bazy, a 7 zakladek
+    zostaje: dowod, ze baner czyta `shopProfileStatus`, a zakladki niezaleznie
+    `shopProfile`. Konsola renderera tym razem odczytana (DevTools zadokowane): tylko
+    podpowiedz React DevTools i ostrzezenie CSP Electrona, zero bledow Reacta - domyka
+    ograniczenie zgloszone przy 2c-null-a.
 - [ ] **2c-bis - pozostale cztery flagi** (`ripErrors`, `labelPrinting`, `shopify`, `sewing`).
       Swiadomie NIE w 2c: kazda ma 3-6 wejsc UI rozsianych po kilku plikach, wiec filtr
       w NavBarze ich nie domyka. Wejscia zmierzone grepem, nie oszacowane:
@@ -252,6 +284,12 @@ na danych Alexa; 2e dodatkowo: batch z kazdej drukarki widoczny w BatchHistory i
 Baza pozostaje jedynym zywym zrodlem prawdy; JSON to tylko transport na wdrozenie.
 
 - [ ] Nowa sekcja `Shop Profile` w Settings (podglad read-only + Import/Export)
+  - **Edytor profilu MUSI zapisywac `shopProfile` i `shopProfileStatus` RAZEM, jednym
+    `set()`.** Dzis zgodnosc tych dwoch pol gwarantuje wylacznie fakt, ze pisze je jedna
+    funkcja (`loadShopProfile`, dwa `set()`, kazdy z obiema wartosciami) - nic tego nie
+    wymusza, ani test, ani lint. Drugie wejscie zapisujace tylko `shopProfile` przywroci
+    dokladnie ten rodzaj dlugu, ktory 2c-null-b usunal: jedna prawda w dwoch miejscach,
+    ktore moga sie rozjechac.
 - [ ] Handler `dialog:showSaveDialog` (dzis brak - sa tylko select-folder i confirm)
 - [ ] Export profilu do pliku `.json`
 - [ ] Import + walidacja w kolejnosci:
@@ -293,6 +331,11 @@ Baza pozostaje jedynym zywym zrodlem prawdy; JSON to tylko transport na wdrozeni
   - [ ] Przycisk ponownego wczytania ma odswiezac `shopProfile` I `fabricCache` JEDNYM
         mechanizmem. Swiadomie pominiety w 2c - tam byloby to drugie, konkurencyjne
         rozwiazanie tego samego problemu.
+  - [ ] Razem z tym przyciskiem, nie wczesniej: `loadShopProfile` nie ustawia
+        `PROFILE_STATUS.LOADING` na wejsciu. Dzis bez znaczenia - jest wolany raz przy
+        starcie, a stan poczatkowy w storze jest juz poprawny. Przy retry status
+        zostalby na `FAILED` przez caly czas trwania proby, wiec baner nie zniknalby do
+        chwili odpowiedzi. Jedna linia do dodania.
   - [ ] Przypadek (c) z pomiaru przy 2c: `withTimeout(profile:get, 5s)` odrzuca przy
         ZDROWEJ bazie (main zablokowany synchronicznym better-sqlite3 + `sweepOrphanTemps`
         + `backupDb` na SMB). `dbDegraded` zostaje wtedy `false`, wiec baner o bazie nie
