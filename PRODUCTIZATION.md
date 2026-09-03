@@ -222,7 +222,8 @@ golden-diff czysty.
     `shopProfile`. Konsola renderera tym razem odczytana (DevTools zadokowane): tylko
     podpowiedz React DevTools i ostrzezenie CSP Electrona, zero bledow Reacta - domyka
     ograniczenie zgloszone przy 2c-null-a.
-- [ ] **2c-bis - pozostale cztery flagi** (`ripErrors`, `labelPrinting`, `shopify`, `sewing`).
+- [~] **2c-bis - pozostale cztery flagi** (`ripErrors`, `labelPrinting`, `shopify`, `sewing`).
+      `ripErrors` zamkniete; zostaja trzy, kazda osobnym cieciem.
       Swiadomie NIE w 2c: kazda ma 3-6 wejsc UI rozsianych po kilku plikach, wiec filtr
       w NavBarze ich nie domyka. Wejscia zmierzone grepem, nie oszacowane:
   - `ripErrors`: `Production/ProductionCard.jsx:137` (badge) + `:140` (klik);
@@ -231,6 +232,26 @@ golden-diff czysty.
     `:44-45`, `:152`; `BatchHistory/BatchHistory.jsx:1034` (popover);
     `Production/SewingReceive.jsx:43,269`; `OverviewPanel/OverviewPanel.jsx:46,54,87` (kafel);
     poll `App.jsx:32,68,98`
+    - [x] ZROBIONE. Bramka NIE stanela w kazdym z tych wejsc, tylko u zrodla:
+      `loadRipErrors` jest jedynym pisarzem `store.ripErrors` (zweryfikowane grepem
+      na klucz w wiekszym obiekcie, spread/merge i listenery IPC - kanalu push dla
+      RIP nie ma, preload wystawia same `invoke`), wiec bramkowanie jego jednego
+      efektu w `App.jsx` zostawia mape pusta, a wszystkie badge, licznik naglowka
+      i popovery renderuja przy pustej mapie nic. Wyjatkiem jest kafel w
+      `OverviewPanel`, ktory renderuje sie takze przy zerze - dostal wlasne
+      `isFeatureEnabled` w miejscu wywolania.
+    - **PULAPKA dla kolejnych flag:** pusta `ripErrors` nie JEST bramka, tylko tak
+      wyglada. Jedna wartosc niesie trzy znaczenia - "feature off", "profil
+      nieodczytany" i "zero bledow teraz" - czyli dokladnie ten sam falszywy sentinel
+      co `null` vs `[]`. Kazde NOWE wejscie UI renderujace sie przy zerze (licznik,
+      kafel, przygaszona pigulka, zakladka filtra, linia empty-state) musi wziac
+      wlasne `isFeatureEnabled` w miejscu wywolania. Kafel w `OverviewPanel` jest
+      tego precedensem, nie wyjatkiem. Ostrzezenie stoi przy efekcie w `App.jsx`.
+    - Swiadomie odrzucone przy tym cieciu, NIE sa dlugiem: staly test na bramke
+      kafla (trup udowodniony recznie, ale straznika nie zostawiono - wymagalby
+      pierwszego w repo testu renderujacego) oraz bramka po stronie main
+      (`scanRipErrors` / `rip-errors:*` nietkniete - przy wylaczonej fladze nikt
+      tam nie dzwoni).
   - `labelPrinting`: `Production/Production.jsx:1525` ("Reprint Label") -> `:1530` -> `:531,543`;
     `BatchHistory/BatchHistory.jsx:97`; `services/productionService.js:9`
   - `shopify`: `Production/Production.jsx:1375` (lens ORDERS) i `:1557` (lens BATCHES) -> `:671`;
@@ -343,6 +364,17 @@ Baza pozostaje jedynym zywym zrodlem prawdy; JSON to tylko transport na wdrozeni
         wyjscia niz restart aplikacji. Asymetria do naprawy przy okazji: `getDbDegraded`
         (`systemService.js:24`) nie ma `withTimeout` i doczeka sie odpowiedzi, `profile:get`
         ma 5s i sie poddaje.
+    - **Koszt przypadku (c) urosl przy 2c-bis (ripErrors).** Do tej pory nieodczytany
+      profil kosztowal ukryte zakladki i literalowy fallback Shopify - rzeczy widoczne
+      od razu. Teraz `shopProfile === null` znaczy takze: skan bledow RIP nie odpala sie
+      ANI RAZU przez cala sesje (bramka jest fail-closed, wiec brak profilu = feature
+      off). Operator nie zobaczy zadnego badge'a, licznika w naglowku batcha ani kafla
+      na przegladzie - i nic mu tego nie zasygnalizuje, bo przy (c) baza jest ZDROWA,
+      wiec baner o bazie nie leci. To pierwszy przypadek, w ktorym nieodczytany profil
+      ukrywa nie funkcje aplikacji, lecz **stan produkcji** - blad RIP, ktory faktycznie
+      wystapil. Jest to swiadomie zaakceptowane (fail-closed bije falszywy sygnal
+      "zero bledow" u klienta bez tej funkcji), ale podnosi priorytet lazy retry
+      i przycisku ponownego wczytania powyzej wczesniejszego "wygoda".
 - [ ] **Export diagnostics** - zip: ostatnie 500 logow, `shop_profile`, wersja, sciezki
       (bez zawartosci plikow), wynik testu dostepu do hotfolderow. Bez telemetrii
 - [ ] **Kreator pierwszego uruchomienia** (sciezki -> import profilu -> test zapisu do hotfoldera)
