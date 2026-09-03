@@ -38,6 +38,8 @@ istniejacych testow jest sam w sobie dowodem, ze zadne ciecie nie poszlo na skro
 - po 2c: 142 passed / 10 files (+17 z `featureVisibility.test.js`)
 - po 2c-null: 155 passed / 12 files
 - po 2c-bis (`ripErrors`): 169 passed / 13 files (+14 z `isFeatureEnabled.test.js`)
+- po 2c-bis (`labelPrinting`): 179 passed / 15 files (+5 z `submitBatchLabelGate.test.js`,
+  +5 z `labelPrintBatchGate.test.js`)
 
 - [x] **BUG 1** - `clientId` przechodzi przez `settings:set`
   - `src/electron/ipc/index.js` (~:469 destrukturyzacja, ~:490 przekazanie)
@@ -234,7 +236,8 @@ golden-diff czysty.
     podpowiedz React DevTools i ostrzezenie CSP Electrona, zero bledow Reacta - domyka
     ograniczenie zgloszone przy 2c-null-a.
 - [~] **2c-bis - pozostale cztery flagi** (`ripErrors`, `labelPrinting`, `shopify`, `sewing`).
-      `ripErrors` zamkniete; zostaja trzy, kazda osobnym cieciem.
+      `ripErrors` i `labelPrinting` zamkniete; zostaja `shopify` i `sewing`, kazda
+      osobnym cieciem.
       Swiadomie NIE w 2c: kazda ma 3-6 wejsc UI rozsianych po kilku plikach, wiec filtr
       w NavBarze ich nie domyka. Wejscia zmierzone grepem, nie oszacowane:
   - `ripErrors`: `Production/ProductionCard.jsx:137` (badge) + `:140` (klik);
@@ -265,6 +268,35 @@ golden-diff czysty.
       tam nie dzwoni).
   - `labelPrinting`: `Production/Production.jsx:1525` ("Reprint Label") -> `:1530` -> `:531,543`;
     `BatchHistory/BatchHistory.jsx:97`; `services/productionService.js:9`
+    - [x] ZROBIONE (`238ac1c`). Werdykt (B): dwa niezalezne wejscia renderera bez
+      wspolnego stanu, wiec kazde bierze `isFeatureEnabled` W MIEJSCU WYWOLANIA -
+      nie ma nic posrodku, co dawaloby sie zabramkowac raz. Oba UKRYTE, nie
+      zaszarzone. TRZY sciezki do drukarki, nie dwie:
+      (1) auto-print `submitBatch.js:85` - najwazniejsza, bo bez zadnego kliknięcia:
+      `labelPrintMode` domysla `"automatic"`, a `labelPrinter.js` pomija `deviceName`
+      przy pustym `labelPrinterName`, wiec leci na DOMYSLNA drukarke systemowa stacji.
+      Bramka tylko w rendererze zostawilaby klienta bez flagi z etykieta przy kazdym
+      batchu; (2) przycisk w `BatchHistory`; (3) menu w `Production`.
+    - Bramka stoi w DWOCH warstwach + handlerze IPC (`label:printBatch`). Handler
+      jest swiadomym odejsciem od precedensu z `cd8b466`, gdzie bramke po stronie main
+      odrzucono: tamten handler tylko CZYTAL, ten wykonuje EFEKT FIZYCZNY. Kryterium
+      brzmi "co sie stanie, gdy bramka renderera zniknie w przyszlym cieciu", nie "czy
+      ktos dzis moze to wywolac" - 2e przerabia `Production.jsx` szeroko.
+    - `BatchHistory` bramkuje W RENDERZE, celowo NIE w efekcie on-mount ustawiajacym
+      `canPrintLabel`: profil rozwiazuje sie po mount, wiec fail-closed wpiety w ten
+      efekt zgasilby przycisk na cala sesje.
+    - **PULAPKA dla kolejnych flag:** `useMemo` budujace menu kontekstowe w
+      `Production.jsx` ma RECZNE deps z `eslint-disable-line react-hooks/exhaustive-deps`.
+      Kazda kolejna flaga uzyta przy budowie menu musi trafic do tej tablicy RECZNIE -
+      lint tego NIE zlapie, a memo zapamietane przed rozwiazaniem `profile:get`
+      pokazywaloby nieaktualna pozycje. Przy `sewing` bedzie dokladnie to samo miejsce,
+      bo "Send to Sewing" zyje w tym samym menu.
+    - Swiadomie odrzucone przy tym cieciu, NIE sa dlugiem: staly test dwoch wejsc
+      renderera - ta sama luka i ten sam powod co przy kaflu `OverviewPanel` w
+      `cd8b466` (wymagalby pierwszego w repo testu renderujacego). Test handlera
+      natomiast POWSTAL (`labelPrintBatchGate.test.js`) - okazal sie tani, bo
+      `toLocalBatchPath.test.js` juz mockuje `electron`, wiec wystarczylo przechwycic
+      rejestrowany handler zamiast go wyrzucac.
   - `shopify`: `Production/Production.jsx:1375` (lens ORDERS) i `:1557` (lens BATCHES) -> `:671`;
     `DataList/DataList.jsx:413` -> `:416` -> `:147`;
     `BatchHistory/BatchHistory.jsx:1079` -> `:1083` -> `:626`; `services/fileService.js:55`
@@ -391,6 +423,15 @@ Baza pozostaje jedynym zywym zrodlem prawdy; JSON to tylko transport na wdrozeni
       wystapil. Jest to swiadomie zaakceptowane (fail-closed bije falszywy sygnal
       "zero bledow" u klienta bez tej funkcji), ale podnosi priorytet lazy retry
       i przycisku ponownego wczytania powyzej wczesniejszego "wygoda".
+    - **Koszt urosl DRUGI raz z rzedu, przy 2c-bis (`labelPrinting`).** `getFeature`
+      w mainie jest fail-closed i czyta cache ladowany RAZ przy starcie, wiec baza
+      niedostepna w momencie `loadShopProfile()` = BRAK ETYKIET u Alexa do konca sesji,
+      nawet gdy baza wroci minute pozniej - i bez zadnego sygnalu dla operatora, bo
+      auto-print jest fire-and-forget, a przy (c) baza jest ZDROWA, wiec baner nie leci.
+      Progresja jest jednokierunkowa: przy `ripErrors` nieodczytany profil UKRYWAL stan
+      produkcji, teraz dodatkowo WYCISZA fizyczne urzadzenie. Kazda kolejna flaga
+      podnosi cene tego samego niezalatanego defektu, wiec priorytet lazy retry rosnie
+      z kazdym cieciem, a nie raz na zawsze.
 - [ ] **Export diagnostics** - zip: ostatnie 500 logow, `shop_profile`, wersja, sciezki
       (bez zawartosci plikow), wynik testu dostepu do hotfolderow. Bez telemetrii
 - [ ] **Kreator pierwszego uruchomienia** (sciezki -> import profilu -> test zapisu do hotfoldera)
