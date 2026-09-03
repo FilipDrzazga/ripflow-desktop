@@ -5,6 +5,7 @@ import { useStore, getLastBatch } from "../../store/useStore";
 import { PRODUCTION_STAGE, STAGE_COLOR, STAGE_LABEL } from "../../../shared/constants";
 import { STAGE_ICON } from "../../constants/stageIcons";
 import { PRINTER_COLORS } from "../../constants/printerColors";
+import { isFeatureEnabled } from "../../utils/featureVisibility";
 import style from "./OverviewPanel.module.css";
 
 // Batch folder name → HH:MM (PRINTED_HHMMSS-GROUP-PRINTER). Lifted from LastBatchCard.
@@ -44,6 +45,7 @@ const OverviewPanel = ({ onNavigate }) => {
   const batchDays = useStore((s) => s.batchDays);
   const isBatchSubmitting = useStore((s) => s.isBatchSubmitting);
   const ripErrors = useStore((s) => s.ripErrors);
+  const shopProfile = useStore((s) => s.shopProfile);
   const heldIds = useStore((s) => s.heldIds);
   const openReprints = useStore((s) => s.openReprints);
   const productionStages = useStore((s) => s.productionStages);
@@ -81,14 +83,22 @@ const OverviewPanel = ({ onNavigate }) => {
   const getStageCount = (key) => (key === PRODUCTION_STAGE.TO_SEWING ? sewingCount : (stageCounts[key] ?? 0));
 
   const statusPills = [
-    {
-      id: "rip",
-      label: "RIP errors",
-      count: ripErrorCount,
-      Icon: LuTriangleAlert,
-      cls: style.pill_danger,
-      onClick: () => onNavigate?.("production"),
-    },
+    // The one RIP-error entry that needs its own gate. Every other one (badges, batch
+    // header counter, popover) is driven by store.ripErrors and disappears on its own
+    // when the App-level poll is off, but this pill renders at zero too — dimmed, still
+    // a tile — so an empty store would leave a shop that did not buy the feature staring
+    // at a permanent "RIP errors 0". Fail-closed via isFeatureEnabled: an unreadable
+    // profile hides it as well.
+    ...(isFeatureEnabled("ripErrors", shopProfile)
+      ? [{
+        id: "rip",
+        label: "RIP errors",
+        count: ripErrorCount,
+        Icon: LuTriangleAlert,
+        cls: style.pill_danger,
+        onClick: () => onNavigate?.("production"),
+      }]
+      : []),
     {
       id: "hold",
       label: "Hold",

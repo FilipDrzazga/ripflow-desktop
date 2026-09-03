@@ -13,6 +13,17 @@ export const VIEW_FEATURE = {
   analytics: "analytics",
 };
 
+// A profile feature flag asked for by name, with no view mapping in between. Not every
+// gated feature owns a NavBar tab: ripErrors is a poll plus badges, a header counter and
+// a status pill scattered across several components, so it has to be asked for directly.
+// isViewEnabled delegates here, so the two callers can never drift apart on what "off"
+// means.
+export const isFeatureEnabled = (flag, profile) => {
+  // null = the profile could not be read. We know nothing, so we grant nothing.
+  if (!profile) return false;
+  return profile.features?.[flag] === true;
+};
+
 export const isViewEnabled = (viewId, profile) => {
   // hasOwn, not a bare lookup: "constructor" / "toString" would otherwise resolve on
   // the prototype and turn an unknown view id into a gated one.
@@ -20,7 +31,5 @@ export const isViewEnabled = (viewId, profile) => {
   // Not a gated view (print, batch, production, logs, settings) — or an id we do not
   // know at all. Never hide something we have no rule for.
   if (!flag) return true;
-  // null = the profile could not be read. We know nothing, so we grant nothing.
-  if (!profile) return false;
-  return profile.features?.[flag] === true;
+  return isFeatureEnabled(flag, profile);
 };

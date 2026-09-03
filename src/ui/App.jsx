@@ -18,7 +18,7 @@ import ErrorBoundary from "./components/ErrorBoundary/ErrorBoundary";
 import CustomOrder from "./components/CustomOrder/CustomOrder";
 import Production from "./components/Production/Production";
 import { onDbError, onDbRecovered } from "./services/systemService";
-import { isViewEnabled } from "./utils/featureVisibility";
+import { isFeatureEnabled, isViewEnabled } from "./utils/featureVisibility";
 import { PROFILE_STATUS } from "./utils/profileStatus";
 
 const RIP_ERROR_POLL_INTERVAL = 30_000;
@@ -49,6 +49,11 @@ const App = () => {
   // this render before committing, so the forbidden view is never painted at all, and
   // the guards on the two gated views below close the same hole structurally.
   if (!isViewEnabled(activeView, shopProfile)) setActiveView("print");
+  // RIP errors have no NavBar tab to filter out — their entries are the per-file badge in
+  // Production and BatchHistory, the batch-header counter, the popover behind those badges
+  // and the print-view status pill. Read the WARNING on the gated effect below before
+  // adding another one: an empty store.ripErrors is not a gate.
+  const ripErrorsEnabled = isFeatureEnabled("ripErrors", shopProfile);
   const startupFinishedRef = useRef(false);
   const safetyTimerRef = useRef(null);
   // Watermark for the incremental stage poll below. Seeded at startup right after the
@@ -75,7 +80,9 @@ const App = () => {
       loadReasonDefinitions();
       loadFabricConfig();
       loadShopProfile();
-      loadRipErrors();
+      // loadRipErrors() is deliberately NOT here — see the gated effect below. At this
+      // point loadShopProfile() has not resolved, so the flag would read fail-closed and
+      // the scan would be skipped for the whole session.
       // Full base load of production data so the print-view OverviewPanel has real
       // counts immediately (cheap SQLite reads, NOT SMB scans). The 30s poll below only
       // fetches incremental changes, so this initial full load is required — without it
@@ -95,17 +102,38 @@ const App = () => {
     fetchFolders();
 
     return () => clearTimeout(safetyTimerRef.current);
-  }, [refreshFiles, refreshBatchDays, loadLogsFromDb, loadHeldFiles, loadReasonDefinitions, loadFabricConfig, loadShopProfile, loadRipErrors, loadAllStages, loadAllStageHistory, loadOpenReprints, finishStartup, checkDbDegraded]);
+  }, [refreshFiles, refreshBatchDays, loadLogsFromDb, loadHeldFiles, loadReasonDefinitions, loadFabricConfig, loadShopProfile, loadAllStages, loadAllStageHistory, loadOpenReprints, finishStartup, checkDbDegraded]);
 
-  // Global 30s poll — keeps the "RIP Error" badge and the print-view OverviewPanel
-  // counts fresh session-wide, independent of activeView. RIP errors re-scan in full;
-  // production stages fetch incrementally via loadStagesAfter (watermark advanced only
-  // on success, so a network failure retries the same window); open reprints re-load in
-  // full (small set) so the count self-heals after a transient startup failure and picks
-  // up mid-session rollbacks. Initial full loads fire in the startup effect above.
+  // RIP-error scan + poll, gated on features.ripErrors. It sits in its own effect keyed on
+  // the resolved flag rather than in the startup sequence above: the profile answers after
+  // startup fires, so the initial scan has to wait for it, and keying on the flag means it
+  // runs in the frame the profile arrives. This effect is the ONLY writer of
+  // store.ripErrors, so gating it here keeps the map empty for a shop without the feature
+  // and for a profile that could not be read at all.
+  //
+  // WARNING — the emptiness of that map is NOT the gate, it only looks like one. An empty
+  // ripErrors means "feature off", "profile unreadable" AND "zero errors right now": one
+  // value carrying three meanings, the exact trap as null vs [] elsewhere in this codebase.
+  // It hides an entry only because every current consumer renders NOTHING at zero. Any new
+  // UI entry that renders at zero — a counter, a tile, a dimmed pill, a filter tab, an
+  // empty-state line — is visible to a client who did not buy the feature and MUST take its
+  // own isFeatureEnabled("ripErrors", shopProfile) at its call site. The OverviewPanel pill
+  // is the precedent for that, not an exception to it.
+  useEffect(() => {
+    if (!ripErrorsEnabled) return;
+    loadRipErrors();
+    const id = setInterval(loadRipErrors, RIP_ERROR_POLL_INTERVAL);
+    return () => clearInterval(id);
+  }, [ripErrorsEnabled, loadRipErrors]);
+
+  // Global 30s poll — keeps the print-view OverviewPanel counts fresh session-wide,
+  // independent of activeView. Production stages fetch incrementally via loadStagesAfter
+  // (watermark advanced only on success, so a network failure retries the same window);
+  // open reprints re-load in full (small set) so the count self-heals after a transient
+  // startup failure and picks up mid-session rollbacks. Initial full loads fire in the
+  // startup effect above.
   useEffect(() => {
     const id = setInterval(async () => {
-      loadRipErrors();
       loadOpenReprints();
       if (lastStagePollAt.current) {
         const since = lastStagePollAt.current;
@@ -114,7 +142,7 @@ const App = () => {
       }
     }, RIP_ERROR_POLL_INTERVAL);
     return () => clearInterval(id);
-  }, [loadRipErrors, loadStagesAfter, loadOpenReprints]);
+  }, [loadStagesAfter, loadOpenReprints]);
 
   // DB degraded banner: main emits db:error/db:recovered only on state transition.
   useEffect(() => {
