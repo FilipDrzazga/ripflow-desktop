@@ -40,6 +40,8 @@ istniejacych testow jest sam w sobie dowodem, ze zadne ciecie nie poszlo na skro
 - po 2c-bis (`ripErrors`): 169 passed / 13 files (+14 z `isFeatureEnabled.test.js`)
 - po 2c-bis (`labelPrinting`): 179 passed / 15 files (+5 z `submitBatchLabelGate.test.js`,
   +5 z `labelPrintBatchGate.test.js`)
+- po 2c-bis (`shopify`): 193 passed / 16 files (+14 z `openInShopify.test.js` - plik,
+  ktory wczesniej nie mial ZADNEGO testu)
 
 - [x] **BUG 1** - `clientId` przechodzi przez `settings:set`
   - `src/electron/ipc/index.js` (~:469 destrukturyzacja, ~:490 przekazanie)
@@ -317,6 +319,39 @@ golden-diff czysty.
   - `shopify`: `Production/Production.jsx:1375` (lens ORDERS) i `:1557` (lens BATCHES) -> `:671`;
     `DataList/DataList.jsx:413` -> `:416` -> `:147`;
     `BatchHistory/BatchHistory.jsx:1079` -> `:1083` -> `:626`; `services/fileService.js:55`
+    - [x] ZROBIONE (`bc68fbe`). DWIE czesci, druga wazniejsza.
+      CZESC 1 - bramka. Werdykt (B): zero wspolnego stanu, kazde wejscie bierze
+      `isFeatureEnabled` W MIEJSCU WYWOLANIA, wszystkie UKRYTE, nie zaszarzone. Bramka
+      takze w mainie (`openInShopify.js`), z tego samego powodu co `label:printBatch`
+      w `238ac1c`: handler wykonuje EFEKT - otwiera przegladarke.
+      CZESC 2 - koniec podstawiania cudzego sklepu. `getStoreHandle` siegal po
+      `DEFAULT_PROFILE`, czyli literal `"fashionformulauk"`. Klient z `features.shopify`
+      i bez wlasnego handle - albo dowolna stacja z NIEODCZYTANYM profilem - dostawal
+      link do admina CUDZEGO sklepu. Nie strone bledu, nie pusta: cudze zamowienia.
+      Martwe dopoki Alex jest jedynym klientem, zywe od drugiego. Brak handle
+      (`null` / `""` / same spacje / zly typ) to teraz jawny `MISSING_STORE_HANDLE`
+      w istniejacej kopercie `toIpcError`. Kolejnosc: flaga -> orderName -> handle.
+      `DEFAULT_PROFILE` i `shopProfile.js` NIETKNIETE - to dwa osobne ciecia pozniej.
+    - **POPRAWKA NAMIAROW.** Namiary powyzej (z `19bbb24`) sa BLEDNE w dwoch punktach,
+      zweryfikowane grepem przy tym cieciu: `Production.jsx:1375` nie jest w lensie
+      ORDERS tylko w galezi `if (viewMode === VIEW_MODE.RECEIVE)`; a wejsc renderera
+      jest CZTERY, nie trzy - `Production.jsx` wnosi DWA niezalezne pushe w jednym
+      `useMemo`. Lens ORDERS (`OrderView.jsx`) nie ma menu kontekstowego W OGOLE
+      (zero `onContextMenu`/`setContextMenu`), wiec nie ma tam czego bramkowac.
+    - **Namiary PLIK:LINIA w tym pliku maja DATE WAZNOSCI.** Kazde ciecie grepuje
+      swiezo i wierzy grepowi, nie zapisowi - pomiar z `19bbb24` juz sie rozjechal,
+      a hipoteza mentora upadla przy pomiarze po raz TRZECI (`fabricCache` w 2c-null-a,
+      auto-print przy `labelPrinting`, lens ORDERS tutaj).
+    - Bramki renderera bez stalego straznika TRZECI raz z rzedu - DANA. Uzasadnienie
+      stoi w `50f64c8`, nie powtarzamy go.
+    - **REGULA 6 zadzialala po raz pierwszy w praktyce.** Test `never substitutes the
+      seeded default handle` w pierwotnym brzmieniu byl OZDOBA - nie dalo sie
+      skonstruowac mutacji zabijajacej go bez zabicia testu dokladnego URL-a. Zamiast
+      kasowac, zostal WZMOCNIONY: przechodzi oba przypadki (sklep z handle i sklep bez)
+      i asertuje DOKLADNIE jedno `openExternal`. Po wzmocnieniu mutacja M4 (przywrocenie
+      fallbacku na `"fashionformulauk"`) go zabija, a test URL-a przezywa - para jest
+      realnie rozrozniajaca. Regula dziala tak, jak zostala zapisana: multi-kill to
+      sygnal do mutacji rozrozniajacej, a ozdobe sie wzmacnia, nie usuwa.
   - `sewing`: `Production/Production.jsx:1618-1619` (zakladka RECEIVE) -> `:1770-1771` (render);
     `:1471` ("Send to Sewing"); handlery `:364, 381, 418, 831, 864`;
     `Production/SewingReceive.jsx:29`; `services/productionService.js:7,8`
@@ -383,6 +418,13 @@ Baza pozostaje jedynym zywym zrodlem prawdy; JSON to tylko transport na wdrozeni
   - [ ] ksztalt: wymagane klucze, typy, `printers` niepuste
   - [ ] kody drukarek `^[A-Z0-9_]+$` (myslnik rozwala parsowanie nazwy folderu batcha)
   - [ ] spojnosc: `printer.materialClass` w `materialClasses`; `scanRules.from/to` w `stages`
+  - [ ] spojnosc: `features.shopify === true` wymaga NIEPUSTEGO
+        `integrations.shopify.storeHandle`. Bez tej reguly import przechodzi, a klient
+        dostaje pozycje menu, ktora przy KAZDYM kliknieciu zwraca `MISSING_STORE_HANDLE`.
+        Po cieciu `bc68fbe` istnieja DWA rozne "off" i tylko pierwszy jest poprawny:
+        flaga off (pozycji nie ma) oraz flaga on + pusty handle (pozycja jest i zawsze
+        zawodzi). Walidacja importu jest jedynym miejscem, ktore moze ten drugi stan
+        wylapac, zanim zobaczy go operator.
   - [ ] ostrzezenie o niezgodnosci z danymi na dysku (ile rekordow zniknie z widoku)
   - [ ] `showConfirm()` + `backupDb(true)` przed nadpisaniem
 - [ ] Import NIE dotyka `fabrics` (katalog ma wlasny `setAllFabrics`)
@@ -449,6 +491,17 @@ Baza pozostaje jedynym zywym zrodlem prawdy; JSON to tylko transport na wdrozeni
       produkcji, teraz dodatkowo WYCISZA fizyczne urzadzenie. Kazda kolejna flaga
       podnosi cene tego samego niezalatanego defektu, wiec priorytet lazy retry rosnie
       z kazdym cieciem, a nie raz na zawsze.
+    - **Koszt urosl TRZECI raz, przy 2c-bis (`shopify`) - opis OD STRONY OPERATORA,
+      bo tu kod myli.** Przy nieodczytanym profilu operator NIE zobaczy komunikatu
+      bledu. Zobaczy BRAK POZYCJI W MENU: bramka renderera gasi "Open in Shopify",
+      zanim main zdazy cokolwiek odpowiedziec. `SHOPIFY_DISABLED` dociera tylko w
+      waskim oknie, gdy renderer ma juz profil, a main jeszcze nie - czyli praktycznie
+      nigdy. Netto: to CZWARTA funkcja, ktora przy nieodczytanym profilu znika CICHO,
+      bez sladu dla operatora - zakladki (2c), etykiety (`labelPrinting`), detekcja
+      bledow RIP (`ripErrors`), a teraz link do Shopify. Wzorzec jest juz jednoznaczny:
+      fail-closed w rendererze zamienia kazda awarie konfiguracji w NIEOBECNOSC, a nie
+      w blad. Lazy retry przestaje byc wygoda i staje sie jedynym sposobem, zeby
+      operator w ogole dowiedzial sie, ze cos jest nie tak.
 - [ ] **Export diagnostics** - zip: ostatnie 500 logow, `shop_profile`, wersja, sciezki
       (bez zawartosci plikow), wynik testu dostepu do hotfolderow. Bez telemetrii
 - [ ] **Kreator pierwszego uruchomienia** (sciezki -> import profilu -> test zapisu do hotfoldera)
