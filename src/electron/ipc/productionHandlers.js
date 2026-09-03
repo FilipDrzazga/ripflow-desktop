@@ -144,6 +144,16 @@ export function registerProductionHandlers() {
   });
 
   ipcMain.handle("stage:setSewingSent", (_event, { fileId, expectedStage, sewingCompany }) => {
+    // Gated harder than the label printer, for a worse failure. This channel does not
+    // drive a device, it changes PRODUCTION STATE in the shared DB: it parks a file at
+    // "to_sewing", a stage that exists to track a hand-off to an EXTERNAL sewing
+    // company. A shop that sews in-house never dispatches anything. Same criterion as
+    // label:printBatch (238ac1c) - not "can anything reach it today" but "what happens
+    // when a renderer gate disappears in a later cut" - and here the answer is worse
+    // than a stray label: the file sits in a state the client never bought, with the
+    // receive path (below) refusing to take it back. getFeature is fail-closed, so an
+    // unreadable profile dispatches nothing.
+    if (!getFeature("sewing")) return { success: false, error: "Sewing is not enabled" };
     try {
       const { workstationName } = getSettings();
       const result = setSewingSent(fileId, workstationName, expectedStage ?? null, sewingCompany ?? null);
@@ -155,6 +165,11 @@ export function registerProductionHandlers() {
   });
 
   ipcMain.handle("stage:setSewingReceived", (_event, { fileId, expectedStage }) => {
+    // The return leg of the same external hand-off, gated for the same reason. Note
+    // this is NOT the only way out of "to_sewing": "Go back" (STAGE_PREV[to_sewing] =
+    // qc) and Rollback both run on ungated channels, so a legacy row parked there in a
+    // shop whose flag is off is never trapped.
+    if (!getFeature("sewing")) return { success: false, error: "Sewing is not enabled" };
     try {
       const { workstationName } = getSettings();
       const result = setSewingReceived(fileId, workstationName, expectedStage ?? null);

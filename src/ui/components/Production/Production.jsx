@@ -238,6 +238,20 @@ const Production = () => {
   // out — a shop without the integration has no Shopify to open.
   const shopifyEnabled = isFeatureEnabled("shopify", shopProfile);
 
+  // Every renderer entry to the sewing round-trip lives in this file: the Receive
+  // lens (its toggle button and its render branch) and two context-menu items,
+  // "Send to Sewing" and "Receive from sewing". The flag does NOT remove a stage
+  // from the pipeline — STAGE_NEXT already routes qc -> packed and sewing is an
+  // optional branch off qc — it removes the TRACKING of a hand-off to an EXTERNAL
+  // subcontractor. A shop that sews in-house dispatches nothing and receives
+  // nothing back. Fail-closed: a profile we could not read grants no branch.
+  // "Receive from sewing" is gated together with the dispatch on purpose: with the
+  // flag off the main-side gate refuses stage:setSewingReceived, so leaving the
+  // entry visible would offer a click that can only fail. A legacy row parked at
+  // to_sewing still has an exit — "Go back" (STAGE_PREV[to_sewing] = qc) and
+  // "Rollback" both run on ungated channels.
+  const sewingEnabled = isFeatureEnabled("sewing", shopProfile);
+
   // Shared store-core for every stage transition — applies the optimistic store
   // update + history entry ONLY when the DB confirms the row actually moved
   // (res.updated), and classifies the outcome as applied/rejected/failed.
@@ -245,6 +259,17 @@ const Production = () => {
 
   // Which lens is on screen — see VIEW_MODE for the available lenses.
   const [viewMode, setViewMode] = useState(VIEW_MODE.BATCHES);
+  // Correct the STATE, not just the view. The render fallback below already keeps a
+  // stale RECEIVE from painting the lens, but viewMode would stay on RECEIVE, and the
+  // context-menu useMemo branches on `viewMode === VIEW_MODE.RECEIVE` rather than on
+  // the flag — so the screen would show Batches while the menu offered the Receive
+  // lens. Unreachable today (the flag would have to go out mid-session), but ETAP 3
+  // adds a profile editor and then it fires. Same shape as App.jsx:51: written during
+  // render, NOT in an effect — react-hooks/set-state-in-effect is an ERROR in this
+  // config, and React re-runs the render before committing, so the forbidden state is
+  // never painted. No loop: BATCHES is ungated, exactly as "print" is absent from
+  // VIEW_FEATURE. The render fallback stays; two belts, as in 2c.
+  if (!sewingEnabled && viewMode === VIEW_MODE.RECEIVE) setViewMode(VIEW_MODE.BATCHES);
   // handleScan needs the CURRENT lens, but adding viewMode to its deps would
   // re-create the callback and re-point handleScanRef on every tab switch. A ref
   // gives the read without the dependency.
@@ -1447,8 +1472,10 @@ const Production = () => {
       targetRows.every(
         (r) => STAGE_NEXT[r.stage] && r.stage !== PRODUCTION_STAGE.TO_SEWING && r.stage !== PRODUCTION_STAGE.SHIPPED,
       );
-    const canReceive = count > 0 && targetRows.every((r) => r.stage === PRODUCTION_STAGE.TO_SEWING);
-    const canSew = count > 0 && targetRows.every((r) => r.stage === PRODUCTION_STAGE.QC);
+    // Both sewing actions are hidden, not greyed out, when the shop has no external
+    // sewing step: a disabled row would advertise a hand-off the client never bought.
+    const canReceive = sewingEnabled && count > 0 && targetRows.every((r) => r.stage === PRODUCTION_STAGE.TO_SEWING);
+    const canSew = sewingEnabled && count > 0 && targetRows.every((r) => r.stage === PRODUCTION_STAGE.QC);
     const canGoBack = count > 0 && targetRows.every((r) => STAGE_PREV[r.stage]);
     const canRollback = count > 0 && targetRows.every((r) => r.batch_path && r.stage !== PRODUCTION_STAGE.SHIPPED);
 
@@ -1612,7 +1639,7 @@ const Production = () => {
     // NOTE: the deps below are MANUAL (exhaustive-deps is disabled on this line), so a
     // new gate variable read inside this memo must be added by hand — lint will not
     // catch its absence and the menu would keep the last computed shape.
-  }, [contextMenu, selectedFileIds, productionStages, viewMode, session, labelPrintingEnabled, shopifyEnabled]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [contextMenu, selectedFileIds, productionStages, viewMode, session, labelPrintingEnabled, shopifyEnabled, sewingEnabled]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className={style.container}>
@@ -1636,13 +1663,19 @@ const Production = () => {
             >
               Orders
             </button>
-            <button
-              type="button"
-              className={`${style.tab} ${viewMode === VIEW_MODE.RECEIVE ? style.tab_active : ""}`}
-              onClick={() => setViewMode(VIEW_MODE.RECEIVE)}
-            >
-              Receive
-            </button>
+            {/* The whole lens is the third renderer entry: without an external
+                sewing step there is no parcel to unpack. Hidden rather than
+                disabled, so viewMode can never become RECEIVE in the first place —
+                nothing else sets it (handleScan only ever flips ORDERS -> BATCHES). */}
+            {sewingEnabled && (
+              <button
+                type="button"
+                className={`${style.tab} ${viewMode === VIEW_MODE.RECEIVE ? style.tab_active : ""}`}
+                onClick={() => setViewMode(VIEW_MODE.RECEIVE)}
+              >
+                Receive
+              </button>
+            )}
           </div>
 
           {viewMode === VIEW_MODE.BATCHES && <div className={style.topbar_sep} />}
@@ -1790,7 +1823,11 @@ const Production = () => {
       <div className={style.cards_wrapper} ref={cardsWrapperRef}>
         {/* Receive owns its own empty/loading states — it must not fall through
             into the Batches-lens isLoading / filtered.length branches below. */}
-        {viewMode === VIEW_MODE.RECEIVE ? (
+        {/* Safety net on the view itself, the same shape as the gated NavBar views
+            in App.jsx: with the toggle hidden viewMode cannot reach RECEIVE, but a
+            stale value would otherwise render the lens with no way back to it. Falls
+            through to the Batches branch, which is always available. */}
+        {sewingEnabled && viewMode === VIEW_MODE.RECEIVE ? (
           <SewingReceive
             session={session}
             setSession={setSession}
