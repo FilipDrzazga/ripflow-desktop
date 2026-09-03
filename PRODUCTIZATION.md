@@ -42,6 +42,7 @@ istniejacych testow jest sam w sobie dowodem, ze zadne ciecie nie poszlo na skro
   +5 z `labelPrintBatchGate.test.js`)
 - po 2c-bis (`shopify`): 193 passed / 16 files (+14 z `openInShopify.test.js` - plik,
   ktory wczesniej nie mial ZADNEGO testu)
+- po 2c-bis (`sewing`): 209 passed / 17 files (+16 z `sewingStageGate.test.js`)
 
 - [x] **BUG 1** - `clientId` przechodzi przez `settings:set`
   - `src/electron/ipc/index.js` (~:469 destrukturyzacja, ~:490 przekazanie)
@@ -237,9 +238,15 @@ golden-diff czysty.
     `shopProfile`. Konsola renderera tym razem odczytana (DevTools zadokowane): tylko
     podpowiedz React DevTools i ostrzezenie CSP Electrona, zero bledow Reacta - domyka
     ograniczenie zgloszone przy 2c-null-a.
-- [~] **2c-bis - pozostale cztery flagi** (`ripErrors`, `labelPrinting`, `shopify`, `sewing`).
-      `ripErrors` i `labelPrinting` zamkniete; zostaja `shopify` i `sewing`, kazda
-      osobnym cieciem.
+- [x] **2c-bis - pozostale cztery flagi** (`ripErrors`, `labelPrinting`, `shopify`, `sewing`).
+      ZAMKNIETE - wszystkie cztery, kazda osobnym cieciem: `cd8b466`, `238ac1c`,
+      `bc68fbe`, `6a615ff`. Pierwszy raz od dawna domyka sie CALY pod-krok, nie
+      pojedyncza flaga.
+      **Namiary PLIK:LINIA maja DATE WAZNOSCI.** Kazde ciecie grepowalo swiezo i wierzylo
+      grepowi, nie zapisowi - hipoteza z pomiaru upadla CZTERY razy: `fabricCache`
+      (2c-null-a), auto-print w `submitBatch.js` (`labelPrinting`), lens ORDERS
+      (`shopify`), `QC_ACTION` jako martwy kod (`sewing`). Namiary `sewing` ponizej byly
+      przesuniete o ~23 linie, a handlerow jest SZESC, nie piec.
       Swiadomie NIE w 2c: kazda ma 3-6 wejsc UI rozsianych po kilku plikach, wiec filtr
       w NavBarze ich nie domyka. Wejscia zmierzone grepem, nie oszacowane:
   - `ripErrors`: `Production/ProductionCard.jsx:137` (badge) + `:140` (klik);
@@ -355,6 +362,33 @@ golden-diff czysty.
   - `sewing`: `Production/Production.jsx:1618-1619` (zakladka RECEIVE) -> `:1770-1771` (render);
     `:1471` ("Send to Sewing"); handlery `:364, 381, 418, 831, 864`;
     `Production/SewingReceive.jsx:29`; `services/productionService.js:7,8`
+    - [x] ZROBIONE (`6a615ff`). Flaga NIE usuwa etapu z przeplywu: `STAGE_NEXT` ma juz
+      `qc -> packed`, a szwalnia to OPCJONALNA galaz. Usuwa TRACKING hand-offu do
+      ZEWNETRZNEGO podwykonawcy - klient szyjacy u siebie niczego nie wysyla i nie
+      odbiera. Maszyna stanow nietknieta.
+      CZTERY wejscia renderera, WSZYSTKIE w `Production.jsx`: przycisk zakladki RECEIVE,
+      galaz renderu, "Send to Sewing", "Receive from sewing". Pozycje menu WEWNATRZ
+      galezi RECEIVE nie potrzebuja wlasnej bramki, bo `setViewMode(VIEW_MODE.RECEIVE)`
+      wystepuje DOKLADNIE RAZ i stoi w zabramkowanym bloku - lens jest NIEOSIAGALNY,
+      nie tylko ukryty. Do tego korekta stanu w renderze (wzorzec `App.jsx:51`), bo sam
+      fallback renderu zostawialby `viewMode` na RECEIVE, a `useMemo` menu galezi po
+      `viewMode`, nie po fladze: ekran pokazywalby Batches, a menu oferowalo RECEIVE.
+    - Bramka w main mocniej uzasadniona niz przy poprzednich flagach: te kanaly zmieniaja
+      STAN PRODUKCJI w bazie, a nie odpalaja urzadzenie. Bez niej plik parkowalby na
+      `to_sewing` - w etapie, ktorego klient nie kupil - a zabramkowana sciezka odbioru
+      odmawialaby go przyjac.
+    - **`stage:advance` SWIADOMIE NIEbramkowany, przypiete testem.** Etap, do ktorego
+      nikt nie wejdzie, jest OK; etap, z ktorego nikt nie wyjdzie, nie jest. Wiersze
+      legacy na `to_sewing` zachowuja "Go back" (`STAGE_PREV[to_sewing] = qc`)
+      i "Rollback", oba na niebramkowanych kanalach. Niedomknieta sciezka zgloszona,
+      nie zamieciona: `undoReceiveFiles` (`Production.jsx:513`) wchodzi w `to_sewing`
+      przez generyczny `stage:advance`; osiagalne tylko z lensu RECEIVE, dla pliku
+      w `receivedInSession` na `packed`, czyli niemozliwe przy fladze off - zamkniecie
+      wymagaloby bramkowania po stanie docelowym, co uwiezilo by wiersze legacy.
+    - Refaktor `buildContextMenuItems` NIE zrobiony: memo ma ~300 linii i domyka ~20
+      handlerow, czyli jest refaktorem samym w sobie, a nie produktem ubocznym dodania
+      jednego boolean - warunek z `50f64c8` nie zostal spelniony.
+    - Bramki renderera bez stalego straznika CZWARTY raz z rzedu - DANA.
 - [ ] **2d - Nazwy hotfolderow** do profilu (`createXML.js`, `customOrderHandlers.js`, `getRootPath.js`)
 - [ ] **2e - Drukarki -> `printers[]`** (NAJSZERSZY zasieg, 53 wystapienia w 12 plikach,
       w tym regexy widocznosci - zmierzone grepem, nie oszacowane)
@@ -384,6 +418,11 @@ Dopiero po Etapie 1 (fallbacki maja czytac z profilu, nie ze statycznych list).
       Zostalo po skasowanym 2a: konsument czyta juz profil (ETAP 1), ale seed nadal wnosi
       nazwe Alexa do kodu. Uwaga na `openInShopify.js` - fallback celowo uzywa `||`, wiec
       pusty handle liczy sie jako brak i degraduje zamiast budowac zly link
+- [ ] `QC_ACTION` (`shared/constants.js:87`) to MARTWY KOD - jedno trafienie w calym
+      `src/`, sama definicja, ZERO konsumentow (QCModal zostal usuniety). Odkryte przy
+      `sewing`, gdzie brief zakladal, ze trzeba zabramkowac `QC_ACTION.SEWING` - nie bylo
+      czego. Nalezy do sprzatania katalogu, NIE do 2c-bis; usuwac razem z `REJECTED` /
+      `OVERRIDDEN`, po sprawdzeniu, czy stare wiersze w bazie tego nie czytaja
 - [ ] Grep kontrolny: zero `if (clientId === "...")` w logice, zero zaszytych adresow,
       zero literalu "Fashion Formula" (audyt: byl jeden; osobno `"fashionformulauk"`
       wyzej - inny string, wiec grep na "Fashion Formula" go NIE lapie)
@@ -502,6 +541,14 @@ Baza pozostaje jedynym zywym zrodlem prawdy; JSON to tylko transport na wdrozeni
       fail-closed w rendererze zamienia kazda awarie konfiguracji w NIEOBECNOSC, a nie
       w blad. Lazy retry przestaje byc wygoda i staje sie jedynym sposobem, zeby
       operator w ogole dowiedzial sie, ze cos jest nie tak.
+    - **CZWARTY raz, przy 2c-bis (`sewing`).** Przy nieodczytanym profilu znika zakladka
+      RECEIVE i obie akcje szwalni - znowu bez komunikatu, bo bramka renderera gasi je,
+      zanim main zdazy odmowic. PODSUMOWANIE calej serii: fail-closed w rendererze
+      zamienia KAZDA awarie konfiguracji w NIEOBECNOSC, nie w blad, i dotyczy to juz
+      pieciu obszarow - zakladki (2c), detekcja bledow RIP, etykiety, link do Shopify,
+      obsluga szwalni. Operator nie ma zadnego sygnalu, ze widzi okrojona aplikacje.
+      To nie jest wada bramek - fail-closed jest poprawny - to jest cena za brak lazy
+      retry, ktora rosla przy kazdej z czterech flag i przestala byc teoretyczna.
 - [ ] **Export diagnostics** - zip: ostatnie 500 logow, `shop_profile`, wersja, sciezki
       (bez zawartosci plikow), wynik testu dostepu do hotfolderow. Bez telemetrii
 - [ ] **Kreator pierwszego uruchomienia** (sciezki -> import profilu -> test zapisu do hotfoldera)
@@ -539,6 +586,21 @@ Podejscie: NIE przepisywac. Wyodrebnic obecna logike, potem dodac druga.
 - [=] Zakres szwalni (`features.sewing`) - flaga pokrywa; szczegol z discovery
 - [=] Trzecia klasa materialu - dzis 2 sloty; 3+ rozszerza 2g (sprawdzic w discovery)
 - [=] Twarde okresy licencji (baner/karencja) - ustalic przy pierwszej realnej umowie
+- [=] **Konfigurowalne etapy produkcji (`stages[]` w profilu).** Klient z wlasna szwalnia
+      jest JUZ obsluzony flaga `sewing` - to nie jest ten przypadek. Realny przypadek to
+      klient bez PRASY TERMICZNEJ, czyli brak etapu `heatpress` w srodku pipeline'u.
+      Ksztalt, jesli kiedykolwiek: `stages[]` jako WLACZ/WYLACZ z ZAMKNIETEJ listy,
+      w profilu WDROZENIOWYM (2f), NIGDY edytor etapow w Settings - operator nie moze
+      przestawiac pipeline'u produkcji w trakcie pracy.
+      Dlaczego to jest duze: etap NIE jest wierszem w tabelce. `printed` powstaje ze
+      skanu dysku, `qc` ma trzy odrebne akcje, `to_sewing` ma dedykowane funkcje DB
+      (`setSewingSent`/`setSewingReceived`) i wlasny lens, `shipped` ma retencje
+      (`cleanupShippedStages`), a ikony etapow to komponenty React. Zmierzone:
+      **121 wystapien `PRODUCTION_STAGE` w 9 plikach**, w tym PIEC zduplikowanych list
+      kolejnosci (`Production.jsx:87,106`, `ProductionCard.jsx:15`, `groupByOrder.js:8`,
+      `OverviewPanel.jsx:37`) - czyli szerzej niz 2e (46 wystapien kodow drukarek).
+      Discovery ma pytac wprost: **KTORYCH ETAPOW KLIENT NIE MA** - nie "jak wyglada
+      Twoj proces", bo na to kazdy odpowie opisem, a nie lista brakow.
 
 ---
 
