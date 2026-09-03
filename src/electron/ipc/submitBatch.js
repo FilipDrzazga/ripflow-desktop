@@ -6,6 +6,7 @@ import { toIpcError } from "../helpers/ipcError.js";
 import { insertFileStage } from "../helpers/db.js";
 import { getSettings } from "../helpers/getSettings.js";
 import { printBatchLabel } from "../helpers/labelPrinter.js";
+import { getFeature } from "../helpers/shopProfile.js";
 import { getMaterialType } from "../helpers/getMaterialType.js";
 import { getEstimateConfig } from "../helpers/fabricCache.js";
 import { estimatePrintLength } from "../../shared/estimatePrintLength.js";
@@ -81,8 +82,14 @@ export const submitBatch = async (batch) => {
     const { workstationName } = getSettings();
     const now = new Date().toISOString();
 
-    // fire-and-forget — label print must not delay the submit response
-    if (getSettings().labelPrintMode !== "manual") {
+    // fire-and-forget — label print must not delay the submit response.
+    // The feature gate belongs HERE and not only in the renderer: this path fires on
+    // every submit without anyone pressing anything (labelPrintMode defaults to
+    // "automatic"), and labelPrinter.js omits deviceName when labelPrinterName is empty,
+    // so an ungated auto-print lands on the station's DEFAULT system printer. A shop
+    // without features.labelPrinting would get a label per batch it never asked for.
+    // getFeature is fail-closed, so an unreadable profile prints nothing.
+    if (getFeature("labelPrinting") && getSettings().labelPrintMode !== "manual") {
       const printerMatch = batchName.match(/-(DGEN|YOKO|YUMI)$/i);
       const batchPrinter = printerMatch ? printerMatch[1].toUpperCase() : "UNKNOWN";
       const parsedForLength = batch.map((item) => ({ ...item, materialType: getMaterialType(item.material) }));

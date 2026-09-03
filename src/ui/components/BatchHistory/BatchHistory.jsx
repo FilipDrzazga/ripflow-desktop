@@ -31,6 +31,7 @@ import { openInFolder as openInFolderApi, openInShopify as openInShopifyApi } fr
 import { showConfirm } from "../../services/systemService";
 import { getSettings } from "../../services/settingsService";
 import { printBatchLabel } from "../../services/productionService";
+import { isFeatureEnabled } from "../../utils/featureVisibility";
 
 const PRINTERS = Object.values(PRINTER);
 
@@ -61,6 +62,7 @@ const BatchHistory = () => {
   const removeStageFromStore = useStore((state) => state.removeStageFromStore);
   const removeRipError = useStore((state) => state.removeRipError);
   const clearRipErrorsForFiles = useStore((state) => state.clearRipErrorsForFiles);
+  const shopProfile = useStore((state) => state.shopProfile);
   const [dayGroups, setDayGroups] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -1007,7 +1009,11 @@ const BatchHistory = () => {
                         onRipBadgeClick={(error, x, y) => setRipPopover({ error, x, y })}
                         elementRefsRef={elementRefsRef}
                         activeContextFilePath={activeContextFilePath}
-                        canPrintLabel={canPrintLabel}
+                        // Gated here in the render, deliberately NOT inside the on-mount
+                        // effect that sets canPrintLabel: the profile resolves after mount,
+                        // so a fail-closed read wired into that effect would latch the
+                        // button off for the whole session while status is still loading.
+                        canPrintLabel={canPrintLabel && isFeatureEnabled("labelPrinting", shopProfile)}
                         onPrintLabel={handlePrintLabel}
                         selectedFilePaths={selectedFiles}
                         onToggleFileSelect={toggleFileSelect}

@@ -18,6 +18,7 @@ import {
 import { getSettings } from "../helpers/getSettings.js";
 import { getStorageRootPath } from "../helpers/getRootPath.js";
 import { printBatchLabel } from "../helpers/labelPrinter.js";
+import { getFeature } from "../helpers/shopProfile.js";
 import { PRODUCTION_STAGE } from "../../shared/constants.js";
 
 // TODO(debt): this is the FIFTH local copy of getPrintedRootPath — the others live
@@ -168,6 +169,14 @@ export function registerProductionHandlers() {
   });
 
   ipcMain.handle("label:printBatch", (_event, data) => {
+    // Gated even though both renderer entries that reach this channel are already gated
+    // at their own call sites. The criterion is not "can anything call it today" but
+    // "what happens when a renderer gate disappears in a later cut" - 2e rewrites
+    // Production.jsx broadly, and a menu entry restored without its gate would print
+    // labels a client never bought. With this check the button can come back and the
+    // printer still stays silent. Deliberately unlike the RIP handler in cd8b466, which
+    // only READS; this one drives a physical device.
+    if (!getFeature("labelPrinting")) return { success: false, error: "Label printing is not enabled" };
     return printBatchLabel(data);
   });
 

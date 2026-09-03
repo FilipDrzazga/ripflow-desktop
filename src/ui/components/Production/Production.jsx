@@ -38,6 +38,7 @@ import { useStageTransition } from "../../hooks/useStageTransition";
 import { useScrollAnchor } from "../../hooks/useScrollAnchor";
 import { PRINTER_COLORS } from "../../constants/printerColors";
 import { VIEW_MODE } from "../../constants/viewModes";
+import { isFeatureEnabled } from "../../utils/featureVisibility";
 import { UNKNOWN_ORDER_KEY } from "../../utils/groupByOrder";
 import {
   UNKNOWN_DAY_KEY,
@@ -223,6 +224,13 @@ const Production = () => {
   const stageHistory = useStore((s) => s.stageHistory);
   const ripErrors = useStore((s) => s.ripErrors);
   const removeRipError = useStore((s) => s.removeRipError);
+  const shopProfile = useStore((s) => s.shopProfile);
+
+  // One of the two renderer entries to the label printer; the other is the per-batch
+  // button in BatchHistory. Each is gated at its own call site rather than once in the
+  // middle: the two share no state, so there is nothing in between to gate. Fail-closed
+  // via isFeatureEnabled — a profile we could not read grants nothing.
+  const labelPrintingEnabled = isFeatureEnabled("labelPrinting", shopProfile);
 
   // Shared store-core for every stage transition — applies the optimistic store
   // update + history entry ONLY when the DB confirms the row actually moved
@@ -1519,7 +1527,9 @@ const Production = () => {
     if (items.length > 0) items.push({ id: "sep-tools", separator: true });
 
     // ── Tools (always operate on the clicked row) ──
-    if (batchPath) {
+    // Hidden, not greyed out: a shop without features.labelPrinting has no label printer
+    // at all, so a disabled entry would only advertise something it cannot use.
+    if (batchPath && labelPrintingEnabled) {
       items.push({
         id: "reprint-label",
         label: "Reprint Label",
@@ -1589,7 +1599,7 @@ const Production = () => {
     }
 
     return items;
-  }, [contextMenu, selectedFileIds, productionStages, viewMode, session]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [contextMenu, selectedFileIds, productionStages, viewMode, session, labelPrintingEnabled]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className={style.container}>
