@@ -981,3 +981,19 @@ Rules:
    | `[=]` consciously frozen (waiting on real client #2). Frozen != todo.
 5. If a step reveals new sub-tasks, add them as new `[ ]` lines under the same stage
    rather than silently expanding an existing box - the list must stay auditable.
+6. Mutation proof, and what it is owed to. The principle stands unchanged: a test that
+   passes whenever some other test passes is decoration. What changes is how that is
+   PROVEN, because proving it per-assert costs more than it returns.
+   - The proof is owed to every GATE PATH, not to every assert: gate open, gate closed,
+     the flag NAME, and the interaction with any condition the gate was ANDed into.
+     One mutation per path, applied ALONE and reverted before the next.
+   - A mutation that kills more than one test is a signal to build a DISCRIMINATING
+     mutation, never a verdict that a test is decoration. A mutation can remove a
+     different defect than the one under study - `if (false && getFeature(...))`
+     short-circuits the call away, so a test pinning the flag name legitimately dies
+     with it. Only once no discriminating mutation can be constructed is the test
+     decoration.
+   - Diagnostic tests and harness guards - the ones asserting that the registration,
+     import or mock worked at all - STAY deliberately and have NO corpse of their own,
+     with a comment saying so and why. They earn their place when five tests fail at
+     once and exactly one of them says why.
