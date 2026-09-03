@@ -118,9 +118,12 @@ golden-diff czysty.
 
 ## ETAP 2 - Oderwanie zachowan od kodu (rosnace ryzyko, osobny commit kazdy)
 
-- [ ] **2a - Shopify:** `integrations.shopify.storeHandle` + flaga `features.shopify`
-  - usuwa jedyny literal z nazwa klienta (`SHOPIFY_STORE_HANDLE = "fashionformulauk"`)
-  - pierwszy realny efekt sprzedazowy (demo nie pokazuje sklepu Alexa)
+- 2a - Shopify: pozycja usunieta, obie polowy zrobione gdzie indziej. `storeHandle`
+  wszedl w ETAPIE 1 (`d7b93db`, `openInShopify.js` czyta profil, `shopifyConfig.js`
+  skasowany), a flaga `features.shopify` jest w 2c-bis nizej. UWAGA: trzecia obietnica
+  tej pozycji NIE jest spelniona - literal `"fashionformulauk"` zyje dalej w
+  `defaultProfile.js:43` jako wartosc seeda; przestal byc stala konsumenta, ale nie
+  zniknal z kodu. To nalezy do 2h ("zero nazw Alexa w kodzie"), nie tutaj.
 - [ ] **2b - Szwalnie:** `sewingCompanies[]` w profilu + maly edytor (dzis: Olya/Vagabond zaszyte)
 - [x] **2c - Flagi funkcji + filtr NavBar (zakres ZAWEZONY do nawigacji):** `customOrders`
       i `analytics`. `src/ui/utils/featureVisibility.js` - czysta `isViewEnabled(viewId, profile)`,
@@ -293,8 +296,13 @@ Dopiero po Etapie 1 (fallbacki maja czytac z profilu, nie ze statycznych list).
       (`createXML.js`) -> pola w profilu/fabrics, nie zgadywanie ze stringu (audyt #17)
 - [ ] Katalog FF -> `profiles/fashion-formula-fabrics.json` (juz wyeksportowany w Etapie 0)
 - [ ] `getSettings.js`: domyslne sciezki `O:\SPPrintReadyArtwork` / `\\192.168.0.17\...` -> `""`
+- [ ] `defaultProfile.js:43`: `integrations.shopify.storeHandle: "fashionformulauk"` -> `""`.
+      Zostalo po skasowanym 2a: konsument czyta juz profil (ETAP 1), ale seed nadal wnosi
+      nazwe Alexa do kodu. Uwaga na `openInShopify.js` - fallback celowo uzywa `||`, wiec
+      pusty handle liczy sie jako brak i degraduje zamiast budowac zly link
 - [ ] Grep kontrolny: zero `if (clientId === "...")` w logice, zero zaszytych adresow,
-      zero literalu "Fashion Formula" (audyt: byl jeden)
+      zero literalu "Fashion Formula" (audyt: byl jeden; osobno `"fashionformulauk"`
+      wyzej - inny string, wiec grep na "Fashion Formula" go NIE lapie)
 
 **WYJATEK - swiadomie ZOSTAJE (nie usuwac):**
 
