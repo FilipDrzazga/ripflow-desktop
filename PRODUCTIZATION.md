@@ -272,7 +272,7 @@ golden-diff czysty.
       wspolnego stanu, wiec kazde bierze `isFeatureEnabled` W MIEJSCU WYWOLANIA -
       nie ma nic posrodku, co dawaloby sie zabramkowac raz. Oba UKRYTE, nie
       zaszarzone. TRZY sciezki do drukarki, nie dwie:
-      (1) auto-print `submitBatch.js:85` - najwazniejsza, bo bez zadnego kliknięcia:
+      (1) auto-print `submitBatch.js:85` - najwazniejsza, bo bez zadnego klikniecia:
       `labelPrintMode` domysla `"automatic"`, a `labelPrinter.js` pomija `deviceName`
       przy pustym `labelPrinterName`, wiec leci na DOMYSLNA drukarke systemowa stacji.
       Bramka tylko w rendererze zostawilaby klienta bez flagi z etykieta przy kazdym
@@ -297,6 +297,11 @@ golden-diff czysty.
       natomiast POWSTAL (`labelPrintBatchGate.test.js`) - okazal sie tani, bo
       `toLocalBatchPath.test.js` juz mockuje `electron`, wiec wystarczylo przechwycic
       rejestrowany handler zamiast go wyrzucac.
+- **Wejscia renderera bez stalego straznika DRUGI raz z rzedu** (`ripErrors`: kafel
+  `OverviewPanel`; `labelPrinting`: oba wejscia). Zostaja `shopify` i `sewing`. Jesli
+  harness renderujacy ma kiedykolwiek powstac, to PRZED `sewing` - `sewing` to cala
+  zakladka RECEIVE plus piec handlerow, najwieksza z czterech flag. Po niej cala warstwa
+  bramek UI bedzie zweryfikowana wylacznie recznie i nikt juz tego nie nadrobi.
   - `shopify`: `Production/Production.jsx:1375` (lens ORDERS) i `:1557` (lens BATCHES) -> `:671`;
     `DataList/DataList.jsx:413` -> `:416` -> `:147`;
     `BatchHistory/BatchHistory.jsx:1079` -> `:1083` -> `:626`; `services/fileService.js:55`
@@ -436,6 +441,17 @@ Baza pozostaje jedynym zywym zrodlem prawdy; JSON to tylko transport na wdrozeni
       (bez zawartosci plikow), wynik testu dostepu do hotfolderow. Bez telemetrii
 - [ ] **Kreator pierwszego uruchomienia** (sciezki -> import profilu -> test zapisu do hotfoldera)
 - [ ] `changelog.json` - uzywac pola `clients` per wpis zamiast "all"
+- [ ] Konce linii zaleza od MASZYNY, nie od repo. Nie ma `.gitattributes`, a
+      `core.autocrlf=true` pochodzi z SYSTEMOWEGO gitconfiga Git for Windows
+      (`C:/Program Files/Git/etc/gitconfig`) - w `.git/config` tego wpisu NIE MA,
+      w globalnym tez nie. Zweryfikowane `git config --show-origin`. Na stacji z tym
+      ustawieniem git normalizuje CRLF przy porownaniu, wiec plik zapisany z innymi
+      koncowkami NIE POKAZUJE SIE w `git status` - tak bylo z `defaultProfile.js` po
+      mutacji recznej przy 2c-bis: 1717 -> 1769 bajtow przy identycznych 52 liniach,
+      `git status` czysty. Klon na maszynie bez tego ustawienia, albo CI na Linuksie,
+      te roznice zobaczy. Domkniecie to `* text=auto eol=lf` w `.gitattributes`, ale
+      przepisze koncowki w CALYM repo - OSOBNY commit, nigdy w srodku etapu, i NIE
+      przed 2e (rozjechalby diff najwiekszego ciecia).
 
 ---
 
