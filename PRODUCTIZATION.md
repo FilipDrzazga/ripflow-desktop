@@ -298,10 +298,22 @@ golden-diff czysty.
       `toLocalBatchPath.test.js` juz mockuje `electron`, wiec wystarczylo przechwycic
       rejestrowany handler zamiast go wyrzucac.
 - **Wejscia renderera bez stalego straznika DRUGI raz z rzedu** (`ripErrors`: kafel
-  `OverviewPanel`; `labelPrinting`: oba wejscia). Zostaja `shopify` i `sewing`. Jesli
-  harness renderujacy ma kiedykolwiek powstac, to PRZED `sewing` - `sewing` to cala
-  zakladka RECEIVE plus piec handlerow, najwieksza z czterech flag. Po niej cala warstwa
-  bramek UI bedzie zweryfikowana wylacznie recznie i nikt juz tego nie nadrobi.
+  `OverviewPanel`; `labelPrinting`: oba wejscia) - to DANA, nie zobowiazanie.
+  Harness renderujacy jest ODRZUCONY, nie odlozony: repo nie ma ANI JEDNEGO testu
+  renderujacego komponent i pod 2c-bis go nie dostanie. Powody, wszystkie sprawdzalne
+  za rok: zmierzona liczba awarii z braku tych testow wynosi ZERO; jedyny klient
+  (Alex) ma wszystkie flagi `true`, wiec zadna z tych bramek u niego nie strzela -
+  testowaloby sie sciezke, ktorej dzis nikt nie wykonuje; `Production.jsx` to 76 KB,
+  dziesiatki hookow i IPC w efektach, wiec jego wyrenderowanie wymaga sciany mockow
+  o koszcie nieproporcjonalnym do jednego asserta o widocznosci pozycji menu;
+  budowanie tego teraz to praca pod hipotetycznego klienta #2, czyli wprost to, czego
+  zabrania regula anti-over-engineering w `CLAUDE.md`; a wieksze ryzyko sprzedazowe
+  niesie zablokowany ETAP 5 (brak probek nazw plikow klienta #2) niz brakujacy test
+  renderera. WARUNEK powrotu, nie plan: jesli `sewing` i tak bedzie dotykal miejsca
+  budujacego menu kontekstowe albo zakladki RECEIVE, wolno wyodrebnic czysta funkcje
+  (`buildContextMenuItems(...)` lub odpowiednik) i przetestowac ja BEZ renderu i BEZ
+  nowych zaleznosci dev, jako produkt uboczny tamtego ciecia. Osobnego ciecia "dodajmy
+  testy renderera" nie otwieramy. Temat wraca wylacznie z KONKRETNA AWARIA.
   - `shopify`: `Production/Production.jsx:1375` (lens ORDERS) i `:1557` (lens BATCHES) -> `:671`;
     `DataList/DataList.jsx:413` -> `:416` -> `:147`;
     `BatchHistory/BatchHistory.jsx:1079` -> `:1083` -> `:626`; `services/fileService.js:55`
