@@ -27,9 +27,17 @@ udowadniamy golden-diff (XML bajt w bajt) na kopii jego bazy, nie na oko.
 
 ## ETAP 0 - Niezalezne bugfixy + odciecie katalogu (u samego Alexa)
 
-Baseline przed startem: `npm run test` = 107 passed / 8 files, `npm run lint` czysty.
-Baseline PO ETAPIE 1: `npm run test` = 125 passed / 9 files (+18 z `shopProfile.test.js`,
-zero modyfikacji istniejacych testow).
+Baseline testow - to JEST punkt odniesienia bramki, `CLAUDE.md` i sekcja "Bramka
+weryfikacji" na dole kieruja tutaj zamiast zamrazac liczbe u siebie. Dopisuj kolejny
+wiersz, nie nadpisuj poprzednich - rosnacy licznik przy zerowej liczbie modyfikacji
+istniejacych testow jest sam w sobie dowodem, ze zadne ciecie nie poszlo na skroty.
+`npm run lint` czysty na kazdym z nich.
+
+- przed startem: 107 passed / 8 files
+- po ETAPIE 1: 125 passed / 9 files (+18 z `shopProfile.test.js`)
+- po 2c: 142 passed / 10 files (+17 z `featureVisibility.test.js`)
+- po 2c-null: 155 passed / 12 files
+- po 2c-bis (`ripErrors`): 169 passed / 13 files (+14 z `isFeatureEnabled.test.js`)
 
 - [x] **BUG 1** - `clientId` przechodzi przez `settings:set`
   - `src/electron/ipc/index.js` (~:469 destrukturyzacja, ~:490 przekazanie)
@@ -406,8 +414,12 @@ Podejscie: NIE przepisywac. Wyodrebnic obecna logike, potem dodac druga.
 
 ## Bramka weryfikacji (PO KAZDYM etapie, bez wyjatku)
 
-- [ ] `npm run test` - 125 passed / 9 files, ZERO modyfikacji istniejacych testow
-      (modyfikacja testu = sygnal niezamierzonej zmiany zachowania -> STOP)
+- [ ] `npm run test` - zielone, ZERO modyfikacji istniejacych testow
+      (modyfikacja testu = sygnal niezamierzonej zmiany zachowania -> STOP).
+      Liczby nie zamrazamy tutaj - rosnie z kazdym krokiem dokladajacym plik testowy,
+      a zamrozona staje sie celem. Oczekiwana wartosc to baseline z gory tego pliku
+      (ETAP 0), zmierzony PRZED startem pracy; niezmienne jest to, ze licznik moze
+      tylko rosnac i nigdy przez edycje istniejacego testu.
 - [ ] `npm run lint` - czysty
 - [ ] golden-diff: wygenerowany XML bajt w bajt vs baseline, na kopii bazy Alexa
 - [ ] sciezka reczna: Inbox -> submit -> XML w xmlPath -> PRINTED -> BatchHistory

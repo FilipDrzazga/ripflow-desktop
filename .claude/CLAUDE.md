@@ -962,9 +962,15 @@ Progress on the multi-tenant / decoupling work is tracked in `PRODUCTIZATION.md`
 Rules:
 
 1. Tick a box `[ ]` -> `[x]` ONLY after Filip has confirmed the step passed its full
-   gate (npm run test 107/107 unmodified, npm run lint clean, golden-diff XML
-   byte-for-byte, raw git diff reviewed) AND the step is committed. Never tick on
-   "code written" or "works on my machine" - `[x]` means "safe in Alex's production".
+   gate (npm run test green with ZERO modifications to existing tests, npm run lint
+   clean, golden-diff XML byte-for-byte, raw git diff reviewed) AND the step is
+   committed. Never tick on "code written" or "works on my machine" - `[x]` means
+   "safe in Alex's production".
+   The expected test count is NOT frozen here: it moves every time a step adds a test
+   file, and a stale number in this file would be read as the target. Take it from the
+   baseline block at the top of `PRODUCTIZATION.md` (ETAP 0), and measure the actual
+   baseline yourself before starting work. What is invariant is the SHAPE of the gate:
+   the count may only ever go UP, and never because an existing test was edited.
 2. Claude Code does NOT self-approve. The tick happens on Filip's explicit "gate
    passed, commit it", not when Claude Code judges the work done.
 3. The checklist update is a SEPARATE commit from the code change (same discipline as
