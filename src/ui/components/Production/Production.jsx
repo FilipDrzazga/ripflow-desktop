@@ -232,6 +232,12 @@ const Production = () => {
   // via isFeatureEnabled — a profile we could not read grants nothing.
   const labelPrintingEnabled = isFeatureEnabled("labelPrinting", shopProfile);
 
+  // Two of the four renderer entries to Shopify live in this file (the Receive-lens
+  // menu and the Batches/Orders menu); the other two are in DataList and BatchHistory.
+  // Same rule as above: gated at the call site, fail-closed, hidden rather than greyed
+  // out — a shop without the integration has no Shopify to open.
+  const shopifyEnabled = isFeatureEnabled("shopify", shopProfile);
+
   // Shared store-core for every stage transition — applies the optimistic store
   // update + history entry ONLY when the DB confirms the row actually moved
   // (res.updated), and classifies the outcome as applied/rejected/failed.
@@ -1378,14 +1384,16 @@ const Production = () => {
       }
       if (receiveItems.length > 0) receiveItems.push({ id: "sep-receive", separator: true });
 
-      receiveItems.push({
-        id: "shopify",
-        label: "Open in Shopify",
-        onClick: () => {
-          setContextMenu(null);
-          handleOpenInShopify(row.order_id);
-        },
-      });
+      if (shopifyEnabled) {
+        receiveItems.push({
+          id: "shopify",
+          label: "Open in Shopify",
+          onClick: () => {
+            setContextMenu(null);
+            handleOpenInShopify(row.order_id);
+          },
+        });
+      }
       if (filePath) {
         receiveItems.push({
           id: "preview",
@@ -1562,14 +1570,16 @@ const Production = () => {
         },
       });
     }
-    items.push({
-      id: "shopify",
-      label: "Open in Shopify",
-      onClick: () => {
-        setContextMenu(null);
-        handleOpenInShopify(row.order_id);
-      },
-    });
+    if (shopifyEnabled) {
+      items.push({
+        id: "shopify",
+        label: "Open in Shopify",
+        onClick: () => {
+          setContextMenu(null);
+          handleOpenInShopify(row.order_id);
+        },
+      });
+    }
 
     // "Show in Orders" deliberately operates on the SELECTION (like the stage
     // actions above), not just the clicked row — the exception to the "tools
@@ -1599,7 +1609,10 @@ const Production = () => {
     }
 
     return items;
-  }, [contextMenu, selectedFileIds, productionStages, viewMode, session, labelPrintingEnabled]); // eslint-disable-line react-hooks/exhaustive-deps
+    // NOTE: the deps below are MANUAL (exhaustive-deps is disabled on this line), so a
+    // new gate variable read inside this memo must be added by hand — lint will not
+    // catch its absence and the menu would keep the last computed shape.
+  }, [contextMenu, selectedFileIds, productionStages, viewMode, session, labelPrintingEnabled, shopifyEnabled]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className={style.container}>

@@ -9,6 +9,7 @@ import { estimatePrintLength } from "../../../shared/estimatePrintLength";
 import { FILE_STATUS } from "../../../shared/constants";
 import { resolveIcon } from "../../constants/rollbackReasonIcons";
 import { openInFolder as openInFolderApi, openInShopify as openInShopifyApi } from "../../services/fileService";
+import { isFeatureEnabled } from "../../utils/featureVisibility";
 import { FiInbox, FiLock, FiUnlock } from "react-icons/fi";
 import {
   LuClock,
@@ -58,6 +59,10 @@ const DataList = () => {
   const heldIds = useStore((state) => state.heldIds);
   const heldReasons = useStore((state) => state.heldReasons);
   const rollbackReasons = useStore((state) => state.rollbackReasons);
+  // The inbox entry to Shopify; the others are the two Production context-menu items
+  // and the BatchHistory one, whose components already read the profile. Gated at the
+  // call site below, fail-closed: a profile we could not read grants nothing.
+  const shopProfile = useStore((state) => state.shopProfile);
   const reasonDefinitions = useStore((state) => state.reasonDefinitions);
   const toggleGroupSelection = useStore((state) => state.toggleGroupSelection);
   const toggleItemSelection = useStore((state) => state.toggleItemSelection);
@@ -408,14 +413,21 @@ const DataList = () => {
                   await handleOpenInFolder(contextMenu.item);
                 },
               },
-              {
-                id: "shopify",
-                label: "Open in Shopify",
-                onClick: () => {
-                  closeContextMenu();
-                  handleOpenInShopify(contextMenu.item);
-                },
-              },
+              // Hidden, not greyed out, like the label-printing entries elsewhere: a
+              // shop without features.shopify has no store to open, so a disabled row
+              // would only advertise something it cannot use.
+              ...(isFeatureEnabled("shopify", shopProfile)
+                ? [
+                    {
+                      id: "shopify",
+                      label: "Open in Shopify",
+                      onClick: () => {
+                        closeContextMenu();
+                        handleOpenInShopify(contextMenu.item);
+                      },
+                    },
+                  ]
+                : []),
               { id: "sep-hold", separator: true },
               (() => {
                 const item = contextMenu.item;

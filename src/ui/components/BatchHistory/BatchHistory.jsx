@@ -1080,15 +1080,22 @@ const BatchHistory = () => {
                       await handleOpenInFolder(file.path);
                     },
                   },
-                  {
-                    id: "shopify",
-                    label: "Open in Shopify",
-                    onClick: async () => {
-                      const { file } = contextMenu;
-                      setContextMenu(null);
-                      await handleOpenInShopify(file);
-                    },
-                  },
+                  // Hidden, not greyed out, like the label-printing entries: a shop
+                  // without features.shopify has no store to open. Fail-closed via
+                  // isFeatureEnabled - an unreadable profile grants nothing.
+                  ...(isFeatureEnabled("shopify", shopProfile)
+                    ? [
+                        {
+                          id: "shopify",
+                          label: "Open in Shopify",
+                          onClick: async () => {
+                            const { file } = contextMenu;
+                            setContextMenu(null);
+                            await handleOpenInShopify(file);
+                          },
+                        },
+                      ]
+                    : []),
                   { id: "sep-1", separator: true },
                   {
                     id: "rollback-file",
