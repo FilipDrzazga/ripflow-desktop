@@ -39,6 +39,7 @@ import { useScrollAnchor } from "../../hooks/useScrollAnchor";
 import { PRINTER_COLORS } from "../../constants/printerColors";
 import { VIEW_MODE } from "../../constants/viewModes";
 import { isFeatureEnabled } from "../../utils/featureVisibility";
+import { getSewingCompanies } from "../../utils/shopProfileData";
 import { UNKNOWN_ORDER_KEY } from "../../utils/groupByOrder";
 import {
   UNKNOWN_DAY_KEY,
@@ -251,6 +252,17 @@ const Production = () => {
   // to_sewing still has an exit — "Go back" (STAGE_PREV[to_sewing] = qc) and
   // "Rollback" both run on ungated channels.
   const sewingEnabled = isFeatureEnabled("sewing", shopProfile);
+
+  // The subcontractors this shop dispatches to. Read from the profile instead of the
+  // two names that used to be typed into the submenu below. An empty list is a real
+  // answer (no profile, or a shop that lists none) and it hides the WHOLE "Send to
+  // Sewing" item via canSew — not just its children. A visible parent with an empty
+  // submenu is the shape the shopify flag could not close in its own cut: an entry
+  // that can only ever fail. Here one condition closes it.
+  // useMemo purely for a stable identity: the helper builds a fresh array every call, and
+  // this value is a dep of the context-menu useMemo below, which would then recompute on
+  // every render. The profile only changes on load / profile:set.
+  const sewingCompanies = useMemo(() => getSewingCompanies(shopProfile), [shopProfile]);
 
   // Shared store-core for every stage transition — applies the optimistic store
   // update + history entry ONLY when the DB confirms the row actually moved
@@ -1475,7 +1487,13 @@ const Production = () => {
     // Both sewing actions are hidden, not greyed out, when the shop has no external
     // sewing step: a disabled row would advertise a hand-off the client never bought.
     const canReceive = sewingEnabled && count > 0 && targetRows.every((r) => r.stage === PRODUCTION_STAGE.TO_SEWING);
-    const canSew = sewingEnabled && count > 0 && targetRows.every((r) => r.stage === PRODUCTION_STAGE.QC);
+    // sewingCompanies.length > 0 is part of the condition, not a guard inside the item:
+    // with the flag on and an empty list the parent would render with no children at all.
+    const canSew =
+      sewingEnabled &&
+      sewingCompanies.length > 0 &&
+      count > 0 &&
+      targetRows.every((r) => r.stage === PRODUCTION_STAGE.QC);
     const canGoBack = count > 0 && targetRows.every((r) => STAGE_PREV[r.stage]);
     const canRollback = count > 0 && targetRows.every((r) => r.batch_path && r.stage !== PRODUCTION_STAGE.SHIPPED);
 
@@ -1513,24 +1531,17 @@ const Production = () => {
         id: "sewing",
         label: "Send to Sewing",
         icon: <LuScissors size={14} />,
-        children: [
-          {
-            id: "sewing-olya",
-            label: "Olya",
-            onClick: () => {
-              if (isBulk) handleBulkSewing("Olya");
-              else handleSewing(fileId, "Olya");
-            },
+        // The index is part of the id, not the name alone: ContextMenu keys its children
+        // by id, and two profile entries that slug the same ("Olya" / "olya") would
+        // otherwise collide.
+        children: sewingCompanies.map((company, index) => ({
+          id: `sewing-${index}-${company}`,
+          label: company,
+          onClick: () => {
+            if (isBulk) handleBulkSewing(company);
+            else handleSewing(fileId, company);
           },
-          {
-            id: "sewing-vagabond",
-            label: "Vagabond",
-            onClick: () => {
-              if (isBulk) handleBulkSewing("Vagabond");
-              else handleSewing(fileId, "Vagabond");
-            },
-          },
-        ],
+        })),
       });
     }
     if (canGoBack) {
@@ -1639,7 +1650,7 @@ const Production = () => {
     // NOTE: the deps below are MANUAL (exhaustive-deps is disabled on this line), so a
     // new gate variable read inside this memo must be added by hand — lint will not
     // catch its absence and the menu would keep the last computed shape.
-  }, [contextMenu, selectedFileIds, productionStages, viewMode, session, labelPrintingEnabled, shopifyEnabled, sewingEnabled]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [contextMenu, selectedFileIds, productionStages, viewMode, session, labelPrintingEnabled, shopifyEnabled, sewingEnabled, sewingCompanies]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className={style.container}>
