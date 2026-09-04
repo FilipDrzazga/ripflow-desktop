@@ -465,7 +465,19 @@ Dopiero po Etapie 1 (fallbacki maja czytac z profilu, nie ze statycznych list).
       `OVERRIDDEN`, po sprawdzeniu, czy stare wiersze w bazie tego nie czytaja
 - [ ] Grep kontrolny: zero `if (clientId === "...")` w logice, zero zaszytych adresow,
       zero literalu "Fashion Formula" (audyt: byl jeden; osobno `"fashionformulauk"`
-      wyzej - inny string, wiec grep na "Fashion Formula" go NIE lapie)
+      wyzej - inny string, wiec grep na "Fashion Formula" go NIE lapie).
+      Grep kontrolny ma szukac TRZECH rodzin, nie jednej:
+      (1) "Fashion Formula" - nazwa firmy;
+      (2) "fashionformulauk" - handle Shopify; INNY string, wiec grep z (1) go NIE
+          lapie (juz zapisane przy kasowaniu 2a);
+      (3) "Olya" / "Vagabond" - nazwy jego PODWYKONAWCOW. Po 2b (`fb9756f`) zostaly
+          w DWOCH miejscach: jako wartosc seeda w `defaultProfile.js:42` oraz
+          w KOMENTARZU w `Production.jsx` przy `id` podmenu. Konsument czyta juz
+          z profilu, ale nazwy nie zniknely z kodu - dokladnie ten sam ksztalt co
+          `storeHandle` po ETAPIE 1.
+      Bramka przechodzaca na zielono z lista kontrahentow klienta w kodzie jest
+      gorsza niz jej brak - to trzeci raz, gdy grep kontrolny okazuje sie wezszy
+      niz obietnica, ktora niesie.
 
 **WYJATEK - swiadomie ZOSTAJE (nie usuwac):**
 
