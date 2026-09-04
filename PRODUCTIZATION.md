@@ -43,6 +43,7 @@ istniejacych testow jest sam w sobie dowodem, ze zadne ciecie nie poszlo na skro
 - po 2c-bis (`shopify`): 193 passed / 16 files (+14 z `openInShopify.test.js` - plik,
   ktory wczesniej nie mial ZADNEGO testu)
 - po 2c-bis (`sewing`): 209 passed / 17 files (+16 z `sewingStageGate.test.js`)
+- po 2b (sewing companies): 219 passed / 18 files (+10 z `shopProfileData.test.js`)
 
 - [x] **BUG 1** - `clientId` przechodzi przez `settings:set`
   - `src/electron/ipc/index.js` (~:469 destrukturyzacja, ~:490 przekazanie)
@@ -129,7 +130,46 @@ golden-diff czysty.
   tej pozycji NIE jest spelniona - literal `"fashionformulauk"` zyje dalej w
   `defaultProfile.js:43` jako wartosc seeda; przestal byc stala konsumenta, ale nie
   zniknal z kodu. To nalezy do 2h ("zero nazw Alexa w kodzie"), nie tutaj.
-- [ ] **2b - Szwalnie:** `sewingCompanies[]` w profilu + maly edytor (dzis: Olya/Vagabond zaszyte)
+- [x] **2b - Szwalnie: POLOWA ODCZYTOWA** (`fb9756f`). Nazwy szwalni wychodza z kodu
+      do profilu: podmenu "Send to Sewing" budowane z `sewingCompanies[]` przez nowy
+      `src/ui/utils/shopProfileData.js` (`getSewingCompanies`) - PIERWSZY odczyt DANYCH
+      z profilu po stronie renderera, dotad renderer czytal wylacznie `features`.
+      Swiadomie osobny plik od `featureVisibility.js`: tamten odpowiada na "czy ta
+      funkcja jest widoczna", ten na "co zawiera konfiguracja tego klienta"; przy 2e
+      dojda tam drukarki. Zwraca `[]`, nigdy `null` - udokumentowany wyjatek od
+      dyscypliny sentinela, bo to LISTA i pusta tablica legalnie znaczy "brak szwalni"
+      (ten sam wybor co `getAllFabrics`). Po tym cieciu `Production.jsx` nie wnosi juz
+      ZADNEJ nazwy wlasnej Alexa jako wartosci (zostala jedna w komentarzu przy `id`
+      podmenu); kody drukarek DGEN/YOKO/YUMI zostaja i ida w 2e.
+    - `canSew` wymaga NIEPUSTEJ listy, nie samej flagi. Bez tego klient z
+      `features.sewing: true` i pusta lista dostawalby pozycje z pustym podmenu -
+      dokladnie ten drugi, zly "off" opisany przy shopify (flaga on + pusty handle).
+      Tam nie dalo sie tego domknac w cieciu, tu jedno miejsce wystarczylo. Przy
+      NIEODCZYTANYM profilu nic sie nie zmienia wzgledem `6a615ff` - pozycje gasi juz
+      sama flaga - wiec seria "cichej nieobecnosci" w ETAPIE 4 NIE rosnie o kolejny
+      przypadek.
+    - POLOWA ZAPISOWA (edytor) NIE jest czescia tej pozycji ani wiszacym checkboxem
+      w niej - zyje jako osobne ciecie w sekcji "Edytory operacyjne (Settings)" nizej.
+      Konsekwencja na dzis: liste szwalni zmienia sie edytujac wiersz profilu w bazie,
+      nie w UI.
+    - **ZNALEZISKO - to WLASCIWOSC, nie przeoczenie.** `SewingReceive.jsx:23`
+      (`companyOf`) buduje chipy firm z `file_stages.sewing_company`, czyli z BAZY,
+      a nie z profilu. Dzieki temu wiersz wyslany do firmy, ktora klient pozniej usunal
+      z profilu, nadal renderuje sie poprawnie - historia nie zalezy od biezacej
+      konfiguracji. NIE "poprawiac" tego na odczyt z profilu przy 2e.
+    - **REGULA 6 zadzialala DRUGI raz i w PRZECIWNA strone niz przy shopify.** Tam
+      test-ozdoba zostal WZMOCNIONY, tu zostal USUNIETY. Roznica jest mierzalna, nie
+      uznaniowa: wejscie `["Olya","Vagabond"]` bylo scislym PODZBIOREM wejsc testow
+      `mixed array` i `trims` (jedyne, w ktorym i filtr, i trim sa no-opem), wiec kazda
+      wiarygodna mutacja zabijala je razem - zmierzone: `.reverse()` -> 3 padniete,
+      `.slice(0,1)` -> 3 padniete - i nie dalo sie zbudowac mutacji ROZROZNIAJACEJ.
+      Nie byl tez diagnostykiem, wiec wyjatek "zostaje swiadomie z komentarzem" go nie
+      obejmowal. Regula ma teraz OBA precedensy: WZMOCNIC, gdy mutacja rozrozniajaca
+      istnieje; USUNAC, gdy nie istnieje. Multi-kill nadal jest sygnalem do proby
+      rozroznienia, nigdy od razu werdyktem.
+    - Bramki renderera bez stalego straznika PIATY raz z rzedu - DANA. Okablowanie
+      (`canSew`, `.map` po children, wpis w RECZNEJ tablicy deps `useMemo`) sprawdzone
+      wylacznie recznie, przez prawdziwy helper; testy pokrywaja sam helper.
 - [x] **2c - Flagi funkcji + filtr NavBar (zakres ZAWEZONY do nawigacji):** `customOrders`
       i `analytics`. `src/ui/utils/featureVisibility.js` - czysta `isViewEnabled(viewId, profile)`,
       swiadome lustro `getFeature` (main-only, nie wystawiony po IPC), fail-closed przy
@@ -439,6 +479,22 @@ na danych Alexa; 2e dodatkowo: batch z kazdej drukarki widoczny w BatchHistory i
 
 ---
 
+## Edytory operacyjne (Settings) - poziom KLIENTA, nie wdrozeniowy
+
+Rzeczy, ktore klient zmienia SAM, w trakcie pracy, bez Filipa - jak `fabrics`
+i `reason_definitions`. Odrebne od edytora profilu z ETAPU 3, ktory jest WDROZENIOWY
+(podglad read-only + import/export walizki JSON).
+
+- [ ] **Edytor szwalni w Settings** - poziom OPERACYJNY (klient zmienia podwykonawce
+      sam, jak rollback reasons), wzorzec `RollbackReasonsView.jsx`. Osobne ciecie,
+      NIE czesc edytora profilu z ETAPU 3, bo tamten jest wdrozeniowy i read-only.
+      To polowa ZAPISOWA 2b.
+  - [ ] Bedzie DRUGIM wejsciem zapisujacym profil, wiec obowiazuje go ta sama regula
+        co edytor z ETAPU 3: `shopProfile` i `shopProfileStatus` zapisywane RAZEM,
+        jednym `set()`.
+
+---
+
 ## ETAP 3 - Walizka JSON (transport profilu)
 
 Baza pozostaje jedynym zywym zrodlem prawdy; JSON to tylko transport na wdrozenie.
@@ -464,6 +520,19 @@ Baza pozostaje jedynym zywym zrodlem prawdy; JSON to tylko transport na wdrozeni
         flaga off (pozycji nie ma) oraz flaga on + pusty handle (pozycja jest i zawsze
         zawodzi). Walidacja importu jest jedynym miejscem, ktore moze ten drugi stan
         wylapac, zanim zobaczy go operator.
+  - [ ] spojnosc: `features.sewing === true` wymaga NIEPUSTEJ `sewingCompanies`. Bez
+        tej reguly import przechodzi, a klient nie ma jak wyslac niczego do szwalni.
+        Ta sama klasa co `storeHandle` wyzej, ale skutek jest INNY: tam pozycja menu
+        istnieje i zawodzi przy kazdym kliknieciu, tu `canSew` wymaga niepustej listy,
+        wiec pozycja w ogole nie powstaje - operator nie dostaje nawet bledu do
+        zgloszenia, po prostu nie ma funkcji. Walidacja importu jest jedynym miejscem,
+        ktore ten stan wylapie.
+  - [ ] `sewingCompanies` bez DUPLIKATOW i z rozsadnym limitem dlugosci nazwy.
+        `getSewingCompanies` filtruje smieci (nie-stringi, puste, same spacje) i
+        przycina `trim()`, ale NIE normalizuje semantyki: dwa razy "Olya" da dwie
+        identyczne pozycje w podmenu (rozne `id`, ten sam efekt), a bardzo dluga nazwa
+        rozwali layout karty - nazwa trafia do `file_stages.sewing_company` jako wolny
+        tekst i jest renderowana (`ProductionCard.jsx:198`, chipy w `SewingReceive.jsx`).
   - [ ] ostrzezenie o niezgodnosci z danymi na dysku (ile rekordow zniknie z widoku)
   - [ ] `showConfirm()` + `backupDb(true)` przed nadpisaniem
 - [ ] Import NIE dotyka `fabrics` (katalog ma wlasny `setAllFabrics`)
