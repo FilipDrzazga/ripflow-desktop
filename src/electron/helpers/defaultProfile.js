@@ -38,7 +38,24 @@ export const DEFAULT_PROFILE = {
     ripError: "AUTOMATION_WORKFLOW_ERROR",
     customOrder: "AUTOMATION_WORKFLOW_MINERVA",
   },
-  workstationRoles: ["", "cotton", "polyester", "rollpress", "qc"],
+  // What a barcode scan does at a station, keyed by the station's workstationRole
+  // (which stays per-machine in electron-store — the profile carries the RULES, not the
+  // identity of the station). A role with no entry here scans without moving anything,
+  // which is exactly what role "" has always done, so "" deliberately has no row.
+  //
+  // Alex's four stations, as they behaved before this was configurable. Both heat-press
+  // roles share one rule because the cotton and polyester branches were byte-identical.
+  //
+  // notifyWhenEmpty is FROZEN DEBT, not a feature: it exists only so the QC station keeps
+  // its present silence when a scanned batch holds nothing at `from`. The other three warn.
+  // Nobody would choose false here on merit; it is written down so the behaviour is visible
+  // instead of hidden in a branch.
+  scanRules: [
+    { role: "cotton", from: "printed", to: "heatpress", notifyWhenEmpty: true },
+    { role: "polyester", from: "printed", to: "heatpress", notifyWhenEmpty: true },
+    { role: "rollpress", from: "heatpress", to: "qc", notifyWhenEmpty: true },
+    { role: "qc", from: "heatpress", to: "qc", notifyWhenEmpty: false },
+  ],
   sewingCompanies: ["Olya", "Vagabond"],
   integrations: { shopify: { storeHandle: "fashionformulauk" } },
   features: {

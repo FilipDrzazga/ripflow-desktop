@@ -39,7 +39,7 @@ import { useScrollAnchor } from "../../hooks/useScrollAnchor";
 import { PRINTER_COLORS } from "../../constants/printerColors";
 import { VIEW_MODE } from "../../constants/viewModes";
 import { isFeatureEnabled } from "../../utils/featureVisibility";
-import { getSewingCompanies } from "../../utils/shopProfileData";
+import { getSewingCompanies, getScanRule } from "../../utils/shopProfileData";
 import { UNKNOWN_ORDER_KEY } from "../../utils/groupByOrder";
 import {
   UNKNOWN_DAY_KEY,
@@ -999,131 +999,102 @@ const Production = () => {
         expandDay(dayKeyFromBatchPath(resolvedBatchPath) ?? UNKNOWN_DAY_KEY);
         setBatchFilter(resolvedBatchPath);
 
-        if (workstationRole === "cotton") {
-          const targets = batchFiles.filter((f) => f.stage === PRODUCTION_STAGE.PRINTED);
-          if (targets.length === 0) {
-            notify({ type: "Warning", title: "Nothing to advance", message: "No files at Printed stage in this batch." });
-            return;
+        // One engine for every station. WHICH stage a scan moves, and whether an empty
+        // result is announced, come from the shop profile keyed by this PC's
+        // workstationRole. The role itself stays per-machine in electron-store: the
+        // profile carries the rules, the station carries its identity. Four branches
+        // lived here before, two of them byte-identical, all four expressing the same
+        // two transitions.
+        const scanRule = getScanRule(shopProfile, workstationRole);
+
+        if (!scanRule) {
+          // No rule to apply. Three situations reach this point and only ONE of them is
+          // allowed to be silent:
+          //
+          //   role "" — the default station, which has never moved anything on a scan.
+          //             The scan filtered the view above and that is the whole feature.
+          //             Silent, because a toast on every scan at the default station is
+          //             noise about a setting nobody changed.
+          //
+          //   a role, but no readable profile — the station expects to move files and
+          //             cannot.
+          //
+          //   a role the readable profile does not define — the station is configured for
+          //             work this shop has no rule for. Same shape as the shopify flag
+          //             left on with an empty store handle: a setting that promises
+          //             something the config cannot deliver.
+          //
+          // The last two both warn, and they name their own cause, because this is the
+          // first profile gate sitting on the operator's PHYSICAL input: a scan that
+          // silently does nothing is indistinguishable from a reader that did not fire.
+          // Declining quietly is what the rest of the fail-closed series may do; here it
+          // is the failure mode itself. The role-not-defined case was silent when this
+          // engine landed and that was wrong for exactly this reason.
+          //
+          // What actually fixes either one is the profile editor in ETAP 3; until then the
+          // operator at least learns which of the two they are looking at.
+          if (workstationRole !== "") {
+            notify(
+              !shopProfile
+                ? {
+                    type: "Warning",
+                    title: "Scan rules unavailable",
+                    message: "The shop profile could not be read — the scan only filtered the view.",
+                  }
+                : {
+                    type: "Warning",
+                    title: "Role not in scan rules",
+                    message: `This station is set to the "${workstationRole}" role, which the shop profile does not define — the scan only filtered the view.`,
+                  },
+            );
           }
-          const now = new Date().toISOString();
-          let count = 0,
-            rejected = 0,
-            failed = 0;
-          for (const f of targets) {
-            const res = await advanceStage(f.file_id, PRODUCTION_STAGE.HEATPRESS, PRODUCTION_STAGE.PRINTED);
-            const outcome = applyStageTransition({
-              fileId: f.file_id,
-              row: f,
-              newStage: PRODUCTION_STAGE.HEATPRESS,
-              res,
-              now,
-            });
-            if (outcome === "applied") count++;
-            else if (outcome === "rejected") rejected++;
-            else failed++;
-          }
-          if (count > 0)
-            notify({
-              type: "Success",
-              title: `${count} file${count > 1 ? "s" : ""} moved`,
-              message: "Moved to Heat Press",
-            });
-          if (rejected > 0) notifyStageRejected(rejected);
-          if (failed > 0) notifyStageFailed(failed);
           return;
         }
 
-        if (workstationRole === "polyester") {
-          const targets = batchFiles.filter((f) => f.stage === PRODUCTION_STAGE.PRINTED);
-          if (targets.length === 0) {
-            notify({ type: "Warning", title: "Nothing to advance", message: "No files at Printed stage in this batch." });
-            return;
-          }
-          const now = new Date().toISOString();
-          let count = 0,
-            rejected = 0,
-            failed = 0;
-          for (const f of targets) {
-            const res = await advanceStage(f.file_id, PRODUCTION_STAGE.HEATPRESS, PRODUCTION_STAGE.PRINTED);
-            const outcome = applyStageTransition({
-              fileId: f.file_id,
-              row: f,
-              newStage: PRODUCTION_STAGE.HEATPRESS,
-              res,
-              now,
-            });
-            if (outcome === "applied") count++;
-            else if (outcome === "rejected") rejected++;
-            else failed++;
-          }
-          if (count > 0)
-            notify({
-              type: "Success",
-              title: `${count} file${count > 1 ? "s" : ""} moved`,
-              message: "Moved to Heat Press",
-            });
-          if (rejected > 0) notifyStageRejected(rejected);
-          if (failed > 0) notifyStageFailed(failed);
-          return;
-        }
-
-        if (workstationRole === "rollpress") {
-          const targets = batchFiles.filter((f) => f.stage === PRODUCTION_STAGE.HEATPRESS);
-          if (targets.length === 0) {
+        const targets = batchFiles.filter((f) => f.stage === scanRule.from);
+        if (targets.length === 0) {
+          // notifyWhenEmpty is frozen debt, not a setting anyone should want to change:
+          // it exists so the QC station keeps the silence it has always had here. See
+          // the comment on scanRules in electron/helpers/defaultProfile.js.
+          if (scanRule.notifyWhenEmpty) {
             notify({
               type: "Warning",
               title: "Nothing to advance",
-              message: "No files at Heat Press stage in this batch.",
+              message: `No files at ${STAGE_LABEL[scanRule.from] ?? scanRule.from} stage in this batch.`,
             });
-            return;
           }
-          const now = new Date().toISOString();
-          // This branch keeps its own advancedIds Set (its success message reads the
-          // .size) instead of a plain counter — left in the call-site per design;
-          // the helper only owns the store-core. rejected/failed still tracked apart.
-          const advancedIds = new Set();
-          let rejected = 0,
-            failed = 0;
-          for (const f of targets) {
-            const res = await advanceStage(f.file_id, PRODUCTION_STAGE.QC, f.stage);
-            const outcome = applyStageTransition({ fileId: f.file_id, row: f, newStage: PRODUCTION_STAGE.QC, res, now });
-            if (outcome === "applied") advancedIds.add(f.file_id);
-            else if (outcome === "rejected") rejected++;
-            else failed++;
-          }
-          if (advancedIds.size > 0)
-            notify({ type: "Success", title: "Advanced to QC", message: `${advancedIds.size} file(s) moved to QC.` });
-          if (rejected > 0) notifyStageRejected(rejected);
-          if (failed > 0) notifyStageFailed(failed);
           return;
         }
 
-        if (workstationRole === "qc") {
-          // Cotton roll heat-press has no scanner — the QC station completes the
-          // heatpress → qc transition for the whole batch on scan. Manual
-          // Pass/Rollback via the context menu still applies per file.
-          const targets = batchFiles.filter((f) => f.stage === PRODUCTION_STAGE.HEATPRESS);
-          if (targets.length === 0) return; // scan only filters the view to the batch
-          const now = new Date().toISOString();
-          let count = 0,
-            rejected = 0,
-            failed = 0;
-          for (const f of targets) {
-            const res = await advanceStage(f.file_id, PRODUCTION_STAGE.QC, PRODUCTION_STAGE.HEATPRESS);
-            const outcome = applyStageTransition({ fileId: f.file_id, row: f, newStage: PRODUCTION_STAGE.QC, res, now });
-            if (outcome === "applied") count++;
-            else if (outcome === "rejected") rejected++;
-            else failed++;
-          }
-          if (count > 0)
-            notify({ type: "Success", title: `${count} file${count > 1 ? "s" : ""} moved`, message: "Moved to QC" });
-          if (rejected > 0) notifyStageRejected(rejected);
-          if (failed > 0) notifyStageFailed(failed);
-          return;
+        const now = new Date().toISOString();
+        let count = 0,
+          rejected = 0,
+          failed = 0;
+        for (const f of targets) {
+          // Third argument is the optimistic-concurrency guard (db.js:358, WHERE ... AND
+          // stage = ?). f.stage rather than scanRule.from: the filter above compares with
+          // ===, so they are the same string today, and f.stage is the one that stays
+          // correct if `from` ever becomes a set. getScanRule refuses a non-string `from`
+          // precisely to keep that equality true — a falsy stage here would silently drop
+          // to the UNGUARDED statement and lose the cross-station check.
+          const res = await advanceStage(f.file_id, scanRule.to, f.stage);
+          const outcome = applyStageTransition({ fileId: f.file_id, row: f, newStage: scanRule.to, res, now });
+          if (outcome === "applied") count++;
+          else if (outcome === "rejected") rejected++;
+          else failed++;
         }
-
-        // workstationRole === "" (default): scan only filters the view to the batch
-        // (setBatchFilter above). No auto-advance, no modal.
+        // Wording is derived from STAGE_LABEL, not carried in the profile: a rule is a
+        // transition, not a phrasebook. This makes the rollpress toast read like the
+        // other three ("N files moved" / "Moved to QC") instead of its own
+        // "Advanced to QC" / "N file(s) moved to QC." — the one visible change in this cut.
+        if (count > 0)
+          notify({
+            type: "Success",
+            title: `${count} file${count > 1 ? "s" : ""} moved`,
+            message: `Moved to ${STAGE_LABEL[scanRule.to] ?? scanRule.to}`,
+          });
+        if (rejected > 0) notifyStageRejected(rejected);
+        if (failed > 0) notifyStageFailed(failed);
         return;
       }
 
@@ -1159,7 +1130,7 @@ const Production = () => {
       setTimeout(() => setHighlightedId(null), 1500);
       notify({ type: "Success", title: "Order found", message: `${row.order_id ?? value}` });
     },
-    [productionStages, workstationRole, applyStageTransition, expandDay],
+    [productionStages, workstationRole, shopProfile, applyStageTransition, expandDay],
   );
 
   useEffect(() => {

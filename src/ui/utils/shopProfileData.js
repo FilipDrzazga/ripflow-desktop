@@ -33,3 +33,51 @@ export const getSewingCompanies = (profile) => {
     .filter((name) => typeof name === "string" && name.trim() !== "")
     .map((name) => name.trim());
 };
+
+// What a barcode scan does at a station with this workstationRole, or null when it does
+// nothing. The role itself stays per-machine in electron-store: the profile carries the
+// RULES, the station carries its identity. That split is why this takes `role` as an
+// argument rather than reading it.
+//
+// Returns the rule object or null. Unlike getSewingCompanies above this reads a SINGLE
+// record, so it has no spare value for "legitimately empty" — null already means "no rule
+// for this role", the same reasoning db.getShopProfile follows.
+//
+// Fail-closed on every unknown shape, and here that is heavier than in the other profile
+// readers: this is the first one wired to the operator's physical input. A malformed rule
+// must degrade to "the scan only filters the view", never to a guessed stage transition —
+// a wrong `to` would move real files through the shop's pipeline on nobody's authority.
+//
+// FIRST MATCH WINS, as a decision rather than as the incidental behaviour of .find(). The
+// profile is a free-form blob, so two rows can carry the same role; taking the first makes
+// that resolvable by reading the array top to bottom, where a last-wins or merged rule
+// would depend on knowing this function.
+export const getScanRule = (profile, role) => {
+  // null / undefined = the profile could not be read. We know nothing, so we move nothing.
+  if (!profile) return null;
+  // An empty role is the default station: it has never had a rule and must not match one.
+  if (typeof role !== "string" || role === "") return null;
+  const rules = profile.scanRules;
+  if (!Array.isArray(rules)) return null;
+
+  const isStage = (v) => typeof v === "string" && v.trim() !== "";
+  const rule = rules.find(
+    (r) => r && typeof r === "object" && r.role === role && isStage(r.from) && isStage(r.to),
+  );
+  if (!rule) return null;
+
+  // Only a literal false silences a station, and that is the ONLY route to silence.
+  //
+  // This deliberately does NOT mirror getFeature, though it looks like it should. There,
+  // strict === true is fail-closed because the closed direction is "withhold a feature".
+  // Here the same direction means "say nothing", and silence on the scanner is the exact
+  // risk this cut exists to close: an operator cannot tell a batch that had nothing to
+  // advance from a reader that did not fire. So a value mangled by an import — 1, "true",
+  // "false", null — resolves to warning, not to quiet. Quiet has to be asked for.
+  return {
+    role: rule.role,
+    from: rule.from.trim(),
+    to: rule.to.trim(),
+    notifyWhenEmpty: rule.notifyWhenEmpty !== false,
+  };
+};
