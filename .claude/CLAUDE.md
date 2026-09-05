@@ -316,22 +316,38 @@ getPrinterByCode(code);  // printer | null — case-insensitive, see the 2e debt
 getFeature(name);        // boolean, fail-closed, strict === true
 ```
 
-**Three real states in `db.getShopProfile()`, and the third one is a known defect.**
-`db.js:844-847` has three branches, not two:
+**Three real states in `db.getShopProfile()`, and only ONE of them yields a value.**
+The function has three branches, not two:
 
-1. `if (!db) return null` — the DB handle is gone (`initDb` failed, e.g. a dead NAS).
+1. `if (!db)` → **THROWS** — the DB handle is gone (`initDb` failed, e.g. a dead NAS).
 2. `SELECT … LIMIT 1` finds no row → `return null` — a fresh install.
 3. `prepare`/`get`/`JSON.parse` throws — a live handle whose read genuinely failed
    (SQLITE_IOERR, corruption, a `data` column that is not valid JSON).
 
-`loadShopProfile` (`shopProfile.js:14-19`) maps a throw to `cachedProfile = null`
-("we know nothing") and `null` to `DEFAULT_PROFILE`. Because branch 1 returns `null`
-rather than throwing, **"the database is unreachable" is currently indistinguishable
-from "fresh install" and silently yields `DEFAULT_PROFILE` — i.e. Alex's live config.**
-That is the `??` on one value carrying two meanings, the same trap as `null` vs `[]`
-elsewhere in this file. Tracked as **2c-null** in `PRODUCTIZATION.md`, to be fixed
-before 2e (which puts printers/hotfolders on this path). `shopProfile.test.js` cannot
-catch it: it does `vi.mock("./db.js")`, so branch 1 never executes.
+`loadShopProfile` maps a throw to `cachedProfile = null` ("we know nothing") and `null`
+to `DEFAULT_PROFILE`. Branch 1 throwing is what makes those two answers mean different
+things: **a dead NAS yields `null`, the failure sentinel — never `DEFAULT_PROFILE`.**
+`profile:get` then hands the renderer that null, `resolveProfileResult` maps it to
+`PROFILE_STATUS.FAILED` (`utils/profileStatus.js`), and `App.jsx` shows the banner.
+`DEFAULT_PROFILE` stands in for **branch 2 only** — an absent row on a HEALTHY database.
+
+That substitution is still a real problem, but it is **DEBT 1 (seed vs migration, ETAP 3),
+not a defect in the sentinel**: `initDb` seeds `DEFAULT_PROFILE` into every fresh
+`shop_profile` table, so client #2 does not get Alex's config transiently during an
+outage — they get it as their OWN durable row, indistinguishable from configuration
+somebody set on purpose. Since 2f that row also carries the scan rules that move
+production stages.
+
+`shopProfile.test.js` still cannot cover branch 1: it does `vi.mock("./db.js")`, so the
+real guard never executes. `db.shopProfile.test.js` (added in `a1567dd`) covers it
+instead, asserting the throw on both branch 1 and branch 3 against the real module.
+
+> **This paragraph described the pre-`62f91e2` code for 23 commits** and was quoted in
+> good faith during the 2f reconnaissance, producing a wrong blocker diagnosis. Whenever
+> `db.js` changes around the profile, re-read this section against the code before
+> trusting it. No line numbers are given here on purpose — a line number pointing into
+> another file has no way to update itself, and that is the same mechanism that let the
+> stale text survive; grep for the function name instead.
 
 A failed RELOAD also drops a previously loaded profile — serving a stale one quietly is
 worse than admitting ignorance.
