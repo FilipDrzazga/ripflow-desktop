@@ -4,6 +4,7 @@ import { getStorageRootPath } from "../helpers/getRootPath.js";
 import { assertStorageFilePath } from "../helpers/validateStoragePath.js";
 import { toIpcError } from "../helpers/ipcError.js";
 import { parsePrintFileName } from "../helpers/parseFileName.js";
+import { getProfile } from "../helpers/shopProfile.js";
 import { getMaterialType } from "../helpers/getMaterialType.js";
 import { submitBatchToPrintFactory } from "./createXML.js";
 import { parseBatchFolderName, normalizeOverrideEntry } from "./readPrintedFolder.js";
@@ -110,7 +111,7 @@ export const rollbackBatchFromHistory = async ({ batchPath, reason } = {}) => {
         clearFileStage(stem);
         resolveRipErrorsByFile(stem);
         if (reason) {
-          const p = parsePrintFileName(f.name);
+          const p = parsePrintFileName(f.name, { shopConfig: getProfile() });
           const parsed = p ? { ...p, materialType: p.material ? getMaterialType(p.material) : "Unknown" } : null;
           const fileFabric = parsed?.material ?? null;
           const metersResult = parsed
@@ -200,7 +201,7 @@ export const rollbackFileFromHistory = async ({ filePath, batchPath, reason, rep
     // Returning the file to the inbox resolves all of its open RIP errors (same stem key).
     resolveRipErrorsByFile(fileId);
 
-    const parsed = parsePrintFileName(path.basename(validatedFilePath));
+    const parsed = parsePrintFileName(path.basename(validatedFilePath), { shopConfig: getProfile() });
 
     const qtyAffected = Number(reprint?.qtyAffected);
     const hasReprint = Number.isFinite(qtyAffected) && qtyAffected > 0;
@@ -325,7 +326,7 @@ export const regenerateXmlForBatch = async (batchPath) => {
     const batchItems = pdfs
       .map((pdf) => {
         const fullPath = path.join(validatedBatchPath, pdf.name);
-        const parsed = parsePrintFileName(pdf.name, { fullPath, dir: validatedBatchPath });
+        const parsed = parsePrintFileName(pdf.name, { fullPath, dir: validatedBatchPath, shopConfig: getProfile() });
         const materialType = getMaterialType(parsed?.material);
         const stem = path.parse(pdf.name).name;
         // Effective printed amount via the SINGLE shape gate (new {printed} +

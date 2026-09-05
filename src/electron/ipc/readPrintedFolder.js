@@ -2,6 +2,7 @@ import fs from "fs";
 import path from "path";
 import { getStorageRootPath } from "../helpers/getRootPath.js";
 import { parsePrintFileName } from "../helpers/parseFileName.js";
+import { getProfile } from "../helpers/shopProfile.js";
 import { getMaterialType } from "../helpers/getMaterialType.js";
 import { getEstimateConfig } from "../helpers/fabricCache.js";
 import { estimatePrintLength } from "../../shared/estimatePrintLength.js";
@@ -82,7 +83,7 @@ export const readSingleBatch = async (batchPath, meta) => {
     }
     if (lower.endsWith(".pdf")) {
       const filePath = path.join(batchPath, f.name);
-      const parsed = parsePrintFileName(f.name, { fullPath: filePath, dir: batchPath });
+      const parsed = parsePrintFileName(f.name, { fullPath: filePath, dir: batchPath, shopConfig: getProfile() });
       const stem = path.parse(f.name).name;
       const prov = normalizeOverrideEntry(batchOverrides[stem]);
       activeFiles.push({
@@ -114,7 +115,7 @@ export const readSingleBatch = async (batchPath, meta) => {
     const activeNames = new Set(activeFiles.map((f) => f.name));
     for (const fname of snapshot.files || []) {
       if (activeNames.has(fname)) continue;
-      const parsed = parsePrintFileName(fname, { fullPath: path.join(batchPath, fname), dir: batchPath });
+      const parsed = parsePrintFileName(fname, { fullPath: path.join(batchPath, fname), dir: batchPath, shopConfig: getProfile() });
       const fstem = path.parse(fname).name;
       const prov = normalizeOverrideEntry(batchOverrides[fstem]);
       files.push({

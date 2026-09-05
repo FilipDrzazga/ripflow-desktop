@@ -182,13 +182,51 @@ function parseDimensionsFromText(text) {
   };
 }
 
+// Product dimensions, resolved from the config the CALLER hands in.
+//
+// The parser never imports the shop profile. It could not: shopProfile.js reaches db.js,
+// which reaches electron and better-sqlite3, and parseFileName.test.js keeps the parser
+// importable by mocking ONE module (./fabricCache.js) - a second, unmocked route would
+// break all 27 characterization tests. Taking the config as an argument is also the
+// precondition for ETAP 5: a parser that reaches for global caches by import cannot be
+// lifted into parsers/<client>.js without dragging that chain along.
+//
+// No config, a config of the wrong shape, or no entry for this code => the built-in
+// constants, i.e. exactly what the parser did before this argument existed. Nothing is
+// removed; DIMS_* stay as the degraded answer until a later cut decides what SHOULD
+// happen at a client whose profile could not be read.
+const BUILT_IN_DIMS = {
+  SAMPLE: DIMS_SAMPLE,
+  FQ: DIMS_FQ,
+  TEA_TOWEL: DIMS_TEA_TOWEL,
+};
+
+function resolveProductDims(code, shopConfig) {
+  const builtIn = BUILT_IN_DIMS[code] ?? null;
+  if (!shopConfig) return builtIn;
+  const list = shopConfig.productTypes;
+  if (!Array.isArray(list)) return builtIn;
+  // Shape-checked per record, like every other profile reader: the profile is a
+  // free-form JSON blob, and a half-imported row must degrade to the built-in rather
+  // than put NaN into <Width>.
+  const hit = list.find(
+    (t) =>
+      t &&
+      typeof t === "object" &&
+      t.code === code &&
+      Number.isFinite(t.width) &&
+      Number.isFinite(t.height),
+  );
+  return hit ? { width: hit.width, height: hit.height } : builtIn;
+}
+
 function applyDimensions(out, text) {
   const { width, height } = parseDimensionsFromText(text);
   out.width = width;
   out.height = height;
 }
 
-function applyLmDimensions(out) {
+function applyLmDimensions(out, shopConfig) {
   if (out.printTypeCode === "LM") {
     if (!Number.isFinite(out.qty) || out.qty <= 0) return;
 
@@ -200,21 +238,24 @@ function applyLmDimensions(out) {
   }
 
   if (out.printTypeCode === "SAMPLE") {
-    out.width = DIMS_SAMPLE.width;
-    out.height = DIMS_SAMPLE.height;
+    const dims = resolveProductDims("SAMPLE", shopConfig);
+    out.width = dims.width;
+    out.height = dims.height;
     return;
   }
 
   if (out.printTypeCode === "FQ") {
-    out.width = DIMS_FQ.width;
-    out.height = DIMS_FQ.height;
+    const dims = resolveProductDims("FQ", shopConfig);
+    out.width = dims.width;
+    out.height = dims.height;
   }
 }
 
-function applyTeaTowelDimensions(out) {
+function applyTeaTowelDimensions(out, shopConfig) {
   if (out.printTypeCode === "TEA_TOWEL") {
-    out.width = DIMS_TEA_TOWEL.width;
-    out.height = DIMS_TEA_TOWEL.height;
+    const dims = resolveProductDims("TEA_TOWEL", shopConfig);
+    out.width = dims.width;
+    out.height = dims.height;
   }
 }
 
@@ -317,7 +358,7 @@ function parseCushion(tokens, baseOut) {
  * ON311600_Amy_Lee_9of9_Custom Tea Towel_Drill _ Fully Sewn_4_FF_2185
  * ON311503_Stephen_Deazley_3of3_Custom Tea Towel_Drill _ DIY Sew at Home_1_FF_2121.pdf
  */
-function parseTeaTowel(tokens, baseOut) {
+function parseTeaTowel(tokens, baseOut, shopConfig) {
   const out = baseOut;
 
   out.orderId = parseOrderId(tokens);
@@ -377,7 +418,7 @@ function parseTeaTowel(tokens, baseOut) {
 
   out.printTypeCode = "TEA_TOWEL";
   out.printType = toPrintTypeLabel(out.printTypeCode);
-  applyTeaTowelDimensions(out);
+  applyTeaTowelDimensions(out, shopConfig);
 
   return out;
 }
@@ -386,7 +427,7 @@ function parseTeaTowel(tokens, baseOut) {
  * XWD-based format:
  * ONxxxx _ nameParts... _ xOfY _ material _ qty(x) _ type+variant _ XWD... _ FF(.pdf)
  */
-function parseXwdBased(tokens, baseOut) {
+function parseXwdBased(tokens, baseOut, shopConfig) {
   const out = baseOut;
 
   out.orderId = parseOrderId(tokens);
@@ -456,7 +497,7 @@ function parseXwdBased(tokens, baseOut) {
   out.variant = variant;
   out.productName = null;
   applyDimensions(out, out.size);
-  applyLmDimensions(out);
+  applyLmDimensions(out, shopConfig);
 
   return out;
 }
@@ -588,9 +629,9 @@ function parsePrintFileName(fileName, options = {}) {
   if (kind === "CUSHION") {
     parseCushion(tokens, out);
   } else if (kind === "TEA_TOWEL") {
-    parseTeaTowel(tokens, out);
+    parseTeaTowel(tokens, out, options.shopConfig);
   } else if (kind === "XWD_BASED") {
-    parseXwdBased(tokens, out);
+    parseXwdBased(tokens, out, options.shopConfig);
   } else {
     // best effort: still try to pull orderId/xOfY to show something in UI
     out.orderId = parseOrderId(tokens);

@@ -3,6 +3,7 @@ import path from "path";
 import { getRootPath } from "../helpers/getRootPath.js";
 import { isPDF } from "../helpers/isPDF.js";
 import { parsePrintFileName } from "../helpers/parseFileName.js";
+import { getProfile } from "../helpers/shopProfile.js";
 import { getMaterialType } from "../helpers/getMaterialType.js";
 import { getFileAgeInDays } from "../helpers/getFileAgeInDays.js";
 import { getOpenReprintRequestsByFileIds } from "../helpers/db.js";
@@ -102,6 +103,7 @@ export const readFolders = async ({ onProgress } = {}) => {
           const meta = parsePrintFileName(job.name, {
             fullPath,
             dir: folderPath,
+            shopConfig: getProfile(),
           });
           if (!meta) return null;
           return {

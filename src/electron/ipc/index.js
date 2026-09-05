@@ -81,7 +81,7 @@ const processWatchEvent = async (relativePath) => {
 
   try {
     await fs.promises.access(filePath);
-    const parsed = parsePrintFileName(fileName, { fullPath: filePath, dir: batchPath });
+    const parsed = parsePrintFileName(fileName, { fullPath: filePath, dir: batchPath, shopConfig: getProfile() });
     watcherSender.send("batch:update", {
       type: "new-file",
       batchPath,

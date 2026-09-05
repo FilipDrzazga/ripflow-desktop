@@ -19,14 +19,14 @@ export async function loadPipeline() {
   const { parsePrintFileName } = await import(src("electron/helpers/parseFileName.js"));
   const { getMaterialType } = await import(src("electron/helpers/getMaterialType.js"));
   const { loadFabricCache } = await import(src("electron/helpers/fabricCache.js"));
-  const { loadShopProfile } = await import(src("electron/helpers/shopProfile.js"));
+  const { loadShopProfile, getProfile } = await import(src("electron/helpers/shopProfile.js"));
   // Same order as registerIpcHandlers (ipc/index.js:170-171): profile first, fabric
   // cache second. The harness must reproduce the station's startup sequence, not just
   // its end state — a consumer that reads the profile while loading the fabric layer
   // would see the difference.
   loadShopProfile(); // real cache code, fed by the stubbed db.js
   loadFabricCache(); // real cache code, fed by the stubbed db.js
-  return { buildPFJobXML, parsePrintFileName, getMaterialType };
+  return { buildPFJobXML, parsePrintFileName, getMaterialType, getProfile };
 }
 
 const lastSeg = (p) => p.split("/").pop().split(BS).pop();
@@ -40,12 +40,12 @@ export const printerOf = (batchPath) => (batchPath.match(/-(DGEN|YOKO|YUMI)$/i)?
 // printer the UI attaches at submit time. printGroup is the inbox folder name, which
 // is the material name.
 export function buildItems(rows, pipeline) {
-  const { parsePrintFileName, getMaterialType } = pipeline;
+  const { parsePrintFileName, getMaterialType, getProfile } = pipeline;
   return rows.map((r) => {
     const fileName = `${r.file_id}.pdf`;
     const dir = `${r.batch_path}`;
     const fullPath = `${dir}${BS}${fileName}`;
-    const meta = parsePrintFileName(fileName, { fullPath, dir });
+    const meta = parsePrintFileName(fileName, { fullPath, dir, shopConfig: getProfile() });
     if (!meta) throw new Error(`parse failed: ${fileName}`);
     return {
       id: `${r.material}_${fileName}`,
