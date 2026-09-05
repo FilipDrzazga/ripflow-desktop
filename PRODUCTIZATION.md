@@ -592,6 +592,39 @@ golden-diff czysty.
     Bramki renderera bez stalego straznika PIATY raz z rzedu - DANA.
 - [ ] **2g - Klasy materialu** (2 sloty, konfig etykiet+przynaleznosci) + typy produktow + wymiary
       (`productTypes[]`, dzis SAMPLE/FQ/TEA_TOWEL zaszyte)
+  - **KOLEJNOSC 2g/2h ustalona po STOP-ie z rekonesansu** - poprzednia proba wzieta od
+    konca (najpierw `productTypes`) uderzyla w dwie przeszkody naraz i nie dalo sie jej
+    zaczac. Wlasciwa kolejnosc, od dolu:
+    1. **stub goldena zna profil** - ZROBIONE, `3e47d6c`.
+    2. **hydraulika parsera: konfiguracja ARGUMENTEM** - ZROBIONE, `284e38e`.
+       `parsePrintFileName(fileName, { ..., shopConfig })`, siedem call-site'ow w `src/`
+       plus harness. Czysty no-op: golden 0/70, 30 testow charakteryzacyjnych bez jednej
+       modyfikacji.
+       **Koszt tego kroku NALEZY DO ETAPU 5, nie do 2g** - nie liczyc go drugi raz jako
+       ceny 2g. Kryterium ETAPU 5 brzmi "27 testow charakteryzacyjnych przechodzi BEZ
+       modyfikacji", a parser siegajacy po globalne cache'e importem nie da sie wyodrebnic
+       do `parsers/fashionFormula.js`, bo zabierze ze soba lancuch
+       `electron`/`better-sqlite3`. Hydraulika splaca dlug, ktory i tak stal na liscie,
+       i odblokowuje 2g, 2h/fabrics oraz ETAP 5 naraz.
+    3. **`productTypes` jako zrodlo wymiarow** - konsument juz istnieje (resolver
+       w `parseFileName.js`), zostaje decyzja z Q8: co ma sie dziac przy profilu
+       NIEODCZYTANYM, zamiast dzisiejszego cofniecia do stalych Alexa.
+    4. **listy klas** (`COTTON_MATERIALS_FALLBACK` / `POLY_MATERIALS`) - to samo pytanie
+       dla klasy materialu; domyka drugie z dwoch wiazan parsera (patrz ETAP 5).
+    5. **wlasnosc liczb klas** (marginesy, domyslne szerokosci): profil czy
+       `fabric_globals`. OSOBNE ciecie z wlasnym pomiarem - ma haczyk, ktorego oba
+       warianty dotykaja: klucze `fabric_globals` (`marginCotton`/`marginPoly`) maja
+       NAZWY KLAS wpisane w klucz, wiec trzecia klasa wymaga tam zmiany schematu.
+       ODRZUCONE na tym etapie: "profil wygrywa, `FabricsView` przestaje edytowac" -
+       odbieraloby klientowi funkcje, ktora ma dzis, i cofalo swiadoma decyzje z BUG 4.
+    6. **skasowanie `printWidths.js`** - ostatnie, bo lamie ISTNIEJACY test
+       (dziura (c) w bramce Etapu 2).
+  - **ODRZUCONE DROGI NA SKROTY** (zapisane, zeby nie wrocily jako "pomysl"):
+    - *profil przez `fabricCache.js`* - lamie zakontraktowana krawedz mocka dokladnie
+      tak samo jak nowy import: `vi.mock` podmienia CALY modul, wiec nowy eksport bylby
+      w mocku `undefined` i 30 testow charakteryzacyjnych padloby tak czy owak.
+    - *setter modulowy w parserze* - omija call-site'y kosztem ukrytego stanu globalnego,
+      zostawia parser nieczystym i nie splaca nic z ETAPU 5.
   - **TRZY MARTWE POLA W PROFILU, nie jedno** (`git grep -n "<pole>" -- src/ scripts/`,
     zmierzone na `297ef22`). Kazde lamie REGULE 24 dokladnie tak, jak usuniete w 2f
     `workstationRoles`: pole istnieje w `defaultProfile.js` i NIKT go nie czyta.
@@ -724,9 +757,14 @@ sprawdzone", a dla czterech klas zmian nie znaczy nic:
   zmiana, ktora kaze `parseFileName.js` albo `createXML.js` czytac cokolwiek
   z `shopProfile.js`, zobaczy w siatce `cachedProfile === null`, pojdzie sciezka
   fail-closed i wyprodukuje 70 roznic - nie dlatego, ze kod jest zly, tylko dlatego,
-  ze harness nie zna profilu. **Rozszerzenie stubu o profil jest warunkiem wstepnym
-  dla 2g i 2d, i jest osobnym commitem narzedziowym PRZED nimi** (zmienia harness,
-  od ktorego zalezy baseline - nigdy w srodku ciecia funkcjonalnego).
+  ze harness nie zna profilu.
+  **ZAMKNIETE commitem `3e47d6c`** (`test(golden): load the shop profile in the harness`):
+  `stub-db.mjs` serwuje `getShopProfile` z `DEFAULT_PROFILE`, a `harness.mjs` wola
+  `loadShopProfile()` PRZED `loadFabricCache()`, w tej samej kolejnosci co
+  `ipc/index.js:170-171`. Baseline nie drgnal (0/70), bo w chwili zmiany nic na sciezce
+  `createXML` nie czytalo profilu - zmierzone przed pisaniem. Commit narzedziowy poszedl
+  OSOBNO i PRZED czymkolwiek funkcjonalnym, bo zmienia harness, od ktorego zalezy baseline.
+  Dziury (a), (b) i (c) pozostaja otwarte.
 
 ---
 
@@ -910,6 +948,17 @@ Baza pozostaje jedynym zywym zrodlem prawdy; JSON to tylko transport na wdrozeni
 Podejscie: NIE przepisywac. Wyodrebnic obecna logike, potem dodac druga.
 
 - [!] **ZABLOKOWANE: brak probek nazw plikow od realnego klienta #2**
+- [x] **Pierwszy krok wyodrebnienia ZROBIONY** (`284e38e`): parser bierze konfiguracje
+      sklepu ARGUMENTEM (`options.shopConfig`) zamiast siegac po nia importem, wiec
+      wymiary produktow nie wiaza go juz z warstwa danych. Golden 0/70, testy
+      charakteryzacyjne bez modyfikacji.
+      **Co ZOSTAJE do wyodrebnienia** - zmierzone, nie oszacowane: import
+      `parseFileName.js` w golym node dalej konczy sie
+      `The requested module 'electron' does not provide an export named 'app'`.
+      Dwa wiazania, oba o MATERIAL, nie o wymiar:
+      `getXmlWidthFromCache` z `fabricCache.js` (importuje `db.js`) oraz
+      `POLY_MATERIALS` z `getMaterialType.js` (importuje `fabricCache.js`).
+      Domyka je krok 4 z kolejnosci 2g/2h.
 - [=] Wyodrebnic obecna logike -> `parsers/fashionFormula.js` (27 testow przechodzi BEZ modyfikacji = kryterium)
 - [=] `parsers/index.js` - wybor po `profile.parser.profile`
 - [=] Drugi parser pod konwencje klienta #2 + wlasny zestaw testow
