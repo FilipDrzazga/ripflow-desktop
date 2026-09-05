@@ -5,6 +5,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { DEFAULT_PROFILE } from "../../src/electron/helpers/defaultProfile.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const profile = path.join(here, "..", "..", "profiles", "fashion-formula-fabrics.json");
@@ -23,3 +24,19 @@ const globals = {
 
 export const getAllFabrics = () => fabrics.map((f) => ({ ...f }));
 export const getFabricGlobals = () => ({ ...globals });
+
+// The shop profile, so loadShopProfile() gets a row instead of throwing. Without this
+// the harness runs with cachedProfile === null, and the moment any module on the XML
+// path reads the profile it takes its fail-closed branch and every batch diffs — a
+// failure of the harness, not of the code under test.
+//
+// Source is DEFAULT_PROFILE, not a copy: it IS what initDb seeds into a fresh
+// shop_profile row, so the harness sees exactly what Alex's station sees. Importing it
+// is safe from here — defaultProfile.js has zero imports of its own, so it pulls in
+// neither electron nor better-sqlite3, and loader.mjs only intercepts db.js and
+// getSettings.js, so this specifier passes through untouched.
+//
+// Returns a deep copy. The real getShopProfile JSON.parses a column on every call, so
+// each caller owns its object; handing out the module-level constant would let one
+// consumer mutate the "database" for the next.
+export const getShopProfile = () => structuredClone(DEFAULT_PROFILE);

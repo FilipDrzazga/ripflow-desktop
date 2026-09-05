@@ -19,6 +19,12 @@ export async function loadPipeline() {
   const { parsePrintFileName } = await import(src("electron/helpers/parseFileName.js"));
   const { getMaterialType } = await import(src("electron/helpers/getMaterialType.js"));
   const { loadFabricCache } = await import(src("electron/helpers/fabricCache.js"));
+  const { loadShopProfile } = await import(src("electron/helpers/shopProfile.js"));
+  // Same order as registerIpcHandlers (ipc/index.js:170-171): profile first, fabric
+  // cache second. The harness must reproduce the station's startup sequence, not just
+  // its end state — a consumer that reads the profile while loading the fabric layer
+  // would see the difference.
+  loadShopProfile(); // real cache code, fed by the stubbed db.js
   loadFabricCache(); // real cache code, fed by the stubbed db.js
   return { buildPFJobXML, parsePrintFileName, getMaterialType };
 }
