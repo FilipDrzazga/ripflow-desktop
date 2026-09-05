@@ -92,6 +92,12 @@ src/ui/
                            #   (see Production day grouping below)
   utils/dayKey.test.js     # Vitest — 14 cases: Win/POSIX paths, _N suffix, bad segment,
                            #   Today/Yesterday boundary, unknown-key sorting
+  utils/featureVisibility.js # "is this feature visible to this client" — isFeatureEnabled /
+                           #   isViewEnabled. Fail-closed, strict === true. Gates only.
+  utils/shopProfileData.js # "what does this client's config contain" — getSewingCompanies
+                           #   (list → []) and getScanRule(profile, role) (record → null).
+                           #   Pure; deliberately NOT merged with featureVisibility.js
+  utils/shopProfileData.test.js # Vitest — 34 cases across both readers
   utils/notify.js          # ALWAYS use instead of setAlert() — adds toast + SessionLogs entry
   utils/pdfRender.js       # renderPdfToJpeg(filePath, { targetWidth, scale, quality })
                            #   + clearPdfCache(). Module-level LRU cache (30) keyed by
@@ -300,9 +306,16 @@ getEstimateConfig(); // → { globals, fabrics } | null (null = cache not loaded
 ## Shop Profile (`shopProfile.js`)
 
 Shop-wide configuration in one JSON blob: printers with their colours and hotfolders,
-material classes, product dimensions, folder names, workstation roles, sewing companies,
+material classes, product dimensions, folder names, scanner rules, sewing companies,
 the Shopify handle and the feature flags. Stored in `shop_profile` (one row, `CHECK id = 1`)
 in the SHARED `ripflow.db`, so every station reads the same setup.
+
+**What the profile does NOT carry: the identity of the machine.** `workstationRole`,
+`workstationName`, paths and the printer name stay per-machine in electron-store. The
+profile answers "how does this shop work", electron-store answers "which station am I".
+`scanRules` is the place that makes the split visible: the RULES are shop-wide, the ROLE
+that selects one is not (`workstationRoles` used to sit in the profile and was removed in
+2f — nothing read it, and next to `scanRules` it was a second source of truth).
 
 **The pattern is `fabricCache.js`, copied deliberately** — same module-level cache, same
 load-on-startup / invalidate-on-write cycle, same sentinel discipline.
@@ -391,6 +404,20 @@ in the render and corrects `activeView` back to `"print"` during render (not in 
 effect — `react-hooks/set-state-in-effect`). The profile banner is gated on
 `!isLoading`: `shopProfile` is null throughout startup, so an ungated banner would fire
 on every normal launch.
+
+**Two renderer-side reader modules, split by the QUESTION they answer** — keep them apart:
+
+- `utils/featureVisibility.js` — "is this feature visible to this client": `isFeatureEnabled(flag, profile)`, `isViewEnabled(viewId, profile)`. Gates.
+- `utils/shopProfileData.js` — "what does this client's config contain": `getSewingCompanies(profile)` → `string[]`, `getScanRule(profile, role)` → rule `| null`. Data.
+
+Both are pure functions, fail-closed on an unreadable profile, and that shape is not
+stylistic: the renderer's profile gates have no standing guard (the rendering harness was
+rejected in `50f64c8`), so a pure function is the only cut here that can carry a test at
+all. The sentinel differs by return TYPE, deliberately: a LIST answers `[]` ("this shop has
+none"), a SINGLE record answers `null` ("no rule for this role") — the same reasoning
+`db.getShopProfile` follows. `getScanRule` additionally reads `notifyWhenEmpty` as
+`!== false`, which is the one place these two files do NOT mirror each other; see
+Workstation roles.
 
 **KNOWN LIMIT:** the profile is loaded once at startup and reloaded only on `profile:set`.
 If the DB was unreachable at startup it stays `null` until a restart, even when the NAS
@@ -698,17 +725,27 @@ DB tables: `file_stages` (one row per active file), `file_stage_history` (append
 
 **Polling** — `POLL_INTERVAL = 15s`; `loadStagesAfter(since)` returns `{ success: bool }`. Update `lastPollAt` only on success so a network failure retries the same window on the next tick.
 
-**Workstation roles** (`workstationRole` in electron-store, per-machine):
+**Workstation roles — the scanner is DRIVEN BY `profile.scanRules[]`, not by branches.** The role is the KEY, the rule is the behaviour, and the two live in different places on purpose: `workstationRole` stays per-machine in electron-store (it is the identity of THIS PC), the rules come from the shared shop profile. Four hardcoded role branches lived here until 2f; they expressed two transitions written four times.
 
-- `"cotton"` — scanner advances `printed → heatpress` (stops at `heatpress`, like polyester; the cotton roll heat-press has no scanner, so the QC station completes `heatpress → qc`)
-- `"polyester"` — scanner advances `printed → heatpress`
-- `"rollpress"` — scanner advances `heatpress → qc`
-- `"qc"` — scanning a batch code advances **all** of that batch's `heatpress` files to `qc` (batch-level `heatpress → qc`; no modal). If no files are at `heatpress`, the scan only filters the view to the batch. Manual per-file Pass/Receive/Send to Sewing/Go back/Rollback via selection + context menu still applies.
-- `""` (default) — scanner only filters view to scanned batch
+`getScanRule(shopProfile, workstationRole)` (`utils/shopProfileData.js`) returns `{ role, from, to, notifyWhenEmpty }` or `null`. On a rule: filter the scanned batch's rows to `stage === from`, advance each to `to`. **Do not add a role branch back** — a new station is a new row in `scanRules`, and a station whose role has no row simply does not move anything.
+
+Alex's four rows, as seeded (`defaultProfile.js`) — the domain knowledge behind them, which is NOT implementation detail:
+
+- `cotton` / `polyester` — `printed → heatpress`. Both stop at `heatpress`: **the cotton roll heat-press has no scanner**, so the QC station is what completes `heatpress → qc`. That is why the two rows are identical and why cotton does not run straight to `qc`.
+- `rollpress` — `heatpress → qc`.
+- `qc` — `heatpress → qc` at batch level, no modal. Manual per-file Pass/Receive/Send to Sewing/Go back/Rollback via selection + context menu still applies.
+
+**Three ways to end up with no rule, and only ONE of them is silent:**
+
+1. `workstationRole === ""` — the default station. Scan filters the view and nothing else, **silently**: it never moved anything, so a toast on every scan would be noise about a setting nobody set.
+2. a role, but `shopProfile` is `null` — warns, `"Scan rules unavailable"`.
+3. a role the profile does not define — warns, `"Role not in scan rules"`, naming the role. Same shape as the shopify flag left on with an empty store handle, but on the operator's PHYSICAL input, which is why it warns: a scan that silently does nothing is indistinguishable from a reader that did not fire.
+
+**`notifyWhenEmpty` is FROZEN DEBT, not a feature** — it exists so the QC station keeps its long-standing silence when a scanned batch holds nothing at `from`; the other three warn. It is read as **`!== false`, NOT `=== true`**. That is deliberately not `getFeature`'s mirror: there the closed direction withholds a FEATURE, here it withholds a WARNING, and silence on the scanner is the risk this cut closes. Only a literal `false` quiets a station; the string `"false"` out of a JSON round-trip warns.
 
 **Scanner input** — `e.ctrlKey || e.metaKey || e.altKey` keys ignored to avoid contaminating barcode buffer. Buffer flushed after 100ms idle; fires on Enter if buffer > 5 chars. Search box Enter key also routes to handleScan when value matches a batch name, file_id, or batch path. File-level scan (matching file_id) clears filters, scrolls to card, highlights it for 1.5s via GSAP.
 
-**"Awaiting QC" visual state** — in the `qc` role view, files still at the `heatpress` stage render dimmed (lowered opacity, dashed border) with an "Awaiting QC" badge (colored from `STAGE_COLOR[HEATPRESS]`). `heatpress` itself signals "not yet arrived at QC" — there is **no** separate DB stage/field for awaiting; `ProductionCard` receives an `awaitingQc` prop computed in `Production.jsx` as `workstationRole === "qc" && row.stage === HEATPRESS`. Scanning the batch code at the QC station advances these `heatpress` files to `qc` (clearing the "Awaiting QC" state).
+**"Awaiting QC" visual state** — in the `qc` role view, files still at the `heatpress` stage render dimmed (lowered opacity, dashed border) with an "Awaiting QC" badge (colored from `STAGE_COLOR[HEATPRESS]`). `heatpress` itself signals "not yet arrived at QC" — there is **no** separate DB stage/field for awaiting; `ProductionCard` receives an `awaitingQc` prop computed in `Production.jsx` as `workstationRole === "qc" && row.stage === HEATPRESS`. Scanning the batch code at the QC station advances these `heatpress` files to `qc` (clearing the "Awaiting QC" state). **That formula was deliberately NOT derived from `scanRules` in 2f** — `rollpress` and `qc` carry identical `from`/`to` (`heatpress → qc`), so deriving the badge from the rule would light it on the rollpress station too, where "awaiting QC" is meaningless. The badge asks "am I the QC station", the rule asks "what does a scan do here"; they coincide today and are not the same question. Do not "simplify" this into a `scanRule.from` comparison.
 
 **Multi-select & bulk actions** — click card to toggle select; `BatchGroupHeader` "Select All" toggles whole batch. The context menu drives all bulk actions (see Context menu below). Selection cleared on filter/batch change. **Bulk Pass / Receive preserve the selection** — `handleBulkAdvance` / `handleBulkReceive` keep every selected file that still exists in the store (dropping only ones that vanished) instead of clearing, so chained bulk stage moves keep working on the same set; `ContextMenu` `onClose` only closes the menu (no longer clears selection). Deliberate full-clear stays in `handleRollbackDecisions`, `handleBulkGoBack`, `handleBulkSewing`.
 
@@ -722,7 +759,7 @@ DB tables: `file_stages` (one row per active file), `file_stage_history` (append
 
 **Handler `updated` plumbing** — all three DB fns (`advanceFileStage`/`setSewingSent`/`setSewingReceived`) return `{ updated }`; `stage:advance` always forwarded it, and `stage:setSewingSent`/`stage:setSewingReceived` now forward `updated: result.updated` too (previously returned bare `{ success:true }`, dropping it). `success:true` is still returned regardless of whether a row changed — `updated` is the ONLY signal that distinguishes a real move from a guard rejection.
 
-**`rejected` vs `failed` surfaced separately (NEVER merged)** — single handlers (`handleAdvance`/`GoBack`/`Sewing`/`Receive`) skip the store on non-applied and show `notifyStageRejected(1)` (Warning) or `notifyStageFailed(1)` (Error). Bulk (4×) + scan (4×) tally three counters (`count`/`rejected`/`failed`) and after the loop emit each non-empty one: `count>0` success toast, `rejected>0` amber "already moved by another station", `failed>0` red "check connection". `rejected` uses `type:"Warning"` (NOT `Info` — `AlertsHost.alertTypes` has no Info entry, so Info falls back to `alertTypes[0]`=Error/red). The `rollpress` scan branch keeps its own `advancedIds` Set (its success message reads `.size`) instead of a `count` — left in the call-site by design; it also dropped its old blanket "Advance failed" early-return so rejected/failed are reported apart there too.
+**`rejected` vs `failed` surfaced separately (NEVER merged)** — single handlers (`handleAdvance`/`GoBack`/`Sewing`/`Receive`) skip the store on non-applied and show `notifyStageRejected(1)` (Warning) or `notifyStageFailed(1)` (Error). Bulk (4×) + the scan engine (1×, see below) tally three counters (`count`/`rejected`/`failed`) and after the loop emit each non-empty one: `count>0` success toast, `rejected>0` amber "already moved by another station", `failed>0` red "check connection". `rejected` uses `type:"Warning"` (NOT `Info` — `AlertsHost.alertTypes` has no Info entry, so Info falls back to `alertTypes[0]`=Error/red). Bulk is still 4×; the scan side is now **one** engine, not four branches (see Workstation roles above), so it tallies the same three counters once. The `rollpress` branch's own `advancedIds` Set is **gone** — `git grep advancedIds` returns nothing — because that branch is gone; the single scan path uses `count` like the rest, which is what changed its success toast (the one operator-visible change in 2f).
 
 **Stage counts in tabs** — when `batchFilter` is active, tab counts reflect only that batch's files.
 

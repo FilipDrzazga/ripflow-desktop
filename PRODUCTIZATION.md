@@ -221,6 +221,15 @@ golden-diff czysty.
     seed nie zdazyl wykonac. `DEFAULT_PROFILE` to nadal dane Alexa udajace neutralny stan
     domyslny, dokladnie jak `DEFAULT_FABRICS` przed ETAPEM 0; ta zmiana jest plastrem,
     oproznienie `DEFAULT_PROFILE` na rzecz importu to ETAP 3.
+    - **Koszt tego dlugu urosl przy 2f i jest to zmiana RODZAJU, nie skali.** Do tej pory
+      zasiany `DEFAULT_PROFILE` podsuwal klientowi #2 dane Alexa sterujace LINKIEM (handle
+      Shopify), WIDOCZNOSCIA (flagi zakladek) albo SCIEZKA (hotfoldery). Od 2f ten sam
+      zasiany wiersz niesie `scanRules`, czyli steruje STANEM PRODUKCJI: skan na stacji
+      przesuwa pliki miedzy etapami wedlug regul, ktorych u tego klienta nikt nie ustawil.
+      I nie jest to stan przejsciowy - wiersz jest ZAPISANY do bazy przy pierwszym
+      uruchomieniu, wiec klient dostaje konfiguracje Alexa jako WLASNY, TRWALY wiersz,
+      nieodrozninalny od ustawionego swiadomie. 2d, 2e i 2g dokladaja do tego samego
+      wiersza hotfoldery i drukarki.
   - **`openInShopify` mial fallback na `DEFAULT_PROFILE` napisany w ETAPIE 1 pod scenariusz
     "cache jest null" (`openInShopify.js:12-14`), i ta naprawa po raz pierwszy sprawia, ze
     ten fallback naprawde sie uruchamia.** Dotad byl martwym kodem, bo cache nigdy nie
@@ -430,15 +439,85 @@ golden-diff czysty.
       jednego boolean - warunek z `50f64c8` nie zostal spelniony.
     - Bramki renderera bez stalego straznika CZWARTY raz z rzedu - DANA.
 - [ ] **2d - Nazwy hotfolderow** do profilu (`createXML.js`, `customOrderHandlers.js`, `getRootPath.js`)
-- [ ] **2e - Drukarki -> `printers[]`** (NAJSZERSZY zasieg, 53 wystapienia w 12 plikach,
-      w tym regexy widocznosci - zmierzone grepem, nie oszacowane)
+- [ ] **2e - Drukarki -> `printers[]`** (NAJSZERSZY zasieg, w tym regexy widocznosci)
+  - **Zasieg zmierzony PONOWNIE po 2f** (`git grep -c "DGEN\|YOKO\|YUMI" -- src/`):
+    **56 wystapien w 13 plikach kodu produkcyjnego**, plus 21 w 5 plikach testowych
+    (razem 77 / 18). Wpis mowil wczesniej "53 wystapienia w 12 plikach" - to JUZ DRUGI
+    raz, gdy ta liczba sie rozjechala, i za kazdym razem rosla, bo kolejne kroki dokladaly
+    kody drukarek do wlasnych testow i do `defaultProfile.js`. Wniosek na przyszlosc:
+    tej liczby nie przepisywac, tylko mierzyc przy starcie 2e - i mierzyc OSOBNO kod
+    produkcyjny (to jest zakres ciecia) i testy (te zmienia sie razem z nim, nie przed).
+  - Rozklad na dzien pomiaru: `DataPrintSelection.jsx` 4, `printerColors.js` 3,
+    `Analytics/Details.jsx` 3, `shared/constants.js` 3, `createXML.js` 3,
+    `defaultProfile.js` 3, `Production.jsx` 2, `customOrderHandlers.js` 2, po 1 w
+    `FabricsView.jsx`, `CustomOrderCard.jsx`, `submitBatch.js`, `readPrintedFolder.js`,
+    `db.js`.
   - regex na "ostatni segment po ostatnim -" + walidacja kodu `[A-Z0-9_]+`
   - test reczny: submit -> XML -> PRINTED -> BatchHistory -> Production dla KAZDEJ drukarki
   - [ ] getPrinterByCode jest case-insensitive (shopProfile.js, ETAP 1 krok 2),
         ale PRINTER.* porownuje sie scisle - ten sam kod przechodzi lookup i odbija
         sie od porownania. Przy 2e znormalizowac kod na WEJSCIU (uppercase przy
         wyciaganiu z nazwy folderu) i zaostrzyc lookup, zamiast luzowac go dalej.
-- [ ] **2f - `scanRules[]`** zamiast 4 galezi `workstationRole` (upraszcza `Production.jsx`)
+- [x] **2f - `scanRules[]`** zamiast 4 galezi `workstationRole` (`2eeaa26`)
+  - **Pomiar wejsciowy:** CZTERY galezie `workstationRole` w `handleScan`, z czego `cotton`
+    i `polyester` IDENTYCZNE BAJT W BAJT (31/31 linii po podmianie samego literalu roli).
+    Cztery galezie realizowaly DWIE reguly - `printed -> heatpress` i `heatpress -> qc` -
+    zapisane czterokrotnie, w czterech roznych akumulatorach i z czterema tekstami.
+  - **Co sie przenioslo: REGULY.** `from` / `to` / `notifyWhenEmpty` w `profile.scanRules[]`.
+    **Co NIE: TOZSAMOSC STACJI.** `workstationRole` zostaje w electron-store i staje sie
+    KLUCZEM do reguly. Dzieki temu skaner i `awaitingQc` czytaja nadal JEDNO wspolne
+    zrodlo roli i nie moga sie rozjechac - gdyby rola trafila do profilu, a `awaitingQc`
+    zostal na electron-store, stacja mogla by byc "qc" dla badge'a i nie-"qc" dla skanera.
+  - Tablica, nie mapa: profil to wolny blob, a klucze obiektu z importu wymagalyby
+    `Object.hasOwn` przeciw `constructor`/`toString` (ten sam problem, ktory `isViewEnabled`
+    juz obchodzi). Tablica nie ma prototypu do przebicia. Rola `""` NIE ma wpisu - brak
+    reguly JEST jej semantyka, a nie wyjatkiem w silniku.
+  - **`notifyWhenEmpty` to ZAMROZONY DLUG, nie funkcja.** Istnieje wylacznie po to, zeby
+    stacja QC dalej milczala przy pustym zbiorze, bo tak dziala dzis. Nikt nie wybralby
+    `false` z przekonania.
+    Czytany jako **`!== false`, NIE `=== true`**, i to jest nieoczywiste, wiec zapisane:
+    lustro `getFeature` jest tu POWIERZCHOWNE. Tam kierunek fail-closed znaczy "nie dawaj
+    funkcji"; tutaj ten sam kierunek znaczy "milcz", a cisza na skanerze jest dokladnie
+    tym ryzykiem, ktore to ciecie zamyka. Tylko LITERALNE `false` wycisza stacje - string
+    `"false"` z JSON round-tripu albo z importu CSV OSTRZEGA. Cisza musi byc poproszona.
+  - **TRZY sciezki bez reguly, tylko jedna milczy:**
+    (1) rola `""` - MILCZY, bo nigdy niczego nie przesuwala; toast na kazdym skanie stacji
+    domyslnej bylby halasem o ustawieniu, ktorego nikt nie zmienial.
+    (2) rola ustawiona + profil nieodczytany - OSTRZEGA ("Scan rules unavailable").
+    (3) rola ustawiona + profil bez reguly dla niej - OSTRZEGA ("Role not in scan rules",
+    z nazwa roli). Przypadek (3) byl CICHY w pierwszej wersji silnika i zostal poprawiony
+    PRZED commitem: to ten sam ksztalt co "flaga shopify on + pusty handle" - ustawienie
+    obiecujace cos, czego konfiguracja nie dowozi - tyle ze na FIZYCZNYM wejsciu operatora.
+  - **JEDYNA swiadoma zmiana widoczna dla Alexa: toast na stacji rollpress.**
+    stary: tytul `Advanced to QC` / tresc `N file(s) moved to QC.`
+    nowy:  tytul `N files moved`   / tresc `Moved to QC`
+    Czyli forma, ktorej trzy pozostale stacje juz uzywaly - tekst jest wyliczany
+    z `STAGE_LABEL[to]`, bo regula to przejscie, nie ksiazka frazeologiczna. Nic wiecej
+    sie nie zmienilo: oba komunikaty "Nothing to advance" i cisza stacji QC bajt w bajt.
+  - Usuniete martwe pole `workstationRoles` z `defaultProfile.js` (zero czytelnikow,
+    `RoleDropdown` ma wlasne `ROLE_OPTIONS`; REGULA 24). Przy `scanRules` staloby sie
+    DRUGIM zrodlem prawdy o tym samym zbiorze. `git grep -n workstationRoles` -> zero.
+  - **LUKA ZNANA, NIEZAMYKANA TUTAJ:** rola spoza `ROLE_OPTIONS` (`GeneralView.jsx:8-14`)
+    jest nieustawialna z UI, choc `scanRules` moze ja nazwac. Domyka to edytor profilu
+    w ETAPIE 3 - ten sam ksztalt co `MISSING_STORE_HANDLE` przy shopify.
+  - **OGRANICZENIE DOWODU, nie zamiecione.** Trzecim argumentem `advanceStage` (gwardia
+    optymistycznej wspolbieznosci, `WHERE ... AND stage = ?`) jest `f.stage`, nie
+    `scanRule.from`. Rownowaznosc tych dwoch form jest PRZYPIETA TESTEM tylko od strony
+    `getScanRule`: nigdy nie zwroci `from` innego niz pojedynczy niepusty string (tablica
+    stagow -> `null`). Samego filtra `f.stage === scanRule.from` nie da sie przypiac bez
+    harnessu renderujacego, odrzuconego w `50f64c8`. Zmierzone sonda wycinajaca silnik
+    z `Production.jsx` i uruchamiajaca go na atrapach, POZA repo - sonda nie jest testem
+    i nie zostala zacommitowana.
+  - **Dowod okablowania per REGULA, nie hurtem** (u Alexa istnieja wszystkie cztery, wiec
+    pomiar zbiorczy nic by nie dowodzil): usuniecie/zmiana JEDNEJ reguly `cotton`
+    zatrzymuje wylacznie stacje cotton, `polyester` (jej bajtowy blizniak) dziala dalej.
+    `notifyWhenEmpty` przypiete osobno: flip `false -> "true"` i `false -> "false"` na
+    regule `qc` zapala ostrzezenie, ktore przy literalnym `false` nie leci.
+  - Bramka: 243/243 testow (baseline 219, +24, ZERO modyfikacji istniejacych), lint
+    czysty, golden 0/70, `Production.jsx` 1947 -> 1918 linii (-29).
+  - `getScanRule` mieszka w `shopProfileData.js` obok `getSewingCompanies` - czysta
+    funkcja, jedyny ksztalt tego ciecia, ktory w ogole moze niesc test bez harnessu.
+    Bramki renderera bez stalego straznika PIATY raz z rzedu - DANA.
 - [ ] **2g - Klasy materialu** (2 sloty, konfig etykiet+przynaleznosci) + typy produktow + wymiary
       (`productTypes[]`, dzis SAMPLE/FQ/TEA_TOWEL zaszyte)
 
@@ -450,8 +529,16 @@ Dopiero po Etapie 1 (fallbacki maja czytac z profilu, nie ze statycznych list).
 - [ ] `getMaterialType.js`: statyczne listy nazw Alexa -> czytanie klas z `profile.materialClasses`
       (fallback zwraca "Unknown", nie liste Alexa)
 - [ ] `printWidths.js`: mapy `LM_ROLL_COTTON` / `LM_XML_COTTON` (per nazwa Alexa) -> profil
-- [ ] Flagi `isVelvet` / `isLinen` / `isBlossom` wywodzone przez `name.includes()`
-      (`createXML.js`) -> pola w profilu/fabrics, nie zgadywanie ze stringu (audyt #17)
+- [ ] Flagi `isVelvet` / `isLinen` / `isBlossom` - **opis skorygowany po pomiarze, zakres
+      jest WEZSZY niz zapisano.** `getFabricFlag` (`createXML.js:44-52`) czyta flage
+      z BAZY (`getFabricByName(item.material)` -> `fabric[flagKey]`); `name.includes()`
+      jest WYLACZNIE fallbackiem dla materialu spoza katalogu i dodatkowo patrzy na nazwe
+      PLIKU, nie tylko materialu. Czyli 2h nie musi tego "przenosic do profilu" - pola
+      `is_velvet`/`is_linen`/`is_blossom` juz sa w `fabrics`. Do zrobienia zostaje decyzja,
+      co ma sie dziac dla materialu NIEZNANEGO: dzis zgadywanie ze stringu, docelowo
+      prawdopodobnie `false` + ostrzezenie, tak jak `getMaterialType` ma zwracac "Unknown"
+      zamiast listy Alexa. Poprzedni opis ("wywodzone przez `name.includes()`") zawyzal
+      zakres i sugerowal migracje, ktora juz sie odbyla.
 - [ ] Katalog FF -> `profiles/fashion-formula-fabrics.json` (juz wyeksportowany w Etapie 0)
 - [ ] `getSettings.js`: domyslne sciezki `O:\SPPrintReadyArtwork` / `\\192.168.0.17\...` -> `""`
 - [ ] `defaultProfile.js:43`: `integrations.shopify.storeHandle: "fashionformulauk"` -> `""`.
@@ -478,6 +565,17 @@ Dopiero po Etapie 1 (fallbacki maja czytac z profilu, nie ze statycznych list).
       Bramka przechodzaca na zielono z lista kontrahentow klienta w kodzie jest
       gorsza niz jej brak - to trzeci raz, gdy grep kontrolny okazuje sie wezszy
       niz obietnica, ktora niesie.
+      **Pomiar po 2f zmienia charakter tej pozycji: wszystkie ZYWE nazwy Alexa zostaly
+      juz TYLKO w `defaultProfile.js`.** `git grep` na trzech rodzinach, z wylaczeniem
+      testow i `defaultProfile.js`, zwraca dwa trafienia i OBA sa komentarzami:
+      `openInShopify.js:6` (wyjasnia, ze fallbacku juz nie ma) i `Production.jsx:1506`
+      (przyklad slugowania "Olya"/"olya"). Zadnej zywej wartosci. W testach nazwy zostaja
+      celowo - `openInShopify.test.js` asertuje, ze "fashionformulauk" NIE wychodzi.
+      Konsekwencja: **"grep kontrolny na zero nazw Alexa" przestaje byc osobnym cieciem**
+      i staje sie NASTEPSTWEM decyzji o oproznieniu `DEFAULT_PROFILE` na rzecz importu
+      w ETAPIE 3. Zostaje jako weryfikacja po tamtej zmianie, nie jako praca do wykonania.
+      Trzy rodziny do sprawdzenia i wylaczenie testow zostaja w opisie - to jest wartosc
+      tej pozycji, nie sam fakt odpalenia grepa.
 
 **WYJATEK - swiadomie ZOSTAJE (nie usuwac):**
 
@@ -630,6 +728,23 @@ Baza pozostaje jedynym zywym zrodlem prawdy; JSON to tylko transport na wdrozeni
       obsluga szwalni. Operator nie ma zadnego sygnalu, ze widzi okrojona aplikacje.
       To nie jest wada bramek - fail-closed jest poprawny - to jest cena za brak lazy
       retry, ktora rosla przy kazdej z czterech flag i przestala byc teoretyczna.
+    - **SZOSTY obszar, przy 2f (skaner) - i PIERWSZY, ktory NIE znika cicho.** Przy
+      nieodczytanym profilu skan przestaje przesuwac etapy, ale zamiast zniknac bez sladu
+      MOWI operatorowi, co sie stalo ("Scan rules unavailable"), w miejscu i w momencie
+      dzialania. Powod jest konkretny, nie kosmetyczny: to pierwsza bramka profilu na
+      FIZYCZNYM wejsciu operatora, a skan, ktory po cichu nic nie robi, jest
+      nieodrozninalny od czytnika, ktory nie zadzialal - operator zaczyna szukac awarii
+      sprzetu zamiast konfiguracji. Piec wczesniejszych obszarow to elementy INTERFEJSU
+      (zakladka, przycisk, badge), gdzie nieobecnosc jest przynajmniej widoczna jako
+      nieobecnosc.
+      **To jest wzorzec dla kazdego kolejnego wejscia FIZYCZNEGO** (czytnik, waga,
+      przycisk nozny, drukarka etykiet wywolana recznie), NIE dla zakladek i pozycji menu.
+      Tam cicha nieobecnosc zostaje - jeden toast na kazdy render zabramkowanego widoku
+      bylby gorszy niz problem. Roznica nie polega na waznosci funkcji, tylko na tym, czy
+      operator ma inna, blednna hipoteze pod reka.
+      Nie zmniejsza to jednak dlugu: lazy retry dalej jest potrzebny, bo komunikat mowi
+      "profil nieodczytany", a nie "sprobuje ponownie" - stacja zostaje bez regul do
+      restartu aplikacji.
 - [ ] **Export diagnostics** - zip: ostatnie 500 logow, `shop_profile`, wersja, sciezki
       (bez zawartosci plikow), wynik testu dostepu do hotfolderow. Bez telemetrii
 - [ ] **Kreator pierwszego uruchomienia** (sciezki -> import profilu -> test zapisu do hotfoldera)
@@ -693,7 +808,15 @@ Podejscie: NIE przepisywac. Wyodrebnic obecna logike, potem dodac druga.
       a zamrozona staje sie celem. Oczekiwana wartosc to baseline z gory tego pliku
       (ETAP 0), zmierzony PRZED startem pracy; niezmienne jest to, ze licznik moze
       tylko rosnac i nigdy przez edycje istniejacego testu.
-- [ ] `npm run lint` - czysty
+- [ ] `npm run lint` - czysty, czyli exit 0 przy `--max-warnings 0` (`a84ab48`)
+      DO 2f WLACZNIE ta bramka czytala sam exit code, a skrypt byl golym `eslint .`,
+      ktory konczy sie zerem mimo ostrzezen - `react-hooks/exhaustive-deps` ma w
+      `reactHooks.configs.flat.recommended` severity `warn`, wiec brakujaca zaleznosc
+      byla WYPISYWANA i PRZEPUSZCZANA. Wykryte kalibracja przy 2f. Starsze "lint czysty"
+      w tym pliku znaczy wiec mniej niz dzisiejsze: dowodzilo braku bledow, nie braku
+      ostrzezen. Przed zaostrzeniem zmierzono 140 plikow / 0 bledow / 0 ostrzezen, wiec
+      bramka nie zapala sie na wejsciu; sprawdzono tez, ze GRYZIE (usuniecie zaleznosci
+      od `shopProfile` -> exit 1).
 - [ ] golden-diff: wygenerowany XML bajt w bajt vs baseline, na kopii bazy Alexa
 - [ ] sciezka reczna: Inbox -> submit -> XML w xmlPath -> PRINTED -> BatchHistory
       -> skan w Production -> rollback
