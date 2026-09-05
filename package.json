@@ -13,7 +13,7 @@
     "build:dist": "vite build && dotenv -e .env -- electron-builder --win --publish always",
     "test": "vitest run",
     "test:watch": "vitest",
-    "lint": "eslint .",
+    "lint": "eslint . --max-warnings 0",
     "preview": "vite preview",
     "rebuild": "electron-rebuild -f -w better-sqlite3"
   },
