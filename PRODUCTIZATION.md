@@ -592,6 +592,33 @@ golden-diff czysty.
     Bramki renderera bez stalego straznika PIATY raz z rzedu - DANA.
 - [ ] **2g - Klasy materialu** (2 sloty, konfig etykiet+przynaleznosci) + typy produktow + wymiary
       (`productTypes[]`, dzis SAMPLE/FQ/TEA_TOWEL zaszyte)
+  - **TRZY MARTWE POLA W PROFILU, nie jedno** (`git grep -n "<pole>" -- src/ scripts/`,
+    zmierzone na `297ef22`). Kazde lamie REGULE 24 dokladnie tak, jak usuniete w 2f
+    `workstationRoles`: pole istnieje w `defaultProfile.js` i NIKT go nie czyta.
+    - `materialClasses` (`defaultProfile.js:27`) - jedno trafienie, definicja. Zero
+      czytelnikow. Marginesy i domyslne szerokosci bierze dzis `fabric_globals`.
+    - `productTypes` (`defaultProfile.js:31`) - jedno trafienie, definicja. Zero
+      czytelnikow. Wymiary bierze `DIMS_*` z `printWidths.js` przez
+      `parseFileName.js:203-217`.
+    - `printers[].materialClass` (`defaultProfile.js:10,16,22`) - poza definicja tylko
+      fixture testowy `shopProfile.test.js:25-26`. Zero konsumentow produkcyjnych.
+      **Jego konsument to `DataPrintSelection.jsx:14-16`** - dzis zaszyta tablica
+      drukarka -> klasa materialu, ktora ustawia blokade wyboru drukarki (plus `:46-47`,
+      gdzie `Cottons` automatycznie wybiera DGEN). **To nalezy do 2e, nie do 2g**: pole
+      opisuje DRUKARKE, nie klase. Zapisane tutaj, zeby 2e nie zaczynalo od zera.
+  - `productTypes` przestaje byc martwe dopiero wtedy, gdy `parseFileName.js` je czyta.
+    Warunek wstepny: dziura (d) w bramce Etapu 2 - harness goldena nie laduje profilu -
+    ORAZ krawedz mocka w `parseFileName.test.js`, ktora mockuje WYLACZNIE
+    `./fabricCache.js` (`:7`), zeby import parsera nie ciagnal `electron` /
+    `better-sqlite3`. Import `shopProfile.js` w `parseFileName.js` otwiera DRUGA,
+    niezamockowana droge do `db.js` i lamie 26 testow charakteryzacyjnych, ktorych
+    modyfikowac nie wolno. Zweryfikowane empirycznie: bezposredni import
+    `shopProfile.js` w golym node konczy sie
+    `The requested module 'electron' does not provide an export named 'app'`.
+    Wniosek: wymiarow NIE da sie wciagnac przez nowy import w parserze. Trzeba je podac
+    ARGUMENTEM (wzorzec BUG 4: `estimatePrintLength(files, config)`), co dotyka
+    **8 miejsc wywolania** `parsePrintFileName` w `src/` plus `harness.mjs:42` - a wiec
+    jest cieciem innego rozmiaru niz "dwa miejsca w `parseFileName.js`".
 
 ### 2h + pelne czyszczenie katalogu (MUST HAVE - cel: zero nazw Alexa w kodzie)
 
@@ -601,6 +628,18 @@ Dopiero po Etapie 1 (fallbacki maja czytac z profilu, nie ze statycznych list).
 - [ ] `getMaterialType.js`: statyczne listy nazw Alexa -> czytanie klas z `profile.materialClasses`
       (fallback zwraca "Unknown", nie liste Alexa)
 - [ ] `printWidths.js`: mapy `LM_ROLL_COTTON` / `LM_XML_COTTON` (per nazwa Alexa) -> profil
+      **UWAGA: docelowo NIE do profilu, tylko do `fabrics` - tam juz sa.** Obie mapy maja
+      po 33 wpisy, a tabela `fabrics` niesie `xml_width` i `roll_width` per wiersz dla
+      wszystkich 132 tkanin. To nie jest migracja danych, tylko decyzja, co ma sie dziac
+      przy NIEZALADOWANYM cache'u (patrz dziura (a) w bramce Etapu 2).
+      **Rozjezdzaja sie TRZY tkaniny, nie cztery** (`xml != roll` w obrebie map):
+      `Hector Linen` (xml 1420 / roll 1460), `Limani Linen` (1370 / 1420),
+      `Melino Linen` (1370 / 1420). `Organic Blossom Muslin Gauze` jest NIE-DOMYSLNA,
+      ale SPOJNA (1270 / 1270) - tak samo `Organic Nimbus Linen` i `Organic Stratos
+      Linen` (1370 / 1370). Wczesniejsza czworka mylila "nie-domyslna" z "rozjechana".
+      Komenda produkujaca te liczbe: zaladowac oba eksporty z
+      `src/shared/printWidths.js` i wypisac klucze, dla ktorych
+      `LM_XML_COTTON[k] !== LM_ROLL_COTTON[k]`.
 - [ ] Flagi `isVelvet` / `isLinen` / `isBlossom` - **opis skorygowany po pomiarze, zakres
       jest WEZSZY niz zapisano.** `getFabricFlag` (`createXML.js:44-52`) czyta flage
       z BAZY (`getFabricByName(item.material)` -> `fabric[flagKey]`); `name.includes()`
@@ -658,6 +697,36 @@ Dopiero po Etapie 1 (fallbacki maja czytac z profilu, nie ze statycznych list).
 
 **Bramka Etapu 2 (po kazdym pod-kroku):** golden-diff XML bajt w bajt = zero roznic
 na danych Alexa; 2e dodatkowo: batch z kazdej drukarki widoczny w BatchHistory i Production.
+
+**CZEGO SIATKA GOLDEN NIE WIDZI - cztery dziury, zmierzone przy rekonesansie 2g/2h
+(`297ef22`, 2026-09-05).** Zapisane, bo "golden 0/70" bywa czytane jako "wszystko
+sprawdzone", a dla czterech klas zmian nie znaczy nic:
+
+- **(a) Sciezka ZDEGRADOWANA nie jest uruchamiana ANI RAZU.** `scripts/golden/stub-db.mjs`
+  zawsze karmi `fabricCache` pelnym katalogiem z `profiles/fashion-formula-fabrics.json`,
+  wiec galezie `cachedFabrics === null` nie wykonuja sie w siatce. Rozjazd loaded vs
+  degraded - **5 tkanin na 132 dostaje inny `<Width>`**, patrz sekcja o BUG 4
+  w `CLAUDE.md` - jest dla goldena calkowicie niewidoczny. Dowod dla tej klasy zmian
+  musi byc testem jednostkowym, nie goldenem.
+- **(b) XML zamowien custom NIE MA baseline'u W OGOLE.** `buildCustomOrderXML`
+  (`customOrderHandlers.js`) nie jest w siatce. A niesie `<Width>${LM_XML_POLY}</Width>`
+  (`:40`) i zaszyte `<MaterialType>Polyesters</MaterialType>` (`:43`) - obie wartosci
+  ZYWE, bez odczytu cache'u. **Dotkniecie tego pliku jest dzis niezabezpieczone.**
+  Nie ruszac go, dopoki nie ma wlasnego baseline'u.
+- **(c) `estimatePrintLength.test.js:3` importuje stale z `printWidths.js`**
+  (`LM_ROLL_POLY`, `LM_ROLL_COTTON_DEFAULT`, `MARGIN_COTTON`, `MARGIN_POLY`). Usuniecie
+  tego modulu ZLAMIE ISTNIEJACY test, a bramka wymaga ZERO modyfikacji istniejacych
+  testow. To jest warunek wstepny ostatniego kroku 2h, nie niespodzianka do odkrycia
+  w trakcie.
+- **(d) Harness goldena NIE LADUJE profilu sklepu.** `harness.mjs:22` wola
+  `loadFabricCache()` i nic wiecej; `stub-db.mjs` stubuje wylacznie katalog tkanin
+  (`grep -n "shopProfile" scripts/golden/stub-db.mjs` -> zero trafien). Czyli KAZDA
+  zmiana, ktora kaze `parseFileName.js` albo `createXML.js` czytac cokolwiek
+  z `shopProfile.js`, zobaczy w siatce `cachedProfile === null`, pojdzie sciezka
+  fail-closed i wyprodukuje 70 roznic - nie dlatego, ze kod jest zly, tylko dlatego,
+  ze harness nie zna profilu. **Rozszerzenie stubu o profil jest warunkiem wstepnym
+  dla 2g i 2d, i jest osobnym commitem narzedziowym PRZED nimi** (zmienia harness,
+  od ktorego zalezy baseline - nigdy w srodku ciecia funkcjonalnego).
 
 ---
 

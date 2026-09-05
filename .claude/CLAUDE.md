@@ -626,15 +626,42 @@ lose the per-material roll widths from `LM_ROLL_COTTON`. `null` keeps the degrad
 The two pre-existing call sites in `batchHistoryHandlers.js` built that exact unsafe shape by hand
 (`{ globals: getCachedGlobals(), fabrics: getCachedFabrics() }`) and were converted to the helper.
 
-**This is deliberately NOT a pure no-op:** from here a Settings edit reaches the XML. It was proven
-numerically neutral on today's data (see the golden net below) because Alex's DB currently agrees
-with the static fallbacks for all 132 fabrics — `mismatches: 0`. The moment someone edits a width
-in Settings, the two sources diverge on purpose.
+**This is deliberately NOT a pure no-op:** from here a Settings edit reaches the XML. The moment
+someone edits a width in Settings, the two sources diverge on purpose.
 
-`Eco Astra Ramie` is the known shape to watch: a cotton in the DB that is **absent** from
-`LM_ROLL_COTTON`. Today both modes yield 1420, so it is harmless; give it a non-default roll width
-and the normal and degraded paths part ways. ETAP 2h (moving those maps into the shop profile)
-closes it.
+**CORRECTION — the two sources ALREADY diverge, on today's data.** This paragraph used to claim
+"Alex's DB currently agrees with the static fallbacks for all 132 fabrics — `mismatches: 0`". That
+is false. Measured against `profiles/fashion-formula-fabrics.json` (the ETAP 0 export, the same file
+the golden stub feeds `fabricCache` from — the live DB is never touched):
+
+| fabric | class | loaded (DB) | degraded (static) | delta | in `LM_XML_COTTON`? |
+| --- | --- | --- | --- | --- | --- |
+| Chloe Linen Natural | Cottons | 1370 | 1420 | +50 | no |
+| Eco Astra Ramie | Cottons | 1370 | 1420 | +50 | no |
+| Eco Ochra Ramie | Cottons | 1370 | 1420 | +50 | no |
+| **Satin** | Cottons | **1400** | **1420** | +20 | **YES** |
+| Luxe Velvet | Polyesters | 1380 | 1420 | +40 | no |
+
+`xmlWidth` mismatches: **5 of 132**. `rollWidth` mismatches: **0 of 132**.
+
+`Satin` is the worst case and the one that kills the old wording: it IS in `LM_XML_COTTON`, carrying
+1420 against the DB's 1400. That is not a gap in the map, it is a **conflict** — the map states a
+value for that fabric and states it differently. The other four are absent from the map and fall to
+the class default.
+
+Because roll widths agree 132/132, `estimatePrintLength` and the `_Nm` suffix are untouched: the
+divergence is confined to `<Width>`, which comes from `getXmlWidthFromCache` via `parseFileName.js`.
+
+**How to re-measure** (do this rather than trusting the numbers above — the old claim died precisely
+because it carried a result with no method): load `profiles/fashion-formula-fabrics.json`, and for
+each row compare `xmlWidth` against what the degraded branch of `getXmlWidthFromCache` would return
+(`LM_XML_COTTON[name]` when present, else `defaultXmlWidthPoly`/`defaultXmlWidthCotton`), and
+`rollWidth` against `LM_ROLL_COTTON[name] ?? LM_ROLL_COTTON_DEFAULT` (poly: `LM_ROLL_POLY`).
+
+`Eco Astra Ramie` was recorded here as the shape to watch — a cotton absent from the maps whose two
+paths "today both yield 1420". That was wrong too: it yields 1370 loaded and 1420 degraded. It is not
+a future risk, it is one of the five live ones. ETAP 2h (moving those maps into the profile) closes
+the class; until then the degraded path is not a neutral fallback but a second, disagreeing answer.
 
 ### Golden XML regression net (`golden/` + `scripts/golden/`)
 
