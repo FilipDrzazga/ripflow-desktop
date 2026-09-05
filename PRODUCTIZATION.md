@@ -440,18 +440,90 @@ golden-diff czysty.
     - Bramki renderera bez stalego straznika CZWARTY raz z rzedu - DANA.
 - [ ] **2d - Nazwy hotfolderow** do profilu (`createXML.js`, `customOrderHandlers.js`, `getRootPath.js`)
 - [ ] **2e - Drukarki -> `printers[]`** (NAJSZERSZY zasieg, w tym regexy widocznosci)
-  - **Zasieg zmierzony PONOWNIE po 2f** (`git grep -c "DGEN\|YOKO\|YUMI" -- src/`):
-    **56 wystapien w 13 plikach kodu produkcyjnego**, plus 21 w 5 plikach testowych
-    (razem 77 / 18). Wpis mowil wczesniej "53 wystapienia w 12 plikach" - to JUZ DRUGI
-    raz, gdy ta liczba sie rozjechala, i za kazdym razem rosla, bo kolejne kroki dokladaly
-    kody drukarek do wlasnych testow i do `defaultProfile.js`. Wniosek na przyszlosc:
-    tej liczby nie przepisywac, tylko mierzyc przy starcie 2e - i mierzyc OSOBNO kod
-    produkcyjny (to jest zakres ciecia) i testy (te zmienia sie razem z nim, nie przed).
-  - Rozklad na dzien pomiaru: `DataPrintSelection.jsx` 4, `printerColors.js` 3,
-    `Analytics/Details.jsx` 3, `shared/constants.js` 3, `createXML.js` 3,
-    `defaultProfile.js` 3, `Production.jsx` 2, `customOrderHandlers.js` 2, po 1 w
-    `FabricsView.jsx`, `CustomOrderCard.jsx`, `submitBatch.js`, `readPrintedFolder.js`,
-    `db.js`.
+  - **Liczby grepa - kazda z komenda, pytaniem i JEDNOSTKA.** Zmierzone na `95ecccb`.
+    Bez tych trzech rzeczy liczba nie jest pomiarem, tylko data waznosci.
+
+    | wariant | komenda | pytanie | LINIE | WYSTAPIENIA | PLIKI |
+    |---|---|---|---|---|---|
+    | A | `git grep -c "DGEN\|YOKO\|YUMI" -- src/` (oraz `-o \| wc -l`, `-l \| wc -l`) | ile razy kody drukarek wystepuja w calym `src/`, RAZEM z testami | 46 | 77 | 18 |
+    | B | to samo + `':!*.test.js'` | ile razy wystepuja w kodzie PRODUKCYJNYM | 28 | 56 | 13 |
+    | E | to samo + `':!*.test.js' ':!src/electron/helpers/defaultProfile.js'` | ile razy wystepuja w kodzie produkcyjnym POZA seedem profilu | 25 | 53 | 12 |
+
+    LINIE bierze `git grep -c` (liczy WIERSZE z trafieniem, nie trafienia),
+    WYSTAPIENIA `git grep -o ... | wc -l`, PLIKI `git grep -l ... | wc -l`. To trzy rozne
+    liczniki i mieszanie ich pod jedna etykieta "wystapienia" jest zrodlem polowy
+    zamieszania ponizej.
+  - **ODWOLANIE wczesniejszego zdania z tego wpisu.** Stalo tu, ze liczba "rozjechala sie
+    juz drugi raz". To NIEPRAWDA. Historyczne `53/12` odtwarza sie DOKLADNIE jako wariant
+    E, `46/18` jako wariant A (linie/pliki), `56/13` jako wariant B (wystapienia/pliki).
+    Zadna nie byla bledna - kazda odpowiadala na inne pytanie, a czesc roznicy to po
+    prostu inny LICZNIK podany pod ta sama etykieta. `53/12` bylo poprawne w czasie, gdy
+    `defaultProfile.js` (3 wystapienia) jeszcze nie istnial: zmienilo sie REPO, nie pomiar.
+    Namiar starzeje sie nie dlatego, ze ktos zle liczyl, tylko dlatego, ze nie zapisywano
+    PYTANIA i JEDNOSTKI obok liczby. **Regula dla 2e: grepuj od nowa i zapisz komende
+    obok wyniku.**
+  - **Odrzucona czwarta para (20/10).** Pochodzila z `grep -rn ... | wc -l` na KOPII drzewa
+    (~90 plikow, zero testow, stan `2d13c4f`) - liczy linie w podzbiorze, ktorego nie da
+    sie odtworzyc z repo. Nie jest wariantem do zapisania i nie szukamy dla niej wzorca.
+    Odmowa wpisania jej do trackera byla poprawna: liczba bez definicji nie wchodzi.
+  - **WLASCIWY NAMIAR DLA 2e TO PONIZSZA LISTA, NIE LICZBA TRAFIEN.** "Ile razy wystepuje
+    string DGEN" nie jest zakresem pracy - komentarz i tekst pomocy tez sa trafieniem, a
+    siedem miejsc wiazacych zachowanie z drukarka NIE ZAWIERA tych literalow i zaden grep
+    literalowy ich nie widzi. Zakresem jest: ile miejsc wiaze ZACHOWANIE z TOZSAMOSCIA
+    drukarki. Policzone recznie na `95ecccb`, 2026-09-05:
+
+    **(1) Producent sufiksu - jedno miejsce, zrodlo dla wszystkich parserow ponizej**
+    - `helpers/createBatchIds.js:31` - sklada nazwe folderu
+      `PRINTED_HHMMSS-GROUP-<PRINTER>`. To ONO tworzy dane, ktore cztery regexy potem
+      parsuja. Nie bylo na liscie kandydatow, a jest pierwsze do zmiany: dopoki zapisuje
+      kod spoza profilu, parsery musza go umiec przyjac.
+
+    **(2) Parsery kodu z nazwy folderu - 4 definicje regexa, 7 wywolan**
+    - `ipc/readPrintedFolder.js:14` (`BATCH_FOLDER_RE`, uzyte w `parseBatchFolderName`)
+      - **TWARDA BRAMKA WIDOCZNOSCI**: folder z kodem spoza listy zwraca `null`, czyli
+      batch NIE ISTNIEJE w BatchHistory. Najostrzejsza konsekwencja na calej liscie.
+    - `helpers/db.js:44` (`PRINTER_RE`) - jedna definicja, **TRZY** wywolania:
+      `:617`, `:930`, `:1169`. Wpis mowil o "db.js" jak o jednym miejscu.
+    - `ipc/submitBatch.js:93` - kod na etykiete batcha (auto-print).
+    - `ui/Production/Production.jsx:139` - kod dla badge'a w naglowku grupy batcha.
+    - `ui/Production/Production.jsx:588` - kod dla etykiety drukowanej ponownie z menu.
+
+    **(3) Routing i walidacja - decyduja, DOKAD idzie praca**
+    - `ipc/createXML.js:59-60` - mapa kod -> hotfolder (`DGEN` -> COTTON,
+      `YOKO`/`YUMI` -> POLY); `:61` rzuca `ERR_INVALID_PRINTER` dla kodu spoza mapy.
+    - `ipc/createXML.js:152` - sciezka hotfoldera budowana z tej mapy.
+    - `ipc/createXML.js:86` - `<Printer>` w XML: kod wychodzi do PrintFactory.
+    - `ipc/customOrderHandlers.js:108-109` - straznik poly-only dla zamowien custom.
+    - `ui/DataPrintSelection/DataPrintSelection.jsx:14-16` - tablica
+      drukarka -> `materialType`, czyli blokada materialu przy wyborze.
+    - `ui/DataPrintSelection/DataPrintSelection.jsx:47` - `Cottons` automatycznie
+      wybiera `DGEN`. Zaszyty DOMYSLNY wybor, nie tylko lista.
+
+    **(4) Kolory i listy w UI - degraduja, nie lamia, ale wszystkie ida do profilu**
+    - `ui/constants/printerColors.js:2-4` - mapa `PRINTER_COLORS`.
+    - **Siedem dynamicznych odczytow `PRINTER_COLORS[printer]`, NIEWIDOCZNYCH dla grepa
+      literalowego** (kazdy z wlasnym szarym fallbackiem):
+      `Analytics/Summary/Summary.jsx:67`, `BatchHistory/BatchRow.jsx:36`,
+      `CustomOrder/CustomOrderHistory.jsx:49`, `OverviewPanel/OverviewPanel.jsx:122`,
+      `Production/OrderView.jsx:31`, `Production/ProductionCard.jsx:170`,
+      `Production/ProductionRollbackModal.jsx:239`. Osma jest
+      `Production/Production.jsx:141` (ta ma literal, bo stoi obok regexa).
+    - `ui/BatchHistory/BatchHistory.jsx:36` - lista filtra z `Object.values(PRINTER)`.
+    - `ui/CustomOrder/CustomOrderCard.jsx:9` - lista poly do wyboru w karcie.
+    - `ui/Analytics/Details/Details.jsx:16` - lista filtra `PRINTER_OPTIONS`.
+    - `ui/Analytics/Details/Details.jsx:24-25` - **klasa materialu pozycza kolor
+      drukarki** (`Cottons` bierze kolor `DGEN`, `Polyesters` kolor `YOKO`). Wiazanie
+      semantyczne miedzy dwoma roznymi pojeciami; przy 2e i 2g trzeba je rozciac.
+
+    **(5) Definicja**
+    - `shared/constants.js:14-16` - `PRINTER`. Ostatnia do usuniecia, nie pierwsza.
+
+    **NIE jest zachowaniem** (zostawione swiadomie na liscie, zeby nikt nie liczyl tego
+    do zakresu):
+    - `ui/Settings/views/FabricsView.jsx:347` - tekst pomocy "Cottons -> DGEN,
+      Polyesters -> YOKO/YUMI". Do przepisania na neutralny przy 2h, nie przy 2e.
+    - `helpers/defaultProfile.js` - 3 wystapienia to WARTOSCI seeda, czyli juz profil.
+      Znikaja przy oproznieniu `DEFAULT_PROFILE` w ETAPIE 3, nie przy 2e.
   - regex na "ostatni segment po ostatnim -" + walidacja kodu `[A-Z0-9_]+`
   - test reczny: submit -> XML -> PRINTED -> BatchHistory -> Production dla KAZDEJ drukarki
   - [ ] getPrinterByCode jest case-insensitive (shopProfile.js, ETAP 1 krok 2),
