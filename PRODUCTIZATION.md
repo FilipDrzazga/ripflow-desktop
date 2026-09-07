@@ -635,6 +635,14 @@ golden-diff czysty.
        w 132-elementowym katalogu Alexa, wiec dla niego ta sciezka staje sie osiagalna
        w DOKLADNIE ZERU nowych przypadkow. Poszerza sie tylko dla tkaniny usunietej
        z katalogu PO wydruku.
+    5. **wlasnosc liczb klas** (marginesy, domyslne szerokosci): profil czy
+       `fabric_globals`. OSOBNE ciecie z wlasnym pomiarem - ma haczyk, ktorego oba
+       warianty dotykaja: klucze `fabric_globals` (`marginCotton`/`marginPoly`) maja
+       NAZWY KLAS wpisane w klucz, wiec trzecia klasa wymaga tam zmiany schematu.
+       ODRZUCONE na tym etapie: "profil wygrywa, `FabricsView` przestaje edytowac" -
+       odbieraloby klientowi funkcje, ktora ma dzis, i cofalo swiadoma decyzje z BUG 4.
+    6. **skasowanie `printWidths.js`** - ostatnie, bo lamie ISTNIEJACY test
+       (dziura (c) w bramce Etapu 2).
   - **LUKA, KTORA KROK 4 OTWORZYL, i jej domkniecie (`b06d57d`).** To NIE jest nowa
     funkcja - to zrownanie dwoch miejsc, ktore krok 4 rozjechal. Krok 4 zamienil zmyslona
     szerokosc na `null`, i to bylo poprawne W APLIKACJI: widok druku blokuje operatora
@@ -664,14 +672,6 @@ golden-diff czysty.
     legalny string, ktory RIP moze przyjac, a pusty `<Width>` nie jest legalna liczba.
     Do sprawdzenia jednym zadaniem testowym na prawdziwym PrintFactory, zanim cokolwiek
     tu dopiszemy.
-    5. **wlasnosc liczb klas** (marginesy, domyslne szerokosci): profil czy
-       `fabric_globals`. OSOBNE ciecie z wlasnym pomiarem - ma haczyk, ktorego oba
-       warianty dotykaja: klucze `fabric_globals` (`marginCotton`/`marginPoly`) maja
-       NAZWY KLAS wpisane w klucz, wiec trzecia klasa wymaga tam zmiany schematu.
-       ODRZUCONE na tym etapie: "profil wygrywa, `FabricsView` przestaje edytowac" -
-       odbieraloby klientowi funkcje, ktora ma dzis, i cofalo swiadoma decyzje z BUG 4.
-    6. **skasowanie `printWidths.js`** - ostatnie, bo lamie ISTNIEJACY test
-       (dziura (c) w bramce Etapu 2).
   - **DLUG: wbudowane wymiary jako fallback podstawiaja dane ALEXA.** Zywy od `284e38e`,
     zapisany ZANIM zaczal sie krok 4, bo komentarz w kodzie na to nie wystarcza.
     Siedem call-site'ow podaje `shopConfig: getProfile()`. Gdy profil jest NIEODCZYTANY,

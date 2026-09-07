@@ -1079,6 +1079,16 @@ Rules:
      import or mock worked at all - STAY deliberately and have NO corpse of their own,
      with a comment saying so and why. They earn their place when five tests fail at
      once and exactly one of them says why.
+   - HOW THE RUN IS DRIVEN, not just what it proves. Mutations go onto a COPY of the
+     file: `cp <file> <file>.pristine` before the round, ONE mutation, run, then
+     `cp <file>.pristine <file>` and confirm with `diff -q` BEFORE the next mutation.
+     Never revert with `git checkout -- <file>`. On work that is not yet committed
+     that command reverts to HEAD and deletes the whole new implementation, and the
+     symptom is a screen of FAILING TESTS - a false mutation signal indistinguishable
+     from a real corpse, since both look like "the mutation killed something". It
+     happened at 2f and cost one false reading of four tests. The PRISTINE confirmation
+     is what makes the next mutation's result mean anything: a round whose revert was
+     never verified proves nothing about the round after it.
 7. What "do not modify existing tests" protects, and where it stops. An existing test
    file has two layers and they are NOT governed by the same rule.
    - EXECUTABLE CONTENT is untouchable: assertions, mocks, fixtures, imports, test
@@ -1094,13 +1104,3 @@ Rules:
    execute. A mock can, so a mock is executable content and stays untouchable.
    First applied at `b8d757d`, on a note in `parseFileName.test.js` that described a
    design deleted two commits earlier.
-   - HOW THE RUN IS DRIVEN, not just what it proves. Mutations go onto a COPY of the
-     file: `cp <file> <file>.pristine` before the round, ONE mutation, run, then
-     `cp <file>.pristine <file>` and confirm with `diff -q` BEFORE the next mutation.
-     Never revert with `git checkout -- <file>`. On work that is not yet committed
-     that command reverts to HEAD and deletes the whole new implementation, and the
-     symptom is a screen of FAILING TESTS - a false mutation signal indistinguishable
-     from a real corpse, since both look like "the mutation killed something". It
-     happened at 2f and cost one false reading of four tests. The PRISTINE confirmation
-     is what makes the next mutation's result mean anything: a round whose revert was
-     never verified proves nothing about the round after it.
