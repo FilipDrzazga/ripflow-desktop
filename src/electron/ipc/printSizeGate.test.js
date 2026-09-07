@@ -139,3 +139,55 @@ describe("buildPFJobXML — the guard runs before anything is written", () => {
     expect(() => build([])).not.toThrow();
   });
 });
+
+describe("buildPFJobXML — the refusal says WHICH of the two causes was hit", () => {
+  // The mock above answers getFabricByName for every name, so inside this file every
+  // named fabric is one the catalogue can place. That is the branch it can reach, and
+  // the useful one: it proves the message stops sending the operator to Settings when
+  // the fabric is already there. The opposite branch needs a catalogue that can say no,
+  // which this file's fixed mock cannot express - it lives in printSizeGateCause.test.js.
+  it("does not blame the catalogue when the catalogue knows the fabric", () => {
+    let err;
+    try { build([item({ width: null, material: "Cotton Slub" })]); } catch (e) { err = e; }
+    expect(err.message).not.toMatch(/Add the fabric to the catalogue/i);
+    expect(err.message).toMatch(/could not be worked out from the file name/i);
+  });
+
+  // The case measured on a real filename: an LM file whose qty token reads "1m" instead
+  // of "1x" returns early from applyLmDimensions and keeps a null height, with a fabric
+  // that IS in the catalogue. Older than the width work and unrelated to it.
+  it("points at the file name for a known fabric with an unreadable size", () => {
+    let err;
+    try { build([item({ height: null, material: "Stretch Jersey" })]); } catch (e) { err = e; }
+    expect(err.message).toMatch(/height is unknown/i);
+    expect(err.message).toMatch(/product type configuration/i);
+  });
+
+  // No fabric to look up is not the catalogue's fault either, but it is the first place
+  // to look, so it keeps the catalogue advice.
+  it("keeps the catalogue advice when there is no fabric to look up", () => {
+    let err;
+    try { build([item({ width: null, material: null })]); } catch (e) { err = e; }
+    expect(err.message).toMatch(/Add the fabric to the catalogue/i);
+  });
+
+  it("keeps the catalogue advice for a blank fabric name", () => {
+    let err;
+    try { build([item({ width: null, material: "   " })]); } catch (e) { err = e; }
+    expect(err.message).toContain("an unnamed fabric");
+    expect(err.message).toMatch(/Add the fabric to the catalogue/i);
+  });
+
+  // Whichever cause it is, the first sentence is unchanged - the file, the fabric and
+  // which dimension. Only the advice differs, so a reader of the logs still gets the
+  // same identifying line.
+  it("names the file, the fabric and the dimension under either cause", () => {
+    let known, unknown;
+    try { build([item({ width: null, material: "Cotton Slub" })]); } catch (e) { known = e; }
+    try { build([item({ width: null, material: null })]); } catch (e) { unknown = e; }
+    for (const err of [known, unknown]) {
+      expect(err.message).toMatch(/^Cannot build the job: width is unknown for ON1_Ann_Lee_1of1/);
+      expect(err.code).toBe("ERR_UNKNOWN_PRINT_SIZE");
+    }
+  });
+});

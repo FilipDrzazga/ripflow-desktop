@@ -89,9 +89,26 @@ const getWorkflowFolderName = (printer) => {
 // caught exactly that. It is also NOT a truthiness check, because 0 IS a legal dimension.
 // A usable value is a finite number, or a non-blank string that parses to one.
 //
-// The message names the FILE and the FABRIC, because the fix is an operator action -
-// add that fabric to the catalogue in Settings - and a batch-level error would leave
-// them hunting for which of forty files it meant.
+// The message names the FILE and the FABRIC, and then tells the operator WHICH OF TWO
+// causes they hit, because the two need different actions and one of them has nothing
+// to do with the catalogue:
+//
+//   the catalogue cannot place this fabric  -> add it in Settings > Fabrics;
+//   the catalogue knows it (or no fabric is
+//   involved) and the size is still unknown -> the file name or the product type
+//                                              configuration is what needs looking at.
+//
+// The second cause is OLDER than the width work and unrelated to it: an LM file whose
+// qty token does not parse ("1m" instead of "1x") returns early from applyLmDimensions
+// and keeps whatever the size text gave, which is null when the text carries no
+// "N x N cm". Verified on a real filename with a fabric that IS in the catalogue.
+// Sending that operator to Settings > Fabrics is not merely unhelpful, it is a wrong
+// instruction: the fabric they would go looking for is already there.
+//
+// ONE error code for both. It is the same refusal with the same recovery shape - a
+// human fixes something and retries - and nothing downstream branches on the code, so
+// a second one would add a distinction no caller can use. The MESSAGE is where the
+// difference belongs, because the operator is the only one who acts on it.
 const isUsableDimension = (v) => {
   if (typeof v === "number") return Number.isFinite(v);
   if (typeof v === "string" && v.trim() !== "") return Number.isFinite(Number(v));
@@ -104,13 +121,19 @@ const assertPrintableDimensions = (batch) => {
     const badHeight = !isUsableDimension(item?.height);
     if (!badWidth && !badHeight) continue;
     const fileName = item?.file?.name ?? item?.artworkId ?? "unknown file";
-    const fabric = item?.material ? `"${item.material}"` : "an unnamed fabric";
+    const material = typeof item?.material === "string" ? item.material.trim() : "";
+    const fabric = material ? `"${material}"` : "an unnamed fabric";
     const which = badWidth && badHeight ? "width and height" : badWidth ? "width" : "height";
+    // Ask the catalogue the same question the parser asked. A fabric it can place is a
+    // fabric that is not the problem; anything else - unknown name, no name, catalogue
+    // unreadable - leaves the catalogue as the first thing to check.
+    const catalogueKnowsIt = material !== "" && getFabricByName(material) !== null;
+    const advice = catalogueKnowsIt
+      ? "That fabric is in the catalogue, so the size could not be worked out from the file name - " +
+        "check the name, or the product type configuration."
+      : "Add the fabric to the catalogue in Settings > Fabrics, then try again.";
     throw Object.assign(
-      new Error(
-        `Cannot build the job: ${which} is unknown for ${fileName} (${fabric}). ` +
-          "Add the fabric to the catalogue in Settings > Fabrics, then try again.",
-      ),
+      new Error(`Cannot build the job: ${which} is unknown for ${fileName} (${fabric}). ${advice}`),
       {
         code: "ERR_UNKNOWN_PRINT_SIZE",
         stage: "validate",
