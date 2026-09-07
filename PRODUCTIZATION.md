@@ -597,6 +597,14 @@ golden-diff czysty.
     zaczac. Wlasciwa kolejnosc, od dolu:
     1. **stub goldena zna profil** - ZROBIONE, `3e47d6c`.
     2. **hydraulika parsera: konfiguracja ARGUMENTEM** - ZROBIONE, `284e38e`.
+       **UWAGA - ten commit zrobil WIECEJ, niz mowi jego tytul.** Wiadomosc mowi tylko
+       "take the shop config as an argument", ale diff dodatkowo OZYWIL `productTypes`:
+       resolver `resolveProductDims` w `parseFileName.js` czyta je i jest ich PIERWSZYM
+       konsumentem. Stalo sie tak, bo mechanizm bez konsumenta bylby czwartym martwym
+       polem i nie dalo by sie przetestowac sciezki "konfiguracja przekazana => uzyta";
+       `DEFAULT_PROFILE` niesie dokladnie te same liczby co `DIMS_*`, wiec no-op zostal
+       zachowany. Historii nie przepisujemy - zapisane tutaj, zeby pozniejszy czytelnik
+       nie szukal osobnego commita "productTypes", ktorego nie ma.
        `parsePrintFileName(fileName, { ..., shopConfig })`, siedem call-site'ow w `src/`
        plus harness. Czysty no-op: golden 0/70, 30 testow charakteryzacyjnych bez jednej
        modyfikacji.
@@ -606,9 +614,10 @@ golden-diff czysty.
        do `parsers/fashionFormula.js`, bo zabierze ze soba lancuch
        `electron`/`better-sqlite3`. Hydraulika splaca dlug, ktory i tak stal na liscie,
        i odblokowuje 2g, 2h/fabrics oraz ETAP 5 naraz.
-    3. **`productTypes` jako zrodlo wymiarow** - konsument juz istnieje (resolver
-       w `parseFileName.js`), zostaje decyzja z Q8: co ma sie dziac przy profilu
-       NIEODCZYTANYM, zamiast dzisiejszego cofniecia do stalych Alexa.
+    3. **`productTypes` jako zrodlo wymiarow** - ZROBIONE w `284e38e` (patrz wyzej).
+       Zostaje wylacznie decyzja z Q8: co ma sie dziac przy profilu NIEODCZYTANYM,
+       zamiast dzisiejszego cofniecia do wymiarow Alexa - to jest DLUG opisany nizej,
+       domykany razem z krokiem 4.
     4. **listy klas** (`COTTON_MATERIALS_FALLBACK` / `POLY_MATERIALS`) - to samo pytanie
        dla klasy materialu; domyka drugie z dwoch wiazan parsera (patrz ETAP 5).
     5. **wlasnosc liczb klas** (marginesy, domyslne szerokosci): profil czy
@@ -619,20 +628,38 @@ golden-diff czysty.
        odbieraloby klientowi funkcje, ktora ma dzis, i cofalo swiadoma decyzje z BUG 4.
     6. **skasowanie `printWidths.js`** - ostatnie, bo lamie ISTNIEJACY test
        (dziura (c) w bramce Etapu 2).
+  - **DLUG: wbudowane wymiary jako fallback podstawiaja dane ALEXA.** Zywy od `284e38e`,
+    zapisany ZANIM zaczal sie krok 4, bo komentarz w kodzie na to nie wystarcza.
+    Siedem call-site'ow podaje `shopConfig: getProfile()`. Gdy profil jest NIEODCZYTANY,
+    `getProfile()` zwraca `null`, `resolveProductDims` schodzi do `BUILT_IN_DIMS`, czyli
+    do `DIMS_SAMPLE` / `DIMS_FQ` / `DIMS_TEA_TOWEL` - **wymiarow ALEXA**. U klienta #2
+    z padnietym NAS-em daloby to `<Width>`/`<Height>` innej drukarni w jego XML-u.
+    **To jest DOKLADNIE ten ksztalt, ktory usunal `bc68fbe`** (`feat(shopify): gate the
+    Shopify link and stop substituting another shop's store`): fallback podstawiajacy
+    dane innej drukarni zamiast przyznac sie do awarii. Tam bylo `fashionformulauk`
+    i cudze zamowienia, tu sa cudze wymiary w XML-u.
+    Dzis nieszkodliwe - jeden klient - ale nieszkodliwosc jest wlasciwoscia LICZBY
+    KLIENTOW, nie kodu.
+    Komentarz nad `BUILT_IN_DIMS` w `parseFileName.js` opisuje to poprawnie i **NIE
+    WYSTARCZA**: ta seria pokazala trzy razy, ze rzecz zapisana tylko w komentarzu
+    przezywa dwadziescia kilka commitow (opis sentinela `getShopProfile` - 23 commity;
+    `mismatches: 0`; `Eco Astra Ramie`). Dlug musi stac w trackerze.
+    **Domyka to KROK 4**, nie ETAP 3: krok 4 podejmuje te sama decyzje dla klasy
+    materialu, a zostawienie dwoch roznych odpowiedzi na to samo pytanie ("czego uzyc,
+    gdy nie wiemy") w jednym pliku byloby gorsze niz oba warianty osobno.
   - **ODRZUCONE DROGI NA SKROTY** (zapisane, zeby nie wrocily jako "pomysl"):
     - *profil przez `fabricCache.js`* - lamie zakontraktowana krawedz mocka dokladnie
       tak samo jak nowy import: `vi.mock` podmienia CALY modul, wiec nowy eksport bylby
       w mocku `undefined` i 30 testow charakteryzacyjnych padloby tak czy owak.
     - *setter modulowy w parserze* - omija call-site'y kosztem ukrytego stanu globalnego,
       zostawia parser nieczystym i nie splaca nic z ETAPU 5.
-  - **TRZY MARTWE POLA W PROFILU, nie jedno** (`git grep -n "<pole>" -- src/ scripts/`,
-    zmierzone na `297ef22`). Kazde lamie REGULE 24 dokladnie tak, jak usuniete w 2f
+  - **MARTWE POLA W PROFILU** (`git grep -n "<pole>" -- src/ scripts/`). Zmierzone na
+    `297ef22` jako TRZY; po `284e38e` zostaly **DWA** - `productTypes` ma juz konsumenta. Kazde lamie REGULE 24 dokladnie tak, jak usuniete w 2f
     `workstationRoles`: pole istnieje w `defaultProfile.js` i NIKT go nie czyta.
     - `materialClasses` (`defaultProfile.js:27`) - jedno trafienie, definicja. Zero
       czytelnikow. Marginesy i domyslne szerokosci bierze dzis `fabric_globals`.
-    - `productTypes` (`defaultProfile.js:31`) - jedno trafienie, definicja. Zero
-      czytelnikow. Wymiary bierze `DIMS_*` z `printWidths.js` przez
-      `parseFileName.js:203-217`.
+    - ~~`productTypes`~~ - **JUZ NIE MARTWE** (`284e38e`): czyta je `resolveProductDims`
+      w `parseFileName.js`, przez `options.shopConfig` podane przez call-site.
     - `printers[].materialClass` (`defaultProfile.js:10,16,22`) - poza definicja tylko
       fixture testowy `shopProfile.test.js:25-26`. Zero konsumentow produkcyjnych.
       **Jego konsument to `DataPrintSelection.jsx:14-16`** - dzis zaszyta tablica
@@ -944,7 +971,15 @@ Baza pozostaje jedynym zywym zrodlem prawdy; JSON to tylko transport na wdrozeni
 
 ## ETAP 5 - Parser nazw plikow (OSTATNI, osobna galaz)
 
-`parseFileName.js` = 623 linie, 27 testow charakteryzacyjnych (jedyna realna siatka).
+`parseFileName.js` = 623 linie; testy charakteryzacyjne w `parseFileName.test.js` to
+jedyna realna siatka na tym pliku.
+
+**Liczba testow, zmierzona - i skad wzielo sie "27".** Plik nie zmienil sie od
+`fc02c01`; `grep -c "  it("` daje **26** blokow statycznych, a `vitest run` **30**
+przypadkow, bo jeden z nich to `it.each` z pieciu wierszami (`:404`): 25 + 5 = 30.
+Zapisane wczesniej "27" nie odpowiada zadnemu z tych pomiarow - nie bylo pomiarem.
+To ta sama nauka co przy 2e: liczba bez komendy i bez jednostki (bloki czy przypadki?)
+jest data waznosci, nie faktem.
 Podejscie: NIE przepisywac. Wyodrebnic obecna logike, potem dodac druga.
 
 - [!] **ZABLOKOWANE: brak probek nazw plikow od realnego klienta #2**
@@ -959,7 +994,12 @@ Podejscie: NIE przepisywac. Wyodrebnic obecna logike, potem dodac druga.
       `getXmlWidthFromCache` z `fabricCache.js` (importuje `db.js`) oraz
       `POLY_MATERIALS` z `getMaterialType.js` (importuje `fabricCache.js`).
       Domyka je krok 4 z kolejnosci 2g/2h.
-- [=] Wyodrebnic obecna logike -> `parsers/fashionFormula.js` (27 testow przechodzi BEZ modyfikacji = kryterium)
+- [=] Wyodrebnic obecna logike -> `parsers/fashionFormula.js`.
+      **KRYTERIUM: WSZYSTKIE testy charakteryzacyjne przechodza BEZ modyfikacji pliku**
+      `parseFileName.test.js`. Sformulowane przez brak modyfikacji, nie przez liczbe -
+      liczba rosnie przy kazdym dolozonym przypadku i zamrozona staje sie celem.
+      Kontekst na dzien pomiaru (`b2bdb79`, 2026-09-07): 26 blokow `it(`, 30 przypadkow
+      w runtime (`npx vitest run src/electron/helpers/parseFileName.test.js`).
 - [=] `parsers/index.js` - wybor po `profile.parser.profile`
 - [=] Drugi parser pod konwencje klienta #2 + wlasny zestaw testow
 - [=] NIE budowac generycznego "silnika regul" z UI (dwie konwencje to za malo na abstrakcje)
