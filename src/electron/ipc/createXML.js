@@ -66,7 +66,63 @@ const getWorkflowFolderName = (printer) => {
   });
 };
 
+// Refuse to build a job whose print size is unknown.
+//
+// escapeXml is String(value ?? ""), so a null width does not become the word "null" -
+// it becomes an EMPTY element, <Width></Width>. That is worse than a loud failure: the
+// file is written, PrintFactory picks it up, and nobody upstream is told anything.
+//
+// "We do not know" is the right answer INSIDE the app - it is what step 4 replaced a
+// fabricated width with, and it is what the print view shows the operator. In a job file
+// for PrintFactory the same honesty turns into a malformed job, because the format has no
+// way to say it. This function is where the two meanings meet, so this is where the two
+// are separated.
+//
+// The guard stands at the SOURCE - once, here - and not at the call sites, because both
+// production routes arrive through submitBatchToPrintFactory: submitBatch.js:56 and
+// batchHistoryHandlers.js:358 (regenerate). Only the first is protected upstream, by the
+// print-view block on an Unknown material class; regeneration reads filenames off disk
+// and never passes through it at all.
+//
+// The check is NOT Number.isFinite(Number(v)): Number(null), Number("") and Number(false)
+// are all 0, so a null width would have sailed through as a legal zero - the tests below
+// caught exactly that. It is also NOT a truthiness check, because 0 IS a legal dimension.
+// A usable value is a finite number, or a non-blank string that parses to one.
+//
+// The message names the FILE and the FABRIC, because the fix is an operator action -
+// add that fabric to the catalogue in Settings - and a batch-level error would leave
+// them hunting for which of forty files it meant.
+const isUsableDimension = (v) => {
+  if (typeof v === "number") return Number.isFinite(v);
+  if (typeof v === "string" && v.trim() !== "") return Number.isFinite(Number(v));
+  return false;
+};
+
+const assertPrintableDimensions = (batch) => {
+  for (const item of batch ?? []) {
+    const badWidth = !isUsableDimension(item?.width);
+    const badHeight = !isUsableDimension(item?.height);
+    if (!badWidth && !badHeight) continue;
+    const fileName = item?.file?.name ?? item?.artworkId ?? "unknown file";
+    const fabric = item?.material ? `"${item.material}"` : "an unnamed fabric";
+    const which = badWidth && badHeight ? "width and height" : badWidth ? "width" : "height";
+    throw Object.assign(
+      new Error(
+        `Cannot build the job: ${which} is unknown for ${fileName} (${fabric}). ` +
+          "Add the fabric to the catalogue in Settings > Fabrics, then try again.",
+      ),
+      {
+        code: "ERR_UNKNOWN_PRINT_SIZE",
+        stage: "validate",
+        title: "Unknown print size",
+        type: "Error",
+      },
+    );
+  }
+};
+
 const buildPFJobXML = (batch, batchId) => {
+  assertPrintableDimensions(batch);
   const ROOT_PATH = getXmlRootPath();
   const PRINTED_ROOT_PATH = `${ROOT_PATH}\\PRINTED`;
   const normalizedBatchId = batchId.replace(/\//g, "\\");
