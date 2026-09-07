@@ -5,9 +5,10 @@ const normalize = (s) => (s ?? "").toString().trim();
 // The material class of a fabric, or "Unknown".
 //
 // The catalogue in the DB is the ONLY source. There used to be two hardcoded Sets here -
-// 33 cotton and 90 polyester names from Alex's catalogue - consulted whenever the cache
-// could not answer. They are gone, and their removal is the point of this cut rather
-// than a side effect.
+// 33 cotton and 88 polyester names from Alex's catalogue, 121 unique - consulted whenever
+// the cache could not answer. They are gone, and their removal is the point of this cut
+// rather than a side effect. Counts measured, not estimated:
+// git show <pre-cut sha>:src/electron/helpers/getMaterialType.js | grep -c '^    "'
 //
 // A guessed class is not a degraded answer, it is a WRONG one at any shop but the one
 // the list was copied from: at client #2 a fabric absent from their catalogue would be
