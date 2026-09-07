@@ -1,5 +1,4 @@
 // parsePrintFileName.js
-import { POLY_MATERIALS } from "./getMaterialType.js";
 import { getXmlWidthFromCache } from "./fabricCache.js";
 import {
   DIMS_SAMPLE,
@@ -231,8 +230,18 @@ function applyLmDimensions(out, shopConfig) {
     if (!Number.isFinite(out.qty) || out.qty <= 0) return;
 
     const material = (out.material ?? "").trim();
-    const isPoly = POLY_MATERIALS.has(material);
-    out.width = getXmlWidthFromCache(material, isPoly);
+    // null = the catalogue cannot give this fabric a width, because it is not in the
+    // catalogue or the catalogue could not be read. The parser used to guess here: it
+    // asked a hardcoded Set of Alex's polyester names whether the fabric was poly and
+    // took the matching class default, so an unknown fabric was measured against another
+    // shop's catalogue. It no longer guesses. width stays null and the file carries a
+    // warning; the operator is stopped where the block actually bites, in the print view,
+    // with the reason spelled out.
+    const xmlWidth = getXmlWidthFromCache(material);
+    if (xmlWidth == null) {
+      addWarning(out, `Unknown fabric "${material}" - not in the fabric catalogue, so the print width is unknown`);
+    }
+    out.width = xmlWidth;
     out.height = out.qty * 1000;
     return;
   }

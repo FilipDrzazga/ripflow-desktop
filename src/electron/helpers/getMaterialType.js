@@ -2,148 +2,28 @@ import { getFabricTypeFromCache } from "./fabricCache.js";
 
 const normalize = (s) => (s ?? "").toString().trim();
 
-// Fallback sets used before DB is ready (startup) and for the POLY_MATERIALS export
-// used by parseFileName.js before the cache loads.
-const COTTON_MATERIALS_FALLBACK = new Set(
-  [
-    "Cotton Slub",
-    "Stretch Lycra French Terry",
-    "Poppy Lycra Jersey",
-    "Organic Jersey Interlock",
-    "Organic Iris Jersey",
-    "Single Cotton Elastane Jersey",
-    "DSTK - Stretch Lycra French Terry",
-    "Organic Drill Natural",
-    "Panama",
-    "Organic Leve Panama Natural",
-    "Hector Linen",
-    "Poplin",
-    "Light Twill",
-    "Organic Drill Optic",
-    "Organic Optic Calico",
-    "Satin",
-    "Top Sateen",
-    "Organic Blossom Muslin Gauze",
-    "Organic Panama Natural",
-    "Organic Leve Cotton Panama Natural",
-    "Organic Jasmine Lycra Jersey",
-    "Cotton Denim",
-    "Organic Poplin",
-    "Organic Satin",
-    "Optic White Organic Panama",
-    "Melino Linen",
-    "Limani Linen",
-    "DSTK - Organic Jersey Interlock",
-    "Organic Stratos Linen",
-    "Organic Nimbus Linen",
-    "Organic Calico Natural",
-    "Calico Plain Cotton",
-    "Drill",
-  ].map(normalize),
-);
-
-export const POLY_MATERIALS = new Set(
-  [
-    "Eco Pique",
-    "Micro Linen",
-    "Slub Chiffon",
-    "Chiffon",
-    "DSTK - Recycled Ripstop",
-    "Gloss Satin",
-    "Tentex (Water Repellant)",
-    "Eco Jersey",
-    "Eco Display FR",
-    "Easy Care Twill",
-    "DSTK - Shimmer Velvet",
-    "Eco Telis Velvet - Domestic FR",
-    "Eco Basketweave",
-    "DSTK - Velvet Satin",
-    "DSTK - Heavy Bandage Crepe",
-    "DSTK - Shark Satin",
-    "DSTK - Eco Pique",
-    "Eco rPet Canvas",
-    "Eco Micro Jersey",
-    "Eco Telis Velvet - Non FR",
-    "Crepe de Chine",
-    "Panama FR",
-    "Heavy Lycra 210",
-    "Massey Crepe",
-    "Eco Jogger Fleece Back",
-    "Plainweave FR",
-    "Palatine Velvet FR",
-    "Lining",
-    "Eco Surf Pro",
-    "Ligos Velvet",
-    "DSTK - Eco Jersey",
-    "Fine Stripe Chiffon",
-    "Eco Recycled Ripstop",
-    "Voile FR",
-    "Waterproof Suede FR",
-    "DSTK - Fluid Twill",
-    "DSTK - SoftShell Ultra",
-    "Summer Voile",
-    "Dupioni FR",
-    "Crinkle Gauze",
-    "Eco Fleece",
-    "Eco Soft Tulle",
-    "DSTK - Eco Bridal Twill",
-    "Metallic Silver Satin Twill",
-    "DSTK - Poly Tulle",
-    "DSTK - Paros Stretch Twill",
-    "Eco Upholstery FR",
-    "Eco Gloss Satin",
-    "Avio Cotton Mix",
-    "Neraki Waterproof Canvas FR (Water Repellant)",
-    "Cora Canvas",
-    "Eco Sprint Knit",
-    "DSTK - Micro Linen",
-    "Recycled Eco Lycra",
-    "DSTK - Flat Velvet",
-    "Eco Power Net",
-    "Heavy Satin FR",
-    "Scuba Bodyfit",
-    "Oslo FR",
-    "Aqua Plain Tex - PUL (Water Repellant)",
-    "Diago Stretch",
-    "Velvet",
-    "Duchess Satin",
-    "Luxe Velvet",
-    "3-Pass Blackout FR",
-    "Bayeux Upholstery",
-    "Leos Cotton Mix",
-    "Eco Velvet",
-    "DSTK - Heavy Chenille",
-    "Eco Dynamica Lycra",
-    "Eco Mali Crepe",
-    "Organza",
-    "Plutus Velvet FR",
-    "Active Eco Lycra",
-    "DSTK - Slub Chiffon",
-    "Easy Care Panama",
-    "Eco Glitter Dot Lycra",
-    "Eco Linen Look",
-    "Eco Lotus Twill (Water Repellant)",
-    "Eco Satin Flow",
-    "Eco Silk Twill",
-    "Eco Super Fine Chiffon",
-    "Georgette",
-    "Faux Silky Satin",
-    "Eco Faux Silky Satin",
-    "Eco Taffeta",
-    "Eco Chiffon",
-    "Stretch Jersey",
-  ].map(normalize),
-);
-
+// The material class of a fabric, or "Unknown".
+//
+// The catalogue in the DB is the ONLY source. There used to be two hardcoded Sets here -
+// 33 cotton and 90 polyester names from Alex's catalogue - consulted whenever the cache
+// could not answer. They are gone, and their removal is the point of this cut rather
+// than a side effect.
+//
+// A guessed class is not a degraded answer, it is a WRONG one at any shop but the one
+// the list was copied from: at client #2 a fabric absent from their catalogue would be
+// classified by Alex's list, routed to the printer that class implies, and printed on
+// the wrong machine. Same shape as the Shopify handle fallback removed in bc68fbe -
+// substituting another shop's data instead of admitting we do not know.
+//
+// "Unknown" is therefore the honest answer for both a fabric outside the catalogue and
+// a catalogue that could not be read. The two are told apart where it matters - at the
+// point where the operator is blocked (DataPrintSelection) - not here: this function
+// returns a class, and "we could not read the DB" is not a class.
 export function getMaterialType(material) {
   const m = normalize(material);
   if (!m) return "Unknown";
 
+  // null = cache not loaded; a string = the catalogue answered, "Unknown" included.
   const fromCache = getFabricTypeFromCache(m);
-  if (fromCache !== null) return fromCache;
-
-  // Fallback: cache not yet loaded (before initDb completes)
-  if (COTTON_MATERIALS_FALLBACK.has(m)) return "Cottons";
-  if (POLY_MATERIALS.has(m)) return "Polyesters";
-  return "Unknown";
+  return fromCache ?? "Unknown";
 }

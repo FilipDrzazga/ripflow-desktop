@@ -1,6 +1,5 @@
 import { getAllFabrics, getFabricGlobals } from "./db.js";
 import { DEFAULT_FABRIC_GLOBALS } from "./defaultFabrics.js";
-import { LM_XML_COTTON } from "../../shared/printWidths.js";
 
 // null = not loaded (DB unreadable); array = loaded (empty only when the table is empty)
 let cachedFabrics = null;
@@ -58,17 +57,21 @@ export const getAliasFromCache = (name) => {
   return alias ? alias : null;
 };
 
-export const getXmlWidthFromCache = (name, isPoly) => {
+// The XML width of one fabric, or null when the catalogue cannot answer.
+//
+// null means exactly one thing: we do not know. Both "the catalogue is not loaded" and
+// "this fabric is not in it" collapse here on purpose - neither gives a width, and a
+// caller that has no width must not print. Telling those two apart is the operator
+// message's job, not this function's.
+//
+// It used to take an isPoly flag from the caller and, failing a hit, answer with the
+// class default (or with Alex's static per-material map). Both are gone. The flag was
+// computed in parseFileName.js from a hardcoded Set of Alex's polyester names, so an
+// unknown fabric got a width derived from another shop's catalogue, and the two paths
+// disagreed on five of his own 132 fabrics (see the BUG 4 section in CLAUDE.md).
+// The class also has ONE home now - fabrics.type - instead of being re-derived by the
+// caller from a list this module knew nothing about.
+export const getXmlWidthFromCache = (name) => {
   const f = getFabricByName(name);
-  if (f) return f.xmlWidth;
-  // Cache not loaded (DB unreadable): fall back to the static per-material map, the same
-  // way getMaterialType falls back to its static sets. Looked up regardless of isPoly,
-  // mirroring the by-name lookup this replaces. Poly has no per-material map — every poly
-  // entry carries LM_XML_POLY, which is already the global default, so it needs no branch.
-  if (cachedFabrics === null) {
-    const staticWidth = LM_XML_COTTON[name];
-    if (typeof staticWidth === "number") return staticWidth;
-  }
-  const g = getCachedGlobals();
-  return isPoly ? (g.defaultXmlWidthPoly ?? 1420) : (g.defaultXmlWidthCotton ?? 1420);
+  return f ? f.xmlWidth : null;
 };
