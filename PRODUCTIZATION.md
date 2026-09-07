@@ -663,6 +663,19 @@ golden-diff czysty.
     i zostaje z tym, co dal tekst rozmiaru - czyli `null`, gdy tekst nie niesie wymiarow.
     Nie wprowadzil tego krok 4; jest rownie malformed w pliku zadania, wiec straznik
     sprawdza oba wymiary.
+    - **KOMUNIKAT bramki rozroznia teraz dwie przyczyny (`8543364`).** To domkniecie
+      defektu STARSZEGO niz krok 4, nie czesc pracy nad wymiarami. `b06d57d` odmawial
+      jednym zdaniem - "dodaj tkanine do katalogu" - a dla tej drugiej przyczyny jest
+      to instrukcja BLEDNA, nie tylko nieprzydatna: tkanina juz tam jest.
+      Zmierzone na prawdziwej nazwie pliku, nie wywnioskowane:
+      `ON312819_..._Stretch Jersey_1m_Linear Meter - 1m increments_XWD..._FF.pdf`
+      -> `materialType` = Polyesters (tkanina JEST w katalogu), `qty` = null (token
+      "1m", nie "1x"), `width`/`height` = null, `warnings` = [].
+      Bramka pyta teraz katalog o to samo, o co pyta parser: tkanina, ktora katalog
+      potrafi umiescic, nie jest problemem - wtedy komunikat wskazuje nazwe pliku
+      i konfiguracje typow produktu. JEDEN kod bledu dla obu, bo to ta sama odmowa
+      i nic nizej sie po kodzie nie rozgalezia; roznica nalezy do komunikatu, bo
+      operator jest jedynym, kto na nim dziala.
   - **OTWARTE PYTANIE DO ZADANIA PRZY REALNYM RIP-IE: czy PrintFactory przyjmuje
     `<MaterialType>Unknown</MaterialType>`?** Nie da sie tego rozstrzygnac z repo,
     i to jest pomiar, nie unik: 70 baseline-ow goldena niesie WYLACZNIE `Cottons` (142)
@@ -691,17 +704,51 @@ golden-diff czysty.
     **Domyka to KROK 4**, nie ETAP 3: krok 4 podejmuje te sama decyzje dla klasy
     materialu, a zostawienie dwoch roznych odpowiedzi na to samo pytanie ("czego uzyc,
     gdy nie wiemy") w jednym pliku byloby gorsze niz oba warianty osobno.
-    - **STATUS po `0bf8aa6`: domknieta POLOWA.** Krok 4 rozstrzygnal pytanie dla KLASY
-      MATERIALU i SZEROKOSCI TKANINY - obie odpowiadaja teraz `"Unknown"` / `null`
-      zamiast siegac po dane Alexa, wiec `<Width>` dla LM juz go nie podstawia.
-      **ZOSTAJE polowa WYMIAROWA**: `resolveProductDims` dalej schodzi do `BUILT_IN_DIMS`
-      przy nieodczytanym profilu, wiec `<Width>`/`<Height>` dla SAMPLE / FQ / TEA_TOWEL
-      to nadal wymiary Alexa. Ten sam plik niesie teraz DWIE rozne odpowiedzi na to samo
-      pytanie - dokladnie to, czego ten zapis mial nie dopuscic - wiec domkniecie polowy
-      wymiarowej awansuje z "kiedys" na NASTEPNE ciecie po kroku 5.
-      Rozstrzygniecia wymaga jedno: czy plik z nieznanym wymiarem ma zostac `READY`
-      z `width: null` (jak dzis jest z nieznana tkanina), czy `INVALID`. To decyzja
-      o workflow Alexa, nie o kodzie.
+    - **STATUS: polowa MATERIALOWA domknieta (`0bf8aa6`), polowa WYMIAROWA PRZENIESIONA
+      DO ETAPU 5.** Nie odlozona bez terminu - przeniesiona tam, gdzie sie ja faktycznie
+      placi, z uzasadnieniem z pomiaru.
+    - **CO ZMIERZONE (proba implementacji, cofnieta - zadnego commita):**
+      `parseFileName.js` jest JEDYNYM konsumentem `DIMS_*`
+      (`git grep -n "DIMS_SAMPLE|DIMS_FQ|DIMS_TEA_TOWEL|BUILT_IN_DIMS" -- src/ scripts/`;
+      trafienia w `parseFileName.test.js` to KOMENTARZE, nie kod). Trzy testy
+      charakteryzacyjne asertuja te liczby WPROST - `:77-78` (FQ 670/480), `:100-101`
+      (SAMPLE 220/200), `:150-151` (TEA_TOWEL 700/500) - przy wywolaniu BEZ `shopConfig`
+      (helper `:29`). Sonda wierna implementacji (stale usuniete ORAZ wszystkie trzy
+      call-site'y obsluguja `null`): **3 padniete testy z 30**, plik przywrocony.
+      Pierwsza sonda dala 8 - byla NIEWIERNA, bo `out.width = dims.width` wywalalo sie
+      na `null` zanim doszlo do asercji. Odrzucona jako wlasny blad pomiarowy.
+    - **CZEGO TE TRZY TESTY NAPRAWDE BRONIA - i dlaczego `toBeNull()` to nie zamiana.**
+      Nie liczby 670, tylko tego, ze dla tych typow produktu wymiar bierze sie
+      z LOOKUPU, a nie z tekstu nazwy pliku. Komentarze mowia to wprost:
+      `:76` "width/height come from DIMS_FQ (670 x 480), not 650 x 480",
+      `:99` "width 220 (NOT 200 from the '20 x 20 cm' text)",
+      `:149` "applyTeaTowelDimensions -> fixed DIMS_TEA_TOWEL 700 x 500".
+      Ta charakterystyka po cieciu NADAL bylaby prawdziwa - zmienia sie tylko zawartosc
+      lookupu. `toBeNull()` jej NIE zapisuje, wiec zamiana skasowalaby stara asercje
+      nie stawiajac nic w zamian.
+    - **DLUG NIE SIEDZI W `printWidths.js`, tylko w SIATCE CHARAKTERYZACYJNEJ.** Zapis
+      z `a39c577` lokowal go w zlym pliku. Wymiary Alexa sa wpisane w testy jako
+      DEFINICJA poprawnego parsowania, wiec kazde ciecie usuwajace stale musi je zlamac.
+      Roznica wobec kroku 4: tam mock `getXmlWidthFromCache: () => 1420` POCHLANIAL
+      zmiane, wiec testy nie mialy o niej zdania. Tutaj wymiary nie przechodza przez
+      zaden mock - ida prosto ze stalych do asercji.
+    - **DLACZEGO PLACI SIE GO PRZY WYODREBNIENIU PARSERA.** Gdy logika trafi do
+      `parsers/fashionFormula.js`, testy charakteryzacyjne ida z nia i 670/480 sa
+      w NICH poprawne, bo opisuja parser ALEXA. Warstwa wspolna nie niesie wtedy
+      zadnych wymiarow produktu - i to jest domkniecie dlugu, nie obejscie.
+    - **DLACZEGO TO NIE JEST ODKLADANIE W NIESKONCZONOSC.** Dlug gryzie dopiero przy
+      kliencie #2, a ETAP 5 jest ZABLOKOWANY dokladnie na kliencie #2 (brak probek nazw
+      plikow). Wyzwalacz i naprawa przychodza razem; nie da sie trafic w okno, w ktorym
+      dlug szkodzi, a naprawa jest niedostepna.
+    - **ODRZUCONE DROGI (obie rozwazone i zmierzone, zeby nie wrocily jako pomysl):**
+      (A) *zamiana trzech asercji na `toBeNull()`* - kasuje charakterystyke
+      "lookup wygrywa z tekstem" nie stawiajac nic w zamian, i oslabia siatke tuz przed
+      ETAPEM 5, ktory na niej stoi.
+      (B) *furtka `shopConfig === undefined` -> stale, `null` -> nieznany* - trzy testy
+      przechodza bez dotkniecia, ale utrzymuje wymiary Alexa przy zyciu pod
+      technikalium i zastawia pulapke: przyszly call-site, ktory zapomni podac
+      `shopConfig`, po cichu dostanie dane Alexa. Ten sam ksztalt co `bc68fbe`
+      i `0bf8aa6`.
   - **ODRZUCONE DROGI NA SKROTY** (zapisane, zeby nie wrocily jako "pomysl"):
     - *profil przez `fabricCache.js`* - lamie zakontraktowana krawedz mocka dokladnie
       tak samo jak nowy import: `vi.mock` podmienia CALY modul, wiec nowy eksport bylby
@@ -1070,6 +1117,13 @@ Podejscie: NIE przepisywac. Wyodrebnic obecna logike, potem dodac druga.
       liczba rosnie przy kazdym dolozonym przypadku i zamrozona staje sie celem.
       Kontekst na dzien pomiaru (`b2bdb79`, 2026-09-07): 26 blokow `it(`, 30 przypadkow
       w runtime (`npx vitest run src/electron/helpers/parseFileName.test.js`).
+      **CZESC DEFINICJI "ZROBIONE": wyodrebnienie ma ZABRAC ZE SOBA trzy asercje
+      o stalych wymiarach** (`:77-78` FQ 670/480, `:100-101` SAMPLE 220/200,
+      `:150-151` TEA_TOWEL 700/500) jako opis parsera ALEXA - tam sa poprawne, bo
+      opisuja jego konwencje. **Warstwa wspolna nie moze niesc ZADNYCH wymiarow
+      produktu**: ani `DIMS_*`, ani `BUILT_IN_DIMS`, ani zadnego fallbacku na nie.
+      Tym sie placi dlug wbudowanych wymiarow (patrz 2g/2h); wyodrebnienie bez tego
+      nie jest zrobione.
 - [=] `parsers/index.js` - wybor po `profile.parser.profile`
 - [=] Drugi parser pod konwencje klienta #2 + wlasny zestaw testow
 - [=] NIE budowac generycznego "silnika regul" z UI (dwie konwencje to za malo na abstrakcje)
