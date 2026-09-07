@@ -2,8 +2,11 @@ import { describe, it, expect, vi } from "vitest";
 
 // Isolate from fabricCache so importing the parser never pulls in the native
 // better-sqlite3 / electron chain, and the LM XML width is deterministic (1420).
-// POLY_MATERIALS is intentionally NOT mocked — it is a static Set in
-// getMaterialType.js and the parser computes isPoly from it on its own.
+// This is the parser's ONLY remaining route to the data layer, so this one mock is
+// what keeps the file importable — see the ETAP 5 note in PRODUCTIZATION.md.
+// getMaterialType.js is not mocked because the parser no longer imports it at all:
+// the POLY_MATERIALS Set it used to consult for isPoly was deleted in 0bf8aa6, and
+// the material class now comes from the catalogue via fabricCache alone.
 vi.mock("./fabricCache.js", () => ({
   getXmlWidthFromCache: () => 1420,
   getFabricTypeFromCache: () => "Unknown",
