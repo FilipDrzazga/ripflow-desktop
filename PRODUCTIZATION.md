@@ -630,12 +630,40 @@ golden-diff czysty.
        CALKOWICIE niema.
        Bramka: golden 0/70, 274 testy (261 -> 274, +13, caly przyrost w nowym pliku),
        lint czysty, zaden istniejacy plik testowy nietkniety.
-       **`regenerateXmlForBatch` NIE zostal zabramkowany** - swiadome ograniczenie zakresu,
-       poparte pomiarem: wszystkie 121 nazw z usunietych list SA w 132-elementowym
-       katalogu Alexa, wiec dla niego sciezka `<MaterialType>Unknown</MaterialType>` staje
-       sie osiagalna w DOKLADNIE ZERU nowych przypadkow. Poszerza sie tylko dla tkaniny
-       usunietej z katalogu PO wydruku. Zabramkowanie wymaga decyzji, co regeneracja ma
-       wtedy robic - to decyzja produktowa, nie tego ciecia.
+       **`regenerateXmlForBatch` a `<MaterialType>Unknown</MaterialType>`** - swiadome
+       ograniczenie zakresu, poparte pomiarem: wszystkie 121 nazw z usunietych list SA
+       w 132-elementowym katalogu Alexa, wiec dla niego ta sciezka staje sie osiagalna
+       w DOKLADNIE ZERU nowych przypadkow. Poszerza sie tylko dla tkaniny usunietej
+       z katalogu PO wydruku.
+  - **LUKA, KTORA KROK 4 OTWORZYL, i jej domkniecie (`b06d57d`).** To NIE jest nowa
+    funkcja - to zrownanie dwoch miejsc, ktore krok 4 rozjechal. Krok 4 zamienil zmyslona
+    szerokosc na `null`, i to bylo poprawne W APLIKACJI: widok druku blokuje operatora
+    i mowi dlaczego. W PLIKU ZADANIA dla PrintFactory ta sama uczciwosc zamienia sie
+    w malformed job, bo format nie ma jak powiedziec "nie wiem".
+    Zmierzone: `escapeXml` to `String(value ?? "")`, wiec `null` NIE daje slowa "null",
+    tylko PUSTY element `<Width></Width>` - plik powstaje, PrintFactory go bierze,
+    nikt niczego nie zauwaza.
+    Dwie sciezki produkcyjne do `buildPFJobXML`, obie przez `submitBatchToPrintFactory`:
+    `submitBatch.js:56` - **zabramkowana w UI** blokada na klasie `Unknown`;
+    `batchHistoryHandlers.js:358` (regeneracja) - **niezabramkowana w ogole**, czyta
+    nazwy plikow z dysku i nie przechodzi przez widok druku.
+    Dlatego bramka stanela U ZRODLA - raz, w `buildPFJobXML` - a nie w kazdym wywolaniu.
+    Blad typowany jak `ERR_INVALID_PRINTER`, nazywa PLIK i TKANINE.
+    **Czesc `<Width>` regeneracji jest tym domknieta**; `<MaterialType>` NIE - patrz nizej.
+  - **`<Height>` mial ten sam problem, STARSZY niz krok 4, i bramka go objela.**
+    Plik LM, ktorego `qty` sie nie parsuje, wychodzi wczesnie z `applyLmDimensions`
+    i zostaje z tym, co dal tekst rozmiaru - czyli `null`, gdy tekst nie niesie wymiarow.
+    Nie wprowadzil tego krok 4; jest rownie malformed w pliku zadania, wiec straznik
+    sprawdza oba wymiary.
+  - **OTWARTE PYTANIE DO ZADANIA PRZY REALNYM RIP-IE: czy PrintFactory przyjmuje
+    `<MaterialType>Unknown</MaterialType>`?** Nie da sie tego rozstrzygnac z repo,
+    i to jest pomiar, nie unik: 70 baseline-ow goldena niesie WYLACZNIE `Cottons` (142)
+    i `Polyesters` (81), a slowo `Unknown` nie wystepuje w zadnym z nich. Alex nigdy
+    takiego XML-a nie wyslal, wiec repo nie ma dowodu w zadna strone. Argument ZA
+    zabramkowaniem: to ten sam brak wiedzy co przy szerokosci. PRZECIW: `Unknown` to
+    legalny string, ktory RIP moze przyjac, a pusty `<Width>` nie jest legalna liczba.
+    Do sprawdzenia jednym zadaniem testowym na prawdziwym PrintFactory, zanim cokolwiek
+    tu dopiszemy.
     5. **wlasnosc liczb klas** (marginesy, domyslne szerokosci): profil czy
        `fabric_globals`. OSOBNE ciecie z wlasnym pomiarem - ma haczyk, ktorego oba
        warianty dotykaja: klucze `fabric_globals` (`marginCotton`/`marginPoly`) maja

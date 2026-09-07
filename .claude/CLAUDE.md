@@ -1043,7 +1043,8 @@ Progress on the multi-tenant / decoupling work is tracked in `PRODUCTIZATION.md`
 Rules:
 
 1. Tick a box `[ ]` -> `[x]` ONLY after Filip has confirmed the step passed its full
-   gate (npm run test green with ZERO modifications to existing tests, npm run lint
+   gate (npm run test green with ZERO modifications to existing tests - see rule 7 for
+   what "modification" means, npm run lint
    clean, golden-diff XML byte-for-byte, raw git diff reviewed) AND the step is
    committed. Never tick on "code written" or "works on my machine" - `[x]` means
    "safe in Alex's production".
@@ -1078,6 +1079,21 @@ Rules:
      import or mock worked at all - STAY deliberately and have NO corpse of their own,
      with a comment saying so and why. They earn their place when five tests fail at
      once and exactly one of them says why.
+7. What "do not modify existing tests" protects, and where it stops. An existing test
+   file has two layers and they are NOT governed by the same rule.
+   - EXECUTABLE CONTENT is untouchable: assertions, mocks, fixtures, imports, test
+     names, `it.each` rows, the shape of a helper. A failing test after a change is a
+     STOP, never an invitation to edit it - that is the whole point of the rule.
+   - COMMENTS fall under the documentation rule instead: they must be TRUE, and a false
+     one is worse than none. Fixing a comment goes in its OWN commit, typed `docs`,
+     never bundled with code, and the proof it carries is the test count before and
+     after being identical plus a diff in which every changed line begins with `//`.
+   The reason for the split, written down so the next request does not arrive as "it is
+   only a mock": the rule exists to stop an unintended behaviour change from being
+   masked by an edited expectation. A comment cannot mask anything, because it does not
+   execute. A mock can, so a mock is executable content and stays untouchable.
+   First applied at `b8d757d`, on a note in `parseFileName.test.js` that described a
+   design deleted two commits earlier.
    - HOW THE RUN IS DRIVEN, not just what it proves. Mutations go onto a COPY of the
      file: `cp <file> <file>.pristine` before the round, ONE mutation, run, then
      `cp <file>.pristine <file>` and confirm with `diff -q` BEFORE the next mutation.
