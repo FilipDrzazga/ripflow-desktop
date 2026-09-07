@@ -618,8 +618,24 @@ golden-diff czysty.
        Zostaje wylacznie decyzja z Q8: co ma sie dziac przy profilu NIEODCZYTANYM,
        zamiast dzisiejszego cofniecia do wymiarow Alexa - to jest DLUG opisany nizej,
        domykany razem z krokiem 4.
-    4. **listy klas** (`COTTON_MATERIALS_FALLBACK` / `POLY_MATERIALS`) - to samo pytanie
-       dla klasy materialu; domyka drugie z dwoch wiazan parsera (patrz ETAP 5).
+    4. **listy klas** (`COTTON_MATERIALS_FALLBACK` / `POLY_MATERIALS`) - ZROBIONE, `0bf8aa6`.
+       Usuniete obie: 33 nazwy bawelen + 88 poliestrow, 121 unikalnych. Klasa przychodzi
+       z `fabrics.type`, a gdy katalog nie odpowiada - `"Unknown"`.
+       `getXmlWidthFromCache` stracil argument `isPoly` i galaz `LM_XML_COTTON`, i zwraca
+       `null` dla tkaniny spoza katalogu. Flaga byla liczona przez WOLAJACEGO z listy,
+       o ktorej `fabricCache.js` nic nie wiedzial - to ten rozjazd pozwalal dwom sciezkom
+       nie zgadzac sie na pieciu ze 132 tkanin Alexa.
+       Dolozony komunikat dla operatora w `DataPrintSelection`, rozrozniajacy dwie
+       przyczyny (niepelny katalog / katalog nieodczytany) - do tej pory blokada byla
+       CALKOWICIE niema.
+       Bramka: golden 0/70, 274 testy (261 -> 274, +13, caly przyrost w nowym pliku),
+       lint czysty, zaden istniejacy plik testowy nietkniety.
+       **`regenerateXmlForBatch` NIE zostal zabramkowany** - swiadome ograniczenie zakresu,
+       poparte pomiarem: wszystkie 121 nazw z usunietych list SA w 132-elementowym
+       katalogu Alexa, wiec dla niego sciezka `<MaterialType>Unknown</MaterialType>` staje
+       sie osiagalna w DOKLADNIE ZERU nowych przypadkow. Poszerza sie tylko dla tkaniny
+       usunietej z katalogu PO wydruku. Zabramkowanie wymaga decyzji, co regeneracja ma
+       wtedy robic - to decyzja produktowa, nie tego ciecia.
     5. **wlasnosc liczb klas** (marginesy, domyslne szerokosci): profil czy
        `fabric_globals`. OSOBNE ciecie z wlasnym pomiarem - ma haczyk, ktorego oba
        warianty dotykaja: klucze `fabric_globals` (`marginCotton`/`marginPoly`) maja
@@ -647,6 +663,17 @@ golden-diff czysty.
     **Domyka to KROK 4**, nie ETAP 3: krok 4 podejmuje te sama decyzje dla klasy
     materialu, a zostawienie dwoch roznych odpowiedzi na to samo pytanie ("czego uzyc,
     gdy nie wiemy") w jednym pliku byloby gorsze niz oba warianty osobno.
+    - **STATUS po `0bf8aa6`: domknieta POLOWA.** Krok 4 rozstrzygnal pytanie dla KLASY
+      MATERIALU i SZEROKOSCI TKANINY - obie odpowiadaja teraz `"Unknown"` / `null`
+      zamiast siegac po dane Alexa, wiec `<Width>` dla LM juz go nie podstawia.
+      **ZOSTAJE polowa WYMIAROWA**: `resolveProductDims` dalej schodzi do `BUILT_IN_DIMS`
+      przy nieodczytanym profilu, wiec `<Width>`/`<Height>` dla SAMPLE / FQ / TEA_TOWEL
+      to nadal wymiary Alexa. Ten sam plik niesie teraz DWIE rozne odpowiedzi na to samo
+      pytanie - dokladnie to, czego ten zapis mial nie dopuscic - wiec domkniecie polowy
+      wymiarowej awansuje z "kiedys" na NASTEPNE ciecie po kroku 5.
+      Rozstrzygniecia wymaga jedno: czy plik z nieznanym wymiarem ma zostac `READY`
+      z `width: null` (jak dzis jest z nieznana tkanina), czy `INVALID`. To decyzja
+      o workflow Alexa, nie o kodzie.
   - **ODRZUCONE DROGI NA SKROTY** (zapisane, zeby nie wrocily jako "pomysl"):
     - *profil przez `fabricCache.js`* - lamie zakontraktowana krawedz mocka dokladnie
       tak samo jak nowy import: `vi.mock` podmienia CALY modul, wiec nowy eksport bylby
@@ -765,9 +792,16 @@ sprawdzone", a dla czterech klas zmian nie znaczy nic:
 - **(a) Sciezka ZDEGRADOWANA nie jest uruchamiana ANI RAZU.** `scripts/golden/stub-db.mjs`
   zawsze karmi `fabricCache` pelnym katalogiem z `profiles/fashion-formula-fabrics.json`,
   wiec galezie `cachedFabrics === null` nie wykonuja sie w siatce. Rozjazd loaded vs
-  degraded - **5 tkanin na 132 dostaje inny `<Width>`**, patrz sekcja o BUG 4
-  w `CLAUDE.md` - jest dla goldena calkowicie niewidoczny. Dowod dla tej klasy zmian
+  degraded - **5 tkanin na 132 dostawalo inny `<Width>`**, patrz sekcja o BUG 4
+  w `CLAUDE.md` - byl dla goldena calkowicie niewidoczny. Dowod dla tej klasy zmian
   musi byc testem jednostkowym, nie goldenem.
+  **ZMNIEJSZONA przez `0bf8aa6`, nie zamknieta - odpowiedz z pomiaru, nie z odczucia.**
+  Rozjazd 5/132 ZNIKNAL, bo zniknela druga odpowiedz: `getXmlWidthFromCache` nie ma juz
+  galezi `cachedFabrics === null` z mapa `LM_XML_COTTON`, wiec przy niezaladowanym
+  katalogu nie ma czego porownywac - jest `null`. Dziura jako KLASA problemu zostaje:
+  `stub-db.mjs` dalej zawsze karmi cache pelnym katalogiem, wiec sciezka `null` nadal nie
+  wykonuje sie w siatce ANI RAZU. Pokrywa ja `materialClassSource.test.js`, i tak ma
+  zostac - golden jest siatka na XML z KOMPLETNYMI danymi, nie na degradacje.
 - **(b) XML zamowien custom NIE MA baseline'u W OGOLE.** `buildCustomOrderXML`
   (`customOrderHandlers.js`) nie jest w siatce. A niesie `<Width>${LM_XML_POLY}</Width>`
   (`:40`) i zaszyte `<MaterialType>Polyesters</MaterialType>` (`:43`) - obie wartosci
@@ -993,7 +1027,15 @@ Podejscie: NIE przepisywac. Wyodrebnic obecna logike, potem dodac druga.
       Dwa wiazania, oba o MATERIAL, nie o wymiar:
       `getXmlWidthFromCache` z `fabricCache.js` (importuje `db.js`) oraz
       `POLY_MATERIALS` z `getMaterialType.js` (importuje `fabricCache.js`).
-      Domyka je krok 4 z kolejnosci 2g/2h.
+- [x] **Drugi krok: jedno z dwoch wiazan usuniete** (`0bf8aa6`). Parser nie importuje juz
+      `getMaterialType.js` w ogole - `POLY_MATERIALS` przestalo istniec. Zostaje JEDNO
+      wiazanie: `getXmlWidthFromCache` z `fabricCache.js`.
+      **Parser DALEJ nie jest importowalny bez lancucha electron** - zmierzone po commicie,
+      w golym node: `The requested module 'electron' does not provide an export named 'app'`.
+      Postep jest realny (2 wiazania -> 1), ale kryterium wyodrebnienia NIE jest spelnione.
+      Domkniecie: szerokosc tkaniny musi przyjsc ARGUMENTEM, tak jak `shopConfig`, czyli
+      trzecie dotkniecie tych samych siedmiu call-site'ow. To jest ostatni krok
+      wyodrebnienia i pierwszy, ktory mozna zaczac bez czekania na probki klienta #2.
 - [=] Wyodrebnic obecna logike -> `parsers/fashionFormula.js`.
       **KRYTERIUM: WSZYSTKIE testy charakteryzacyjne przechodza BEZ modyfikacji pliku**
       `parseFileName.test.js`. Sformulowane przez brak modyfikacji, nie przez liczbe -
