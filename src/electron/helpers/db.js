@@ -1,5 +1,5 @@
 import { join } from "path";
-import { mkdirSync, existsSync, readdirSync, unlinkSync, statSync } from "fs";
+import { mkdirSync, existsSync, readdirSync, unlinkSync, statSync, writeFileSync } from "fs";
 import { app } from "electron";
 import Database from "better-sqlite3";
 import { getStorageRootPath } from "./getRootPath.js";
@@ -50,6 +50,10 @@ const PRINTER_RE = /-(DGEN|YOKO|YUMI)$/i;
 const isTransientDbError = (err) =>
   ["SQLITE_BUSY", "SQLITE_BUSY_SNAPSHOT", "SQLITE_LOCKED"].includes(err?.code);
 
+// LOCAL, per-machine: never the shared storagePath. Both the whole-database backup and
+// the shop-profile blob dump land here, so the path has one definition.
+const backupsDir = () => join(app.getPath("userData"), "backups");
+
 let dbErrorSink = null;          // wired from main via setDbErrorSink
 let dbDegradedInternal = false;
 export const setDbErrorSink = (fn) => { dbErrorSink = fn; };
@@ -60,6 +64,16 @@ export const getDbDegraded = () => dbDegradedInternal;
 const signalPermanent = (label) => {
   if (!dbDegradedInternal) { dbDegradedInternal = true; dbErrorSink?.("db:error", { label }); }
 };
+// The one channel that reaches the operator from inside registerIpcHandlers. Used by the
+// shop-profile migration when its LOCAL pre-migration dump cannot be written, which is a
+// hard stop for that migration.
+//
+// KNOWN MISLABEL, recorded rather than hidden: the renderer banner this flips reads
+// "Database unavailable - check the network connection", while the real failure is a local
+// file write under userData. One banner is still better than a console line nobody reads,
+// and a second banner for a case that has never fired is not worth its wiring.
+export const signalStartupProblem = (label) => signalPermanent(label);
+
 const signalRecovered = () => {
   if (dbDegradedInternal) { dbDegradedInternal = false; dbErrorSink?.("db:recovered", {}); }
 };
@@ -862,6 +876,66 @@ export const setShopProfile = (profile, workstation) => {
   return true;
 };
 
+// The profile row as STORED - the original column text, not a re-serialisation of it.
+//
+// getShopProfile above parses and throws the string away. The migration needs the exact
+// bytes, because its UPDATE compares against them: JSON.stringify(JSON.parse(text)) can
+// differ from text in key order or whitespace, and a compare-and-swap against a
+// re-serialised value would match zero rows on every run. The migration would then never
+// execute and would look, from the outside, exactly like "already migrated".
+//
+// Throws on a missing handle for the same reason getShopProfile does: null here means
+// "no row", and collapsing "no database" into it would make an unreachable NAS look like
+// a fresh install.
+export const getShopProfileRaw = () => {
+  if (!db) throw new Error("[db] getShopProfileRaw: database not initialized");
+  const row = db.prepare("SELECT data FROM shop_profile LIMIT 1").get();
+  return row ? row.data : null;
+};
+
+// Compare-and-swap write for the migration. Returns { updated }.
+//
+// NOT setShopProfile: that is an unguarded UPSERT and it is right for a deliberate save,
+// where the operator's click IS the authority. A migration has no such authority. Three
+// stations start against the shared database at once, and an awaited backup sits between
+// the read and this write, so the row can legitimately change underneath us: another
+// station may have migrated it, or a person may have saved a profile through profile:set.
+// Both cases want the same answer - write nothing - and the WHERE clause gives it without
+// having to tell them apart.
+//
+// Same discipline as the guarded stage UPDATE behind rule 18: the boolean, not the absence
+// of an exception, is what says whether anything moved.
+export const migrateShopProfileRow = (expectedJson, nextJson, workstation) => {
+  if (!db) return { updated: false };
+  const res = db
+    .prepare(
+      "UPDATE shop_profile SET data = ?, updated_at = ?, updated_by = ? " +
+        "WHERE id = 1 AND data = ?",
+    )
+    .run(nextJson, new Date().toISOString(), workstation ?? null, expectedJson);
+  return { updated: res.changes > 0 };
+};
+
+// Writes the pre-migration profile blob to a LOCAL file and returns where it went.
+//
+// This is the rollback artifact for a profile migration, and it is deliberately not the
+// whole-database backup: the thing that changes is roughly a kilobyte of JSON, the
+// database is ~1.8 MB and lives on the network share. A local synchronous write cannot
+// fail on SMB, which is what lets it be a hard precondition instead of a wish.
+export const dumpShopProfileBlob = (rawJson, version) => {
+  try {
+    const dir = backupsDir();
+    mkdirSync(dir, { recursive: true });
+    const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+    const dest = join(dir, "shop_profile_pre_v" + version + "_" + stamp + ".json");
+    writeFileSync(dest, rawJson, "utf8");
+    return { success: true, path: dest };
+  } catch (err) {
+    console.error("[db] dumpShopProfileBlob failed:", err);
+    return { success: false, error: err.message };
+  }
+};
+
 // ── file_stage_history ────────────────────────────────────────────────────────
 
 const _insertStageHistory = (fileId, stage, enteredAt) => {
@@ -998,7 +1072,7 @@ export const setSewingReceived = (fileId, updatedBy, expectedStage) => {
 export const backupDb = async (force = false) => {
   if (!db) return { success: false, error: "Database not initialized." };
   try {
-    const backupDir = join(app.getPath("userData"), "backups");
+    const backupDir = backupsDir();
     mkdirSync(backupDir, { recursive: true });
 
     const stamp = new Date().toISOString().slice(0, 10);

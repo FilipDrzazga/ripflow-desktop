@@ -3,7 +3,10 @@
 // margins, roles, sewing companies, Shopify handle). Seeded into shop_profile on first
 // run and kept here as the in-memory fallback when the row cannot be read.
 export const DEFAULT_PROFILE = {
-  schemaVersion: 1,
+  // Bumped to 2 with the v1 -> v2 migration (helpers/migrateShopProfile.js). A freshly
+  // seeded row must carry the version whose SHAPE it has, or the migration would treat
+  // every new install as one step behind and write a row it had nothing to change.
+  schemaVersion: 2,
   printers: [
     {
       code: "DGEN",

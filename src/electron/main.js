@@ -60,8 +60,14 @@ const createWindow = () => {
   }
 };
 
-app.whenReady().then(() => {
-  registerIpcHandlers();
+// awaited: registerIpcHandlers became async so the one-time shop-profile migration can
+// finish before anything reads the profile. Ordering is unchanged for everything else -
+// createWindow still runs first among the steps below, the ipcMain handlers registered
+// further down are still in place before any renderer exists to call them, and
+// setDbErrorSink was already wired AFTER createWindow, so the migration never had a sink
+// to emit through anyway (its degraded flag is picked up by the renderer startup snapshot).
+app.whenReady().then(async () => {
+  await registerIpcHandlers();
   createWindow();
 
   // Bridge critical-DB-write signals to the renderer (one degraded banner). Same

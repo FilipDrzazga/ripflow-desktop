@@ -19,6 +19,7 @@ import { getSettings, setSettings, getRollbackDefinitions, clearRollbackDefiniti
 import { initDb, insertLog, getAllLogs, clearAllLogs, holdFile, unholdFile, getHeldFiles, pruneOrphanHeldFiles, getRollbackReasonsByBatch, getRollbackReasonsByFile, getRollbackStats, getRollbackDetails, clearAllRollbackReasons, deleteRollbackReason, getLatestRollbackReasonsForFileIds, getReasonDefinitions, setReasonDefinitions as setReasonDefinitionsDb, migrateReasonDefinitions, getAllFabrics, saveFabric, deleteFabric as deleteFabricDb, setAllFabrics, getFabricGlobals, setFabricGlobals, setShopProfile, backupDb, cleanupShippedStages, getDbDegraded } from "../helpers/db.js";
 import { loadFabricCache, invalidateFabricCache } from "../helpers/fabricCache.js";
 import { loadShopProfile, invalidateShopProfile, getProfile } from "../helpers/shopProfile.js";
+import { runShopProfileMigration } from "../helpers/runShopProfileMigration.js";
 
 const DAY_FOLDER_RE = /^\d{2}-\d{2}-\d{4}$/;
 
@@ -155,7 +156,11 @@ const startWatcher = () => {
   }
 };
 
-export function registerIpcHandlers() {
+// async ONLY because of the best-effort backup inside the migration, and only on the one
+// start where a migration is actually pending: migrateShopProfile is pure and answers
+// changed:false before anything asynchronous is touched, so every later start runs this
+// function straight through. main.js awaits it before createWindow().
+export async function registerIpcHandlers() {
   initDb();
 
   // Migrate reasonDefinitions from electron-store to DB (one-time, idempotent)
@@ -164,6 +169,11 @@ export function registerIpcHandlers() {
     migrateReasonDefinitions(storeReasonDefs);
     clearRollbackDefinitions();
   }
+
+  // One-time, idempotent upgrade of an EXISTING shop_profile row. Must land after initDb
+  // (it needs the handle) and BEFORE loadShopProfile, which caches the row for the whole
+  // session - see the comment on runShopProfileMigration for the full ordering argument.
+  await runShopProfileMigration();
 
   // Before loadFabricCache: the profile carries the material classes and hotfolder
   // names the fabric layer will read once those consumers land (ETAP 2).
