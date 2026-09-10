@@ -1,5 +1,31 @@
 [
   {
+    "version": "1.0.22",
+    "date": "2026-09-10",
+    "changes": [
+      {
+        "text": "A fabric that is not in the catalogue no longer slips through quietly. The file is blocked in the print view with a message naming it, and you release it by adding that fabric in Settings > Fabrics. Until now the print width was guessed from a built-in list, which could be wrong",
+        "clients": ["all"]
+      },
+      {
+        "text": "A job whose size cannot be worked out is no longer created at all. Until now the file was written with the size left empty and the printer took it without warning - now you get a message saying which file and what to look at, before anything reaches PrintFactory",
+        "clients": ["all"]
+      },
+      {
+        "text": "Changing a margin or a roll width in Settings now affects the file sent to the printer and the metres printed on the batch label. Until now the only thing it reached was the waste figure recorded when you roll a file back - everything else was built from values fixed inside the program",
+        "clients": ["all"]
+      },
+      {
+        "text": "One-off update of the shop configuration the first time this version starts. A copy of the previous configuration is saved on this computer beforehand, so nothing is lost",
+        "clients": ["all"]
+      },
+      {
+        "text": "Because of that one-off update, the FIRST start after installing this version takes noticeably longer than usual - the app makes a backup copy of its database before changing anything. The window will open once it is done. Every start after that is back to normal speed, so a slow first launch is not a fault",
+        "clients": ["all"]
+      }
+    ]
+  },
+  {
     "version": "1.0.21",
     "date": "2026-08-20",
     "changes": [
