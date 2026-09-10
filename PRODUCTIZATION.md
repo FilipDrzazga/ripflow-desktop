@@ -25,6 +25,139 @@ udowadniamy golden-diff (XML bajt w bajt) na kopii jego bazy, nie na oko.
 
 ---
 
+## Stan wdrozenia u Alexa (pomiar 2026-09-10)
+
+Zapisane jako USTALENIE, a nie jako notatka, bo stan wdrozenia zgadywalismy dwa razy
+i dwa razy zle. Kazda pozycja nizej niesie komende albo dane, ktorymi ja zmierzono.
+
+### Co jest zainstalowane
+
+Zainstalowany build to `main` @ `v1.0.21` (`2848aeb`, 2026-08-20 12:12). `v1.0.21` jest
+SCISLYM PRZODKIEM `main` (`git merge-base --is-ancestor v1.0.21 main` -> prawda), a `main`
+jest 66 commitow do przodu (`git rev-list --count v1.0.21..main`). Rozklad tych 66:
+33 `docs`, 12 `feat`, 8 `fix`, 7 `test`, 4 `chore`, 2 `refactor` - czyli polowa to
+dokumentacja i testy.
+
+**METODA, nie tylko wynik - tak to sprawdzac nastepnym razem.** Numer wersji NIE JEST
+dyskryminatorem: galaz `feature/custom-orders-unification` do dzis mowi `1.0.18`, bo nigdy
+nie zrobila bumpa, a `1.0.18` to dokladnie wersja jej merge-base. Build z tej galezi i build
+z `main` z konca lipca podalyby operatorowi ten sam numer. Rozstrzyga porownanie ZAWARTOSCI
+paczki: rozpakowac naglowek `resources/app.asar` zainstalowanej aplikacji i porownac kazdy
+plik `/src/**` z `git show <tag>:<path>` po normalizacji CRLF->LF. Wynik: 40 z 41 plikow
+bajt w bajt; jedyna roznica to `package.json` przepisany przez electron-buildera (usuwa
+`scripts`, `build`, `devDependencies` - sprawdzone klucz po kluczu). Potwierdzenie od strony
+obecnosci plikow: w paczce NIE MA `defaultProfile.js` ani `shopProfile.js` (dodane
+2026-08-27, po buildzie), JEST `shopifyConfig.js` (skasowany w `d7b93db`), i nie ma zadnego
+pliku z galezi custom-orders.
+
+Pulapka w samej sondzie, zapisana zeby jej nie powtorzyc: offset danych w asar to
+`8 + pickleSize`, nie `16 + strLen`. Zly offset daje "wszystkie pliki rozne" oraz
+`package.json`, ktory nie parsuje sie jako JSON - blad NARZEDZIA udajacy wynik, ten sam
+ksztalt, przed ktorym ostrzega metodologia. Walidacja sondy: `package.json` z paczki ma sie
+sparsowac i podac wersje.
+
+Stacje: `logs` zna trzy - "Cotton PC", "Poly", "QC". Pierwsze dwie zaczynaja logowac
+2026-08-20, tego samego dnia co instalacja `1.0.21`. **Wersji na "Poly" i "QC" nie da sie
+odczytac z maszyny deweloperskiej - potwierdzic w Settings > Updates na kazdej z nich.**
+`app-update.yml` wskazuje kanal GitHub Releases (`releaseType: release`), wiec stacje
+z wlaczonym auto-update zbiegaja do najnowszego wydania - ale to poszlaka, nie odczyt.
+
+### ODWOLANIE blednej tezy z 2026-09-10
+
+Teza postawiona i NIEPRAWDZIWA: "produkcja nie chodzi z `main`, deploy moze zabrac funkcje,
+ktorych klient uzywa". Obserwacja u jej zrodla byla POPRAWNA - w zywej bazie sa tabele
+`counters` / `custom_clients` / `custom_order_files`, ktorych `main` nie tworzy nigdzie
+(grep na tych trzech nazwach po `src/` zwraca zero plikow). Zly byl WNIOSEK z niej.
+
+Prawda, zmierzona: tabele pochodza z JEDNEGO przebiegu deweloperskiego z maszyny
+"Cotton PC" 2026-07-31, w dniu, w ktorym powstaly commity galezi. Trzy niezalezne
+przeslanki:
+
+- `counters.custom_order_seq = 2` - `nextCustomOrderSeq()` inkrementuje w transakcji przy
+  KAZDYM zamowieniu i nigdy nie maleje, wiec w CALEJ historii tej bazy przydzielono dwa
+  identyfikatory custom. Licznik jest odporny na kasowanie wierszy, wiec mowi wiecej niz
+  `COUNT(*)`;
+- wszystkie 11 wierszy `custom_order_files` ma identyczny `created_at` co do milisekundy
+  (`2026-07-31T14:14:29.939Z`) - jeden import, jedna chwila;
+- `custom_clients.source_path` wskazuje dysk LOKALNY tej maszyny (`F:\Minerva\...`),
+  zgodnie z jej `customOrderFolderPath` w `config.json`.
+
+Galaz NIGDY nie byla wdrozona, wiec deploy `main` nie zabiera klientowi zadnej funkcji.
+Stara sciezka custom-order z `main` jest za to ZYWA: `custom_order_history` ma 58 wierszy,
+ostatni 2026-09-01.
+
+Granica tego pomiaru, zeby nie czytac go szerzej niz mowi: w `logs` nie ma ZADNEGO sladu
+custom - ale `logs` niesie wylacznie cztery etapy (`submitBatch`, `rollbackFile`,
+`rollbackBatch`, `regenerateXml`), wiec sciezka custom nie pisze tam ani stara, ani nowa.
+Brak wpisow mowi o zakresie logowania, nie o uzyciu.
+
+### RYZYKO OPERACYJNE, ktore z tego zostaje
+
+Obserwacja stojaca u zrodla blednej tezy jest sama w sobie ustaleniem i jest powazna:
+**maszyna deweloperska JEST jednoczesnie stacja produkcyjna "Cotton PC" i pisze do
+produkcyjnej `ripflow.db`** (`storagePath = O:\SPPrintReadyArtwork` w jej `config.json`,
+`workstationRole = cotton`). `npm run dev` na niej zaklada tabele i wiersze w bazie calej
+drukarni - co juz raz sie stalo i zostawilo 11 wierszy plus dwa identyfikatory w liczniku.
+Konsekwencja dla KAZDEGO kroku dotykajacego bazy: kod migracyjny weryfikowac na KOPII pliku
+`.db` w katalogu tymczasowym, odczyty przez `readonly: true`, nigdy przez uruchomienie
+aplikacji.
+
+### Ryzyko pierwszego wydania z aktualnego `main` - pozycje do CHANGELOGA
+
+To nie jest dlug do splacenia, tylko lista tego, co operator zobaczy. Kolejnosc wg ryzyka:
+
+1. **`scanRules` - BLOKUJACE.** Bez migracji P1 skan przestanie ruszac etapy na kazdej
+   stacji z niepusta rola i pokaze "Role not in scan rules". Zainstalowany `1.0.21`
+   powstal PRZED `2eeaa26` (2026-09-04), wiec dzis skaner dziala na starych, zaszytych
+   galeziach rol - mina uzbroi sie dokladnie w chwili pierwszego wydania z aktualnego
+   `main`, nie wczesniej.
+2. **Tkanina spoza katalogu przestaje przechodzic po cichu** (`0bf8aa6`). Wczesniej
+   dostawala domyslna szerokosc klasy; teraz operator zobaczy blokade w widoku druku.
+   Dla dzisiejszych danych no-op (wszystkie 121 usunietych nazw sa w katalogu), ale
+   katalog zyje - patrz rozjazd snapshotu nizej.
+3. **XML z nieznanym wymiarem nie powstaje** (`b06d57d`, komunikat rozdzielony w
+   `8543364`). Wczesniej powstawal plik z pustym `<Width></Width>`, ktory PrintFactory
+   brala. Nowa blokada, ktorej operator wczesniej nie widzial.
+4. **Edycja marginesu w Settings zaczyna wplywac na XML** (BUG 4). Zamierzone. Liczby
+   w chwili wdrozenia sie NIE zmieniaja - zmierzone na zywej bazie: `fabric_globals`
+   Alexa (10 / 5 / 1420 / 1420 / 1420 / 1550) sa identyczne z `DEFAULT_FABRIC_GLOBALS`
+   i z `DEFAULT_PROFILE.materialClasses`.
+
+### Rozjazd snapshotu katalogu (granica wypowiedzi goldena, nie blad)
+
+Zywa baza ma 133 tkaniny, `profiles/fashion-formula-fabrics.json` z ETAPU 0 ma 132.
+Roznica: `Eco Telis Velvet - Commercial FR`, dodana przez Alexa po eksporcie. Stub goldena
+karmi sie eksportem, wiec o tej tkaninie nie wie nic. To nie jest blad siatki - ma byc
+offline i odtwarzalna - tylko granica tego, o czym "golden 0/70" moze cokolwiek powiedziec.
+Klasy w zywej bazie: Cottons 36, Polyesters 97; zero wierszy z pusta lub zerowa szerokoscia.
+
+### Galaz `feature/custom-orders-unification` - status
+
+6 commitow do przodu, 91 do tylu, merge-base `712eeeb` (2026-07-30, `bump 1.0.18`).
+Wnosi 34 zmienione pliki, 2861 insertions(+), 91 deletions(-)
+(`git diff --stat main...feature/custom-orders-unification`).
+
+`git merge-tree --write-tree main feature/custom-orders-unification` daje konflikt
+w DOKLADNIE JEDNYM pliku i jednym bloku: `src/electron/helpers/db.js`, 213 wierszy,
+add/add - `main` dodal `getShopProfile`/`setShopProfile`, galaz siedem funkcji
+custom-client / custom-order-file. Rozwiazanie to "zachowaj oba", zero sprzecznosci
+semantycznej.
+
+Czysty tekstowo nie znaczy poprawny. Dwa koszty do wziecia swiadomie:
+
+- `parseFileName.js` AUTOMERGUJE sie. Galaz zmienia go o +44 wiersze (`ON|CUS`,
+  `XWD|CID`, `qty` ulamkowe), a `main` przepisal go w `284e38e` i `0bf8aa6`. Git polaczy
+  to bez konfliktu i moze wyprodukowac kod, ktory sie kompiluje i jest zly;
+- z szesciu plikow testowych galezi piec jest NOWYCH, ale `parseFileName.test.js`
+  ISTNIEJE w `main`, wiec merge ZMIENI warstwe wykonywalna istniejacego testu. Podlega
+  REGULE 7 - musi byc jawna decyzja, nie skutek uboczny `git merge`.
+
+**To WLASNE ciecie z wlasna bramka, NIE warunek deployu `main`.** Odleglosc rosnie z kazdym
+krokiem ETAPU 2, bo `parseFileName.js` i `db.js` to pliki, ktore ETAP 2 rusza najczesciej.
+Decyzje "zyje czy umiera" trzeba podjac, zanim galaz zestarzeje sie do nieuzywalnosci.
+
+---
+
 ## ETAP 0 - Niezalezne bugfixy + odciecie katalogu (u samego Alexa)
 
 Baseline testow - to JEST punkt odniesienia bramki, `CLAUDE.md` i sekcja "Bramka
@@ -641,6 +774,19 @@ golden-diff czysty.
        NAZWY KLAS wpisane w klucz, wiec trzecia klasa wymaga tam zmiany schematu.
        ODRZUCONE na tym etapie: "profil wygrywa, `FabricsView` przestaje edytowac" -
        odbieraloby klientowi funkcje, ktora ma dzis, i cofalo swiadoma decyzje z BUG 4.
+       **DWA Z SZESCIU POL SA MARTWE OD KROKU 4, a edytor tego nie mowi.** Zmierzone
+       2026-09-10: `git grep -n "defaultXmlWidth" -- .` daje poza dokumentacja tylko
+       seed (`defaultFabrics.js:143-144`), stub goldena, jeden test i EDYTOR
+       (`FabricsView.jsx:18-19,27-28`). **Zero czytelnikow produkcyjnych.** Powod:
+       `0bf8aa6` zabral `getXmlWidthFromCache` galaz klasowa - dzis jest to
+       `getFabricByName(name)?.xmlWidth`, a `null` daje ostrzezenie zamiast domyslnej
+       szerokosci klasy. Skutek dla klienta: pola "XML Width Cotton" / "XML Width Poly"
+       w Settings zapisuja sie do bazy i NIE ROBIA NIC. **Edytor klamie operatorowi** -
+       to nie kosmetyka, tylko kontrolka obiecujaca wplyw na wydruk, ktorego nie ma.
+       Do zamkniecia w kroku 5 razem z wlasnoscia liczb: pola wypadaja z edytora, a
+       `DEFAULT_PROFILE.materialClasses` NIE dostaje `defaultXmlWidth` - inaczej byloby
+       to trzecie martwe pole profilu, wbrew REGULE 24. To NIE jest odrzucony wariant
+       (b): tam odbieraloby sie funkcje dzialajaca, tu znika samo zludzenie.
     6. **skasowanie `printWidths.js`** - ostatnie, bo lamie ISTNIEJACY test
        (dziura (c) w bramce Etapu 2).
   - **LUKA, KTORA KROK 4 OTWORZYL, i jej domkniecie (`b06d57d`).** To NIE jest nowa

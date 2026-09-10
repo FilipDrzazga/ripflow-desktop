@@ -284,24 +284,41 @@ loadFabricCache(); // load from DB into memory
 invalidateFabricCache(); // clear cache (call before reloading)
 getFabricByName(name); // → fabric object | null
 getFabricTypeFromCache(name); // → "Cottons" | "Polyesters" | "Unknown" | null (null = cache not loaded)
-getXmlWidthFromCache(name, isPoly); // → number (per-material or global default)
+getXmlWidthFromCache(name); // → fabric.xmlWidth | null — no class default, see below
 getAliasFromCache(name); // → short path-safe alias | null (null = no/unusable alias or cache not loaded)
 getCachedFabrics(); // → fabric[]
-getCachedGlobals(); // → { marginCotton, marginPoly, defaultXmlWidthCotton, ... }
+getCachedGlobals(); // → { marginCotton, marginPoly, defaultRollWidthCotton, defaultRollWidthPoly, defaultXmlWidth* }
+//   the two defaultXmlWidth* keys are DEAD since 0bf8aa6 — stored, editable, read by nobody
 getEstimateConfig(); // → { globals, fabrics } | null (null = cache not loaded — NEVER { fabrics: [] })
 ```
 
-**Fallback chain (getMaterialType.js):**
+**Material class (getMaterialType.js) — there is no fallback any more, and that is the point:**
 
-1. fabricCache loaded → use DB result
-2. Cache not loaded (before initDb) → fall back to static COTTON_MATERIALS / POLY_MATERIALS sets
+1. fabricCache loaded → the catalogue's answer, `"Unknown"` included
+2. Cache not loaded (before initDb, or the DB unreachable) → `"Unknown"`
+
+The static `COTTON_MATERIALS` / `POLY_MATERIALS` sets — Alex's own fabric names, 121 unique — were
+deleted in `0bf8aa6`. A guessed class is not a degraded answer but a wrong one at any shop except
+the one the list was copied from. The two causes of `"Unknown"` are told apart where the operator
+is actually blocked (`DataPrintSelection`), not here: this function returns a class, and "the DB
+could not be read" is not a class.
 
 **Alias sanitization — single gate:** `getAliasFromCache` strips everything outside `[a-zA-Z0-9_-]` (and trims) at the point of use, returning `null` if nothing usable remains. This is the ONE gate, independent of the UI `onChange` — so a dirty alias entering via `setAllFabrics`/import or a hand-edited `ripflow.db` can never reach the PRINTED folder name / `<Path>`.
 
-**Fallback chain (parseFileName.js `applyLmDimensions`):**
+**XML width in parseFileName.js (`applyLmDimensions`) — a lookup, NOT a chain:**
 
-1. `getXmlWidthFromCache(material, isPoly)` → per-material `fabric.xmlWidth` from the cache
-2. No per-material match (or cache not loaded) → global default from `getCachedGlobals()` (`defaultXmlWidthPoly` / `defaultXmlWidthCotton`), which falls back to `DEFAULT_FABRIC_GLOBALS` (`defaultFabrics.js`) when the cache is empty, with a final `?? 1420`. parseFileName.js no longer imports `printWidths.js` `LM_XML_*` constants (removed in lint cleanup).
+1. `getXmlWidthFromCache(material)` → `getFabricByName(name)?.xmlWidth`, the per-material value
+2. Fabric absent from the catalogue, or the catalogue unreadable → **`null`** plus a warning on the
+   file (`Unknown fabric "<name>" - not in the fabric catalogue, so the print width is unknown`).
+   `out.width` stays `null` and the operator is stopped in the print view.
+
+**There is no step 3.** The old second step — the class default from `getCachedGlobals()`
+(`defaultXmlWidthPoly` / `defaultXmlWidthCotton`) with a final `?? 1420` — was removed in `0bf8aa6`
+together with the `isPoly` argument. That flag was computed by the CALLER from a hardcoded Set of
+Alex's polyester names, which is exactly what let the loaded and degraded paths disagree on five of
+his own 132 fabrics (see BUG 4 below). A `null` width can no longer reach the XML: `buildPFJobXML`
+refuses the job at the source (`b06d57d`, message split in `8543364`). `parseFileName.js` imports no
+`printWidths.js` `LM_XML_*` constants.
 
 ## Shop Profile (`shopProfile.js`)
 
@@ -589,16 +606,20 @@ refreshBatchDays()      // non-awaited
 
 ## Print Widths — Hardcoded vs DB
 
-`printWidths.js` values are now **fallbacks only**. DB (`fabric_globals` + `fabrics`) is the primary source.
+`printWidths.js` values are **fallbacks only — with one live exception**. DB (`fabric_globals` +
+`fabrics`) is the primary source everywhere the table below says so. The exception is
+`customOrderHandlers.js`, which imports `LM_XML_POLY` and writes it straight into the custom-order
+XML (`:40`) next to a hardcoded `<MaterialType>Polyesters</MaterialType>` (`:43`) — not a fallback,
+a live literal, and one with no golden baseline (hole (b) in the Etap 2 gate).
 
 | Config                           | DB table                                | Fallback                                           |
 | -------------------------------- | --------------------------------------- | -------------------------------------------------- |
 | Margins (cotton/poly)            | `fabric_globals`                        | `MARGIN_COTTON=10`, `MARGIN_POLY=5`                |
-| Default XML widths               | `fabric_globals`                        | `LM_XML_POLY=1420`, `LM_XML_COTTON_DEFAULT=1420`   |
+| Default XML widths               | `fabric_globals` — **DEAD, zero readers**  | none (was `LM_XML_POLY`, `LM_XML_COTTON_DEFAULT`) |
 | Default roll widths              | `fabric_globals`                        | `LM_ROLL_POLY=1550`, `LM_ROLL_COTTON_DEFAULT=1420` |
-| Per-material XML width           | `fabrics.xml_width`                     | `LM_XML_COTTON[name]` map                          |
+| Per-material XML width           | `fabrics.xml_width`                     | **none — `null`, and the job is refused**          |
 | Per-material roll width          | `fabrics.roll_width`                    | `LM_ROLL_COTTON[name]` map                         |
-| Material type routing            | `fabrics.type`                          | static Sets in getMaterialType.js                  |
+| Material type routing            | `fabrics.type`                          | **none — `"Unknown"`** (static Sets deleted)       |
 | XML flags (velvet/linen/blossom) | `fabrics.is_velvet/is_linen/is_blossom` | string-contains fallback                           |
 
 **Fixed product dims stay hardcoded** (never user-editable):
@@ -652,11 +673,24 @@ the class default.
 Because roll widths agree 132/132, `estimatePrintLength` and the `_Nm` suffix are untouched: the
 divergence is confined to `<Width>`, which comes from `getXmlWidthFromCache` via `parseFileName.js`.
 
+**STATUS since `0bf8aa6` (re-measured 2026-09-10): the `xmlWidth` divergence is CLOSED, and half the
+recipe below can no longer be run.** The table stays as the record of a real finding, not as a live
+risk. `getXmlWidthFromCache` has no degraded branch left — it answers `fabric.xmlWidth` or `null` —
+so there is no second value for the loaded one to disagree with. What survives is the CLASS of
+problem, not these five rows: the golden harness always feeds `fabricCache` a full catalogue, so the
+`null` path executes in the net zero times (hole (a) in the Etap 2 gate). Cover it with a unit test
+(`materialClassSource.test.js`), never with the golden net.
+
 **How to re-measure** (do this rather than trusting the numbers above — the old claim died precisely
-because it carried a result with no method): load `profiles/fashion-formula-fabrics.json`, and for
-each row compare `xmlWidth` against what the degraded branch of `getXmlWidthFromCache` would return
-(`LM_XML_COTTON[name]` when present, else `defaultXmlWidthPoly`/`defaultXmlWidthCotton`), and
-`rollWidth` against `LM_ROLL_COTTON[name] ?? LM_ROLL_COTTON_DEFAULT` (poly: `LM_ROLL_POLY`).
+because it carried a result with no method). The `rollWidth` half is still runnable, the `xmlWidth`
+half is not:
+
+- `rollWidth` — LIVE. `estimatePrintLength.getRollWidth` still has its degraded branch. Load
+  `profiles/fashion-formula-fabrics.json` and compare each row's `rollWidth` against
+  `LM_ROLL_COTTON[name] ?? LM_ROLL_COTTON_DEFAULT` (poly: `LM_ROLL_POLY`).
+- `xmlWidth` — DEAD. There is nothing to compare against: the degraded answer used to be
+  `LM_XML_COTTON[name]` or a class default, and both branches are gone. Reproducing the table above
+  requires checking out a commit before `0bf8aa6`.
 
 `Eco Astra Ramie` was recorded here as the shape to watch — a cotton absent from the maps whose two
 paths "today both yield 1420". That was wrong too: it yields 1370 loaded and 1420 degraded. It is not
