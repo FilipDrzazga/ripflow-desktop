@@ -106,7 +106,8 @@ aplikacji.
 
 To nie jest dlug do splacenia, tylko lista tego, co operator zobaczy. Kolejnosc wg ryzyka:
 
-1. **`scanRules` - BLOKUJACE.** Bez migracji P1 skan przestanie ruszac etapy na kazdej
+1. ~~**`scanRules` - BLOKUJACE.**~~ **ZAMKNIETE przez P1 (`7937508`)** - patrz nizej.
+   Zapis oryginalny: bez migracji P1 skan przestanie ruszac etapy na kazdej
    stacji z niepusta rola i pokaze "Role not in scan rules". Zainstalowany `1.0.21`
    powstal PRZED `2eeaa26` (2026-09-04), wiec dzis skaner dziala na starych, zaszytych
    galeziach rol - mina uzbroi sie dokladnie w chwili pierwszego wydania z aktualnego
@@ -155,6 +156,71 @@ Czysty tekstowo nie znaczy poprawny. Dwa koszty do wziecia swiadomie:
 **To WLASNE ciecie z wlasna bramka, NIE warunek deployu `main`.** Odleglosc rosnie z kazdym
 krokiem ETAPU 2, bo `parseFileName.js` i `db.js` to pliki, ktore ETAP 2 rusza najczesciej.
 Decyzje "zyje czy umiera" trzeba podjac, zanim galaz zestarzeje sie do nieuzywalnosci.
+
+### P1 - migracja wiersza profilu (ZROBIONE, `7937508`)
+
+Zamyka pozycje 1 z listy ryzyk powyzej. `helpers/migrateShopProfile.js` (czysta funkcja,
+zero importow) + `helpers/runShopProfileMigration.js` (orkiestrator) + compare-and-swap
+`db.migrateShopProfileRow`. Wolane w `registerIpcHandlers` po `initDb`, PRZED
+`loadShopProfile`.
+
+Zweryfikowane na PRAWDZIWYM wierszu, na kopii bazy read-only (nigdy na samej bazie):
+`workstationRoles` usuniete, cztery reguly dodane, `schemaVersion` 1 -> 2, pozostalych
+SIEDEM kluczy bajt w bajt bez zmian, drugi przebieg `changed:false`. Bramka: 334 testy
+w 25 plikach (bylo 300/22; caly przyrost w trzech NOWYCH plikach, zaden istniejacy test
+nietkniety), lint czysty, golden 0/70.
+
+**`schemaVersion` przestal byc martwym polem, i to jest tu wazniejsze niz sama migracja.**
+Pomiar przed cieciem: `git grep -n "schemaVersion" -- src/ scripts/` dawal 18 trafien -
+jedna definicja w `defaultProfile.js` i siedemnascie FIXTURE'ow testowych. Zero
+czytelnikow produkcyjnych, czyli czwarte martwe pole profilu obok tych z 2g. Teraz czyta
+je migracja, co spelnia REGULE 24 i **odblokowuje walidacje importu z ETAPU 3**: polowa
+tamtej reguly ("nowszy niz build -> odmowa") jest juz zaimplementowana i otestowana w
+`migrateShopProfile`, bo tam wlasnie jest potrzebna - wiersz zapisany przez nowszy build
+niesie klucze, ktore starszy zgubilby przy round-tripie. Do zrobienia w ETAPIE 3 zostaje
+druga polowa, po stronie importu pliku.
+
+### DECYZJA: dwa artefakty odtworzeniowe, traktowane INACZEJ
+
+Pierwotna regula brzmiala "`backupDb(true)` przed zapisem, bezwarunkowo". Byla dobra
+w intencji i zla w narzedziu, wiec zostala zmieniona PRZED implementacja:
+
+- **Zrzut starego bloba = WARUNEK TWARDY.** Synchroniczny zapis na dysk LOKALNY
+  (`userData/backups/shop_profile_pre_v<N>_<timestamp>.json`). Nieudany zrzut = migracja
+  sie NIE WYKONUJE, log + sygnal przez `signalStartupProblem`. Sciezka trafia do logu,
+  bo artefakt, ktorego nikt nie znajdzie, nie jest odtworzeniem.
+- **`backupDb(true)` = BEST EFFORT.** Logowany, nie blokuje.
+
+Uzasadnienie, bo to jest wybor miedzy DWIEMA awariami i ma byc widoczny: zmienia sie
+okolo kilobajta JSON-a, a baza ma 1,8 MB i lezy na udziale sieciowym. Lokalny zapis
+synchroniczny nie moze sie wywalic na SMB - dlatego moze bramkowac. Gdyby bramka
+zalezala od przejscia po sieci, chwilowa awaria sieci zamienialaby sie w martwy skaner,
+czyli dokladnie w te awarie, ktora ta migracja naprawia. Cena decyzji: przy nieosiagalnym
+`userData` (uprawnienia, dysk pelny) migracja nie pojdzie i skaner zostanie martwy do
+czasu naprawy - to jest swiadomie wybrany kierunek odmowy.
+
+**ZNANY BLEDNY OPIS, zapisany zamiast ukryty:** `signalStartupProblem` zapala baner,
+ktory mowi "Database unavailable - check the network connection", a prawdziwa przyczyna
+to lokalny zapis pliku. Jeden baner jest lepszy niz linia w konsoli, ktorej nikt nie
+czyta; drugi baner dla przypadku, ktory nie wystapil ani razu, nie jest wart okablowania.
+
+### Eksperyment ze stacja QC - uspienie a zawieszanie sie aplikacji (zamkniety 2026-09-11)
+
+**UWAGA DO CZYTELNIKA: to jest PIERWSZY zapis tego eksperymentu w repo.** Grep na
+`powerMonitor` / `lock-screen` / `suspend` / `uspien` po wszystkich czterech plikach `.md`
+zwracal ZERO trafien przed tym commitem, a etykieta "DLUG 4", pod ktora go zaadresowano,
+nie istnieje w tym pliku - jedyna numerowana etykieta dlugu w projekcie to "DEBT 1"
+w `CLAUDE.md`. Tresc ponizej pochodzi z relacji Filipa, nie z pomiaru wykonanego tutaj,
+i tak nalezy ja czytac.
+
+Objaw: aplikacja na stacji QC zawieszala sie. Hipoteza: uspienie systemu zrywa polaczenie
+SMB z `O:`, a aplikacja tego nie zauwaza. Eksperyment: wylaczono uspienie na tej stacji.
+Wynik: **zawieszanie USTALO. Hipoteza POTWIERDZONA.**
+
+Wniosek i zakres: kod z `powerMonitor` (plus pauza pollingu na `suspend` / `lock-screen`)
+jest uzasadniony i wchodzi na liste ETAPU 4 nizej. **NIE jest warunkiem wydania
+`v1.0.22`** - wylaczone uspienie jest dzialajacym obejsciem, wiec to nie jest bloker.
+Osobno i niezaleznie: `storagePath` na QC z litery dysku na sciezke UNC.
 
 ---
 
@@ -1081,6 +1147,10 @@ Baza pozostaje jedynym zywym zrodlem prawdy; JSON to tylko transport na wdrozeni
 - [ ] Export profilu do pliku `.json`
 - [ ] Import + walidacja w kolejnosci:
   - [ ] `schemaVersion` (nowszy niz build -> odmowa; starszy -> migracja w gore)
+        **POLOWA JUZ ZROBIONA w P1 (`7937508`).** "Nowszy niz build -> odmowa" zyje
+        i jest otestowane w `migrateShopProfile`, bo tam jest potrzebne. "Starszy ->
+        migracja w gore" to `STEPS` w tym samym module - import ma je WYWOLAC, nie
+        napisac drugi raz. Do zrobienia zostaje wylacznie strona pliku.
   - [ ] ksztalt: wymagane klucze, typy, `printers` niepuste
   - [ ] kody drukarek `^[A-Z0-9_]+$` (myslnik rozwala parsowanie nazwy folderu batcha)
   - [ ] spojnosc: `printer.materialClass` w `materialClasses`; `scanRules.from/to` w `stages`
@@ -1116,6 +1186,12 @@ Baza pozostaje jedynym zywym zrodlem prawdy; JSON to tylko transport na wdrozeni
 
 ## ETAP 4 - Produktyzacja (moze isc rownolegle z Etapem 2)
 
+- [ ] **`powerMonitor` + pauza pollingu na `suspend` / `lock-screen`.** Uzasadnione
+      eksperymentem na stacji QC (patrz sekcja "Stan wdrozenia u Alexa"): uspienie
+      zrywa SMB do `O:`, aplikacja tego nie zauwaza i sie zawiesza. NIE jest warunkiem
+      wydania `v1.0.22` - wylaczone uspienie jest dzialajacym obejsciem
+- [ ] **`storagePath` na stacji QC z litery dysku na UNC.** Osobny, NIEZALEZNY krok od
+      powyzszego - litera dysku jest mapowaniem per sesja uzytkownika, UNC nie jest
 - [ ] **Podpis kodu** - certyfikat OV (~300-400 EUR/rok). Bez tego SmartScreen
       "Nieznany wydawca" przy kazdej instalacji i aktualizacji
 - [ ] **Kanaly wydan** - `autoUpdater.channel = clientId` -> `latest-<klient>.yml`;
