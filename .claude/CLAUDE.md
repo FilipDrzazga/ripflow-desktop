@@ -630,9 +630,22 @@ a live literal, and one with no golden baseline (hole (b) in the Etap 2 gate).
 
 `estimatePrintLength(files, config)` and `estimateMaterialLengthByGroups(groups, materialType, config)`
 take the DB values as an **optional** argument — and for a long time only 2 of 9 call sites passed
-one. The result was a split brain: editing a margin or a roll width in Settings moved the
-BatchHistory header and nothing else — not the XML sent to PrintFactory, not the label, not the
-inbox estimates. All 9 call sites now pass a config:
+one. The result was a split brain: editing a margin or a roll width in Settings reached **only the
+waste figure written on a rollback** — `rollback_reasons.meters`, i.e. the numbers Analytics shows.
+It did NOT reach the XML sent to PrintFactory, the batch label, the BatchHistory header, or the inbox
+estimates. Both configured call sites lived in `batchHistoryHandlers.js`, and both ended in
+`insertRollbackReason({ … meters })`.
+
+**This paragraph used to name the BatchHistory header as the one place the edit DID reach, and that
+is precisely one of the places it did not.** The header comes from `readPrintedFolder.js`, the label
+from `submitBatch.js`, the `_Nm` suffix from `createXML.js` — none of the three passed a config at
+`v1.0.21`, so all three ran on the constants in `printWidths.js`. Measured, not reasoned from the
+text above: `git grep -n "estimatePrintLength(" v1.0.21 -- src/` for who received a config, then
+reading what each of the two configured sites actually feeds. No line numbers are given here on
+purpose — a line number pointing into a `.js` file has no way to update itself, and that mechanism
+produced most of the false records in this project. Sprawdzone wobec 5da6eec, 2026-09-10.
+
+All 9 call sites now pass a config:
 
 - **main process** → `getEstimateConfig()` from `fabricCache.js` (`createXML.js`, `submitBatch.js`,
   `readPrintedFolder.js`, `batchHistoryHandlers.js` ×2)
