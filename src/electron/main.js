@@ -1,3 +1,6 @@
+// MUST stay the FIRST import: ES modules evaluate in import order, so sandboxBoot.js moves
+// userData into the local sandbox before getSettings.js (via ./ipc/index.js) builds its Store.
+import { SANDBOX_ROOT } from "./sandboxBoot.js";
 import { app, BrowserWindow, ipcMain, dialog } from "electron";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
@@ -5,6 +8,8 @@ import { createRequire } from "module";
 import process from "process";
 import { registerIpcHandlers } from "./ipc/index.js";
 import { setDbErrorSink } from "./helpers/db.js";
+import { getSettings } from "./helpers/getSettings.js";
+import { findUnsafeSettings } from "./helpers/sandboxGuard.js";
 const require = createRequire(import.meta.url);
 const { autoUpdater } = require("electron-updater");
 
@@ -67,6 +72,24 @@ const createWindow = () => {
 // setDbErrorSink was already wired AFTER createWindow, so the migration never had a sink
 // to emit through anyway (its degraded flag is picked up by the renderer startup snapshot).
 app.whenReady().then(async () => {
+  // Run from the repo (not installed): refuse to start unless every path setting lives in
+  // the local sandbox. Checked BEFORE registerIpcHandlers - i.e. before initDb and every other
+  // startup write. The installed build never enters this branch.
+  if (!app.isPackaged) {
+    const unsafe = findUnsafeSettings(getSettings(), SANDBOX_ROOT);
+    if (unsafe.length > 0) {
+      const lines = unsafe.map((u) => `- ${u.key} = ${JSON.stringify(u.value)} (${u.reason})`).join("\n");
+      const message =
+        "RipFlow was started from the repository, so it may only use its local sandbox.\n\n" +
+        `Sandbox: ${SANDBOX_ROOT}\n\nThese settings point outside it:\n${lines}\n\n` +
+        `Fix or delete ${join(app.getPath("userData"), "config.json")} (deleting it re-seeds safe paths).`;
+      console.error(`[sandbox] refusing to start:\n${message}`);
+      dialog.showErrorBox("RipFlow dev sandbox - refusing to start", message);
+      app.exit(1);
+      return;
+    }
+  }
+
   await registerIpcHandlers();
   createWindow();
 
@@ -99,6 +122,8 @@ app.whenReady().then(async () => {
 
   ipcMain.handle("app:getVersion", () => app.getVersion());
   ipcMain.handle("update:check", () => {
+    // Run from the repo: never reach electron-updater. Installed build unchanged.
+    if (!app.isPackaged) return { success: false, reason: "sandbox" };
     const timeout = setTimeout(() => {
       win?.webContents.send("update:error", "Update check timed out. Check your internet connection.");
     }, 12000);

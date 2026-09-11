@@ -1,4 +1,4 @@
-import { BrowserWindow } from "electron";
+import { app, BrowserWindow } from "electron";
 import bwipjs from "bwip-js";
 import { getSettings } from "./getSettings.js";
 
@@ -32,6 +32,15 @@ const buildLabelHtml = ({ batchName, barcodeBase64, totalMeters }) => {
 // Resolves with null on success, or an error string on failure.
 const printHtml = (html, labelPrinterName) =>
   new Promise((resolve) => {
+    // The ONE physical print point (auto-print after submit and every "Reprint Label" reach
+    // it through printBatchLabel). Run from the repo, never print: an empty labelPrinterName
+    // would otherwise go to the station's DEFAULT printer. Installed build unchanged.
+    if (!app.isPackaged) {
+      console.log("sandbox: label print skipped");
+      resolve("sandbox: label print skipped");
+      return;
+    }
+
     const win = new BrowserWindow({
       show: false,
       width: 400,
