@@ -783,10 +783,13 @@ const BatchHistory = () => {
           searchInputRef.current?.focus();
         } else {
           const err = res?.errors?.[0];
+          // Prefer the per-file OS cause the handler derived (res.userMessage) over the
+          // generic text — this is the all-files-failed case where errors[] is empty.
           throw {
             type: err?.type || "Error",
             title: err?.title || "Rollback failed",
-            message: err?.message || "Could not roll back batch.",
+            message: res?.userMessage || err?.message || "Could not roll back batch.",
+            code: err?.code || res?.userCode || "BATCH_ROLLBACK_FAILED",
           };
         }
       } catch (err) {
@@ -796,7 +799,7 @@ const BatchHistory = () => {
             title: err?.title || "Rollback failed",
             message: err?.message || "Could not roll back batch.",
           },
-          { stage: "rollback", code: "BATCH_ROLLBACK_FAILED" },
+          { stage: "rollback", code: err?.code || "BATCH_ROLLBACK_FAILED" },
         );
       }
     },

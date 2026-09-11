@@ -134,7 +134,18 @@ export const rollbackBatchFromHistory = async ({ batchPath, reason } = {}) => {
         }
         result.restoredFiles.push(dest);
       } catch (err) {
-        result.failedFiles.push({ name: f.name, error: toError(err, "File rollback failed") });
+        // Keep the RAW OS fields as primitives (err.code/errno/syscall drop out of
+        // toIpcError and Error instances do not survive JSON.stringify). src/dest are the
+        // paths that failed - the ENOENT/EPERM/EXDEV distinction is only useful with them.
+        result.failedFiles.push({
+          name: f.name,
+          src,
+          dest,
+          code: err?.code ?? null,
+          errno: err?.errno ?? null,
+          syscall: err?.syscall ?? null,
+          message: err?.message ?? "Unknown error",
+        });
         // kontynuuj — pad jednego pliku nie blokuje reszty (best-effort)
       }
     }

@@ -20,6 +20,7 @@ import { initDb, insertLog, getAllLogs, clearAllLogs, holdFile, unholdFile, getH
 import { loadFabricCache, invalidateFabricCache } from "../helpers/fabricCache.js";
 import { loadShopProfile, invalidateShopProfile, getProfile } from "../helpers/shopProfile.js";
 import { runShopProfileMigration } from "../helpers/runShopProfileMigration.js";
+import { describeRollbackFailure, summarizeRollbackResult } from "../helpers/rollbackFailure.js";
 
 const DAY_FOLDER_RE = /^\d{2}-\d{2}-\d{4}$/;
 
@@ -315,17 +316,33 @@ export async function registerIpcHandlers() {
 
   ipcMain.handle("rollback-batch-history", async (_event, payload) => {
     const result = await rollbackBatchFromHistory(payload);
+    // Give the renderer a human cause for the failure (first failed file's OS error,
+    // + a tail when more failed). Whole-operation failures keep their errors[] title.
+    if (!result.success) {
+      const described = describeRollbackFailure(result.failedFiles);
+      if (described) {
+        result.userMessage = described.message;
+        result.userCode = described.code;
+      }
+    }
     try {
+      const summary = summarizeRollbackResult(result);
       insertLog({
         id: crypto.randomUUID(),
         timestamp: new Date().toISOString(),
         type: result.success ? "success" : "error",
         stage: "rollbackBatch",
-        code: result.success ? "BATCH_ROLLED_BACK" : (result.errors?.[0]?.code || "ROLLBACK_FAILED"),
+        code: result.success
+          ? "BATCH_ROLLED_BACK"
+          : (result.errors?.[0]?.code || result.userCode || "ROLLBACK_FAILED"),
         message: result.success
           ? `Batch rolled back: ${result.restoredFiles?.length || 0} files restored`
-          : (result.errors?.[0]?.message || "Rollback failed"),
-        detail: result.success ? { restoredFiles: result.restoredFiles } : { errors: result.errors },
+          : `Rollback failed: ${summary.succeeded}/${summary.attempted} restored`
+            + (result.userMessage ? ` — ${result.userMessage}` : ""),
+        // On failure log the FULL picture: counts + the raw per-file OS codes (code/errno/
+        // syscall/src/dest) + the whole-operation errors[] channel. summarizeRollbackResult
+        // keeps null (unreadable list) distinct from [] (read, none failed).
+        detail: result.success ? { restoredFiles: result.restoredFiles } : summary,
         workstation: getSettings().workstationName,
       });
     } catch (err) { console.error("[ipc] insertLog failed (rollback-batch):", err); }
