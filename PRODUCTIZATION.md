@@ -101,6 +101,7 @@ drukarni - co juz raz sie stalo i zostawilo 11 wierszy plus dwa identyfikatory w
 Konsekwencja dla KAZDEGO kroku dotykajacego bazy: kod migracyjny weryfikowac na KOPII pliku
 `.db` w katalogu tymczasowym, odczyty przez `readonly: true`, nigdy przez uruchomienie
 aplikacji.
+- [x] Zakaz `npm run dev` na stacji ZDJETY przez sandbox deweloperski (`3cd3564`): aplikacja z repo pracuje tylko w `<home>\ripflow-sandbox` i odmawia startu, gdy ktorakolwiek sciezka wskazuje poza niego.
 
 ### Ryzyko pierwszego wydania z aktualnego `main` - pozycje do CHANGELOGA
 

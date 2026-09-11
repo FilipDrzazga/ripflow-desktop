@@ -1089,6 +1089,13 @@ npm run test:watch # Vitest watch mode
 ELECTRON_RUN_AS_NODE=1 ./node_modules/.bin/electron scripts/golden/compare-golden.mjs
 ```
 
+**Dev sandbox (`src/electron/sandboxBoot.js` + `helpers/sandboxGuard.js`).** Run from the repo (`!app.isPackaged`), the app moves `userData` to `<home>\ripflow-sandbox\userData` (first import of `main.js`, before the settings Store exists) and seeds `config.json` with storage/xml/custom folders inside `<home>\ripflow-sandbox`.
+Plain `npm run dev` is therefore safe on a production station; before this it shared `%APPDATA%\ripflow-desktop` (the LIVE station config) with the installed app.
+`main.js` refuses to start while `findUnsafeSettings` reports any path setting outside the sandbox (UNC, `O:`, or anything else); delete the sandbox `config.json` to re-seed.
+Label printing and `update:check`/`update:install` are no-ops in the sandbox; the installed build is unchanged.
+Data by hand: copy a file from `%APPDATA%\ripflow-desktop\backups\` to `<sandbox>\storage\ripflow.db` (REAL customer data - keep it local), and create `<sandbox>\storage\PRINTED\<dd-mm-yyyy>\PRINTED_hhmmss-GROUP-DGEN\` folders manually.
+A local sandbox does NOT reproduce SMB's blindness to other hosts' writes: `fs.watch` sees them. Verified against 3cd3564, 2026-09-11.
+
 ## Critical Rules
 
 1. **Always grep before deleting** — audit reports miss non-obvious imports
