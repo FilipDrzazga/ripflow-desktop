@@ -768,8 +768,8 @@ const BatchHistory = () => {
           notify(
             {
               type: "Warning",
-              title: "Batch częściowo cofnięty",
-              message: `Przeniesiono ${movedStems.length} z ${total} plików.`,
+              title: "Batch partially rolled back",
+              message: `Moved ${movedStems.length} of ${total} files.` + (res.userMessage ? ` ${res.userMessage}` : ""),
             },
             { stage: "rollback", code: "BATCH_ROLLBACK_PARTIAL", detail: { batchPath, failedFiles: failed } },
           );

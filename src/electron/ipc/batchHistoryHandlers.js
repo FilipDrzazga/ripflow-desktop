@@ -134,9 +134,11 @@ export const rollbackBatchFromHistory = async ({ batchPath, reason } = {}) => {
         }
         result.restoredFiles.push(dest);
       } catch (err) {
-        // Keep the RAW OS fields as primitives (err.code/errno/syscall drop out of
-        // toIpcError and Error instances do not survive JSON.stringify). src/dest are the
-        // paths that failed - the ENOENT/EPERM/EXDEV distinction is only useful with them.
+        // Keep the RAW OS fields as primitives. toIpcError keeps `code` and `message`
+        // (see ipcError.js: `code: error.code || "UNKNOWN_ERROR"`), but drops `errno`,
+        // `syscall` and the paths - and an Error instance does not survive JSON.stringify
+        // into the log at all. src/dest are the paths that failed; the OS code/syscall are
+        // what tells ENOENT from EPERM from EXDEV.
         result.failedFiles.push({
           name: f.name,
           src,
