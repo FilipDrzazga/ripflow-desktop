@@ -1406,3 +1406,47 @@ Podejscie: NIE przepisywac. Wyodrebnic obecna logike, potem dodac druga.
 - [ ] Szwalnia tak/nie + skanowanie kodow (zakres scanRules / lens Receive)
 - [ ] Potwierdzic RIP = PrintFactory (inny = lead na pozniej)
 - [ ] Liczba stacji + IT klienta + czy blokuja niepodpisane (wycena + priorytet podpisu)
+
+## KROK A - diagnostyka odczytu i wnioski z incydentu 2026-09-10/11
+
+Dopisane 2026-09-11 (commity feat(diag) + test(rollback)). Nie przepisuje sekcji wyzej.
+
+### Wymagania produktu z incydentu (przyczyna: Windows Offline Files / CSC)
+
+- Udzial sieciowy niosacy baze SQLite i pliki produkcyjne MUSI miec CachingMode = None.
+  To jest wymaganie PRODUKTU, nie detal srodowiska klienta - stacja pracujaca na cache'u
+  CSC zapisuje pliki lokalnie (nie docieraja na serwer), a zapisy do bazy omijaja cache
+  i docieraja, co daje objaw "Production widzi, BatchHistory nie".
+- Wszystkie stacje musza adresowac serwer TA SAMA nazwa (nie mieszac nazwy i adresu IP -
+  dla Windows to dwa rozne serwery, osobne sesje i cache).
+- Aplikacja NIE MA dzis sposobu wykrycia, ze pracuje na cache'u. Kandydat na feature:
+  test spojnosci przy starcie (zapis znacznika i odczyt przez druga sciezke) albo jawny
+  komunikat, gdy zapis do PRINTED nie jest potwierdzalny.
+
+### Przy 2e (drukarki jako dane)
+
+- Nazwy drukarek (DGEN|YOKO|YUMI) siedza w BATCH_FOLDER_RE w ipc/readPrintedFolder.js,
+  ktore jest TWARDA bramka widocznosci batcha (parseBatchFolderName zwraca null ->
+  batch wypada z listy). Dodanie drukarki u klienta wymaga dzis nowego builda na KAZDEJ
+  stacji i po cichu ukrywa batche na stacji, ktora go jeszcze nie dostala. To zmierzony
+  blad wdrozeniowy, nie tylko postulat architektoniczny.
+- Od teraz kod logu BATCH_FOLDER_SKIPPED jest sladem dokladnie tego przypadku (folder,
+  ktory nie pasuje do regexu, z pelna sciezka i nazwa stacji w logu sesji).
+
+### Dlugi z KROKU A (miejsce wskazane nazwa funkcji, nie numerem linii)
+
+1. PRINTED root nieosiagalny -> readPrintedFolder / readPrintedDays zwracaja success +
+   pusta liste; operator widzi "brak batchy" (kod PRINTED_ROOT_UNREACHABLE tylko loguje).
+   Decyzja o zmianie tego, co widzi operator (baner?), jest OTWARTA.
+2. Rollback w Production (handleRollbackDecisions) i zbiorczy w BatchHistory
+   (handleConfirmRollbackBatch, sciezka bulk) pokazuja LICZNIK ("N file(s) could not be
+   rolled back") bez przyczyny OS - res.errors[0].message jest odrzucane.
+3. Rollback pojedynczego pliku w BatchHistory (handleRollbackFile) pokazuje SUROWY
+   komunikat Node (err.message z rollbackFileFromHistory.errors[0]), niezmapowany przez
+   describeRollbackFailure - inaczej niz rollback batcha.
+4. Pierwszy zapis logu przy WISZACYM udziale moze raz zablokowac main (insertLog jest
+   synchroniczny przez better-sqlite3; gate na getDbDegraded lapie dopiero PO pierwszym
+   bledzie DB). Powiazane z DLUG 4 / powerMonitor (ETAP 4).
+5. Handler rollback-batch-history moze ominac buildRollbackBatchLog - test przypina
+   BUILDER, nie to, ze handler go wola. Pelny harness handlera IPC odrzucony: wymaga
+   uruchomienia registerIpcHandlers, czyli ~15-20 mockow + initDb (natywny).
