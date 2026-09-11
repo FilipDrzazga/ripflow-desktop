@@ -4,6 +4,7 @@ import {
   describeOsFailure,
   describeRollbackFailure,
   summarizeRollbackResult,
+  buildRollbackBatchLog,
 } from "./rollbackFailure.js";
 
 // Pure module, zero imports in the unit under test - no mocks needed.
@@ -147,5 +148,51 @@ describe("summarizeRollbackResult - structured log detail", () => {
 
   it("a non-array errors channel degrades to []", () => {
     expect(summarizeRollbackResult({ restoredFiles: [], failedFiles: [] }).errors).toEqual([]);
+  });
+});
+
+// NEW describe (added after buildRollbackBatchLog was extracted from the IPC handler; the
+// existing describes above are unchanged). Pins the session-log entry so a future edit
+// cannot silently regress the failure detail back to an empty { errors: [] }.
+describe("buildRollbackBatchLog - the pinned session-log entry", () => {
+  it("partial failure: detail carries the raw per-file OS fields and a counts message", () => {
+    const result = {
+      success: false,
+      restoredFiles: ["O:\\INBOX\\ok.pdf"],
+      failedFiles: [{ name: "fail.pdf", src: "s", dest: "d", code: "ENOENT", errno: -4058, syscall: "rename", message: "boom" }],
+      errors: [],
+      userMessage: 'Could not move "fail.pdf" back to the inbox (ENOENT on rename). ...',
+      userCode: "ERR_ROLLBACK_FAILED",
+    };
+    const entry = buildRollbackBatchLog(result, "TEST-PC");
+    expect(entry.type).toBe("error");
+    expect(entry.stage).toBe("rollbackBatch");
+    expect(entry.code).toBe("ERR_ROLLBACK_FAILED"); // errors[] empty -> falls to userCode
+    expect(entry.detail.failedFiles[0]).toMatchObject({ code: "ENOENT", syscall: "rename" });
+    expect(entry.message).toContain("1/2 restored");
+    expect(entry.workstation).toBe("TEST-PC");
+  });
+
+  it("whole-operation failure: detail.errors is non-empty and drives the code", () => {
+    const result = {
+      success: false,
+      restoredFiles: [],
+      failedFiles: [],
+      errors: [{ code: "EINVAL", message: "Invalid batch folder name.", title: "Rollback failed" }],
+    };
+    const entry = buildRollbackBatchLog(result, "TEST-PC");
+    expect(entry.type).toBe("error");
+    expect(entry.code).toBe("EINVAL");
+    expect(entry.detail.errors).toHaveLength(1);
+    expect(entry.detail.errors[0].code).toBe("EINVAL");
+  });
+
+  it("success: type success, BATCH_ROLLED_BACK, detail.restoredFiles", () => {
+    const result = { success: true, restoredFiles: ["O:\\INBOX\\a.pdf", "O:\\INBOX\\b.pdf"] };
+    const entry = buildRollbackBatchLog(result, "TEST-PC");
+    expect(entry.type).toBe("success");
+    expect(entry.code).toBe("BATCH_ROLLED_BACK");
+    expect(entry.detail.restoredFiles).toHaveLength(2);
+    expect(entry.message).toContain("2 files restored");
   });
 });

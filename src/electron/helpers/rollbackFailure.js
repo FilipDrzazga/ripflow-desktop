@@ -85,3 +85,26 @@ export const summarizeRollbackResult = (result) => {
     errors: Array.isArray(result?.errors) ? result.errors : [],
   };
 };
+
+// The session-log entry for a batch rollback, WITHOUT id/timestamp (the IPC handler adds
+// those). This is the single place the entry is assembled, so the failure detail cannot
+// silently regress to the empty { errors: [] } it used to be: on failure the detail is the
+// full summary (counts + the raw per-file OS fields + the errors[] channel), on success it
+// is just { restoredFiles }. The handler must set result.userMessage/userCode (from
+// describeRollbackFailure) before calling this, exactly as it did inline.
+export const buildRollbackBatchLog = (result, workstation) => {
+  const summary = summarizeRollbackResult(result);
+  return {
+    type: result.success ? "success" : "error",
+    stage: "rollbackBatch",
+    code: result.success
+      ? "BATCH_ROLLED_BACK"
+      : (result.errors?.[0]?.code || result.userCode || "ROLLBACK_FAILED"),
+    message: result.success
+      ? `Batch rolled back: ${result.restoredFiles?.length || 0} files restored`
+      : `Rollback failed: ${summary.succeeded}/${summary.attempted} restored`
+        + (result.userMessage ? ` — ${result.userMessage}` : ""),
+    detail: result.success ? { restoredFiles: result.restoredFiles } : summary,
+    workstation,
+  };
+};

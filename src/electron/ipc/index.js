@@ -20,7 +20,7 @@ import { initDb, insertLog, getAllLogs, clearAllLogs, holdFile, unholdFile, getH
 import { loadFabricCache, invalidateFabricCache } from "../helpers/fabricCache.js";
 import { loadShopProfile, invalidateShopProfile, getProfile } from "../helpers/shopProfile.js";
 import { runShopProfileMigration } from "../helpers/runShopProfileMigration.js";
-import { describeRollbackFailure, summarizeRollbackResult } from "../helpers/rollbackFailure.js";
+import { describeRollbackFailure, buildRollbackBatchLog } from "../helpers/rollbackFailure.js";
 
 const DAY_FOLDER_RE = /^\d{2}-\d{2}-\d{4}$/;
 
@@ -331,24 +331,12 @@ export async function registerIpcHandlers() {
       }
     }
     try {
-      const summary = summarizeRollbackResult(result);
+      // Entry assembled by the single pure builder (rollbackFailure.js) so its shape is
+      // pinned by a test; the handler only adds id/timestamp.
       insertLog({
         id: crypto.randomUUID(),
         timestamp: new Date().toISOString(),
-        type: result.success ? "success" : "error",
-        stage: "rollbackBatch",
-        code: result.success
-          ? "BATCH_ROLLED_BACK"
-          : (result.errors?.[0]?.code || result.userCode || "ROLLBACK_FAILED"),
-        message: result.success
-          ? `Batch rolled back: ${result.restoredFiles?.length || 0} files restored`
-          : `Rollback failed: ${summary.succeeded}/${summary.attempted} restored`
-            + (result.userMessage ? ` — ${result.userMessage}` : ""),
-        // On failure log the FULL picture: counts + the raw per-file OS codes (code/errno/
-        // syscall/src/dest) + the whole-operation errors[] channel. summarizeRollbackResult
-        // keeps null (unreadable list) distinct from [] (read, none failed).
-        detail: result.success ? { restoredFiles: result.restoredFiles } : summary,
-        workstation: getSettings().workstationName,
+        ...buildRollbackBatchLog(result, getSettings().workstationName),
       });
     } catch (err) { console.error("[ipc] insertLog failed (rollback-batch):", err); }
     return result;
