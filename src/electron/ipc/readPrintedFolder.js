@@ -6,10 +6,63 @@ import { getProfile } from "../helpers/shopProfile.js";
 import { getMaterialType } from "../helpers/getMaterialType.js";
 import { getEstimateConfig } from "../helpers/fabricCache.js";
 import { estimatePrintLength } from "../../shared/estimatePrintLength.js";
-import { getOpenReprintRequestsByFileIds } from "../helpers/db.js";
+import { getOpenReprintRequestsByFileIds, insertLog, getDbDegraded } from "../helpers/db.js";
 import { BATCH_STATUS, FILE_STATUS } from "../../shared/constants.js";
+import { createLogOnce } from "../helpers/logOnce.js";
 
 const getPrintedRootPath = () => path.join(getStorageRootPath(), "PRINTED");
+
+// ONE throttle instance for the whole module, keyed by folder path, so a persistent bad
+// folder or an unreachable day logs at most once per window across every enumeration
+// (readPrintedDays runs on every BatchHistory mount and after every submit, from three
+// stations, into the SHARED SQLite log - without this it would drip forever).
+const logOnce = createLogOnce();
+
+// Which station raised the diagnostic. INJECTED by index.js rather than imported: pulling
+// getSettings (electron-store) into this module would drag the electron chain into
+// normalizeOverrideEntry.test.js and break it. A resolver (not a value) because the station
+// name can change in Settings mid-session. It matters here specifically because the
+// 2026-09-10 incident was ONE station seeing different data than the rest - the station name
+// is the field that makes such an event visible in the shared log.
+let resolveWorkstation = () => null;
+export const setDiagWorkstationResolver = (fn) => {
+  resolveWorkstation = typeof fn === "function" ? fn : () => null;
+};
+
+// Emit a diagnostic for a silent disk-read problem: always to the main console, and - when
+// the DB is not already known-degraded - to the session log too. insertLog is a SYNCHRONOUS
+// better-sqlite3 write; skipping it while degraded keeps a hung SMB share from blocking main
+// on a pile of log writes (getDbDegraded reflects a prior DB error). insertLog is also
+// wrapped so a logging failure can never break the read.
+const diag = (key, { type, code, message, detail }) => {
+  if (!logOnce(key)) return;
+  if (type === "error") console.error(`[readPrinted] ${code}: ${message}`, detail);
+  else console.warn(`[readPrinted] ${code}: ${message}`, detail);
+  if (getDbDegraded()) return;
+  let workstation = null;
+  try {
+    workstation = resolveWorkstation();
+  } catch {
+    // a broken resolver must not break the read - fall back to null
+  }
+  try {
+    insertLog({
+      id: crypto.randomUUID(),
+      timestamp: new Date().toISOString(),
+      type,
+      stage: "readPrinted",
+      code,
+      message,
+      detail,
+      workstation,
+    });
+  } catch {
+    // logging must never break the read
+  }
+};
+
+// Shape the raw fields of a caught fs error for a diagnostic detail.
+const osFields = (err) => ({ code: err?.code ?? null, errno: err?.errno ?? null, syscall: err?.syscall ?? null });
 
 const DAY_FOLDER_RE = /^\d{2}-\d{2}-\d{4}$/;
 const BATCH_FOLDER_RE = /^PRINTED_\d{6}-(.+)-(DGEN|YOKO|YUMI)$/;
@@ -185,7 +238,21 @@ const makeReadError = (err) => ({
 // readPrintedFolder and readPrintedDay. Throws on I/O error — callers wrap it.
 const buildDayGroup = async (dayFolder) => {
   const dayPath = path.join(getPrintedRootPath(), dayFolder);
-  const batchEntries = await fs.promises.readdir(dayPath, { withFileTypes: true });
+  let batchEntries;
+  try {
+    batchEntries = await fs.promises.readdir(dayPath, { withFileTypes: true });
+  } catch (err) {
+    // Behaviour unchanged (re-thrown into errors[] by the caller); but the eager-load path
+    // in BatchHistory drops that errors[] silently, so log it here first. Same code and key
+    // as the readPrintedDays skeleton catch -> deduped across both by logOnce.
+    diag(dayPath, {
+      type: "error",
+      code: "PRINTED_DAY_UNREADABLE",
+      message: `Could not read day folder ${dayFolder}`,
+      detail: { dayFolder, path: dayPath, ...osFields(err) },
+    });
+    throw err;
+  }
 
   const batches = (
     await Promise.all(
@@ -193,7 +260,16 @@ const buildDayGroup = async (dayFolder) => {
         .filter((e) => e.isDirectory())
         .map(async (batchEntry) => {
           const meta = parseBatchFolderName(batchEntry.name);
-          if (!meta) return null;
+          if (!meta) {
+            const folderPath = path.join(dayPath, batchEntry.name);
+            diag(folderPath, {
+              type: "warning",
+              code: "BATCH_FOLDER_SKIPPED",
+              message: `Skipped non-batch folder "${batchEntry.name}"`,
+              detail: { path: folderPath, name: batchEntry.name, pattern: BATCH_FOLDER_RE.source },
+            });
+            return null;
+          }
           return readSingleBatch(path.join(dayPath, batchEntry.name), meta);
         }),
     )
@@ -218,7 +294,15 @@ export const readPrintedFolder = async () => {
 
     try {
       await fs.promises.access(printedRoot);
-    } catch {
+    } catch (err) {
+      // Return value UNCHANGED (success, empty) - "no batches yet" vs "root unreachable" is
+      // an operator-facing distinction and a separate decision; here we only leave a trace.
+      diag(printedRoot, {
+        type: "error",
+        code: "PRINTED_ROOT_UNREACHABLE",
+        message: `PRINTED root unreachable: ${printedRoot}`,
+        detail: { path: printedRoot, ...osFields(err) },
+      });
       result.success = true;
       return result;
     }
@@ -250,7 +334,14 @@ export const readPrintedDays = async () => {
 
     try {
       await fs.promises.access(printedRoot);
-    } catch {
+    } catch (err) {
+      // Return value UNCHANGED (success, empty). Same trace as readPrintedFolder; same key.
+      diag(printedRoot, {
+        type: "error",
+        code: "PRINTED_ROOT_UNREACHABLE",
+        message: `PRINTED root unreachable: ${printedRoot}`,
+        detail: { path: printedRoot, ...osFields(err) },
+      });
       result.success = true;
       return result;
     }
@@ -271,15 +362,38 @@ export const readPrintedDays = async () => {
             batches: [],
             loaded: false,
           };
+          const dayPath = path.join(printedRoot, dayEntry.name);
           try {
-            const dayPath = path.join(printedRoot, dayEntry.name);
             const batchEntries = await fs.promises.readdir(dayPath, { withFileTypes: true });
-            skeleton.totalBatches = batchEntries.filter(
-              (e) => e.isDirectory() && parseBatchFolderName(e.name),
-            ).length;
-          } catch {
-            // One day unreadable (ENOENT/EPERM/EBUSY/EACCES — removed mid-scan or SMB
-            // lock) must not sink the whole enumeration: keep it as a 0-batch skeleton.
+            // Count matching dirs and, in the same pass, leave a trace for any non-batch
+            // folder (a batch client would silently vanish from the list otherwise, e.g. a
+            // new printer outside the regex). Loose FILES are not batches -> not logged.
+            let count = 0;
+            for (const e of batchEntries) {
+              if (!e.isDirectory()) continue;
+              if (parseBatchFolderName(e.name)) {
+                count++;
+              } else {
+                const folderPath = path.join(dayPath, e.name);
+                diag(folderPath, {
+                  type: "warning",
+                  code: "BATCH_FOLDER_SKIPPED",
+                  message: `Skipped non-batch folder "${e.name}"`,
+                  detail: { path: folderPath, name: e.name, pattern: BATCH_FOLDER_RE.source },
+                });
+              }
+            }
+            skeleton.totalBatches = count;
+          } catch (err) {
+            // One day unreadable (ENOENT/EPERM/EBUSY/EACCES — removed mid-scan or SMB lock)
+            // must not sink the whole enumeration: keep it as a 0-batch skeleton, but leave
+            // a trace (this catch was silent before). Same code/key as buildDayGroup.
+            diag(dayPath, {
+              type: "error",
+              code: "PRINTED_DAY_UNREADABLE",
+              message: `Could not read day folder ${dayEntry.name}`,
+              detail: { dayFolder: dayEntry.name, path: dayPath, ...osFields(err) },
+            });
           }
           return skeleton;
         }),

@@ -6,7 +6,7 @@ import { submitBatch } from "./submitBatch.js";
 import { openPreview } from "./openPreview.js";
 import { openInFolder } from "./openInFolder.js";
 import { openInShopify } from "./openInShopify.js";
-import { readPrintedFolder, readPrintedDays, readPrintedDay, readSingleBatch, parseBatchFolderName } from "./readPrintedFolder.js";
+import { readPrintedFolder, readPrintedDays, readPrintedDay, readSingleBatch, parseBatchFolderName, setDiagWorkstationResolver } from "./readPrintedFolder.js";
 import { sweepOrphanTemps } from "./createBatch.js";
 import { rollbackBatchFromHistory, rollbackFileFromHistory, regenerateXmlForBatch, deleteBatchFolder } from "./batchHistoryHandlers.js";
 import { registerCustomOrderHandlers } from "./customOrderHandlers.js";
@@ -282,6 +282,11 @@ export async function registerIpcHandlers() {
   ipcMain.handle("open-in-shopify", async (_event, orderName) => {
     return openInShopify(orderName);
   });
+
+  // Tell the PRINTED-read diagnostics which station they are on. A resolver, not a value:
+  // the station name can change in Settings mid-session. Kept out of readPrintedFolder.js
+  // so that module never imports getSettings (electron-store) and stays test-isolable.
+  setDiagWorkstationResolver(() => getSettings().workstationName ?? null);
 
   ipcMain.handle("read-printed-folder", async () => {
     return readPrintedFolder();
