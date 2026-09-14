@@ -32,8 +32,21 @@ import { showConfirm } from "../../services/systemService";
 import { getSettings } from "../../services/settingsService";
 import { printBatchLabel } from "../../services/productionService";
 import { isFeatureEnabled } from "../../utils/featureVisibility";
+import { shouldTick, pickDaysToPoll, mergePolledDays } from "../../utils/batchHistoryPoll";
 
 const PRINTERS = Object.values(PRINTER);
+
+// Cross-station poll. 30s (not Production's 15s): each polled day also runs SQLite reads in
+// main, and the recon measured ~75-130 ms SMB per tick, so a slower cadence is enough.
+// MIN_GAP debounces the extra tick fired on visibilitychange.
+const POLL_INTERVAL_MS = 30_000;
+const MIN_GAP_MS = 5_000;
+
+const pad2 = (n) => String(n).padStart(2, "0");
+const todayDayFolder = () => {
+  const d = new Date();
+  return `${pad2(d.getDate())}-${pad2(d.getMonth() + 1)}-${d.getFullYear()}`;
+};
 
 const parseDayFromBatchPath = (batchPath) => {
   const parts = batchPath.replace(/\\/g, "/").split("/");
@@ -85,9 +98,13 @@ const BatchHistory = () => {
   const elementRefsRef = useRef(new Map());
   const isInitialLoadRef = useRef(true);
   const searchInputRef = useRef(null);
-  const pollFallbackRef = useRef(null); // setInterval id — only set while in degraded (watcher-down) mode
-  const dayGroupsRef = useRef([]); // mirror of dayGroups for stale-free reads in degraded poll
+  const pollFallbackRef = useRef(false); // boolean: true while the live watcher is down (dedupe the notify)
+  const dayGroupsRef = useRef([]); // mirror of dayGroups for stale-free reads in the poll tick
   const loadAllRunningRef = useRef(false); // true while load-all-on-search is loading skeleton days
+  const expandedDaysRef = useRef(expandedDays); // mirror so the poll tick has stable deps
+  const inFlightRef = useRef(false); // true while a poll tick is reading — one at a time
+  const lastTickAtRef = useRef(0); // ms of the last completed tick — feeds MIN_GAP
+  const mutationEpochRef = useRef(0); // ++ at the start of every mutation; a tick whose reads span a bump is dropped
 
   useEffect(() => {
     getSettings().then((res) => {
@@ -183,6 +200,7 @@ const BatchHistory = () => {
   // OTHER modal confirms)
   const handleBulkRollback = useCallback(
     async (reason, entries) => {
+      mutationEpochRef.current++; // a poll tick spanning this must drop its snapshot
       setSelectedFiles(new Map());
       let successCount = 0;
       let failCount = 0;
@@ -268,44 +286,85 @@ const BatchHistory = () => {
     [refreshFiles, loadData, removeStageFromStore, removeRipError],
   );
 
-  // Degraded-mode refresh: re-read ONLY already-loaded days (skeletons reload on
-  // expand). Never falls back to the full PRINTED scan — that would undo lazy-load.
-  const reloadLoadedDays = useCallback(async () => {
-    const loaded = dayGroupsRef.current.filter((d) => d.loaded === true);
-    for (const day of loaded) {
-      try {
-        const dayRes = await readPrintedDay(day.dayFolder);
-        if (dayRes.success && dayRes.data) {
-          const withReasons = await attachReasonsToDay(dayRes.data);
-          setDayGroups((prev) => prev.map((d) => (d.dayFolder === day.dayFolder ? withReasons : d)));
-        }
-      } catch (err) {
-        console.error("[BatchHistory] reloadLoadedDays failed:", err);
+  useEffect(() => {
+    expandedDaysRef.current = expandedDays;
+  }, [expandedDays]);
+
+  // Cross-station poll tick. Re-enumerate days (cheap: readdir only), re-read today + the
+  // expanded loaded days, and fold the result in via mergePolledDays so a batch/day made on
+  // another station appears without a Refresh. Reads run through refs so this callback stays
+  // stable and the interval never resets. NEVER calls loadData (that would reset load-all).
+  const tick = useCallback(async () => {
+    if (
+      !shouldTick({
+        visible: document.visibilityState === "visible",
+        inFlight: inFlightRef.current,
+        lastTickAt: lastTickAtRef.current,
+        now: Date.now(),
+        minGapMs: MIN_GAP_MS,
+      })
+    ) {
+      return;
+    }
+    inFlightRef.current = true;
+    const epochAtStart = mutationEpochRef.current;
+    try {
+      const daysRes = await readPrintedDays();
+      if (!daysRes.success) return;
+      const skeletons = daysRes.data;
+      const folders = pickDaysToPoll(dayGroupsRef.current, {
+        todayFolder: todayDayFolder(),
+        expandedDays: expandedDaysRef.current,
+      });
+      const days = [];
+      for (const df of folders) {
+        const dayRes = await readPrintedDay(df);
+        if (dayRes.success && dayRes.data) days.push(await attachReasonsToDay(dayRes.data));
       }
+      // A mutation ran while we were reading — its optimistic state is newer than this
+      // snapshot, so drop the whole result; the next tick will pick up the settled disk.
+      if (mutationEpochRef.current !== epochAtStart) return;
+      setDayGroups((prev) => mergePolledDays(prev, { skeletons, days }));
+    } catch (err) {
+      console.error("[BatchHistory] poll tick failed:", err); // no notify — would spam every 30s
+    } finally {
+      inFlightRef.current = false;
+      lastTickAtRef.current = Date.now();
     }
   }, []);
+
+  useEffect(() => {
+    const id = setInterval(tick, POLL_INTERVAL_MS);
+    const onVisible = () => {
+      if (document.visibilityState === "visible") tick(); // shouldTick still enforces MIN_GAP
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      clearInterval(id);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [tick]);
 
   const handleBatchUpdate = useCallback(async (payload) => {
     const { type, batch, batchPath, file } = payload;
 
     if (type === "watcher-error") {
-      if (pollFallbackRef.current) return; // already degraded — don't stack notify/interval
+      if (pollFallbackRef.current) return; // already flagged — don't re-notify
       notify(
         {
           type: "Warning",
           title: "Live updates paused",
-          message: "Lost the real-time connection — refreshing periodically until it recovers.",
+          message: "Lost the real-time connection - the list still refreshes every 30 seconds.",
         },
         { stage: "watcher", code: "WATCHER_DEGRADED" },
       );
-      pollFallbackRef.current = setInterval(() => { reloadLoadedDays(); }, 20000);
+      pollFallbackRef.current = true; // dedupe flag only; the 30s poll runs regardless of the watcher
       return;
     }
 
-    // Any healthy event means the watcher is alive again — leave degraded mode.
+    // Any healthy event means the watcher is alive again — leave the degraded flag.
     if (pollFallbackRef.current) {
-      clearInterval(pollFallbackRef.current);
-      pollFallbackRef.current = null;
+      pollFallbackRef.current = false;
       notify(
         {
           type: "Success",
@@ -418,7 +477,7 @@ const BatchHistory = () => {
         }),
       );
     }
-  }, [reloadLoadedDays]);
+  }, []);
 
   useEffect(() => {
     loadData();
@@ -427,10 +486,6 @@ const BatchHistory = () => {
     return () => {
       stopBatchWatcher();
       cleanup();
-      if (pollFallbackRef.current) {
-        clearInterval(pollFallbackRef.current);
-        pollFallbackRef.current = null;
-      }
     };
   }, [loadData, handleBatchUpdate]);
 
@@ -650,6 +705,7 @@ const BatchHistory = () => {
 
   const handleRollbackFile = useCallback(
     async (filePath, batchPath, reason) => {
+      mutationEpochRef.current++; // a poll tick spanning this must drop its snapshot
       try {
         const res = await runMutation(() => rollbackFileApi({ filePath, batchPath, reason }), {
           refresh: async () => { await refreshFiles(); loadData(); },
@@ -713,6 +769,7 @@ const BatchHistory = () => {
       if (!rollbackModal) return;
       const { batchPath } = rollbackModal;
       setRollbackModal(null);
+      mutationEpochRef.current++; // a poll tick spanning this must drop its snapshot
       try {
         const res = await runMutation(() => rollbackBatchApi({ batchPath, reason }), {
           refresh: async () => { await refreshFiles(); loadData(); },
@@ -808,6 +865,7 @@ const BatchHistory = () => {
 
   const handleDeleteBatch = useCallback(async (batchPath) => {
     if (!(await showConfirm("Permanently delete this empty batch folder? This cannot be undone."))) return;
+    mutationEpochRef.current++; // a poll tick spanning this must drop its snapshot
     try {
       const res = await runMutation(() => deleteBatchApi(batchPath), {
         refresh: async () => { loadData(); },
@@ -845,6 +903,7 @@ const BatchHistory = () => {
   }, [loadData]);
 
   const handleRegenerateXml = useCallback(async (batchPath) => {
+    mutationEpochRef.current++; // a poll tick spanning this must drop its snapshot
     try {
       const res = await runMutation(() => regenerateXmlApi(batchPath));
       if (res?.timedOut) return;

@@ -1,4 +1,4 @@
-import { ipcMain, dialog, BrowserWindow } from "electron";
+import { app, ipcMain, dialog, BrowserWindow } from "electron";
 import fs from "fs";
 import path from "path";
 import { readFolders } from "./readFolders.js";
@@ -128,6 +128,15 @@ const handleWatcherError = () => {
 
 const startWatcher = () => {
   if (batchWatcher) return { success: true }; // already running — don't double-watch
+
+  // Dev-sandbox opt-out: a LOCAL fs.watch sees other processes' writes, so it cannot
+  // reproduce SMB's blindness to another host. Setting RIPFLOW_SANDBOX_NO_WATCH=1 lets a
+  // manual test prove the poll alone surfaces a new batch. Gated on !app.isPackaged first,
+  // so the installed build ignores the env var entirely.
+  if (!app.isPackaged && process.env.RIPFLOW_SANDBOX_NO_WATCH === "1") {
+    console.log("sandbox: batch watcher disabled");
+    return { success: true };
+  }
 
   try {
     const printedRoot = getPrintedRootPath();
