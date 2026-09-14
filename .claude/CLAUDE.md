@@ -925,6 +925,8 @@ Alex's four rows, as seeded (`defaultProfile.js`) — the domain knowledge behin
 - **Component split**: day-level rendering in `BatchHistory.jsx`; batch header+actions in `BatchRow.jsx`; file row in `FileRow.jsx` — both sub-components import `BatchHistory.module.css` directly
 - Watcher race condition handled: `readSingleBatch` wrapped in try/catch; `ENOENT` → sends `"removed"` event
 
+**Cross-station poll (`utils/batchHistoryPoll.js`, pure + tested).** `fs.watch` on SMB does not report another host's writes, so BatchHistory polls every **30s** (not Production's 15s — each polled day also runs SQLite reads in main): re-enumerate days (`readPrintedDays`), re-read today + the expanded loaded days (`pickDaysToPoll`, cap 3), fold in via `mergePolledDays` (loaded-but-not-read days kept, so load-all is never undone; new days from other stations added as skeletons; deleted days dropped). Also ticks immediately on `visibilitychange → visible`; `shouldTick` **skips while the window is hidden** and enforces a 5s min-gap. One tick at a time (`inFlightRef`); a `mutationEpochRef` bumped at the start of every mutating handler makes a tick whose reads span a mutation **drop its snapshot** (poll cannot repaint a just-rolled-back batch). The old watcher-degraded 20s `reloadLoadedDays` interval and `reloadLoadedDays` itself are **gone** — the poll replaces them; the "Live updates paused" toast stays (real-time down, 30s poll continues). Verified against 0b4b04b, 2026-09-14.
+
 ### Lazy-load (Phase 1 + 2)
 
 The full PRINTED scan (35 days / ~580 batches → ~2050 SMB roundtrips) used to run at startup, after every submit, and on every view entry. Lazy-load cuts it down.
@@ -937,7 +939,7 @@ The full PRINTED scan (35 days / ~580 batches → ~2050 SMB roundtrips) used to 
 
 **`refreshBatchDays` (store; startup + after submit)** — loads ONLY the newest day (`readPrintedDays` → `readPrintedDay(days[0])`), sets `batchDays = [newestDay]`. Sole consumer outside BatchHistory's mirror is `LastBatchCard`/`getLastBatch`, which only needs the newest active batch. `getLastBatch` returns `null` gracefully when the newest day has no batches (option a — empty card, never descends to older days). No more full scan here.
 
-**`loadData`** — `readPrintedDays()` → skeletons; eager-loads the most-recent N days (`batchHistoryEagerDays`, default 7) via `readPrintedDay` → `attachReasonsToDay`; older days stay as skeletons. `attachReasonsToDay(day)` is the second-pass reasons fetch extracted from `loadData` (`needsReasons` = batch `ROLLED_BACK` or any file `ROLLED_BACK` → `getRollbackReasonsByBatch`), reused in `loadData`, `toggleDay`, and `reloadLoadedDays`.
+**`loadData`** — `readPrintedDays()` → skeletons; eager-loads the most-recent N days (`batchHistoryEagerDays`, default 7) via `readPrintedDay` → `attachReasonsToDay`; older days stay as skeletons. `attachReasonsToDay(day)` is the second-pass reasons fetch extracted from `loadData` (`needsReasons` = batch `ROLLED_BACK` or any file `ROLLED_BACK` → `getRollbackReasonsByBatch`), reused in `loadData` and `toggleDay` (and, until 0b4b04b, `reloadLoadedDays`).
 
 **`toggleDay`** — first expand of a skeleton (`loaded === false`) → `readPrintedDay(day.dayFolder)` → `attachReasonsToDay` → merge by `dayFolder` (`loaded:true`); per-day spinner while loading; idempotent (skips if already loaded or a fetch is in flight via `loadingDays`). The fetch is fired **outside** the `setExpandedDays` updater (StrictMode-safe — no double fetch).
 
@@ -951,7 +953,7 @@ The full PRINTED scan (35 days / ~580 batches → ~2050 SMB roundtrips) used to 
 
 - `new-file` / `removed` skip days where `loaded !== true` (skeletons untouched — ends the global `totalFiles` zeroing).
 - `new-batch` on an existing skeleton is a no-op (content arrives on expand); on a loaded day it merges as before; a watcher-created new day is built with `dayFolder` + `loaded:true`.
-- **Degraded mode**: the fallback interval calls `reloadLoadedDays()` (re-reads only `loaded:true` days via `readPrintedDay` → merge), NOT the full `readPrintedFolder`. `dayGroupsRef` holds the current `dayGroups` so the interval reads a fresh list (stale-closure-safe).
+- **Degraded mode** (since 0b4b04b): a lost watcher no longer starts its own interval — the always-on 30s cross-station poll (above) is the fallback. `dayGroupsRef`/`expandedDaysRef` hold the current state so the tick reads a fresh list (stale-closure-safe).
 
 ## Custom Order — Key Behaviors
 

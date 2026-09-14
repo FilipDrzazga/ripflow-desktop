@@ -1451,3 +1451,7 @@ Dopisane 2026-09-11 (commity feat(diag) + test(rollback)). Nie przepisuje sekcji
 5. Handler rollback-batch-history moze ominac buildRollbackBatchLog - test przypina
    BUILDER, nie to, ze handler go wola. Pelny harness handlera IPC odrzucony: wymaga
    uruchomienia registerIpcHandlers, czyli ~15-20 mockow + initDb (natywny).
+
+### KROK A2 - stan wspoldzielony miedzy stacjami jest ODPYTYWANY (0b4b04b)
+
+- Regula produktowa: kazdy stan wspoldzielony miedzy stacjami musi byc odpytywany, bo fs.watch przez SMB nie widzi zapisow innego hosta. BatchHistory odpytuje co 30 s (Production juz co 15 s); nowy batch/dzien z innej stacji pojawia sie bez Refresh.
