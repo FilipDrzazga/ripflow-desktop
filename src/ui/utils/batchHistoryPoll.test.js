@@ -151,4 +151,20 @@ describe("mergePolledDays", () => {
     const out = mergePolledDays(prev, { skeletons, days: [] });
     expect(out.map((d) => d.dayFolder)).toEqual(["14-09-2026", "13-09-2026", "12-09-2026"]);
   });
+
+  it("empty skeletons + non-empty prev -> prev untouched (transient outage, not a clear-out)", () => {
+    const prev = [full("14-09-2026", "Today", [{ path: "a" }]), full("13-09-2026", "Yesterday")];
+    const out = mergePolledDays(prev, { skeletons: [], days: [] });
+    expect(out).toBe(prev); // same reference — nothing recomputed
+  });
+
+  it("empty skeletons + empty prev -> [] (nothing to keep, nothing to wipe)", () => {
+    expect(mergePolledDays([], { skeletons: [], days: [] })).toEqual([]);
+  });
+
+  it("null/undefined skeletons + non-empty prev -> prev untouched", () => {
+    const prev = [full("14-09-2026", "Today")];
+    expect(mergePolledDays(prev, { skeletons: null, days: [] })).toBe(prev);
+    expect(mergePolledDays(prev, { skeletons: undefined, days: [] })).toBe(prev);
+  });
 });

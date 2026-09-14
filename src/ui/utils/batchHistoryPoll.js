@@ -40,7 +40,13 @@ export const pickDaysToPoll = (dayGroups, { todayFolder, expandedDays, max = 3 }
 // `prev`, or absent from `prev` (a new day from another station), takes the fresh skeleton;
 // a day absent from `skeletons` (deleted on disk) is dropped. Order follows `skeletons`.
 export const mergePolledDays = (prev, { skeletons, days }) => {
-  const prevByFolder = new Map((Array.isArray(prev) ? prev : []).map((d) => [d.dayFolder, d]));
+  // An empty/absent enumeration is almost always a transient share outage, not "every day
+  // was deleted" (readPrintedDays returns success:true + [] when the PRINTED root is briefly
+  // unreachable). Do NOT wipe a populated list on it — a real clear-out still happens via a
+  // manual Refresh (loadData). Returns prev unchanged (same reference).
+  const prevList = Array.isArray(prev) ? prev : [];
+  if ((!Array.isArray(skeletons) || skeletons.length === 0) && prevList.length > 0) return prev;
+  const prevByFolder = new Map(prevList.map((d) => [d.dayFolder, d]));
   const freshByFolder = new Map((Array.isArray(days) ? days : []).map((d) => [d.dayFolder, d]));
   return (Array.isArray(skeletons) ? skeletons : []).map((sk) => {
     const fresh = freshByFolder.get(sk.dayFolder);
