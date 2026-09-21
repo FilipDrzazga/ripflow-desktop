@@ -252,6 +252,24 @@ istniejacych testow jest sam w sobie dowodem, ze zadne ciecie nie poszlo na skro
 - po 2c-bis (`sewing`): 209 passed / 17 files (+16 z `sewingStageGate.test.js`)
 - po 2b (sewing companies): 219 passed / 18 files (+10 z `shopProfileData.test.js`)
 
+DRABINKA PRZESTALA BYC PROWADZONA PO 2b i stala na 219 przez 193 testy. Nizsze wiersze
+sa ODTWORZONE z prozy w tym samym pliku, nie z drabinki - stad brak przyrostow przy
+czesci z nich i brak wiersza dla kilku ciec, ktorych nikt nie zapisal ani tu, ani tam.
+Sa slabszym zrodlem niz wiersze powyzej i tak nalezy je czytac. Wniosek, ktory z tego
+zostaje na stale: licznik, ktorego nikt nie dopisuje, nie jest punktem odniesienia
+bramki, tylko data waznosci - a ta drabinka jest miejscem, do ktorego `CLAUDE.md`
+i "Bramka weryfikacji" ODSYLAJA po oczekiwana wartosc.
+
+- (odtworzone) po 2f: 243 passed / ? files (baseline 219, +24)
+- (odtworzone) po kroku 4 klas materialu (`0bf8aa6`): 274 passed / ? files (261 -> 274)
+- (odtworzone) przed P1: 300 passed / 22 files
+- (odtworzone) po P1 (`7937508`): 334 passed / 25 files
+- po fazie 2 konsolidacji dokumentacji (`d01e72c`, 2026-09-21): **412 passed / 31 files**
+  - komenda: `npm run test`; pytanie: ile przypadkow testowych przechodzi na tym HEAD-zie;
+    jednostka: PRZYPADKI (nie bloki `it(`) / PLIKI testowe
+  - zmierzone niezaleznie przez S1 i przez S2 w tej samej sesji, ten sam wynik
+  - `npm run lint` -> exit 0, golden -> 0 differences across 70 batches
+
 - [x] **BUG 1** - `clientId` przechodzi przez `settings:set`
   - `src/electron/ipc/index.js` (~:469 destrukturyzacja, ~:490 przekazanie)
   - commit: `fix(settings): pass clientId through the settings:set handler`
@@ -281,13 +299,13 @@ istniejacych testow jest sam w sobie dowodem, ze zadne ciecie nie poszlo na skro
   - uruchomienie: `ELECTRON_RUN_AS_NODE=1 ./node_modules/.bin/electron scripts/golden/compare-golden.mjs`
   - commit `9a35b33`: `test(golden): capture anonymised baseline XML for regression diffing`
 - [x] **BUG 4** - `fabricConfig` do WSZYSTKICH 7 konsumentow (najwyzsze ryzyko, ostatni)
-  - main (4): `createXML.js:80`, `submitBatch.js:89`, `readPrintedFolder.js:152`,
-    `batchHistoryHandlers.js:117,221`
-  - renderer (4): `useStore.jsx:19` (sort), `DataList.jsx:251`,
-    `ProductionOverviewCard.jsx:53`, `PrintMaterialBreakdownCard.jsx:33`
+  - main (4): `createXML.js`, `submitBatch.js`, `readPrintedFolder.js`,
+    `batchHistoryHandlers.js`
+  - renderer (4): `useStore.jsx` (sort), `DataList.jsx`,
+    `ProductionOverviewCard.jsx`, `PrintMaterialBreakdownCard.jsx`
   - UWAGA: `ProductionOverviewCard` NIE wola `estimatePrintLength` wprost - idzie przez
     `estimateMaterialLengthByGroups(groups, materialType, config)`, wiec config jest na
-    TRZECIEJ pozycji, nie drugiej (`estimatePrintLength.js:95`)
+    TRZECIEJ pozycji, nie drugiej (`estimatePrintLength.js`)
   - helper `getEstimateConfig()` w `fabricCache.js` (null gdy cache niezaladowany - NIE `[]`)
   - ZMIANA ZACHOWANIA (zamierzona): edycja marginesu w Settings zacznie wplywac na XML
   - ZNANY KSZTALT (`Eco Astra Ramie`): bawelna obecna w bazie, ale NIEOBECNA w mapie
@@ -335,7 +353,7 @@ golden-diff czysty.
   wszedl w ETAPIE 1 (`d7b93db`, `openInShopify.js` czyta profil, `shopifyConfig.js`
   skasowany), a flaga `features.shopify` jest w 2c-bis nizej. UWAGA: trzecia obietnica
   tej pozycji NIE jest spelniona - literal `"fashionformulauk"` zyje dalej w
-  `defaultProfile.js:43` jako wartosc seeda; przestal byc stala konsumenta, ale nie
+  `defaultProfile.js` jako wartosc seeda; przestal byc stala konsumenta, ale nie
   zniknal z kodu. To nalezy do 2h ("zero nazw Alexa w kodzie"), nie tutaj.
 - [x] **2b - Szwalnie: POLOWA ODCZYTOWA** (`fb9756f`). Nazwy szwalni wychodza z kodu
       do profilu: podmenu "Send to Sewing" budowane z `sewingCompanies[]` przez nowy
@@ -359,7 +377,7 @@ golden-diff czysty.
       w niej - zyje jako osobne ciecie w sekcji "Edytory operacyjne (Settings)" nizej.
       Konsekwencja na dzis: liste szwalni zmienia sie edytujac wiersz profilu w bazie,
       nie w UI.
-    - **ZNALEZISKO - to WLASCIWOSC, nie przeoczenie.** `SewingReceive.jsx:23`
+    - **ZNALEZISKO - to WLASCIWOSC, nie przeoczenie.** `SewingReceive.jsx`
       (`companyOf`) buduje chipy firm z `file_stages.sewing_company`, czyli z BAZY,
       a nie z profilu. Dzieki temu wiersz wyslany do firmy, ktora klient pozniej usunal
       z profilu, nadal renderuje sie poprawnie - historia nie zalezy od biezacej
@@ -401,8 +419,8 @@ golden-diff czysty.
     zwracalo DGEN/YOKO/YUMI, hotfoldery `AUTOMATION_WORKFLOW_COTTON`/`_POLY`, klasy materialu
     i `storeHandle "fashionformulauk"`. Straznik `!db` rzuca teraz zwyklym `Error`.
   - **Zmienil sie producent sygnalu, nie konsument.** `shopProfile.js` bez zmian: jego
-    `catch` (`:16-19`) juz mapowal throw na `cachedProfile = null`, a `?? DEFAULT_PROFILE`
-    (`:15`) juz obslugiwal brak wiersza. Obie galezie byly poprawne i nieosiagalne dla
+    `catch` juz mapowal throw na `cachedProfile = null`, a `?? DEFAULT_PROFILE`
+    juz obslugiwal brak wiersza. Obie galezie byly poprawne i nieosiagalne dla
     najczestszego trybu awarii, bo `db.js` nie dotrzymywal kontraktu, ktory `shopProfile.js`
     opisal w komentarzu. Rowniez powierzchnia importow `shopProfile.js` bez zmian, wiec
     `shopProfile.test.js` (`vi.mock("./db.js")`) nietkniety.
@@ -422,8 +440,8 @@ golden-diff czysty.
     zacznie sterowac zachowaniem - czyli w 2e i 2f.
   - **Skutek uboczny dla dlugu "seed vs migracja" (a2cbc30):** po tej naprawie galaz
     `?? DEFAULT_PROFILE` w `shopProfile.js` staje sie prawie martwa, bo `initDb` zasiewa
-    wiersz przy pierwszym uruchomieniu (`db.js:299-304`), a `loadShopProfile` biegnie po
-    `initDb` (`ipc/index.js:159` potem `:170`). Dzis obslugiwala niemal wylacznie martwa
+    wiersz przy pierwszym uruchomieniu (`db.js`), a `loadShopProfile` biegnie po
+    `initDb` (oba w `ipc/index.js`, w tej kolejnosci). Dzis obslugiwala niemal wylacznie martwa
     baze; po naprawie zostaje tym, czym miala byc - obsluga swiezej instalacji, ktorej
     seed nie zdazyl wykonac. `DEFAULT_PROFILE` to nadal dane Alexa udajace neutralny stan
     domyslny, dokladnie jak `DEFAULT_FABRICS` przed ETAPEM 0; ta zmiana jest plastrem,
@@ -438,7 +456,7 @@ golden-diff czysty.
       nieodrozninalny od ustawionego swiadomie. 2d, 2e i 2g dokladaja do tego samego
       wiersza hotfoldery i drukarki.
   - **`openInShopify` mial fallback na `DEFAULT_PROFILE` napisany w ETAPIE 1 pod scenariusz
-    "cache jest null" (`openInShopify.js:12-14`), i ta naprawa po raz pierwszy sprawia, ze
+    "cache jest null" (`openInShopify.js`), i ta naprawa po raz pierwszy sprawia, ze
     ten fallback naprawde sie uruchamia.** Dotad byl martwym kodem, bo cache nigdy nie
     bywal `null` przy martwej bazie. URL dla Alexa bajt w bajt ten sam.
   - Harness: `db.shopProfile.test.js` - PRAWDZIWY `db.js`, trzy `vi.mock` (`electron`,
@@ -473,7 +491,7 @@ golden-diff czysty.
     to tlumaczy - mniej zakladek i zadnego powodu. Sprawdzenie jest celowo mechaniczne
     (zwykly obiekt z co najmniej jednym kluczem); walidacja pol to praca schematu, nie
     mappera statusu.
-  - Timeout nie przechodzi przez mapper: `withTimeout` (`ipcWithTimeout.js:5-15`) RZUCA,
+  - Timeout nie przechodzi przez mapper: `withTimeout` (`ipcWithTimeout.js`) RZUCA,
     wiec 5-sekundowy deadline `profile:get` laduje w `catch` w storze, ktory ustawia te
     sama pare `{ shopProfile: null, status: FAILED }`. Oba pola jednym `set()` - render,
     ktory zobaczylby status `LOADED` obok nullowego profilu, czytalby stan, ktory nigdy
@@ -505,12 +523,12 @@ golden-diff czysty.
       przesuniete o ~23 linie, a handlerow jest SZESC, nie piec.
       Swiadomie NIE w 2c: kazda ma 3-6 wejsc UI rozsianych po kilku plikach, wiec filtr
       w NavBarze ich nie domyka. Wejscia zmierzone grepem, nie oszacowane:
-  - `ripErrors`: `Production/ProductionCard.jsx:137` (badge) + `:140` (klik);
-    `Production/Production.jsx:1302` (prop), `:1855` (popover), `:224` (store);
-    `BatchHistory/FileRow.jsx:64,67`; `BatchHistory/BatchRow.jsx:68-70` (licznik naglowka),
-    `:44-45`, `:152`; `BatchHistory/BatchHistory.jsx:1034` (popover);
-    `Production/SewingReceive.jsx:43,269`; `OverviewPanel/OverviewPanel.jsx:46,54,87` (kafel);
-    poll `App.jsx:32,68,98`
+  - `ripErrors`: `Production/ProductionCard.jsx` (badge, klik);
+    `Production/Production.jsx` (prop, popover, store);
+    `BatchHistory/FileRow.jsx`; `BatchHistory/BatchRow.jsx` (licznik naglowka, dwa
+    dalsze wejscia); `BatchHistory/BatchHistory.jsx` (popover);
+    `Production/SewingReceive.jsx`; `OverviewPanel/OverviewPanel.jsx` (kafel);
+    poll w `App.jsx`
     - [x] ZROBIONE. Bramka NIE stanela w kazdym z tych wejsc, tylko u zrodla:
       `loadRipErrors` jest jedynym pisarzem `store.ripErrors` (zweryfikowane grepem
       na klucz w wiekszym obiekcie, spread/merge i listenery IPC - kanalu push dla
@@ -531,13 +549,13 @@ golden-diff czysty.
       pierwszego w repo testu renderujacego) oraz bramka po stronie main
       (`scanRipErrors` / `rip-errors:*` nietkniete - przy wylaczonej fladze nikt
       tam nie dzwoni).
-  - `labelPrinting`: `Production/Production.jsx:1525` ("Reprint Label") -> `:1530` -> `:531,543`;
-    `BatchHistory/BatchHistory.jsx:97`; `services/productionService.js:9`
+  - `labelPrinting`: `Production/Production.jsx` (pozycja menu "Reprint Label" -> handler
+    -> dwa wywolania druku); `BatchHistory/BatchHistory.jsx`; `services/productionService.js`
     - [x] ZROBIONE (`238ac1c`). Werdykt (B): dwa niezalezne wejscia renderera bez
       wspolnego stanu, wiec kazde bierze `isFeatureEnabled` W MIEJSCU WYWOLANIA -
       nie ma nic posrodku, co dawaloby sie zabramkowac raz. Oba UKRYTE, nie
       zaszarzone. TRZY sciezki do drukarki, nie dwie:
-      (1) auto-print `submitBatch.js:85` - najwazniejsza, bo bez zadnego klikniecia:
+      (1) auto-print `submitBatch.js` - najwazniejsza, bo bez zadnego klikniecia:
       `labelPrintMode` domysla `"automatic"`, a `labelPrinter.js` pomija `deviceName`
       przy pustym `labelPrinterName`, wiec leci na DOMYSLNA drukarke systemowa stacji.
       Bramka tylko w rendererze zostawilaby klienta bez flagi z etykieta przy kazdym
@@ -579,9 +597,10 @@ golden-diff czysty.
   (`buildContextMenuItems(...)` lub odpowiednik) i przetestowac ja BEZ renderu i BEZ
   nowych zaleznosci dev, jako produkt uboczny tamtego ciecia. Osobnego ciecia "dodajmy
   testy renderera" nie otwieramy. Temat wraca wylacznie z KONKRETNA AWARIA.
-  - `shopify`: `Production/Production.jsx:1375` (lens ORDERS) i `:1557` (lens BATCHES) -> `:671`;
-    `DataList/DataList.jsx:413` -> `:416` -> `:147`;
-    `BatchHistory/BatchHistory.jsx:1079` -> `:1083` -> `:626`; `services/fileService.js:55`
+  - `shopify`: `Production/Production.jsx` (dwie pozycje menu - lens ORDERS i lens
+    BATCHES - schodzace do jednego handlera); `DataList/DataList.jsx` (pozycja menu ->
+    handler -> wywolanie); `BatchHistory/BatchHistory.jsx` (ten sam lancuch trzech);
+    `services/fileService.js`
     - [x] ZROBIONE (`bc68fbe`). DWIE czesci, druga wazniejsza.
       CZESC 1 - bramka. Werdykt (B): zero wspolnego stanu, kazde wejscie bierze
       `isFeatureEnabled` W MIEJSCU WYWOLANIA, wszystkie UKRYTE, nie zaszarzone. Bramka
@@ -596,7 +615,7 @@ golden-diff czysty.
       w istniejacej kopercie `toIpcError`. Kolejnosc: flaga -> orderName -> handle.
       `DEFAULT_PROFILE` i `shopProfile.js` NIETKNIETE - to dwa osobne ciecia pozniej.
     - **POPRAWKA NAMIAROW.** Namiary powyzej (z `19bbb24`) sa BLEDNE w dwoch punktach,
-      zweryfikowane grepem przy tym cieciu: `Production.jsx:1375` nie jest w lensie
+      zweryfikowane grepem przy tym cieciu: `Production.jsx` nie jest w lensie
       ORDERS tylko w galezi `if (viewMode === VIEW_MODE.RECEIVE)`; a wejsc renderera
       jest CZTERY, nie trzy - `Production.jsx` wnosi DWA niezalezne pushe w jednym
       `useMemo`. Lens ORDERS (`OrderView.jsx`) nie ma menu kontekstowego W OGOLE
@@ -615,9 +634,9 @@ golden-diff czysty.
       fallbacku na `"fashionformulauk"`) go zabija, a test URL-a przezywa - para jest
       realnie rozrozniajaca. Regula dziala tak, jak zostala zapisana: multi-kill to
       sygnal do mutacji rozrozniajacej, a ozdobe sie wzmacnia, nie usuwa.
-  - `sewing`: `Production/Production.jsx:1618-1619` (zakladka RECEIVE) -> `:1770-1771` (render);
-    `:1471` ("Send to Sewing"); handlery `:364, 381, 418, 831, 864`;
-    `Production/SewingReceive.jsx:29`; `services/productionService.js:7,8`
+  - `sewing`: `Production/Production.jsx` (zakladka RECEIVE wraz z jej renderem, pozycja
+    menu "Send to Sewing" oraz PIEC handlerow); `Production/SewingReceive.jsx`;
+    `services/productionService.js`
     - [x] ZROBIONE (`6a615ff`). Flaga NIE usuwa etapu z przeplywu: `STAGE_NEXT` ma juz
       `qc -> packed`, a szwalnia to OPCJONALNA galaz. Usuwa TRACKING hand-offu do
       ZEWNETRZNEGO podwykonawcy - klient szyjacy u siebie niczego nie wysyla i nie
@@ -626,7 +645,7 @@ golden-diff czysty.
       galaz renderu, "Send to Sewing", "Receive from sewing". Pozycje menu WEWNATRZ
       galezi RECEIVE nie potrzebuja wlasnej bramki, bo `setViewMode(VIEW_MODE.RECEIVE)`
       wystepuje DOKLADNIE RAZ i stoi w zabramkowanym bloku - lens jest NIEOSIAGALNY,
-      nie tylko ukryty. Do tego korekta stanu w renderze (wzorzec `App.jsx:51`), bo sam
+      nie tylko ukryty. Do tego korekta stanu w renderze (wzorzec `App.jsx`), bo sam
       fallback renderu zostawialby `viewMode` na RECEIVE, a `useMemo` menu galezi po
       `viewMode`, nie po fladze: ekran pokazywalby Batches, a menu oferowalo RECEIVE.
     - Bramka w main mocniej uzasadniona niz przy poprzednich flagach: te kanaly zmieniaja
@@ -637,7 +656,7 @@ golden-diff czysty.
       nikt nie wejdzie, jest OK; etap, z ktorego nikt nie wyjdzie, nie jest. Wiersze
       legacy na `to_sewing` zachowuja "Go back" (`STAGE_PREV[to_sewing] = qc`)
       i "Rollback", oba na niebramkowanych kanalach. Niedomknieta sciezka zgloszona,
-      nie zamieciona: `undoReceiveFiles` (`Production.jsx:513`) wchodzi w `to_sewing`
+      nie zamieciona: `undoReceiveFiles` (`Production.jsx`) wchodzi w `to_sewing`
       przez generyczny `stage:advance`; osiagalne tylko z lensu RECEIVE, dla pliku
       w `receivedInSession` na `packed`, czyli niemozliwe przy fladze off - zamkniecie
       wymagaloby bramkowania po stanie docelowym, co uwiezilo by wiersze legacy.
@@ -687,54 +706,58 @@ golden-diff czysty.
     drukarki. Policzone recznie na `95ecccb`, 2026-09-05:
 
     **(1) Producent sufiksu - jedno miejsce, zrodlo dla wszystkich parserow ponizej**
-    - `helpers/createBatchIds.js:31` - sklada nazwe folderu
+    - `helpers/createBatchIds.js` - sklada nazwe folderu
       `PRINTED_HHMMSS-GROUP-<PRINTER>`. To ONO tworzy dane, ktore cztery regexy potem
       parsuja. Nie bylo na liscie kandydatow, a jest pierwsze do zmiany: dopoki zapisuje
       kod spoza profilu, parsery musza go umiec przyjac.
 
     **(2) Parsery kodu z nazwy folderu - 4 definicje regexa, 7 wywolan**
-    - `ipc/readPrintedFolder.js:14` (`BATCH_FOLDER_RE`, uzyte w `parseBatchFolderName`)
+    - `ipc/readPrintedFolder.js` (`BATCH_FOLDER_RE`, uzyte w `parseBatchFolderName`)
       - **TWARDA BRAMKA WIDOCZNOSCI**: folder z kodem spoza listy zwraca `null`, czyli
       batch NIE ISTNIEJE w BatchHistory. Najostrzejsza konsekwencja na calej liscie.
-    - `helpers/db.js:44` (`PRINTER_RE`) - jedna definicja, **TRZY** wywolania:
-      `:617`, `:930`, `:1169`. Wpis mowil o "db.js" jak o jednym miejscu.
-    - `ipc/submitBatch.js:93` - kod na etykiete batcha (auto-print).
-    - `ui/Production/Production.jsx:139` - kod dla badge'a w naglowku grupy batcha.
-    - `ui/Production/Production.jsx:588` - kod dla etykiety drukowanej ponownie z menu.
+    - `helpers/db.js` (`PRINTER_RE`) - jedna definicja, **TRZY** wywolania:
+      `getRollbackStats`, `addPrinterToStageRow`, `getRollbackDetails`. Wpis mowil
+      o "db.js" jak o jednym miejscu.
+      Przemierzone 2026-09-21 (`grep -n "PRINTER_RE" src/electron/helpers/db.js`) i te
+      trzy wywolania SA na miejscu - ale numery linii, ktore staly tu wczesniej (617,
+      930, 1169), wskazuja dzis na 631, 1004 i 1243. Trzy zle wskazania w jednym
+      wierszu to najkrotszy dowod, po co ta faza usuwa numery linii.
+    - `ipc/submitBatch.js` - kod na etykiete batcha (auto-print).
+    - `ui/Production/Production.jsx` - DWA miejsca: kod dla badge'a w naglowku grupy
+      batcha oraz kod dla etykiety drukowanej ponownie z menu.
 
     **(3) Routing i walidacja - decyduja, DOKAD idzie praca**
-    - `ipc/createXML.js:59-60` - mapa kod -> hotfolder (`DGEN` -> COTTON,
-      `YOKO`/`YUMI` -> POLY); `:61` rzuca `ERR_INVALID_PRINTER` dla kodu spoza mapy.
-    - `ipc/createXML.js:152` - sciezka hotfoldera budowana z tej mapy.
-    - `ipc/createXML.js:86` - `<Printer>` w XML: kod wychodzi do PrintFactory.
-    - `ipc/customOrderHandlers.js:108-109` - straznik poly-only dla zamowien custom.
-    - `ui/DataPrintSelection/DataPrintSelection.jsx:14-16` - tablica
-      drukarka -> `materialType`, czyli blokada materialu przy wyborze.
-    - `ui/DataPrintSelection/DataPrintSelection.jsx:47` - `Cottons` automatycznie
-      wybiera `DGEN`. Zaszyty DOMYSLNY wybor, nie tylko lista.
+    - `ipc/createXML.js` - TRZY osobne miejsca: mapa kod -> hotfolder (`DGEN` -> COTTON,
+      `YOKO`/`YUMI` -> POLY, a tuz za nia `ERR_INVALID_PRINTER` dla kodu spoza mapy),
+      sciezka hotfoldera budowana z tej mapy, oraz `<Printer>` w XML, czyli kod
+      wychodzacy do PrintFactory.
+    - `ipc/customOrderHandlers.js` - straznik poly-only dla zamowien custom.
+    - `ui/DataPrintSelection/DataPrintSelection.jsx` - DWA miejsca: tablica
+      drukarka -> `materialType` (blokada materialu przy wyborze) oraz zaszyty DOMYSLNY
+      wybor, w ktorym `Cottons` automatycznie wskazuje `DGEN`.
 
     **(4) Kolory i listy w UI - degraduja, nie lamia, ale wszystkie ida do profilu**
-    - `ui/constants/printerColors.js:2-4` - mapa `PRINTER_COLORS`.
+    - `ui/constants/printerColors.js` - mapa `PRINTER_COLORS`.
     - **Siedem dynamicznych odczytow `PRINTER_COLORS[printer]`, NIEWIDOCZNYCH dla grepa
       literalowego** (kazdy z wlasnym szarym fallbackiem):
-      `Analytics/Summary/Summary.jsx:67`, `BatchHistory/BatchRow.jsx:36`,
-      `CustomOrder/CustomOrderHistory.jsx:49`, `OverviewPanel/OverviewPanel.jsx:122`,
-      `Production/OrderView.jsx:31`, `Production/ProductionCard.jsx:170`,
-      `Production/ProductionRollbackModal.jsx:239`. Osma jest
-      `Production/Production.jsx:141` (ta ma literal, bo stoi obok regexa).
-    - `ui/BatchHistory/BatchHistory.jsx:36` - lista filtra z `Object.values(PRINTER)`.
-    - `ui/CustomOrder/CustomOrderCard.jsx:9` - lista poly do wyboru w karcie.
-    - `ui/Analytics/Details/Details.jsx:16` - lista filtra `PRINTER_OPTIONS`.
-    - `ui/Analytics/Details/Details.jsx:24-25` - **klasa materialu pozycza kolor
+      `Analytics/Summary/Summary.jsx`, `BatchHistory/BatchRow.jsx`,
+      `CustomOrder/CustomOrderHistory.jsx`, `OverviewPanel/OverviewPanel.jsx`,
+      `Production/OrderView.jsx`, `Production/ProductionCard.jsx`,
+      `Production/ProductionRollbackModal.jsx`. Osma jest
+      `Production/Production.jsx` (ta ma literal, bo stoi obok regexa).
+    - `ui/BatchHistory/BatchHistory.jsx` - lista filtra z `Object.values(PRINTER)`.
+    - `ui/CustomOrder/CustomOrderCard.jsx` - lista poly do wyboru w karcie.
+    - `ui/Analytics/Details/Details.jsx` - DWA miejsca. Pierwsze: lista filtra
+      `PRINTER_OPTIONS`. Drugie: **klasa materialu pozycza kolor
       drukarki** (`Cottons` bierze kolor `DGEN`, `Polyesters` kolor `YOKO`). Wiazanie
       semantyczne miedzy dwoma roznymi pojeciami; przy 2e i 2g trzeba je rozciac.
 
     **(5) Definicja**
-    - `shared/constants.js:14-16` - `PRINTER`. Ostatnia do usuniecia, nie pierwsza.
+    - `shared/constants.js` - `PRINTER`. Ostatnia do usuniecia, nie pierwsza.
 
     **NIE jest zachowaniem** (zostawione swiadomie na liscie, zeby nikt nie liczyl tego
     do zakresu):
-    - `ui/Settings/views/FabricsView.jsx:347` - tekst pomocy "Cottons -> DGEN,
+    - `ui/Settings/views/FabricsView.jsx` - tekst pomocy "Cottons -> DGEN,
       Polyesters -> YOKO/YUMI". Do przepisania na neutralny przy 2h, nie przy 2e.
     - `helpers/defaultProfile.js` - 3 wystapienia to WARTOSCI seeda, czyli juz profil.
       Znikaja przy oproznieniu `DEFAULT_PROFILE` w ETAPIE 3, nie przy 2e.
@@ -783,7 +806,7 @@ golden-diff czysty.
   - Usuniete martwe pole `workstationRoles` z `defaultProfile.js` (zero czytelnikow,
     `RoleDropdown` ma wlasne `ROLE_OPTIONS`; REGULA 24). Przy `scanRules` staloby sie
     DRUGIM zrodlem prawdy o tym samym zbiorze. `git grep -n workstationRoles` -> zero.
-  - **LUKA ZNANA, NIEZAMYKANA TUTAJ:** rola spoza `ROLE_OPTIONS` (`GeneralView.jsx:8-14`)
+  - **LUKA ZNANA, NIEZAMYKANA TUTAJ:** rola spoza `ROLE_OPTIONS` (`GeneralView.jsx`)
     jest nieustawialna z UI, choc `scanRules` moze ja nazwac. Domyka to edytor profilu
     w ETAPIE 3 - ten sam ksztalt co `MISSING_STORE_HANDLE` przy shopify.
   - **OGRANICZENIE DOWODU, nie zamiecione.** Trzecim argumentem `advanceStage` (gwardia
@@ -864,8 +887,8 @@ golden-diff czysty.
        odbieraloby klientowi funkcje, ktora ma dzis, i cofalo swiadoma decyzje z BUG 4.
        **DWA Z SZESCIU POL SA MARTWE OD KROKU 4, a edytor tego nie mowi.** Zmierzone
        2026-09-10: `git grep -n "defaultXmlWidth" -- .` daje poza dokumentacja tylko
-       seed (`defaultFabrics.js:143-144`), stub goldena, jeden test i EDYTOR
-       (`FabricsView.jsx:18-19,27-28`). **Zero czytelnikow produkcyjnych.** Powod:
+       seed (`defaultFabrics.js`), stub goldena, jeden test i EDYTOR
+       (`FabricsView.jsx`). **Zero czytelnikow produkcyjnych.** Powod:
        `0bf8aa6` zabral `getXmlWidthFromCache` galaz klasowa - dzis jest to
        `getFabricByName(name)?.xmlWidth`, a `null` daje ostrzezenie zamiast domyslnej
        szerokosci klasy. Skutek dla klienta: pola "XML Width Cotton" / "XML Width Poly"
@@ -886,8 +909,8 @@ golden-diff czysty.
     tylko PUSTY element `<Width></Width>` - plik powstaje, PrintFactory go bierze,
     nikt niczego nie zauwaza.
     Dwie sciezki produkcyjne do `buildPFJobXML`, obie przez `submitBatchToPrintFactory`:
-    `submitBatch.js:56` - **zabramkowana w UI** blokada na klasie `Unknown`;
-    `batchHistoryHandlers.js:358` (regeneracja) - **niezabramkowana w ogole**, czyta
+    `submitBatch.js` - **zabramkowana w UI** blokada na klasie `Unknown`;
+    `batchHistoryHandlers.js` (regeneracja) - **niezabramkowana w ogole**, czyta
     nazwy plikow z dysku i nie przechodzi przez widok druku.
     Dlatego bramka stanela U ZRODLA - raz, w `buildPFJobXML` - a nie w kazdym wywolaniu.
     Blad typowany jak `ERR_INVALID_PRINTER`, nazywa PLIK i TKANINE.
@@ -945,18 +968,19 @@ golden-diff czysty.
       `parseFileName.js` jest JEDYNYM konsumentem `DIMS_*`
       (`git grep -n "DIMS_SAMPLE|DIMS_FQ|DIMS_TEA_TOWEL|BUILT_IN_DIMS" -- src/ scripts/`;
       trafienia w `parseFileName.test.js` to KOMENTARZE, nie kod). Trzy testy
-      charakteryzacyjne asertuja te liczby WPROST - `:77-78` (FQ 670/480), `:100-101`
-      (SAMPLE 220/200), `:150-151` (TEA_TOWEL 700/500) - przy wywolaniu BEZ `shopConfig`
-      (helper `:29`). Sonda wierna implementacji (stale usuniete ORAZ wszystkie trzy
+      charakteryzacyjne asertuja te liczby WPROST - FQ 670/480, SAMPLE 220/200,
+      TEA_TOWEL 700/500 - przy wywolaniu BEZ `shopConfig` (przez wspolny helper
+      na gorze pliku). Sonda wierna implementacji (stale usuniete ORAZ wszystkie trzy
       call-site'y obsluguja `null`): **3 padniete testy z 30**, plik przywrocony.
       Pierwsza sonda dala 8 - byla NIEWIERNA, bo `out.width = dims.width` wywalalo sie
       na `null` zanim doszlo do asercji. Odrzucona jako wlasny blad pomiarowy.
     - **CZEGO TE TRZY TESTY NAPRAWDE BRONIA - i dlaczego `toBeNull()` to nie zamiana.**
       Nie liczby 670, tylko tego, ze dla tych typow produktu wymiar bierze sie
       z LOOKUPU, a nie z tekstu nazwy pliku. Komentarze mowia to wprost:
-      `:76` "width/height come from DIMS_FQ (670 x 480), not 650 x 480",
-      `:99` "width 220 (NOT 200 from the '20 x 20 cm' text)",
-      `:149` "applyTeaTowelDimensions -> fixed DIMS_TEA_TOWEL 700 x 500".
+      "width/height come from DIMS_FQ (670 x 480), not 650 x 480",
+      "width 220 (NOT 200 from the '20 x 20 cm' text)",
+      "applyTeaTowelDimensions -> fixed DIMS_TEA_TOWEL 700 x 500".
+      Cytaty sa dokladne, wiec `grep` po nich znajdzie te komentarze bez numeru linii.
       Ta charakterystyka po cieciu NADAL bylaby prawdziwa - zmienia sie tylko zawartosc
       lookupu. `toBeNull()` jej NIE zapisuje, wiec zamiana skasowalaby stara asercje
       nie stawiajac nic w zamian.
@@ -992,20 +1016,20 @@ golden-diff czysty.
   - **MARTWE POLA W PROFILU** (`git grep -n "<pole>" -- src/ scripts/`). Zmierzone na
     `297ef22` jako TRZY; po `284e38e` zostaly **DWA** - `productTypes` ma juz konsumenta. Kazde lamie REGULE 24 dokladnie tak, jak usuniete w 2f
     `workstationRoles`: pole istnieje w `defaultProfile.js` i NIKT go nie czyta.
-    - `materialClasses` (`defaultProfile.js:27`) - jedno trafienie, definicja. Zero
+    - `materialClasses` (`defaultProfile.js`) - jedno trafienie, definicja. Zero
       czytelnikow. Marginesy i domyslne szerokosci bierze dzis `fabric_globals`.
     - ~~`productTypes`~~ - **JUZ NIE MARTWE** (`284e38e`): czyta je `resolveProductDims`
       w `parseFileName.js`, przez `options.shopConfig` podane przez call-site.
-    - `printers[].materialClass` (`defaultProfile.js:10,16,22`) - poza definicja tylko
-      fixture testowy `shopProfile.test.js:25-26`. Zero konsumentow produkcyjnych.
-      **Jego konsument to `DataPrintSelection.jsx:14-16`** - dzis zaszyta tablica
-      drukarka -> klasa materialu, ktora ustawia blokade wyboru drukarki (plus `:46-47`,
-      gdzie `Cottons` automatycznie wybiera DGEN). **To nalezy do 2e, nie do 2g**: pole
+    - `printers[].materialClass` (`defaultProfile.js`) - poza definicja tylko
+      fixture testowy `shopProfile.test.js`. Zero konsumentow produkcyjnych.
+      **Jego konsument to `DataPrintSelection.jsx`** - dzis zaszyta tablica
+      drukarka -> klasa materialu, ktora ustawia blokade wyboru drukarki (plus miejsce
+      nizej, gdzie `Cottons` automatycznie wybiera DGEN). **To nalezy do 2e, nie do 2g**: pole
       opisuje DRUKARKE, nie klase. Zapisane tutaj, zeby 2e nie zaczynalo od zera.
   - `productTypes` przestaje byc martwe dopiero wtedy, gdy `parseFileName.js` je czyta.
     Warunek wstepny: dziura (d) w bramce Etapu 2 - harness goldena nie laduje profilu -
     ORAZ krawedz mocka w `parseFileName.test.js`, ktora mockuje WYLACZNIE
-    `./fabricCache.js` (`:7`), zeby import parsera nie ciagnal `electron` /
+    `./fabricCache.js` i nic poza nim, zeby import parsera nie ciagnal `electron` /
     `better-sqlite3`. Import `shopProfile.js` w `parseFileName.js` otwiera DRUGA,
     niezamockowana droge do `db.js` i lamie 26 testow charakteryzacyjnych, ktorych
     modyfikowac nie wolno. Zweryfikowane empirycznie: bezposredni import
@@ -1013,7 +1037,7 @@ golden-diff czysty.
     `The requested module 'electron' does not provide an export named 'app'`.
     Wniosek: wymiarow NIE da sie wciagnac przez nowy import w parserze. Trzeba je podac
     ARGUMENTEM (wzorzec BUG 4: `estimatePrintLength(files, config)`), co dotyka
-    **8 miejsc wywolania** `parsePrintFileName` w `src/` plus `harness.mjs:42` - a wiec
+    **8 miejsc wywolania** `parsePrintFileName` w `src/` plus `harness.mjs` - a wiec
     jest cieciem innego rozmiaru niz "dwa miejsca w `parseFileName.js`".
 
 ### 2h + pelne czyszczenie katalogu (MUST HAVE - cel: zero nazw Alexa w kodzie)
@@ -1037,7 +1061,7 @@ Dopiero po Etapie 1 (fallbacki maja czytac z profilu, nie ze statycznych list).
       `src/shared/printWidths.js` i wypisac klucze, dla ktorych
       `LM_XML_COTTON[k] !== LM_ROLL_COTTON[k]`.
 - [ ] Flagi `isVelvet` / `isLinen` / `isBlossom` - **opis skorygowany po pomiarze, zakres
-      jest WEZSZY niz zapisano.** `getFabricFlag` (`createXML.js:44-52`) czyta flage
+      jest WEZSZY niz zapisano.** `getFabricFlag` (`createXML.js`) czyta flage
       z BAZY (`getFabricByName(item.material)` -> `fabric[flagKey]`); `name.includes()`
       jest WYLACZNIE fallbackiem dla materialu spoza katalogu i dodatkowo patrzy na nazwe
       PLIKU, nie tylko materialu. Czyli 2h nie musi tego "przenosic do profilu" - pola
@@ -1059,11 +1083,11 @@ Dopiero po Etapie 1 (fallbacki maja czytac z profilu, nie ze statycznych list).
       Dzis nieszkodliwe, bo zadna stacja nie uzywa domyslnej wartosci (wszystkie trzy
       maja `xmlPath = O:\SPPrintReadyArtwork` w `config.json`) - szkodliwe stanie sie
       przy pierwszej instalacji, ktora tej wartosci nie nadpisze.
-- [ ] `defaultProfile.js:43`: `integrations.shopify.storeHandle: "fashionformulauk"` -> `""`.
+- [ ] `defaultProfile.js`: `integrations.shopify.storeHandle: "fashionformulauk"` -> `""`.
       Zostalo po skasowanym 2a: konsument czyta juz profil (ETAP 1), ale seed nadal wnosi
       nazwe Alexa do kodu. Uwaga na `openInShopify.js` - fallback celowo uzywa `||`, wiec
       pusty handle liczy sie jako brak i degraduje zamiast budowac zly link
-- [ ] `QC_ACTION` (`shared/constants.js:87`) to MARTWY KOD - jedno trafienie w calym
+- [ ] `QC_ACTION` (`shared/constants.js`) to MARTWY KOD - jedno trafienie w calym
       `src/`, sama definicja, ZERO konsumentow (QCModal zostal usuniety). Odkryte przy
       `sewing`, gdzie brief zakladal, ze trzeba zabramkowac `QC_ACTION.SEWING` - nie bylo
       czego. Nalezy do sprzatania katalogu, NIE do 2c-bis; usuwac razem z `REJECTED` /
@@ -1076,7 +1100,7 @@ Dopiero po Etapie 1 (fallbacki maja czytac z profilu, nie ze statycznych list).
       (2) "fashionformulauk" - handle Shopify; INNY string, wiec grep z (1) go NIE
           lapie (juz zapisane przy kasowaniu 2a);
       (3) "Olya" / "Vagabond" - nazwy jego PODWYKONAWCOW. Po 2b (`fb9756f`) zostaly
-          w DWOCH miejscach: jako wartosc seeda w `defaultProfile.js:42` oraz
+          w DWOCH miejscach: jako wartosc seeda w `defaultProfile.js` oraz
           w KOMENTARZU w `Production.jsx` przy `id` podmenu. Konsument czyta juz
           z profilu, ale nazwy nie zniknely z kodu - dokladnie ten sam ksztalt co
           `storeHandle` po ETAPIE 1.
@@ -1086,7 +1110,7 @@ Dopiero po Etapie 1 (fallbacki maja czytac z profilu, nie ze statycznych list).
       **Pomiar po 2f zmienia charakter tej pozycji: wszystkie ZYWE nazwy Alexa zostaly
       juz TYLKO w `defaultProfile.js`.** `git grep` na trzech rodzinach, z wylaczeniem
       testow i `defaultProfile.js`, zwraca dwa trafienia i OBA sa komentarzami:
-      `openInShopify.js:6` (wyjasnia, ze fallbacku juz nie ma) i `Production.jsx:1506`
+      `openInShopify.js` (wyjasnia, ze fallbacku juz nie ma) i `Production.jsx`
       (przyklad slugowania "Olya"/"olya"). Zadnej zywej wartosci. W testach nazwy zostaja
       celowo - `openInShopify.test.js` asertuje, ze "fashionformulauk" NIE wychodzi.
       Konsekwencja: **"grep kontrolny na zero nazw Alexa" przestaje byc osobnym cieciem**
@@ -1124,15 +1148,15 @@ sprawdzone", a dla czterech klas zmian nie znaczy nic:
   zostac - golden jest siatka na XML z KOMPLETNYMI danymi, nie na degradacje.
 - **(b) XML zamowien custom NIE MA baseline'u W OGOLE.** `buildCustomOrderXML`
   (`customOrderHandlers.js`) nie jest w siatce. A niesie `<Width>${LM_XML_POLY}</Width>`
-  (`:40`) i zaszyte `<MaterialType>Polyesters</MaterialType>` (`:43`) - obie wartosci
+  i zaszyte `<MaterialType>Polyesters</MaterialType>` - obie wartosci
   ZYWE, bez odczytu cache'u. **Dotkniecie tego pliku jest dzis niezabezpieczone.**
   Nie ruszac go, dopoki nie ma wlasnego baseline'u.
-- **(c) `estimatePrintLength.test.js:3` importuje stale z `printWidths.js`**
+- **(c) `estimatePrintLength.test.js` importuje stale z `printWidths.js`**
   (`LM_ROLL_POLY`, `LM_ROLL_COTTON_DEFAULT`, `MARGIN_COTTON`, `MARGIN_POLY`). Usuniecie
   tego modulu ZLAMIE ISTNIEJACY test, a bramka wymaga ZERO modyfikacji istniejacych
   testow. To jest warunek wstepny ostatniego kroku 2h, nie niespodzianka do odkrycia
   w trakcie.
-- **(d) Harness goldena NIE LADUJE profilu sklepu.** `harness.mjs:22` wola
+- **(d) Harness goldena NIE LADUJE profilu sklepu.** `harness.mjs` wola
   `loadFabricCache()` i nic wiecej; `stub-db.mjs` stubuje wylacznie katalog tkanin
   (`grep -n "shopProfile" scripts/golden/stub-db.mjs` -> zero trafien). Czyli KAZDA
   zmiana, ktora kaze `parseFileName.js` albo `createXML.js` czytac cokolwiek
@@ -1142,7 +1166,7 @@ sprawdzone", a dla czterech klas zmian nie znaczy nic:
   **ZAMKNIETE commitem `3e47d6c`** (`test(golden): load the shop profile in the harness`):
   `stub-db.mjs` serwuje `getShopProfile` z `DEFAULT_PROFILE`, a `harness.mjs` wola
   `loadShopProfile()` PRZED `loadFabricCache()`, w tej samej kolejnosci co
-  `ipc/index.js:170-171`. Baseline nie drgnal (0/70), bo w chwili zmiany nic na sciezce
+  `ipc/index.js`. Baseline nie drgnal (0/70), bo w chwili zmiany nic na sciezce
   `createXML` nie czytalo profilu - zmierzone przed pisaniem. Commit narzedziowy poszedl
   OSOBNO i PRZED czymkolwiek funkcjonalnym, bo zmienia harness, od ktorego zalezy baseline.
   Dziury (a), (b) i (c) pozostaja otwarte.
@@ -1206,7 +1230,7 @@ Baza pozostaje jedynym zywym zrodlem prawdy; JSON to tylko transport na wdrozeni
         przycina `trim()`, ale NIE normalizuje semantyki: dwa razy "Olya" da dwie
         identyczne pozycje w podmenu (rozne `id`, ten sam efekt), a bardzo dluga nazwa
         rozwali layout karty - nazwa trafia do `file_stages.sewing_company` jako wolny
-        tekst i jest renderowana (`ProductionCard.jsx:198`, chipy w `SewingReceive.jsx`).
+        tekst i jest renderowana (`ProductionCard.jsx`, chipy w `SewingReceive.jsx`).
   - [ ] ostrzezenie o niezgodnosci z danymi na dysku (ile rekordow zniknie z widoku)
   - [ ] `showConfirm()` + `backupDb(true)` przed nadpisaniem
 - [ ] Import NIE dotyka `fabrics` (katalog ma wlasny `setAllFabrics`)
@@ -1257,7 +1281,7 @@ Baza pozostaje jedynym zywym zrodlem prawdy; JSON to tylko transport na wdrozeni
         + `backupDb` na SMB). `dbDegraded` zostaje wtedy `false`, wiec baner o bazie nie
         leci, a `shopProfile` jest `null` do konca sesji. Dzis nie ma z tego innego
         wyjscia niz restart aplikacji. Asymetria do naprawy przy okazji: `getDbDegraded`
-        (`systemService.js:24`) nie ma `withTimeout` i doczeka sie odpowiedzi, `profile:get`
+        (`systemService.js`) nie ma `withTimeout` i doczeka sie odpowiedzi, `profile:get`
         ma 5s i sie poddaje.
     - **Koszt przypadku (c) urosl przy 2c-bis (ripErrors).** Do tej pory nieodczytany
       profil kosztowal ukryte zakladki i literalowy fallback Shopify - rzeczy widoczne
@@ -1340,7 +1364,7 @@ jedyna realna siatka na tym pliku.
 
 **Liczba testow, zmierzona - i skad wzielo sie "27".** Plik nie zmienil sie od
 `fc02c01`; `grep -c "  it("` daje **26** blokow statycznych, a `vitest run` **30**
-przypadkow, bo jeden z nich to `it.each` z pieciu wierszami (`:404`): 25 + 5 = 30.
+przypadkow, bo jeden z nich to `it.each` z pieciu wierszami: 25 + 5 = 30.
 Zapisane wczesniej "27" nie odpowiada zadnemu z tych pomiarow - nie bylo pomiarem.
 To ta sama nauka co przy 2e: liczba bez komendy i bez jednostki (bloki czy przypadki?)
 jest data waznosci, nie faktem.
@@ -1373,8 +1397,8 @@ Podejscie: NIE przepisywac. Wyodrebnic obecna logike, potem dodac druga.
       Kontekst na dzien pomiaru (`b2bdb79`, 2026-09-07): 26 blokow `it(`, 30 przypadkow
       w runtime (`npx vitest run src/electron/helpers/parseFileName.test.js`).
       **CZESC DEFINICJI "ZROBIONE": wyodrebnienie ma ZABRAC ZE SOBA trzy asercje
-      o stalych wymiarach** (`:77-78` FQ 670/480, `:100-101` SAMPLE 220/200,
-      `:150-151` TEA_TOWEL 700/500) jako opis parsera ALEXA - tam sa poprawne, bo
+      o stalych wymiarach** (FQ 670/480, SAMPLE 220/200, TEA_TOWEL 700/500) jako opis
+      parsera ALEXA - tam sa poprawne, bo
       opisuja jego konwencje. **Warstwa wspolna nie moze niesc ZADNYCH wymiarow
       produktu**: ani `DIMS_*`, ani `BUILT_IN_DIMS`, ani zadnego fallbacku na nie.
       Tym sie placi dlug wbudowanych wymiarow (patrz 2g/2h); wyodrebnienie bez tego
@@ -1402,8 +1426,9 @@ Podejscie: NIE przepisywac. Wyodrebnic obecna logike, potem dodac druga.
       (`setSewingSent`/`setSewingReceived`) i wlasny lens, `shipped` ma retencje
       (`cleanupShippedStages`), a ikony etapow to komponenty React. Zmierzone:
       **121 wystapien `PRODUCTION_STAGE` w 9 plikach**, w tym PIEC zduplikowanych list
-      kolejnosci (`Production.jsx:87,106`, `ProductionCard.jsx:15`, `groupByOrder.js:8`,
-      `OverviewPanel.jsx:37`) - czyli szerzej niz 2e (46 wystapien kodow drukarek).
+      kolejnosci w CZTERECH plikach (`Production.jsx` niesie DWIE, po jednej
+      `ProductionCard.jsx`, `groupByOrder.js` i `OverviewPanel.jsx`) - czyli szerzej
+      niz 2e (46 wystapien kodow drukarek).
       Discovery ma pytac wprost: **KTORYCH ETAPOW KLIENT NIE MA** - nie "jak wyglada
       Twoj proces", bo na to kazdy odpowie opisem, a nie lista brakow.
 
