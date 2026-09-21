@@ -22,6 +22,13 @@ udowadniamy golden-diff (XML bajt w bajt) na kopii jego bazy, nie na oko.
   zostaje w Etapie 4 (nie awansuje).
 - Probki nazw plikow: element rozmowy sprzedazowej (discovery), nie po podpisie.
 - Pierwszy klient #2 zakladany na PrintFactory (bez nowych rip-adapterow teraz).
+- **DWA POZIOMY KONFIGURACJI, i to jest decyzja, nie opis.** Poziom WDROZENIOWY
+  (drukarki, etapy, parser, typy produktow, flagi funkcji) ustawia FILIP importem
+  profilu; poziom OPERACYJNY (tkaniny, powody rollbacku, szwalnie, nazwa stacji)
+  klient zmienia sam w Settings. Rozstrzyga o tym, gdzie trafia KAZDY nowy edytor:
+  wdrozeniowy jest read-only plus import/export (ETAP 3), operacyjny to zwykly CRUD
+  (sekcja "Edytory operacyjne"). Stalo dotad wylacznie jako naglowek jednej sekcji
+  i jako zdanie w pliku przeznaczonym do skasowania.
 
 ---
 
@@ -640,6 +647,13 @@ golden-diff czysty.
     - Bramki renderera bez stalego straznika CZWARTY raz z rzedu - DANA.
 - [ ] **2d - Nazwy hotfolderow** do profilu (`createXML.js`, `customOrderHandlers.js`, `getRootPath.js`)
 - [ ] **2e - Drukarki -> `printers[]`** (NAJSZERSZY zasieg, w tym regexy widocznosci)
+  - **ARGUMENT ZA PRIORYTETEM stoi nizej, w sekcji "Przy 2e (drukarki jako dane)"**
+    (KROK A): kody `DGEN|YOKO|YUMI` siedza w `BATCH_FOLDER_RE` w `ipc/readPrintedFolder.js`,
+    ktory jest TWARDA bramka widocznosci batcha. Wskazowka stoi tutaj, bo tamta sekcja
+    jest o kilkaset linii dalej i przy dwoch niezaleznych czytaniach tego pliku uznano
+    ja za nieistniejaca. **Kolejnosc wzgledem 2d NIE zostala rozstrzygnieta** - 2d stoi
+    w tej liscie pierwszy i nigdzie nie jest odlozony; jesli 2e ma go wyprzedzic, musi
+    to byc zapisana decyzja, a nie wniosek z sily argumentu.
   - **Liczby grepa - kazda z komenda, pytaniem i JEDNOSTKA.** Zmierzone na `95ecccb`.
     Bez tych trzech rzeczy liczba nie jest pomiarem, tylko data waznosci.
 
@@ -839,6 +853,13 @@ golden-diff czysty.
        `fabric_globals`. OSOBNE ciecie z wlasnym pomiarem - ma haczyk, ktorego oba
        warianty dotykaja: klucze `fabric_globals` (`marginCotton`/`marginPoly`) maja
        NAZWY KLAS wpisane w klucz, wiec trzecia klasa wymaga tam zmiany schematu.
+       **WYBRANY WARIANT (decyzja FILIPA z 2026-09-11, przeniesiona tu przy kasowaniu
+       handoffu): `profile.materialClasses[]` jest wlascicielem NAZW I LICZB, a
+       `FabricsView` DALEJ pozwala je edytowac - tylko zapisuje przez `profile:set`,
+       nie do `fabric_globals`.** To jest decyzja o przyszlej pracy, nie fakt o kodzie:
+       nie da sie jej zweryfikowac grepem i nic jej jeszcze nie implementuje. Zapisana,
+       bo jej POLOWA NEGATYWNA stala tu od dawna (ponizej), a polowa pozytywna zyla
+       wylacznie w pliku przeznaczonym do skasowania.
        ODRZUCONE na tym etapie: "profil wygrywa, `FabricsView` przestaje edytowac" -
        odbieraloby klientowi funkcje, ktora ma dzis, i cofalo swiadoma decyzje z BUG 4.
        **DWA Z SZESCIU POL SA MARTWE OD KROKU 4, a edytor tego nie mowi.** Zmierzone
@@ -1027,6 +1048,17 @@ Dopiero po Etapie 1 (fallbacki maja czytac z profilu, nie ze statycznych list).
       zakres i sugerowal migracje, ktora juz sie odbyla.
 - [ ] Katalog FF -> `profiles/fashion-formula-fabrics.json` (juz wyeksportowany w Etapie 0)
 - [ ] `getSettings.js`: domyslne sciezki `O:\SPPrintReadyArtwork` / `\\192.168.0.17\...` -> `""`
+      **Ten drugi literal jest osobnym problemem, nie tylko nazwa Alexa w kodzie.**
+      Zmierzone 2026-09-21: `getSettings.js` ma `storagePath: "O:\\SPPrintReadyArtwork"`
+      i `xmlPath: "\\\\192.168.0.17\\Original_files\\SPPrintReadyArtwork"` - czyli
+      jedna sciezka idzie przez litere dysku podpieta PO NAZWIE, a druga po ADRESIE IP.
+      Po ujednoliceniu topologii u Alexa (wszystkie trzy stacje mapuja `O:` na
+      `\\FAS-LON-SRV01\...` po nazwie, runbook sekcja 0) to jest jawna niespojnosc:
+      dla Windows nazwa i adres IP to DWA ROZNE SERWERY, z osobnymi sesjami i cache'ami,
+      a wlasnie ta roznica przez pol dnia falszowala pomiary w incydencie 2026-09-10/11.
+      Dzis nieszkodliwe, bo zadna stacja nie uzywa domyslnej wartosci (wszystkie trzy
+      maja `xmlPath = O:\SPPrintReadyArtwork` w `config.json`) - szkodliwe stanie sie
+      przy pierwszej instalacji, ktora tej wartosci nie nadpisze.
 - [ ] `defaultProfile.js:43`: `integrations.shopify.storeHandle: "fashionformulauk"` -> `""`.
       Zostalo po skasowanym 2a: konsument czyta juz profil (ETAP 1), ale seed nadal wnosi
       nazwe Alexa do kodu. Uwaga na `openInShopify.js` - fallback celowo uzywa `||`, wiec
