@@ -61,6 +61,39 @@ const diag = (key, { type, code, message, detail }) => {
   }
 };
 
+// ── PRINTED root reachability signalling ────────────────────────────────────────
+// An unreachable PRINTED root and an empty one look IDENTICAL to the operator: both
+// render "no batches". They differ in everything that matters - in one there is no work,
+// in the other there is work and it cannot be seen. That is the exact shape of the
+// 2026-09-10/11 incident, where three of the client's orders existed for an hour on one
+// station's disk only.
+//
+// The code PRINTED_ROOT_UNREACHABLE already existed and only reached the log. This is the
+// missing half: the same fact, carried to the operator.
+//
+// Same mechanism as the DB banner in db.js, deliberately: a module-level flag, an emit
+// ONCE per transition (a read runs on every BatchHistory mount, after every submit and on
+// a 30s poll - an emit per read would be a banner flickering several times a minute), and
+// an injected sink so this module keeps knowing nothing about windows or IPC. The sink is
+// wired in main.js beside setDbErrorSink; the snapshot getter covers a failure that
+// happened before the renderer subscribed.
+//
+// The RETURN VALUES of both readers stay exactly as they were. This is a signal beside
+// the read, not a change to it.
+let printedRootSink = null;
+export const setPrintedRootSink = (fn) => {
+  printedRootSink = typeof fn === "function" ? fn : null;
+};
+
+let printedRootUnreachable = false;
+export const getPrintedRootUnreachable = () => printedRootUnreachable;
+
+const signalPrintedRoot = (unreachable) => {
+  if (printedRootUnreachable === unreachable) return;
+  printedRootUnreachable = unreachable;
+  printedRootSink?.(unreachable ? "printed:unreachable" : "printed:reachable", {});
+};
+
 // Shape the raw fields of a caught fs error for a diagnostic detail.
 const osFields = (err) => ({ code: err?.code ?? null, errno: err?.errno ?? null, syscall: err?.syscall ?? null });
 
@@ -294,15 +327,18 @@ export const readPrintedFolder = async () => {
 
     try {
       await fs.promises.access(printedRoot);
+      signalPrintedRoot(false);
     } catch (err) {
-      // Return value UNCHANGED (success, empty) - "no batches yet" vs "root unreachable" is
-      // an operator-facing distinction and a separate decision; here we only leave a trace.
+      // Return value UNCHANGED (success, empty). The operator-facing distinction between
+      // "no batches yet" and "root unreachable" is now carried by the signal beside this
+      // trace, not by the returned shape.
       diag(printedRoot, {
         type: "error",
         code: "PRINTED_ROOT_UNREACHABLE",
         message: `PRINTED root unreachable: ${printedRoot}`,
         detail: { path: printedRoot, ...osFields(err) },
       });
+      signalPrintedRoot(true);
       result.success = true;
       return result;
     }
@@ -334,14 +370,18 @@ export const readPrintedDays = async () => {
 
     try {
       await fs.promises.access(printedRoot);
+      signalPrintedRoot(false);
     } catch (err) {
-      // Return value UNCHANGED (success, empty). Same trace as readPrintedFolder; same key.
+      // Return value UNCHANGED (success, empty). Same trace as readPrintedFolder; same key;
+      // same signal. This is the reader BatchHistory actually runs, so in practice it is the
+      // one that raises and clears the banner.
       diag(printedRoot, {
         type: "error",
         code: "PRINTED_ROOT_UNREACHABLE",
         message: `PRINTED root unreachable: ${printedRoot}`,
         detail: { path: printedRoot, ...osFields(err) },
       });
+      signalPrintedRoot(true);
       result.success = true;
       return result;
     }

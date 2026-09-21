@@ -5,7 +5,7 @@ import { BATCH_STATUS, FILE_STATUS } from "../../shared/constants";
 import { ROLLBACK_REASONS } from "../constants/rollbackReasons";
 import { readFolders } from "../services/fileService";
 import { readPrintedDays, readPrintedDay } from "../services/batchService";
-import { getLogs, clearLogs as clearLogsApi, getHeldFiles, holdFile as holdFileApi, unholdFile as unholdFileApi, pruneOrphanHolds, getDbDegraded } from "../services/systemService";
+import { getLogs, clearLogs as clearLogsApi, getHeldFiles, holdFile as holdFileApi, unholdFile as unholdFileApi, pruneOrphanHolds, getDbDegraded, getPrintedRootUnreachable } from "../services/systemService";
 import { getRollbackReasonsForFiles as getRollbackReasonsForFilesApi } from "../services/analyticsService";
 import { getRollbackDefinitions as getRollbackDefinitionsApi } from "../services/reasonDefsService";
 import { getFabricGlobals as getFabricGlobalsApi, getFabrics as getFabricsApi } from "../services/fabricService";
@@ -121,6 +121,21 @@ export const useStore = create(
         const res = await getDbDegraded();
         if (res?.degraded) set({ dbDegraded: true });
       } catch (err) { console.error("[store] checkDbDegraded failed:", err); }
+    },
+
+    // Set by main-process printed:unreachable / printed:reachable — drives the PRINTED
+    // banner. Separate from dbDegraded on purpose: a dead NAS raises both, a PRINTED
+    // folder that is merely gone raises only this one, and the second case is invisible
+    // in every other signal the app has.
+    printedRootUnreachable: false,
+    setPrintedRootUnreachable: (val) => set({ printedRootUnreachable: val }),
+    // Snapshot twin of checkDbDegraded: only sets true, because a root unreachable at boot
+    // emitted its transition before the renderer was listening. Recovery comes as an event.
+    checkPrintedRoot: async () => {
+      try {
+        const res = await getPrintedRootUnreachable();
+        if (res?.unreachable) set({ printedRootUnreachable: true });
+      } catch (err) { console.error("[store] checkPrintedRoot failed:", err); }
     },
 
     batchDays: [],

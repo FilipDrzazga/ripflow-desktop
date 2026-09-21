@@ -17,7 +17,7 @@ import Analytics from "./components/Analytics/Analytics";
 import ErrorBoundary from "./components/ErrorBoundary/ErrorBoundary";
 import CustomOrder from "./components/CustomOrder/CustomOrder";
 import Production from "./components/Production/Production";
-import { onDbError, onDbRecovered } from "./services/systemService";
+import { onDbError, onDbRecovered, onPrintedRootUnreachable, onPrintedRootReachable } from "./services/systemService";
 import { isFeatureEnabled, isViewEnabled } from "./utils/featureVisibility";
 import { PROFILE_STATUS } from "./utils/profileStatus";
 
@@ -41,6 +41,9 @@ const App = () => {
   const dbDegraded = useStore((state) => state.dbDegraded);
   const setDbDegraded = useStore((state) => state.setDbDegraded);
   const checkDbDegraded = useStore((state) => state.checkDbDegraded);
+  const printedRootUnreachable = useStore((state) => state.printedRootUnreachable);
+  const setPrintedRootUnreachable = useStore((state) => state.setPrintedRootUnreachable);
+  const checkPrintedRoot = useStore((state) => state.checkPrintedRoot);
   const [isLoading, setIsLoading] = useState(true);
   const [activeView, setActiveView] = useState("print");
   // A profile that arrives late (or one that turns a feature off) can pull the view the
@@ -92,6 +95,7 @@ const App = () => {
       loadOpenReprints();
       lastStagePollAt.current = new Date().toISOString();
       checkDbDegraded();
+      checkPrintedRoot();
       await loadHeldFiles();
       await refreshFiles({
         successTitle: "Folders loaded",
@@ -102,7 +106,7 @@ const App = () => {
     fetchFolders();
 
     return () => clearTimeout(safetyTimerRef.current);
-  }, [refreshFiles, refreshBatchDays, loadLogsFromDb, loadHeldFiles, loadReasonDefinitions, loadFabricConfig, loadShopProfile, loadAllStages, loadAllStageHistory, loadOpenReprints, finishStartup, checkDbDegraded]);
+  }, [refreshFiles, refreshBatchDays, loadLogsFromDb, loadHeldFiles, loadReasonDefinitions, loadFabricConfig, loadShopProfile, loadAllStages, loadAllStageHistory, loadOpenReprints, finishStartup, checkDbDegraded, checkPrintedRoot]);
 
   // RIP-error scan + poll, gated on features.ripErrors. It sits in its own effect keyed on
   // the resolved flag rather than in the startup sequence above: the profile answers after
@@ -151,6 +155,15 @@ const App = () => {
     return () => { offError?.(); offRecovered?.(); };
   }, [setDbDegraded]);
 
+  // PRINTED root banner: same transition-only contract as the DB pair. Its own effect
+  // rather than a second pair inside the one above, so neither subscription can be torn
+  // down by a change in the other's dependency.
+  useEffect(() => {
+    const offUnreachable = onPrintedRootUnreachable(() => setPrintedRootUnreachable(true));
+    const offReachable = onPrintedRootReachable(() => setPrintedRootUnreachable(false));
+    return () => { offUnreachable?.(); offReachable?.(); };
+  }, [setPrintedRootUnreachable]);
+
   return (
     <div className={styles.app}>
       <TitleBar />
@@ -158,6 +171,17 @@ const App = () => {
       {dbDegraded && (
         <div className={styles.db_banner} role="alert">
           Database unavailable — changes may not be saved. Check the network connection.
+        </div>
+      )}
+      {/* An unreachable PRINTED root and an empty one render identically - "no batches".
+          The banner is what tells the operator which of the two they are looking at.
+          Suppressed while the DB banner is up: a dead NAS raises both, and the second
+          line would carry no information the first one does not already carry. A PRINTED
+          folder that is gone on a healthy share raises this one alone, which is the case
+          nothing else in the app can show. */}
+      {printedRootUnreachable && !dbDegraded && (
+        <div className={styles.db_banner} role="alert">
+          Printed folder unreachable — batch history may be incomplete. Check the network connection.
         </div>
       )}
       {/* Reads the stored status, not the profile value. The !isLoading gate this

@@ -22,3 +22,8 @@ export const onDbError = (cb) => window.api.onDbError(cb);
 export const onDbRecovered = (cb) => window.api.onDbRecovered(cb);
 // Initial degraded snapshot on startup (covers a DB dead since boot) — returns { degraded }
 export const getDbDegraded = () => window.api.getDbDegraded();
+// PRINTED root reachability — same shape as the DB pair above: two event subscriptions
+// returning an unsubscribe fn, plus a snapshot for a root already unreachable at startup.
+export const onPrintedRootUnreachable = (cb) => window.api.onPrintedRootUnreachable(cb);
+export const onPrintedRootReachable = (cb) => window.api.onPrintedRootReachable(cb);
+export const getPrintedRootUnreachable = () => window.api.getPrintedRootUnreachable();

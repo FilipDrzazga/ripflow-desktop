@@ -8,6 +8,7 @@ import { createRequire } from "module";
 import process from "process";
 import { registerIpcHandlers } from "./ipc/index.js";
 import { setDbErrorSink } from "./helpers/db.js";
+import { setPrintedRootSink } from "./ipc/readPrintedFolder.js";
 import { getSettings } from "./helpers/getSettings.js";
 import { findUnsafeSettings } from "./helpers/sandboxGuard.js";
 const require = createRequire(import.meta.url);
@@ -96,6 +97,8 @@ app.whenReady().then(async () => {
   // Bridge critical-DB-write signals to the renderer (one degraded banner). Same
   // win?.webContents.send pattern as the auto-updater events below.
   setDbErrorSink((channel, payload) => win?.webContents.send(channel, payload));
+  // Same bridge for PRINTED root reachability - one banner, emitted on transition only.
+  setPrintedRootSink((channel, payload) => win?.webContents.send(channel, payload));
 
   autoUpdater.autoDownload = true;
   autoUpdater.autoInstallOnAppQuit = true;

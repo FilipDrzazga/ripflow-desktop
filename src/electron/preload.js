@@ -105,6 +105,23 @@ const api = Object.freeze({
     return () => ipcRenderer.removeListener("db:recovered", handler);
   },
   getDbDegraded: () => ipcRenderer.invoke("db:get-degraded"),
+  onPrintedRootUnreachable: (callback) => {
+    if (typeof callback !== "function") {
+      throw new TypeError("PRINTED root callback must be a function.");
+    }
+    const handler = (_event, payload) => callback(payload);
+    ipcRenderer.on("printed:unreachable", handler);
+    return () => ipcRenderer.removeListener("printed:unreachable", handler);
+  },
+  onPrintedRootReachable: (callback) => {
+    if (typeof callback !== "function") {
+      throw new TypeError("PRINTED root callback must be a function.");
+    }
+    const handler = (_event, payload) => callback(payload);
+    ipcRenderer.on("printed:reachable", handler);
+    return () => ipcRenderer.removeListener("printed:reachable", handler);
+  },
+  getPrintedRootUnreachable: () => ipcRenderer.invoke("printed:get-unreachable"),
   getRollbackDefinitions: () => ipcRenderer.invoke("reasonDefs:get"),
   setReasonDefinitions: (defs) => {
     if (!Array.isArray(defs)) throw new TypeError("Definitions must be an array.");

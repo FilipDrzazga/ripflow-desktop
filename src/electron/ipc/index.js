@@ -6,7 +6,7 @@ import { submitBatch } from "./submitBatch.js";
 import { openPreview } from "./openPreview.js";
 import { openInFolder } from "./openInFolder.js";
 import { openInShopify } from "./openInShopify.js";
-import { readPrintedFolder, readPrintedDays, readPrintedDay, readSingleBatch, parseBatchFolderName, setDiagWorkstationResolver } from "./readPrintedFolder.js";
+import { readPrintedFolder, readPrintedDays, readPrintedDay, readSingleBatch, parseBatchFolderName, setDiagWorkstationResolver, getPrintedRootUnreachable } from "./readPrintedFolder.js";
 import { sweepOrphanTemps } from "./createBatch.js";
 import { rollbackBatchFromHistory, rollbackFileFromHistory, regenerateXmlForBatch, deleteBatchFolder } from "./batchHistoryHandlers.js";
 import { registerCustomOrderHandlers } from "./customOrderHandlers.js";
@@ -521,6 +521,10 @@ export async function registerIpcHandlers() {
   });
 
   ipcMain.handle("db:get-degraded", () => ({ degraded: getDbDegraded() }));
+
+  // Snapshot for the renderer, twin of db:get-degraded: a PRINTED root that was already
+  // unreachable when the app started emits its transition before anyone is listening.
+  ipcMain.handle("printed:get-unreachable", () => ({ unreachable: getPrintedRootUnreachable() }));
 
   ipcMain.handle("settings:get", () => {
     return { success: true, settings: getSettings() };
