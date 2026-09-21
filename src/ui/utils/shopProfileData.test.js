@@ -143,7 +143,7 @@ describe("getScanRule — shape guard", () => {
   });
 
   // A rule naming a role but no usable transition is worse than no rule: an empty stage
-  // reaching advanceStage takes the UNGUARDED db statement (db.js:948) and drops the
+  // reaching advanceStage takes the UNGUARDED db statement (stmtAdvanceFileStage) and drops the
   // concurrency check the whole Production layer relies on.
   it("returns null for a rule with an empty or missing from", () => {
     expect(getScanRule(withRules([{ role: "cotton", from: "", to: "heatpress" }]), "cotton")).toBeNull();

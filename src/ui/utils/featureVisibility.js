@@ -1,6 +1,6 @@
 // Which NavBar views a shop profile allows.
 //
-// This is a deliberate mirror of getFeature in electron/helpers/shopProfile.js:46-49:
+// This is a deliberate mirror of getFeature in electron/helpers/shopProfile.js:
 // that helper lives in the main process and is NOT exposed over IPC, so the renderer
 // cannot call it and has to re-implement the same rule. Both copies must stay
 // fail-closed and strict — a flag written as 1 or "true" by a sloppy import is not a

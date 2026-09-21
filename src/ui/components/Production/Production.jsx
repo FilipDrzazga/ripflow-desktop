@@ -276,7 +276,8 @@ const Production = () => {
   // context-menu useMemo branches on `viewMode === VIEW_MODE.RECEIVE` rather than on
   // the flag — so the screen would show Batches while the menu offered the Receive
   // lens. Unreachable today (the flag would have to go out mid-session), but ETAP 3
-  // adds a profile editor and then it fires. Same shape as App.jsx:51: written during
+  // adds a profile editor and then it fires. Same shape as the activeView correction in
+  // App.jsx: written during
   // render, NOT in an effect — react-hooks/set-state-in-effect is an ERROR in this
   // config, and React re-runs the render before committing, so the forbidden state is
   // never painted. No loop: BATCHES is ungated, exactly as "print" is absent from
@@ -1071,8 +1072,9 @@ const Production = () => {
           rejected = 0,
           failed = 0;
         for (const f of targets) {
-          // Third argument is the optimistic-concurrency guard (db.js:358, WHERE ... AND
-          // stage = ?). f.stage rather than scanRule.from: the filter above compares with
+          // Third argument is the optimistic-concurrency guard (stmtAdvanceFileStageGuarded
+          // in db.js, WHERE ... AND stage = ?). f.stage rather than scanRule.from: the
+          // filter above compares with
           // ===, so they are the same string today, and f.stage is the one that stays
           // correct if `from` ever becomes a set. getScanRule refuses a non-string `from`
           // precisely to keep that equality true — a falsy stage here would silently drop

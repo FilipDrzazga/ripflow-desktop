@@ -20,7 +20,7 @@ export async function loadPipeline() {
   const { getMaterialType } = await import(src("electron/helpers/getMaterialType.js"));
   const { loadFabricCache } = await import(src("electron/helpers/fabricCache.js"));
   const { loadShopProfile, getProfile } = await import(src("electron/helpers/shopProfile.js"));
-  // Same order as registerIpcHandlers (ipc/index.js:170-171): profile first, fabric
+  // Same order as registerIpcHandlers in ipc/index.js: profile first, fabric
   // cache second. The harness must reproduce the station's startup sequence, not just
   // its end state — a consumer that reads the profile while loading the fabric layer
   // would see the difference.
@@ -36,7 +36,8 @@ const dropLast = (p) => p.slice(0, p.length - lastSeg(p).length - 1);
 export const batchIdOf = (batchPath) => `${lastSeg(dropLast(batchPath))}/${lastSeg(batchPath)}`;
 export const printerOf = (batchPath) => (batchPath.match(/-(DGEN|YOKO|YUMI)$/i)?.[1] ?? "UNKNOWN").toUpperCase();
 
-// Mirrors readFolders.js:105-115 (parsed meta + printGroup + materialType), plus the
+// Mirrors the per-file object readFolders.js builds (parsed meta + printGroup +
+// materialType), plus the
 // printer the UI attaches at submit time. printGroup is the inbox folder name, which
 // is the material name.
 export function buildItems(rows, pipeline) {

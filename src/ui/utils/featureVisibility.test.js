@@ -36,7 +36,7 @@ describe("isViewEnabled — strict boolean", () => {
     expect(isViewEnabled("analytics", withFeatures({ analytics: false }))).toBe(false);
   });
 
-  // The mirrored rule from shopProfile.js:46-49 — the profile is a free-form JSON blob,
+  // The mirrored rule from getFeature in shopProfile.js — the profile is a free-form JSON blob,
   // so a sloppy import can write 1 or "true". Truthy is not a bought feature.
   it("hides the view when the flag is the number 1", () => {
     expect(isViewEnabled("customOrder", withFeatures({ customOrders: 1 }))).toBe(false);

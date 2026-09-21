@@ -12,7 +12,7 @@
 
 // The sewing companies this shop dispatches to, as a clean list of names.
 //
-// Mirrors getPrinters in electron/helpers/shopProfile.js:30-35, including its shape
+// Mirrors getPrinters in electron/helpers/shopProfile.js, including its shape
 // check: the profile is a free-form JSON blob in a single column, so a hand-edited or
 // half-imported row can carry anything under this key.
 //

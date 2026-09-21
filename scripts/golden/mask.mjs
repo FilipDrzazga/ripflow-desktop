@@ -1,7 +1,7 @@
 // The ONLY three things normalized before diffing. Keep this list short and explicit:
 // every extra mask is a place the harness goes blind.
 //
-//  1. <NestingGroup>   - a fresh randomUUID() on every run (createXML.js:79). No signal.
+//  1. <NestingGroup>   - a fresh randomUUID() per buildPFJobXML call. No signal.
 //  2. <LogisticGroup>  - `${uuid}_${meters}m`. ONLY the 36-char UUID is masked; the
 //                        `_Nm` suffix is compared BYTE FOR BYTE, because the metre count
 //                        is exactly what BUG 4 can move. Masking the whole element would

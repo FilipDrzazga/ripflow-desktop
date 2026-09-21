@@ -79,8 +79,8 @@ const getWorkflowFolderName = (printer) => {
 // are separated.
 //
 // The guard stands at the SOURCE - once, here - and not at the call sites, because both
-// production routes arrive through submitBatchToPrintFactory: submitBatch.js:56 and
-// batchHistoryHandlers.js:358 (regenerate). Only the first is protected upstream, by the
+// production routes arrive through submitBatchToPrintFactory: the call in submitBatch.js
+// and the one in regenerateXmlForBatch. Only the first is protected upstream, by the
 // print-view block on an Unknown material class; regeneration reads filenames off disk
 // and never passes through it at all.
 //
