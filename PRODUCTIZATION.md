@@ -548,15 +548,23 @@ golden-diff czysty.
       handlerow, czyli jest refaktorem samym w sobie, a nie produktem ubocznym dodania
       jednego boolean - warunek z `50f64c8` nie zostal spelniony.
     - Bramki renderera bez stalego straznika CZWARTY raz z rzedu - DANA.
+**KOLEJNOSC ROZSTRZYGNIETA przez FILIPA 2026-09-21: NAJPIERW 2e, POTEM 2d.**
+Pozycje zostaja w tej liscie w kolejnosci alfabetycznej, bo tak sa opisane w calym
+pliku i przenumerowanie ich rozjechaloby kazde odwolanie - kolejnosc PRACY jest tutaj,
+a nie w porzadku wierszy.
+
 - [ ] **2d - Nazwy hotfolderow** do profilu (`createXML.js`, `customOrderHandlers.js`, `getRootPath.js`)
+  - DRUGI w kolejnosci. Zawiera `customOrderHandlers.js`, czyli plik objety dziura (b)
+    w bramce Etapu 2 (brak baseline'u dla XML zamowien custom) - to jest samodzielny
+    powod, zeby nie zaczynac od niego.
 - [ ] **2e - Drukarki -> `printers[]`** (NAJSZERSZY zasieg, w tym regexy widocznosci)
-  - **ARGUMENT ZA PRIORYTETEM stoi nizej, w sekcji "Przy 2e (drukarki jako dane)"**
-    (KROK A): kody `DGEN|YOKO|YUMI` siedza w `BATCH_FOLDER_RE` w `ipc/readPrintedFolder.js`,
-    ktory jest TWARDA bramka widocznosci batcha. Wskazowka stoi tutaj, bo tamta sekcja
-    jest o kilkaset linii dalej i przy dwoch niezaleznych czytaniach tego pliku uznano
-    ja za nieistniejaca. **Kolejnosc wzgledem 2d NIE zostala rozstrzygnieta** - 2d stoi
-    w tej liscie pierwszy i nigdzie nie jest odlozony; jesli 2e ma go wyprzedzic, musi
-    to byc zapisana decyzja, a nie wniosek z sily argumentu.
+  - **PIERWSZY w kolejnosci, decyzja FILIPA z 2026-09-21.** Argument, ktory ja niesie,
+    stoi nizej w sekcji "Przy 2e (drukarki jako dane)" (KROK A): kody `DGEN|YOKO|YUMI`
+    siedza w `BATCH_FOLDER_RE` w `ipc/readPrintedFolder.js`, ktory jest TWARDA bramka
+    widocznosci batcha - folder z kodem spoza listy po prostu NIE ISTNIEJE w BatchHistory.
+    To zmierzony blad wdrozeniowy, nie postulat architektoniczny. Wskazowka stoi tutaj,
+    bo tamta sekcja jest o kilkaset linii dalej i przy dwoch niezaleznych czytaniach
+    tego pliku uznano ja za nieistniejaca.
   - **Liczby grepa - kazda z komenda, pytaniem i JEDNOSTKA.** Zmierzone na `95ecccb`.
     Bez tych trzech rzeczy liczba nie jest pomiarem, tylko data waznosci.
 
@@ -817,15 +825,30 @@ golden-diff czysty.
       i konfiguracje typow produktu. JEDEN kod bledu dla obu, bo to ta sama odmowa
       i nic nizej sie po kodzie nie rozgalezia; roznica nalezy do komunikatu, bo
       operator jest jedynym, kto na nim dziala.
-  - **OTWARTE PYTANIE DO ZADANIA PRZY REALNYM RIP-IE: czy PrintFactory przyjmuje
-    `<MaterialType>Unknown</MaterialType>`?** Nie da sie tego rozstrzygnac z repo,
-    i to jest pomiar, nie unik: 70 baseline-ow goldena niesie WYLACZNIE `Cottons` (142)
-    i `Polyesters` (81), a slowo `Unknown` nie wystepuje w zadnym z nich. Alex nigdy
-    takiego XML-a nie wyslal, wiec repo nie ma dowodu w zadna strone. Argument ZA
-    zabramkowaniem: to ten sam brak wiedzy co przy szerokosci. PRZECIW: `Unknown` to
-    legalny string, ktory RIP moze przyjac, a pusty `<Width>` nie jest legalna liczba.
-    Do sprawdzenia jednym zadaniem testowym na prawdziwym PrintFactory, zanim cokolwiek
-    tu dopiszemy.
+  - **ROZSTRZYGNIETE przez FILIPA 2026-09-21: PrintFactory NIE MOZE przyjmowac
+    `<MaterialType>Unknown</MaterialType>`.** Pytanie bylo otwarte, bo repo nie mialo
+    dowodu w zadna strone: 70 baseline-ow goldena niesie WYLACZNIE `Cottons` (142)
+    i `Polyesters` (81), a slowo `Unknown` nie wystepuje w zadnym z nich - Alex nigdy
+    takiego XML-a nie wyslal. Odpowiedz przyszla od strony RIP-a, nie z repo, i zamyka
+    spor: argument "Unknown to legalny string, ktory RIP moze przyjac" upada.
+    - [ ] **Bramka na KLASE MATERIALU u zrodla, obok `assertPrintableDimensions`.**
+          Ten sam wzorzec i to samo miejsce: raz, w `createXML.js`, a nie w call-site'ach,
+          bo obie sciezki produkcyjne schodza sie w `submitBatchToPrintFactory`.
+    - [ ] **Zasieg jest WEZSZY, niz wyglada - zmierzone, zeby nie robic pracy dwa razy.**
+          Dzis tkanina spoza katalogu i tak nie przechodzi: `getXmlWidthFromCache` zwraca
+          dla niej `null`, wiec `assertPrintableDimensions` juz ja odrzuca kodem
+          `ERR_UNKNOWN_PRINT_SIZE`. Obie przyczyny `"Unknown"` (brak tkaniny w katalogu,
+          katalog nieodczytany) daja JEDNOCZESNIE brak szerokosci, wiec sa juz pokryte.
+          Prawdziwa luka jest jedna: tkanina OBECNA w katalogu, z poprawna szerokoscia,
+          ale z `type` spoza `Cottons`/`Polyesters` - wtedy szerokosc przechodzi, klasa
+          jest `"Unknown"` i XML powstaje. Droga do tego stanu: edycja w Settings albo
+          recznie zmieniony wiersz w `ripflow.db`.
+    - [ ] Komunikat ma miec ten sam ksztalt co przy szerokosci: nazwa PLIKU, nazwa
+          TKANINY i co operator ma zrobic (poprawic klase w Settings > Fabrics), a nie
+          diagnoza. Kod bledu osobny od `ERR_UNKNOWN_PRINT_SIZE`, bo to inna przyczyna
+          i inne dzialanie naprawcze.
+    - [ ] Golden po tej zmianie ma dac 0/70 - zadna z 70 pozycji nie niesie `Unknown`,
+          wiec bramka nie ma prawa niczego w nich ruszyc. Jesli ruszy, bramka jest zla.
   - **DLUG: wbudowane wymiary jako fallback podstawiaja dane ALEXA.** Zywy od `284e38e`,
     zapisany ZANIM zaczal sie krok 4, bo komentarz w kodzie na to nie wystarcza.
     Siedem call-site'ow podaje `shopConfig: getProfile()`. Gdy profil jest NIEODCZYTANY,
@@ -927,6 +950,16 @@ golden-diff czysty.
 ### 2h + pelne czyszczenie katalogu (MUST HAVE - cel: zero nazw Alexa w kodzie)
 
 Dopiero po Etapie 1 (fallbacki maja czytac z profilu, nie ze statycznych list).
+
+**WYMAGANIE FILIPA z 2026-09-21, ktore podnosi range calej tej sekcji:** repo ma byc
+czyste z nazw Alexa ZANIM trafi do klienta - probki nazw plikow klienta #2 przyjda
+przed pierwsza sprzedaza, ale czyszczenie nie ma na nie czekac. Praktyczny skutek:
+2h przestaje byc "sprzatanie na koncu ETAPU 2" i staje sie warunkiem gotowosci
+sprzedazowej. Najwiekszy pojedynczy krok tej sekcji zostal juz rozstrzygniety gdzie
+indziej - decyzja o PUSTYM profilu-szkielecie (ETAP 3, seed vs migracja) oprozania
+`defaultProfile.js`, czyli JEDYNE miejsce, w ktorym po 2f zostaly zywe nazwy Alexa.
+Kolejnosc jest wiec wymuszona i nie wolno jej odwrocic: import profilu -> oproznienie
+`DEFAULT_PROFILE` -> grep kontrolny na trzy rodziny nazw.
 
 - [ ] `defaultFabrics.js`: usunac `COTTON_NAMES` / `POLY_NAMES`
 - [ ] `getMaterialType.js`: statyczne listy nazw Alexa -> czytanie klas z `profile.materialClasses`
@@ -1118,10 +1151,23 @@ Baza pozostaje jedynym zywym zrodlem prawdy; JSON to tylko transport na wdrozeni
   - [ ] ostrzezenie o niezgodnosci z danymi na dysku (ile rekordow zniknie z widoku)
   - [ ] `showConfirm()` + `backupDb(true)` przed nadpisaniem
 - [ ] Import NIE dotyka `fabrics` (katalog ma wlasny `setAllFabrics`)
-- [ ] Seed vs migracja: DEFAULT_PROFILE dzis seeduje KAZDA nowa baze danymi FF
-      (db.js, ETAP 1 krok 1). Po zbudowaniu importu rozstrzygnac: albo pusty
-      profil-szkielet dla nowej instalacji, albo swiadomie zostawic FF jako
-      "demo do nadpisania importem". Dzis nieszkodliwe - Alex ma juz wiersz.
+- [ ] Seed vs migracja - **ROZSTRZYGNIETE przez FILIPA 2026-09-21: PUSTY PROFIL-SZKIELET
+      do konfiguracji.** Wariant "FF jako demo do nadpisania importem" odrzucony.
+      `DEFAULT_PROFILE` (`defaultProfile.js`) przestaje niesc dane Alexa i staje sie
+      szkieletem z pustymi wartosciami; `initDb` zasiewa ten szkielet.
+      Powod, dla ktorego to nie jest kosmetyka: od 2f zasiany wiersz niesie `scanRules`,
+      czyli STERUJE STANEM PRODUKCJI - klient bez importu dostawalby reguly skanera
+      cudzej drukarni jako WLASNY, TRWALY wiersz, nieodrozninalny od ustawionego
+      swiadomie. To samo dotyczy hotfolderow (2d), drukarek (2e) i handle Shopify.
+      **Zamyka to takze DLUG 1 (seed vs migracja) i wieksza czesc 2h**, bo po
+      oproznieniu `DEFAULT_PROFILE` znikaja OSTATNIE zywe nazwy Alexa w kodzie - grep
+      kontrolny na trzy rodziny ("Fashion Formula", "fashionformulauk", "Olya"/"Vagabond")
+      zwraca dzis poza testami wylacznie komentarze i wlasnie ten plik.
+      **Warunek wstepny, ktorego nie wolno odwrocic:** import profilu (reszta ETAPU 3)
+      musi istniec PRZED oproznieniem, inaczej swieza instalacja nie ma jak dojsc do
+      dzialajacej konfiguracji. Dla Alexa no-op - ma juz swoj wiersz w bazie.
+      Wymaganie FILIPA stojace za ta decyzja (2026-09-21): repo ma byc czyste z nazw
+      Alexa, zanim trafi do klienta.
 
 ---
 
@@ -1131,8 +1177,12 @@ Baza pozostaje jedynym zywym zrodlem prawdy; JSON to tylko transport na wdrozeni
       eksperymentem na stacji QC (zapis w `claude/DECYZJE-LOG.md`): uspienie
       zrywa SMB do `O:`, aplikacja tego nie zauwaza i sie zawiesza. NIE jest warunkiem
       wydania `v1.0.22` - wylaczone uspienie jest dzialajacym obejsciem
-- [ ] **`storagePath` na stacji QC z litery dysku na UNC.** Osobny, NIEZALEZNY krok od
-      powyzszego - litera dysku jest mapowaniem per sesja uzytkownika, UNC nie jest
+- [=] **`storagePath` na stacji QC z litery dysku na UNC** - ZAMROZONE decyzja FILIPA
+      z 2026-09-21: "poki co jest dobrze jak jest - zostawiamy". Litera dysku jest
+      mapowaniem per sesja uzytkownika, a UNC nie jest, wiec argument techniczny stoi
+      dalej - ale po ujednoliceniu topologii (wszystkie trzy stacje po NAZWIE serwera)
+      problem przestal byc obserwowalny. Wraca, jesli stacja znow zgubi mapowanie.
+      `[=]`, nie `[ ]`: to nie jest zalegla robota, tylko swiadomie odlozona.
 - [ ] **Podpis kodu** - certyfikat OV (~300-400 EUR/rok). Bez tego SmartScreen
       "Nieznany wydawca" przy kazdej instalacji i aktualizacji
 - [ ] **Kanaly wydan** - `autoUpdater.channel = clientId` -> `latest-<klient>.yml`;
@@ -1238,6 +1288,16 @@ Baza pozostaje jedynym zywym zrodlem prawdy; JSON to tylko transport na wdrozeni
       te roznice zobaczy. Domkniecie to `* text=auto eol=lf` w `.gitattributes`, ale
       przepisze koncowki w CALYM repo - OSOBNY commit, nigdy w srodku etapu, i NIE
       przed 2e (rozjechalby diff najwiekszego ciecia).
+      **ZATWIERDZONE przez FILIPA 2026-09-21.** Warunek "nie przed 2e" zaostrzyl sie
+      przez decyzje o kolejnosci z tego samego dnia: 2e jest teraz PIERWSZE, wiec ten
+      commit idzie ZARAZ PO nim i przed 2d - wczesniej znaczyloby dzis "przed cala
+      reszta ETAPU 2".
+- [ ] **Usunac `fuse.js` z `package.json`** - ZATWIERDZONE przez FILIPA 2026-09-21.
+      Zaleznosc jest martwa od czasu usuniecia fuzzy-matchingu z `customOrderMatcher.js`.
+      Przemierzone 2026-09-21: szukanie `fuse` po `src/` i `scripts/` zwraca wylacznie
+      podciag w angielskim slowie "refuses" - zero importerow. Osobny commit, nie
+      doklejany do zadnego ciecia funkcjonalnego, z `npm install` i sprawdzeniem, ze
+      `package-lock.json` faktycznie ja usuwa.
 
 ---
 
@@ -1379,7 +1439,21 @@ Dopisane 2026-09-11 (commity feat(diag) + test(rollback)). Nie przepisuje sekcji
 
 1. PRINTED root nieosiagalny -> readPrintedFolder / readPrintedDays zwracaja success +
    pusta liste; operator widzi "brak batchy" (kod PRINTED_ROOT_UNREACHABLE tylko loguje).
-   Decyzja o zmianie tego, co widzi operator (baner?), jest OTWARTA.
+   **ROZSTRZYGNIETE przez FILIPA 2026-09-21: BANER DODAJEMY.** Przestaje byc otwarta
+   decyzja, staje sie pozycja do zrobienia:
+   - [ ] Operator ma zobaczyc, ze to AWARIA DOSTEPU, a nie pusty katalog. Dzis te dwa
+         stany wygladaja identycznie, a roznia sie wszystkim: w jednym nie ma pracy,
+         w drugim praca jest i jej nie widac. Dokladnie ten ksztalt mial incydent
+         2026-09-10/11, w ktorym trzy zlecenia klienta przez godzine istnialy wylacznie
+         na dysku jednej stacji.
+   - [ ] Wzorzec jest juz w aplikacji i nie trzeba wymyslac nowego: `db_banner`
+         plus baner profilu w `App.jsx`. Sygnal ma isc z `PRINTED_ROOT_UNREACHABLE`,
+         ktory juz powstaje - brakuje wylacznie drogi z maina do renderera i samego
+         banera. Zwracane wartosci odczytu zostaja BEZ ZMIAN.
+   - [ ] Uwaga na "trzeci baner": przy martwym NAS-ie beda juz dwa (baza, profil).
+         Decyzja o dwoch banerach byla swiadoma i NIE jest dlugiem, ale trzeci na tej
+         samej przyczynie to juz szum - baner PRINTED ma sie NIE pokazywac, gdy leci
+         baner bazy, bo wtedy nie wnosi nowej informacji.
 2. Rollback w Production (handleRollbackDecisions) i zbiorczy w BatchHistory
    (handleConfirmRollbackBatch, sciezka bulk) pokazuja LICZNIK ("N file(s) could not be
    rolled back") bez przyczyny OS - res.errors[0].message jest odrzucane.
