@@ -839,6 +839,19 @@ a nie w porzadku wierszy.
     i `Polyesters` (81), a slowo `Unknown` nie wystepuje w zadnym z nich - Alex nigdy
     takiego XML-a nie wyslal. Odpowiedz przyszla od strony RIP-a, nie z repo, i zamyka
     spor: argument "Unknown to legalny string, ktory RIP moze przyjac" upada.
+    **WYKONANE `aad9c73`** (`feat(xml): refuse a job whose material class is unknown`) -
+    czeka wylacznie na potwierdzenie bramki przez FILIPA, wiec checkboxy zostaja `[ ]`
+    zgodnie z regula 1. Bramki na tym commicie: 424 passed / 32 files, lint exit 0,
+    golden 0/70. Dwanascie nowych testow w `materialClassGate.test.js`, zaden istniejacy
+    test nietkniety, dziewiec mutacji w `createXML.js` (kazda osobno, z odtworzeniem
+    z kopii `.pristine` potwierdzonym `diff -q`).
+    **JEDNA POPRAWKA DO OPISU PONIZEJ, zmierzona przy wykonaniu:** zdanie "tkanina z `type`
+    spoza `Cottons`/`Polyesters` -> klasa jest `Unknown`" jest prawdziwe tylko dla `type`
+    NULL albo pustego. `getFabricTypeFromCache` zwraca `f.type` DOSLOWNIE, wiec wiersz
+    z `type = "Silk"` daje `<MaterialType>Silk</MaterialType>`, a nie `Unknown`. Bramka
+    celowo tego NIE lapie (odmawia klasy BRAKUJACEJ, nie klasy spoza listy - biala lista
+    wpisalaby nazwy klas z powrotem do kodu, ktory 2g/2h wlasnie z nich czysci, a trzecia
+    klasa jest otwarta). Zapisane jako osobna, mniejsza dziura, nie jako zrobione.
     - [ ] **Bramka na KLASE MATERIALU u zrodla, obok `assertPrintableDimensions`.**
           Ten sam wzorzec i to samo miejsce: raz, w `createXML.js`, a nie w call-site'ach,
           bo obie sciezki produkcyjne schodza sie w `submitBatchToPrintFactory`.
@@ -1316,6 +1329,10 @@ Baza pozostaje jedynym zywym zrodlem prawdy; JSON to tylko transport na wdrozeni
       podciag w angielskim slowie "refuses" - zero importerow. Osobny commit, nie
       doklejany do zadnego ciecia funkcjonalnego, z `npm install` i sprawdzeniem, ze
       `package-lock.json` faktycznie ja usuwa.
+      **WYKONANE `343ec21`** - checkbox zostaje `[ ]` do potwierdzenia bramki przez FILIPA
+      (regula 1). `package-lock.json` faktycznie zdjal wpis; trafienia `fuse`, ktore w nim
+      zostaly, to `@electron/fuses`, niepowiazana zaleznosc przechodnia electron-buildera.
+      Bramki: 412 passed / 31 files (przed cieciami z tego dnia), lint exit 0, build ok.
 - [ ] **Migracja kasujaca trzy osierocone tabele w bazie klienta** - `counters`,
       `custom_clients`, `custom_order_files`. ZATWIERDZONE przez FILIPA 2026-09-21 jako
       OSOBNA pozycja, zaraz po rezygnacji z `feature/custom-orders-unification`.
@@ -1480,7 +1497,18 @@ Dopisane 2026-09-11 (commity feat(diag) + test(rollback)). Nie przepisuje sekcji
 1. PRINTED root nieosiagalny -> readPrintedFolder / readPrintedDays zwracaja success +
    pusta liste; operator widzi "brak batchy" (kod PRINTED_ROOT_UNREACHABLE tylko loguje).
    **ROZSTRZYGNIETE przez FILIPA 2026-09-21: BANER DODAJEMY.** Przestaje byc otwarta
-   decyzja, staje sie pozycja do zrobienia:
+   decyzja, staje sie pozycja do zrobienia.
+   **WYKONANE `d07011c`** - checkboxy zostaja `[ ]` do potwierdzenia bramki przez FILIPA
+   (regula 1). Bramki: 436 passed / 33 files, lint exit 0, build ok, golden 0/70.
+   Mechanizm 1:1 jak baner bazy: flaga modulowa + wstrzykniety sink (`setPrintedRootSink`
+   obok `setDbErrorSink` w `main.js`) + emisja RAZ na przejscie + migawka startowa
+   (`printed:get-unreachable`, blizniak `db:get-degraded`). Zwracane wartosci obu czytnikow
+   BEZ ZMIAN - przypiete dwoma testami. Baner nie pokazuje sie przy zapalonym banerze bazy.
+   Dwanascie nowych testow (`printedRootSignal.test.js`), zaden istniejacy nietkniety,
+   dziewiec mutacji w `readPrintedFolder.js`.
+   **ZNANY LIMIT:** polowa renderera (sam element banera i jego wygaszanie) nie ma testu -
+   w projekcie nie ma harnessu renderujacego (odrzucony w `50f64c8`), wiec testowalna
+   czescia jest sygnal w mainie i tam stoja testy.
    - [ ] Operator ma zobaczyc, ze to AWARIA DOSTEPU, a nie pusty katalog. Dzis te dwa
          stany wygladaja identycznie, a roznia sie wszystkim: w jednym nie ma pracy,
          w drugim praca jest i jej nie widac. Dokladnie ten ksztalt mial incydent

@@ -546,6 +546,21 @@ unchanged** (this is diagnostics, not a behaviour change):
 | `PRINTED_DAY_UNREADABLE`   | error   | a day's `readdir` throws (the `readPrintedDays` skeleton catch, and `buildDayGroup` which then re-throws into `errors[]`) | skeleton `totalBatches:0` / re-throw |
 | `BATCH_FOLDER_SKIPPED`     | warning | a directory fails `parseBatchFolderName` / `BATCH_FOLDER_RE` (in `buildDayGroup` and the `readPrintedDays` count)         | folder skipped (as before)           |
 
+**`PRINTED_ROOT_UNREACHABLE` also raises an operator BANNER** (the log entry is unchanged
+and stays). `readPrintedFolder.js` keeps a module-level flag, `getPrintedRootUnreachable()`
+as its snapshot, and an injected sink (`setPrintedRootSink`, wired in `main.js` beside
+`setDbErrorSink`) that emits `printed:unreachable` / `printed:reachable` **once per
+transition** — never per read, because `readPrintedDays` runs on every BatchHistory mount,
+after every submit and on the 30s poll. The renderer subscribes in `App.jsx`
+(`onPrintedRootUnreachable` / `onPrintedRootReachable` → `store.printedRootUnreachable`)
+and pulls a startup snapshot via `checkPrintedRoot()` (`printed:get-unreachable`), the twin
+of `checkDbDegraded`. **The banner is suppressed while the DB banner is up** — a dead NAS
+raises both and the second line adds nothing; a PRINTED folder gone on a healthy share
+raises this one alone, which is the case no other signal shows. **Both readers' RETURN
+VALUES are unchanged** — the signal sits beside the read (pinned by
+`printedRootSignal.test.js`). The renderer half has no test: there is no rendering harness
+(rejected in `50f64c8`).
+
 - **`logOnce` (`helpers/logOnce.js`)** — one module instance keyed by folder path; a given
   key logs again only after a **1-hour** window (`createLogOnce({ windowMs })`). Not
   "once per session": the app runs 24/7 and a share can fail, recover, and fail again
@@ -655,6 +670,9 @@ ripErrors.resolve(fileId) // → { success } | { success:false, error } ("rip-er
 // System
 getAppVersion()  // → version string ("app:getVersion")
 backupDb()       // → { success, path, skipped } ("db:backup") — manual; also auto-runs on each startup
+getDbDegraded()  // → { degraded } ("db:get-degraded") — startup snapshot; events: onDbError / onDbRecovered
+getPrintedRootUnreachable() // → { unreachable } ("printed:get-unreachable") — startup snapshot
+onPrintedRootUnreachable(cb) / onPrintedRootReachable(cb) // transition-only events, return an unsubscribe fn
 
 // Auto-updater (electron-updater) — use updateService, never window.api.update directly
 update.check() / update.install()
@@ -679,6 +697,9 @@ update.onAvailable(cb) / update.onProgress(cb) / update.onReady(cb) / update.onN
   productionStages: {},         // fileId → stageRow ({ file_id, stage, batch_path, order_id, customer_name, ... })
   stageHistory: {},             // fileId → [{ stage, entered_at }] — append-only per transition
   ripErrors: {},                // fileId → ripErrorRow (open only; most-recent wins per file)
+  dbDegraded: false,            // db:error / db:recovered → the DB banner
+  printedRootUnreachable: false,// printed:unreachable / printed:reachable → the PRINTED banner
+                                //   (hidden while dbDegraded — see PRINTED read diagnostics)
 }
 ```
 
@@ -728,8 +749,19 @@ a live literal, and one with no golden baseline (hole (b) in the Etap 2 gate).
 | Default roll widths              | `fabric_globals`                          | `LM_ROLL_POLY=1550`, `LM_ROLL_COTTON_DEFAULT=1420` |
 | Per-material XML width           | `fabrics.xml_width`                       | **none — `null`, and the job is refused**          |
 | Per-material roll width          | `fabrics.roll_width`                      | `LM_ROLL_COTTON[name]` map                         |
-| Material type routing            | `fabrics.type`                            | **none — `"Unknown"`** (static Sets deleted)       |
+| Material type routing            | `fabrics.type`                            | **none — `"Unknown"`, and the job is refused**     |
 | XML flags (velvet/linen/blossom) | `fabrics.is_velvet/is_linen/is_blossom`   | string-contains fallback                           |
+
+**`<MaterialType>` cannot leave as `Unknown`** — `assertKnownMaterialClass` in
+`createXML.js` refuses the job at the source, beside `assertPrintableDimensions` and
+**after** it (code `ERR_UNKNOWN_MATERIAL_CLASS`; a fabric outside the catalogue fails both
+and keeps the width message it has today). The RIP cannot accept the value; none of the 70
+golden baselines carries it. The gate refuses a **missing** class — blank, or the literal
+`Unknown` in any case — and deliberately **not** a class outside a list: a whitelist would
+put the class names back into the code 2g/2h is emptying of them, and a third class is an
+open possibility. A foreign `type` string (a hand-edited row, or an import via
+`setAllFabrics` — Settings cannot produce one, its class is a two-button toggle) therefore
+still renders. Pinned by `materialClassGate.test.js`.
 
 **Fixed product dims stay hardcoded** (never user-editable):
 
@@ -1049,7 +1081,7 @@ Per-file checkbox selection inside a `CustomOrderCard`, so an operator can exclu
 
 **Whole-row click toggles selection** — the `<tr>` itself carries the `onClick` that calls `toggleFileSelection`, gated by `checkboxLocked` (`isGenerating || isGenerated`) at the row level (`.file_row_locked`, cursor `not-allowed` + dimmed, with hover suppressed via `.file_row.file_row_locked:hover`) — a locked row is fully non-interactive, not just its checkbox. The checkbox `<span>` keeps its own `onClick`/`role`/`tabIndex`/`onKeyDown` for direct/keyboard use, but calls `e.stopPropagation()` before toggling — without it, a direct click on the checkbox would bubble into the row's `onClick` and fire the toggle twice, silently cancelling itself out.
 
-**`suggestion` + Fuse fuzzy-matching removed from `customOrderMatcher.js`** — `matchFiles` used to attach a `suggestion` (closest fuzzy match via `fuse.js`) to unmatched rows, but nothing ever read it (not `CustomOrderCard.jsx`, not `generateXML`, not `custom_order_history`, not `CustomOrderHistory.jsx`) — confirmed by a full-codebase grep before removal. `matchFiles` is now a plain `cachedFileNames.includes(file.fileName)` check per row. **`fuse.js` is now unused anywhere in RipFlow** but is still listed in `package.json` — **it is to be removed (decided 2026-09-21)**, in a commit of its own, not folded into a feature. Re-measured 2026-09-21: a search for `fuse` across `src/` and `scripts/` returns only the substring in the English word "refuses"; there is no importer left.
+**`suggestion` + Fuse fuzzy-matching removed from `customOrderMatcher.js`** — `matchFiles` used to attach a `suggestion` (closest fuzzy match via `fuse.js`) to unmatched rows, but nothing ever read it (not `CustomOrderCard.jsx`, not `generateXML`, not `custom_order_history`, not `CustomOrderHistory.jsx`) — confirmed by a full-codebase grep before removal. `matchFiles` is now a plain `cachedFileNames.includes(file.fileName)` check per row. **`fuse.js` is GONE from `package.json`** (`343ec21`, its own commit) — it had been unused anywhere in RipFlow since the fuzzy matching was dropped. Measured again before removal: a search for `fuse` across `src/` and `scripts/` returns only the substring in the English word "refuses"; the hits left in `package-lock.json` are `@electron/fuses`, an unrelated transitive dependency of electron-builder.
 
 **Batch/file icon convention** — `LuLayers` marks batch/order-level rows: the `CustomOrderCard` header icon (next to the material name) and the `CustomOrderHistory` row icon (next to `order.materialName`) both use it, consistent with the Batch nav tab's icon. `LuFileText` marks an individual file — reused from `DataList`'s per-filename icon (same icon, same `.file_icon` sizing), placed between the checkbox and the filename text in `CustomOrderCard`'s expanded row. `file_name_wrap` is a row flex (not column) specifically so this icon sits beside the name rather than above it.
 
