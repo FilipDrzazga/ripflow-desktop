@@ -1,3 +1,77 @@
+# Zasady krytyczne - obowiazuja zawsze, w kazdej turze
+
+## Uruchomienie
+
+- Plik czatu rotuje sie po datach: chat/RRRR-MM-DD.md
+- Agent nie ma pewnego zrodla dzisiejszej daty, wiec FILIP podaje dokladna
+  nazwe dzisiejszego pliku czatu w PIERWSZEJ wiadomosci do kazdej sesji
+  (tej z "Jestes S1..."). Wzor:
+
+  [ROLA: Jestes S1 - ...] Plik czatu na dzis: chat/RRRR-MM-DD.md.
+  Przeczytaj claude/project_state.md i INSTRUKCJA.md, potem ostatni wpis w tym
+  pliku, wykonaj co trzeba i ZAPISZ odpowiedz jako nowy wpis w tym samym
+  pliku, konczac ja markerem [KONIEC]
+
+- Do czasu az dostaniesz te nazwe, nie zgaduj daty - dopytaj
+- Wszystkie TRZY narzedzia (wake.js, pisz.js, czat.ps1) licza nazwe pliku
+  raz przy starcie. Po rotacji i po kazdej zmianie doby restartuje sie
+  wszystkie trzy - zrestartowanie dwoch konczy sie tym, ze to trzecie pisze
+  albo czyta wczorajszy plik i nikt tego nie widzi
+
+## Format wpisu
+
+- Piszesz do pliku czatu na dzisiejsza date (chat/RRRR-MM-DD.md), ktorego
+  dokladna sciezke dostajesz w pierwszej wiadomosci od FILIPA, w formacie:
+  GODZINA ROLA: tresc
+- Twoj raport to JEDEN wpis - jedna linia czasu na poczatku, cala tresc pod nia
+- KAZDY wpis konczysz w nowej linii markerem: [KONIEC]
+- Bez [KONIEC] nikt nie zostanie obudzony - to nie jest opcjonalne
+- Nigdy nie edytujesz cudzych wpisow, tylko dopisujesz swoj na koncu
+- Odpowiedz NIE liczy sie, dopoki nie zapiszesz jej do dzisiejszego pliku
+  czatu
+- Cudze wpisy cytujesz w srodku zdania. Nie przeklejasz cudzego naglowka
+  (GODZINA ROLA:) na poczatek linii - dla wake.js wyglada to jak nowy wpis
+- Markery CZEKA NA FILIP i WERDYKT licza sie tylko wtedy, gdy zaczynaja linie
+  w kolumnie 0 albo stoja zaraz po Twoim naglowku. Cytujac je, zrob wciecie
+
+## Decyzje dla czlowieka
+
+- Gdy potrzebujesz decyzji, recznego testu albo wyboru - NIE umieszczaj tego
+  w zwyklym podsumowaniu. Zacznij osobna linie od:
+  CZEKA NA FILIP: <czego potrzebujesz>
+- Jesli masz kilka pytan, ponumeruj je w tym samym wpisie:
+  CZEKA NA FILIP:
+  1.  ...
+  2.  ...
+  3.  ...
+      ...
+- Po tym wpisie NIC wiecej nie robisz do odpowiedzi
+- Zakoncz wpis markerem [KONIEC] tak jak kazdy inny
+
+## Zakonczenie zadania
+
+- S2 KONCZY KAZDA recenzje jedna z dwoch fraz, doslownie:
+  WERDYKT: ZATWIERDZONE
+  WERDYKT: POPRAWKI
+- Bez tej frazy petla sie nie zatrzyma
+
+## Trwaly stan projektu (claude/project_state.md)
+
+- S2, wystawiajac WERDYKT: ZATWIERDZONE, w TYM SAMYM wpisie (przed [KONIEC])
+  dopisuje tez zmiany do claude/project_state.md - zwiezle, 3-5 linii: co zrobiono,
+  jakie decyzje podjeto, jaki jest nastepny krok
+- Przy WERDYKT: POPRAWKI nie ruszasz claude/project_state.md - plik aktualizuje sie
+  tylko przy zatwierdzeniu
+- Sekcje "## Aktualny stan" i "## Nastepny krok" NADPISUJESZ - maja
+  zostawac krotkie i opisywac teraz, a nie historie
+- Sekcje "## Decyzje" tylko DOPISUJESZ na koncu (append) - to log
+  uzasadnien, kazda linia z data i powodem, nic z niej nie usuwasz
+- Aktualizacja claude/project_state.md jest czescia werdyktu, nie osobnym wpisem -
+  bez niej recenzja nie jest skonczona
+- Linie "Ostatnia aktualizacja: RRRR-MM-DD" na gorze pliku podbijasz, gdy
+  dzisiejsza data jest inna niz wpisana. Data, ktorej nikt nie odswieza, myli
+  bardziej niz jej brak
+
 -use context7
 
 # RipFlow Desktop — Project Context for Claude
@@ -341,12 +415,12 @@ that selects one is not (`workstationRoles` used to sit in the profile and was r
 load-on-startup / invalidate-on-write cycle, same sentinel discipline.
 
 ```js
-loadShopProfile();       // DB → memory; called in registerIpcHandlers BEFORE loadFabricCache
+loadShopProfile(); // DB → memory; called in registerIpcHandlers BEFORE loadFabricCache
 invalidateShopProfile(); // clear (call before reloading)
-getProfile();            // null | DEFAULT_PROFILE | the DB row
-getPrinters();           // profile.printers, or [] when not loaded / the field is not an array
-getPrinterByCode(code);  // printer | null — case-insensitive, see the 2e debt
-getFeature(name);        // boolean, fail-closed, strict === true
+getProfile(); // null | DEFAULT_PROFILE | the DB row
+getPrinters(); // profile.printers, or [] when not loaded / the field is not an array
+getPrinterByCode(code); // printer | null — case-insensitive, see the 2e debt
+getFeature(name); // boolean, fail-closed, strict === true
 ```
 
 **Three real states in `db.getShopProfile()`, and only ONE of them yields a value.**
@@ -452,7 +526,7 @@ VALIDATE → LOCK (`.lock` file) → DESTINATION_STRUCTURE → COPY (pdf-lib p.1
 
 **Lock body carries a reserved `nonce`.** The fresh lock's JSON is `{ pid, batchId, timestamp, nonce }`; **`nonce` (`crypto.randomUUID()`) is a deliberately dead field** — foundation for future lock-ownership verification (Opcja 2). It is written but **never read today** — do NOT prune it as dead code.
 
-**KNOWN DEBT (deliberate, unfixed):** the lock-release path in `finally` (~`createBatch.js:481`) still does a destructive `unlink(lockRecord.lockPath)` by name — the twin of the TOCTOU fixed above. Process-freeze scenario: a station stalls > 90s (heartbeat stops), another station legitimately claims + recreates the lock, then the frozen station wakes and its `finally` deletes the successor's lock. Consciously NOT fixed — it belongs to the "lock-ownership verification" class (would need a `nonce` re-read before unlink). Recorded as a known decision, not a blind spot.
+**KNOWN DEBT (deliberate, unfixed):** the lock-release path in `createBatch.js`'s `finally` still does a destructive `unlink(lockRecord.lockPath)` by name — the twin of the TOCTOU fixed above. Process-freeze scenario: a station stalls > 90s (heartbeat stops), another station legitimately claims + recreates the lock, then the frozen station wakes and its `finally` deletes the successor's lock. Consciously NOT fixed — it belongs to the "lock-ownership verification" class (would need a `nonce` re-read before unlink). Recorded as a known decision, not a blind spot.
 
 **COPY is page 1 only — intentional.** `pdf-lib` copies only the first page of each source PDF; pages 2+ are deliberately not preserved (PrintFactory needs only page 1). A rolled-back or regenerated file therefore never carries pages 2+ — by design, not data loss.
 
@@ -466,11 +540,11 @@ BatchHistory reads the PRINTED tree from DISK (the DB only enriches). Three disk
 failures used to be silent; each now leaves a trace, while the **return value is
 unchanged** (this is diagnostics, not a behaviour change):
 
-| code | type | when | function still returns |
-| --- | --- | --- | --- |
-| `PRINTED_ROOT_UNREACHABLE` | error | `access(printedRoot)` throws (in `readPrintedFolder` and `readPrintedDays`) | `success:true`, empty data |
-| `PRINTED_DAY_UNREADABLE` | error | a day's `readdir` throws (the `readPrintedDays` skeleton catch, and `buildDayGroup` which then re-throws into `errors[]`) | skeleton `totalBatches:0` / re-throw |
-| `BATCH_FOLDER_SKIPPED` | warning | a directory fails `parseBatchFolderName` / `BATCH_FOLDER_RE` (in `buildDayGroup` and the `readPrintedDays` count) | folder skipped (as before) |
+| code                       | type    | when                                                                                                                      | function still returns               |
+| -------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------- | ------------------------------------ |
+| `PRINTED_ROOT_UNREACHABLE` | error   | `access(printedRoot)` throws (in `readPrintedFolder` and `readPrintedDays`)                                               | `success:true`, empty data           |
+| `PRINTED_DAY_UNREADABLE`   | error   | a day's `readdir` throws (the `readPrintedDays` skeleton catch, and `buildDayGroup` which then re-throws into `errors[]`) | skeleton `totalBatches:0` / re-throw |
+| `BATCH_FOLDER_SKIPPED`     | warning | a directory fails `parseBatchFolderName` / `BATCH_FOLDER_RE` (in `buildDayGroup` and the `readPrintedDays` count)         | folder skipped (as before)           |
 
 - **`logOnce` (`helpers/logOnce.js`)** — one module instance keyed by folder path; a given
   key logs again only after a **1-hour** window (`createLogOnce({ windowMs })`). Not
@@ -644,18 +718,18 @@ refreshBatchDays()      // non-awaited
 `printWidths.js` values are **fallbacks only — with one live exception**. DB (`fabric_globals` +
 `fabrics`) is the primary source everywhere the table below says so. The exception is
 `customOrderHandlers.js`, which imports `LM_XML_POLY` and writes it straight into the custom-order
-XML (`:40`) next to a hardcoded `<MaterialType>Polyesters</MaterialType>` (`:43`) — not a fallback,
+XML as `<Width>${LM_XML_POLY}</Width>`, next to a hardcoded `<MaterialType>Polyesters</MaterialType>` — not a fallback,
 a live literal, and one with no golden baseline (hole (b) in the Etap 2 gate).
 
-| Config                           | DB table                                | Fallback                                           |
-| -------------------------------- | --------------------------------------- | -------------------------------------------------- |
-| Margins (cotton/poly)            | `fabric_globals`                        | `MARGIN_COTTON=10`, `MARGIN_POLY=5`                |
-| Default XML widths               | `fabric_globals` — **DEAD, zero readers**  | none (was `LM_XML_POLY`, `LM_XML_COTTON_DEFAULT`) |
-| Default roll widths              | `fabric_globals`                        | `LM_ROLL_POLY=1550`, `LM_ROLL_COTTON_DEFAULT=1420` |
-| Per-material XML width           | `fabrics.xml_width`                     | **none — `null`, and the job is refused**          |
-| Per-material roll width          | `fabrics.roll_width`                    | `LM_ROLL_COTTON[name]` map                         |
-| Material type routing            | `fabrics.type`                          | **none — `"Unknown"`** (static Sets deleted)       |
-| XML flags (velvet/linen/blossom) | `fabrics.is_velvet/is_linen/is_blossom` | string-contains fallback                           |
+| Config                           | DB table                                  | Fallback                                           |
+| -------------------------------- | ----------------------------------------- | -------------------------------------------------- |
+| Margins (cotton/poly)            | `fabric_globals`                          | `MARGIN_COTTON=10`, `MARGIN_POLY=5`                |
+| Default XML widths               | `fabric_globals` — **DEAD, zero readers** | none (was `LM_XML_POLY`, `LM_XML_COTTON_DEFAULT`)  |
+| Default roll widths              | `fabric_globals`                          | `LM_ROLL_POLY=1550`, `LM_ROLL_COTTON_DEFAULT=1420` |
+| Per-material XML width           | `fabrics.xml_width`                       | **none — `null`, and the job is refused**          |
+| Per-material roll width          | `fabrics.roll_width`                      | `LM_ROLL_COTTON[name]` map                         |
+| Material type routing            | `fabrics.type`                            | **none — `"Unknown"`** (static Sets deleted)       |
+| XML flags (velvet/linen/blossom) | `fabrics.is_velvet/is_linen/is_blossom`   | string-contains fallback                           |
 
 **Fixed product dims stay hardcoded** (never user-editable):
 
@@ -703,13 +777,13 @@ someone edits a width in Settings, the two sources diverge on purpose.
 is false. Measured against `profiles/fashion-formula-fabrics.json` (the ETAP 0 export, the same file
 the golden stub feeds `fabricCache` from — the live DB is never touched):
 
-| fabric | class | loaded (DB) | degraded (static) | delta | in `LM_XML_COTTON`? |
-| --- | --- | --- | --- | --- | --- |
-| Chloe Linen Natural | Cottons | 1370 | 1420 | +50 | no |
-| Eco Astra Ramie | Cottons | 1370 | 1420 | +50 | no |
-| Eco Ochra Ramie | Cottons | 1370 | 1420 | +50 | no |
-| **Satin** | Cottons | **1400** | **1420** | +20 | **YES** |
-| Luxe Velvet | Polyesters | 1380 | 1420 | +40 | no |
+| fabric              | class      | loaded (DB) | degraded (static) | delta | in `LM_XML_COTTON`? |
+| ------------------- | ---------- | ----------- | ----------------- | ----- | ------------------- |
+| Chloe Linen Natural | Cottons    | 1370        | 1420              | +50   | no                  |
+| Eco Astra Ramie     | Cottons    | 1370        | 1420              | +50   | no                  |
+| Eco Ochra Ramie     | Cottons    | 1370        | 1420              | +50   | no                  |
+| **Satin**           | Cottons    | **1400**    | **1420**          | +20   | **YES**             |
+| Luxe Velvet         | Polyesters | 1380        | 1420              | +40   | no                  |
 
 `xmlWidth` mismatches: **5 of 132**. `rollWidth` mismatches: **0 of 132**.
 
@@ -1189,9 +1263,38 @@ Rules:
      one is worse than none. Fixing a comment goes in its OWN commit, typed `docs`,
      never bundled with code, and the proof it carries is the test count before and
      after being identical plus a diff in which every changed line begins with `//`.
-   The reason for the split, written down so the next request does not arrive as "it is
-   only a mock": the rule exists to stop an unintended behaviour change from being
-   masked by an edited expectation. A comment cannot mask anything, because it does not
-   execute. A mock can, so a mock is executable content and stays untouchable.
-   First applied at `b8d757d`, on a note in `parseFileName.test.js` that described a
-   design deleted two commits earlier.
+     The reason for the split, written down so the next request does not arrive as "it is
+     only a mock": the rule exists to stop an unintended behaviour change from being
+     masked by an edited expectation. A comment cannot mask anything, because it does not
+     execute. A mock can, so a mock is executable content and stays untouchable.
+     First applied at `b8d757d`, on a note in `parseFileName.test.js` that described a
+     design deleted two commits earlier.
+8. Mutations belong in the file that WAS broken, not only in the new clean module.
+   A round of 16 mutations against a freshly written pure helper, with zero against the
+   producer, the handler and the UI, looks like proof and establishes nothing about the
+   defect under study. The question a mutation answers is "would this test have caught
+   the thing that actually went wrong", so it has to be applied where that thing lived.
+   Recorded after KROK A (2026-09-11), where exactly that shape was produced and caught
+   in review.
+9. A test, a field or a sentinel has to earn its place against a state that can really
+   occur, and a state that resolves an incident is never optional.
+   - A test for an IMPOSSIBLE state is not caution, it is noise: a `null` vs `[]`
+     sentinel test written for a producer that always returns an array was deleted for
+     this reason.
+   - The mirror case is not symmetric. A field that would have ANSWERED a real incident
+     is mandatory even when its absence is technically defensible: `workstation: null`
+     in the read diagnostics was arguable on its own terms and wrong on the merits,
+     because the whole incident was ONE station seeing different data from the others.
+10. A report without the raw diff is not a report. Whoever reviews the work reads the
+    diff, not a description of it - a description is exactly the layer where an
+    unintended change hides. This is also why a number arrives with the command that
+    produced it: both rules exist so the reader can re-derive the claim instead of
+    trusting it.
+
+**Dropped deliberately when `HANDOFF-ETAP-2.md` was dismantled (2026-09-21), because the
+S1/S2 review loop in `INSTRUKCJA.md` supersedes them, not because they were wrong:** the
+rule that every prompt must end in an explicit STOP or an explicit permission to commit,
+and the rule that reviewed work is committed only after matching SHA-256 hashes of the
+files the reviewer read. Both solved the "work was committed before anyone reviewed it"
+problem in a workflow where one person wrote the prompt and another pasted it. The loop
+now solves it structurally: S1 does not commit without the S2 verdict.
