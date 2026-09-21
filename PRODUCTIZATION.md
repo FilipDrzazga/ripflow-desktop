@@ -790,8 +790,42 @@ a nie w porzadku wierszy.
        `DEFAULT_PROFILE.materialClasses` NIE dostaje `defaultXmlWidth` - inaczej byloby
        to trzecie martwe pole profilu, wbrew REGULE 24. To NIE jest odrzucony wariant
        (b): tam odbieraloby sie funkcje dzialajaca, tu znika samo zludzenie.
-    6. **skasowanie `printWidths.js`** - ostatnie, bo lamie ISTNIEJACY test
-       (dziura (c) w bramce Etapu 2).
+    6. **usuniecie DWOCH MAP per-tkanina z `printWidths.js`** - NIE kasowanie modulu.
+       **Zakres przepisany 2026-09-21 po pomiarze (S1, potwierdzony przez S2) i decyzja
+       FILIPA.** Poprzedni zapis brzmial "skasowanie `printWidths.js` - ostatnie, bo lamie
+       ISTNIEJACY test"; zalozenie bylo zle. Cel D18 ("zero nazw Alexa w kodzie") osiaga sie
+       usuwajac `LM_XML_COTTON` i `LM_ROLL_COTTON` - po 33 wpisy kluczowane nazwami tkanin
+       Alexa. Cztery stale, ktore importuje `estimatePrintLength.test.js` (`LM_ROLL_POLY`,
+       `LM_ROLL_COTTON_DEFAULT`, `MARGIN_COTTON`, `MARGIN_POLY`), to domyslne wartosci KLASY
+       materialu, nie niosa zadnej nazwy klienta i ZOSTAJA. Po tym cieciu `printWidths.js`
+       przestaje byc "dane Alexa" i staje sie tym, czym faktycznie jest - domyslnymi liczbami
+       sciezki ZDEGRADOWANEJ.
+       Trzy rzeczy zmierzone, zanim ktokolwiek to zacznie:
+       - **`LM_XML_COTTON` nie ma ZADNEGO konsumenta.** `grep -rn "LM_XML_COTTON" src/ scripts/`
+         daje wlasna definicje w `printWidths.js` i MARTWY import w `defaultFabrics.js`
+         (ten plik uzywa wylacznie stalych `*_DEFAULT`). Martwe od `0bf8aa6`. Czysta kasacja.
+       - **`LM_ROLL_COTTON` MA jednego zywego konsumenta** i to jedyna czesc tego kroku,
+         ktora ZMIENIA ZACHOWANIE: `getRollWidth` w `estimatePrintLength.js` czyta
+         `LM_ROLL_COTTON[material] ?? LM_ROLL_COTTON_DEFAULT` w galezi ZDEGRADOWANEJ
+         (`config === null`, czyli katalog nieodczytany). Po usunieciu mapy ta galaz oddaje
+         1420 dla kazdej bawelny. Rozjazd dotyczy CZTERECH z 33 wpisow: `Hector Linen` 1460,
+         `Organic Blossom Muslin Gauze` 1270, `Organic Stratos Linen` 1370, `Organic Nimbus
+         Linen` 1370 (komenda: zaladowac `src/shared/printWidths.js` i wypisac klucze, dla
+         ktorych `LM_ROLL_COTTON[k] !== LM_ROLL_COTTON_DEFAULT`). To jest swiadome zejscie do
+         liczby KLASY, spojne z `0bf8aa6`: sciezka zdegradowana ma podawac wartosc klasy,
+         a nie dane innego sklepu. Golden tego nie zobaczy - stub zawsze karmi cache pelnym
+         katalogiem, wiec `config` nigdy nie jest `null` (dziura (a)).
+       - **Zadna liczba w istniejacych testach sie nie zmienia**: testy uzywaja materialow
+         `Poplin` i `Melino Linen`, a zadnego z nich nie ma wsrod czterech rozjechanych.
+       **ZGODA FILIPA z 2026-09-21 na JEDNA zmiane w istniejacym tescie.** Test
+       `it("uses per-material roll width for cotton")` przejdzie bez dotkniecia, bo jego
+       asercja to `toBeGreaterThan(0)`, a komentarz obok sam przyznaje "just verifying no
+       crash". Ale jego NAZWA opisywalaby zachowanie, ktorego juz nie ma, a nazwa testu jest
+       wg REGULY 7 trescia WYKONYWALNA. Wolno ja zmienic - bramka "zero modyfikacji
+       istniejacych testow" jest tu naginana SWIADOMIE, w jednym miejscu, decyzja czlowieka,
+       i tak ma to byc napisane w komunikacie commita. Asercji nie wolno dotknac.
+       Martwe importy obu map w `defaultFabrics.js` znikaja razem z mapami (REGULA 1:
+       to jest KONSUMENT, znaleziony grepem, a nie zalozony).
   - **LUKA, KTORA KROK 4 OTWORZYL, i jej domkniecie (`b06d57d`).** To NIE jest nowa
     funkcja - to zrownanie dwoch miejsc, ktore krok 4 rozjechal. Krok 4 zamienil zmyslona
     szerokosc na `null`, i to bylo poprawne W APLIKACJI: widok druku blokuje operatora
@@ -965,6 +999,9 @@ Kolejnosc jest wiec wymuszona i nie wolno jej odwrocic: import profilu -> oprozn
 - [ ] `getMaterialType.js`: statyczne listy nazw Alexa -> czytanie klas z `profile.materialClasses`
       (fallback zwraca "Unknown", nie liste Alexa)
 - [ ] `printWidths.js`: mapy `LM_ROLL_COTTON` / `LM_XML_COTTON` (per nazwa Alexa) -> profil
+      **ZAKRES ROZSTRZYGNIETY 2026-09-21 - patrz krok 6 w 2g.** Usuwamy MAPY, modul ZOSTAJE
+      (cztery stale klasowe nie niosa nazw klienta). `LM_XML_COTTON` nie ma konsumenta;
+      `LM_ROLL_COTTON` ma jednego - galaz zdegradowana `getRollWidth`, cztery tkaniny.
       **UWAGA: docelowo NIE do profilu, tylko do `fabrics` - tam juz sa.** Obie mapy maja
       po 33 wpisy, a tabela `fabrics` niesie `xml_width` i `roll_width` per wiersz dla
       wszystkich 132 tkanin. To nie jest migracja danych, tylko decyzja, co ma sie dziac
@@ -1069,10 +1106,17 @@ sprawdzone", a dla czterech klas zmian nie znaczy nic:
   ZYWE, bez odczytu cache'u. **Dotkniecie tego pliku jest dzis niezabezpieczone.**
   Nie ruszac go, dopoki nie ma wlasnego baseline'u.
 - **(c) `estimatePrintLength.test.js` importuje stale z `printWidths.js`**
-  (`LM_ROLL_POLY`, `LM_ROLL_COTTON_DEFAULT`, `MARGIN_COTTON`, `MARGIN_POLY`). Usuniecie
-  tego modulu ZLAMIE ISTNIEJACY test, a bramka wymaga ZERO modyfikacji istniejacych
-  testow. To jest warunek wstepny ostatniego kroku 2h, nie niespodzianka do odkrycia
-  w trakcie.
+  (`LM_ROLL_POLY`, `LM_ROLL_COTTON_DEFAULT`, `MARGIN_COTTON`, `MARGIN_POLY`).
+  **ZAWEZONE 2026-09-21 - zalozenie bylo zle.** Stalo tu: "usuniecie tego modulu ZLAMIE
+  ISTNIEJACY test, a bramka wymaga ZERO modyfikacji istniejacych testow". Zmierzone: test
+  importuje WYLACZNIE cztery stale KLASOWE, a nazwy Alexa siedza w dwoch mapach, ktorych
+  zadna asercja nie dotyka. Krok 6 usuwa MAPY, nie modul - wiec nic nie pada i bramka nie
+  jest lamana. Zostaje jedna NAZWA testu, ktora po cieciu klamie, i na jej zmiane jest
+  zgoda FILIPA (szczegoly przy kroku 6 w 2g).
+  Dziura jako KLASA problemu zostaje i ma teraz konkretny adres: usuniecie `LM_ROLL_COTTON`
+  zmienia galaz ZDEGRADOWANA w `getRollWidth` dla czterech tkanin, a siatka golden nie
+  uruchamia tej galezi ANI RAZU - dokladnie to, co mowi dziura (a). Dowodem dla tej zmiany
+  moze byc tylko test jednostkowy.
 - **(d) Harness goldena NIE LADUJE profilu sklepu.** `harness.mjs` wola
   `loadFabricCache()` i nic wiecej; `stub-db.mjs` stubuje wylacznie katalog tkanin
   (`grep -n "shopProfile" scripts/golden/stub-db.mjs` -> zero trafien). Czyli KAZDA
