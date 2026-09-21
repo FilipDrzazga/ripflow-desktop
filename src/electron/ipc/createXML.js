@@ -115,14 +115,20 @@ const isUsableDimension = (v) => {
   return false;
 };
 
+// The two identifying halves of every refusal below: WHICH FILE and WHICH FABRIC. Shared
+// by both guards so the two refusals cannot drift apart in how they name the same item.
+const describeItem = (item) => {
+  const fileName = item?.file?.name ?? item?.artworkId ?? "unknown file";
+  const material = typeof item?.material === "string" ? item.material.trim() : "";
+  return { fileName, material, fabric: material ? `"${material}"` : "an unnamed fabric" };
+};
+
 const assertPrintableDimensions = (batch) => {
   for (const item of batch ?? []) {
     const badWidth = !isUsableDimension(item?.width);
     const badHeight = !isUsableDimension(item?.height);
     if (!badWidth && !badHeight) continue;
-    const fileName = item?.file?.name ?? item?.artworkId ?? "unknown file";
-    const material = typeof item?.material === "string" ? item.material.trim() : "";
-    const fabric = material ? `"${material}"` : "an unnamed fabric";
+    const { fileName, material, fabric } = describeItem(item);
     const which = badWidth && badHeight ? "width and height" : badWidth ? "width" : "height";
     // Ask the catalogue the same question the parser asked. A fabric it can place is a
     // fabric that is not the problem; anything else - unknown name, no name, catalogue
@@ -144,8 +150,61 @@ const assertPrintableDimensions = (batch) => {
   }
 };
 
+// Refuse to build a job whose MATERIAL CLASS is unknown.
+//
+// Settled 2026-09-21 from the RIP's side rather than from the repo: PrintFactory cannot
+// accept <MaterialType>Unknown</MaterialType>. The repo held no evidence either way - all
+// 70 golden baselines carry Cottons and Polyesters only, and the word Unknown appears in
+// none of them, so this shop has never sent such a job.
+//
+// THE SCOPE IS NARROWER THAN IT LOOKS, and that is measured, not assumed. A fabric outside
+// the catalogue is already refused one guard earlier: getXmlWidthFromCache answers null for
+// it, so assertPrintableDimensions throws ERR_UNKNOWN_PRINT_SIZE first. Both causes of an
+// "Unknown" class - the fabric is absent, the catalogue could not be read - take the width
+// down with them, so both are already covered. What is left is the one state where the
+// class alone is missing: a catalogue row the app CAN place, carrying a usable width, whose
+// type column is NULL or blank. Settings cannot produce it (the class is a two-button
+// toggle), so the ways in are an import through setAllFabrics or a hand-edited ripflow.db.
+//
+// It runs AFTER the size guard, so the fabric that fails both keeps the message it has
+// today and the 70 baselines cannot move.
+//
+// It refuses a MISSING class, NOT a class outside a list. A whitelist would have to name
+// the classes here, and those names are exactly what 2g/2h is moving out of the code -
+// with a third class an open possibility. A foreign type string therefore still renders:
+// that is a different defect with a different fix, recorded in PRODUCTIZATION.md instead
+// of being smuggled into this guard.
+//
+// Its own code, separate from ERR_UNKNOWN_PRINT_SIZE: nothing downstream branches on
+// either, but the operator's action differs - a class is fixed in Settings > Fabrics,
+// a size in the file name.
+const isUsableMaterialClass = (value) => {
+  const s = typeof value === "string" ? value.trim() : "";
+  return s !== "" && s.toLowerCase() !== "unknown";
+};
+
+const assertKnownMaterialClass = (batch) => {
+  for (const item of batch ?? []) {
+    if (isUsableMaterialClass(item?.materialType)) continue;
+    const { fileName, fabric } = describeItem(item);
+    throw Object.assign(
+      new Error(
+        `Cannot build the job: the material class is unknown for ${fileName} (${fabric}). ` +
+          "Set the fabric's class in Settings > Fabrics, then try again.",
+      ),
+      {
+        code: "ERR_UNKNOWN_MATERIAL_CLASS",
+        stage: "validate",
+        title: "Unknown material class",
+        type: "Error",
+      },
+    );
+  }
+};
+
 const buildPFJobXML = (batch, batchId) => {
   assertPrintableDimensions(batch);
+  assertKnownMaterialClass(batch);
   const ROOT_PATH = getXmlRootPath();
   const PRINTED_ROOT_PATH = `${ROOT_PATH}\\PRINTED`;
   const normalizedBatchId = batchId.replace(/\//g, "\\");
