@@ -14,8 +14,8 @@
 // Structure is preserved exactly, and for XWD that is load-bearing:
 //   - customer name : always 2 underscore tokens  -> Customer_001
 //   - order id      : always "ON" + 6 digits      -> ON000001
-//   - artwork id    : always "XWD" + 32 lowercase hex, and detectPrintTypeStrategy plus
-//                     applyXwdDimensions in parseFileName.js test
+//   - artwork id    : always "XWD" + 32 lowercase hex, and detectKind plus
+//                     parseXwdBased in parseFileName.js test
 //                     the WHOLE token against /^XWD[0-9a-f]+$/i to decide the file is
 //                     XWD-based. A pseudonym that breaks that pattern would make the
 //                     parser pick a different product type, which would move the metres.
