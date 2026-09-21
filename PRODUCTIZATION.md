@@ -152,10 +152,13 @@ i "Bramka weryfikacji" ODSYLAJA po oczekiwana wartosc.
   - `npm run lint` -> exit 0, golden -> 0 differences across 70 batches
 
 - [x] **BUG 1** - `clientId` przechodzi przez `settings:set`
-  - `src/electron/ipc/index.js` (~:469 destrukturyzacja, ~:490 przekazanie)
+  - `src/electron/ipc/index.js`, handler `settings:set`: destrukturyzacja `clientId`
+    z `settings` oraz przekazanie go do `setSettings` - oba w tym samym handlerze
   - commit: `fix(settings): pass clientId through the settings:set handler`
 - [x] **BUG 3** - seed tkanin tylko gdy tabela pusta (guard `COUNT(*)===0`)
-  - `src/electron/helpers/db.js` (~:273-279), idiom jak seed `fabric_globals` (~:250)
+  - `src/electron/helpers/db.js`, w `initDb` przy seedzie tabeli `fabrics`: guard
+    `fabricsCount` (`SELECT COUNT(*) AS c FROM fabrics`), tym samym idiomem co guard
+    `globalsCount` przy seedzie `fabric_globals`
   - dowod no-op: Alex ma 132 wiersze -> guard false -> seed nie leci
   - commit: `fix(db): seed default fabrics only when the table is empty`
 - [x] **BUG 2** - kontrolka `clientId` w UI (zalezy od BUG 1)
