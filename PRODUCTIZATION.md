@@ -840,8 +840,9 @@ a nie w porzadku wierszy.
     takiego XML-a nie wyslal. Odpowiedz przyszla od strony RIP-a, nie z repo, i zamyka
     spor: argument "Unknown to legalny string, ktory RIP moze przyjac" upada.
     **WYKONANE `aad9c73`** (`feat(xml): refuse a job whose material class is unknown`) -
-    czeka wylacznie na potwierdzenie bramki przez FILIPA, wiec checkboxy zostaja `[ ]`
-    zgodnie z regula 1. Bramki na tym commicie: 424 passed / 32 files, lint exit 0,
+    ODHACZONE po potwierdzeniu bramki przez FILIPA 2026-09-21 (regula 1, regula 2 -
+    potwierdzenie nalezalo do czlowieka). Bramki na tym commicie: 424 passed / 32 files,
+    lint exit 0,
     golden 0/70. Dwanascie nowych testow w `materialClassGate.test.js`, zaden istniejacy
     test nietkniety, dziewiec mutacji w `createXML.js` (kazda osobno, z odtworzeniem
     z kopii `.pristine` potwierdzonym `diff -q`).
@@ -852,10 +853,10 @@ a nie w porzadku wierszy.
     celowo tego NIE lapie (odmawia klasy BRAKUJACEJ, nie klasy spoza listy - biala lista
     wpisalaby nazwy klas z powrotem do kodu, ktory 2g/2h wlasnie z nich czysci, a trzecia
     klasa jest otwarta). Zapisane jako osobna, mniejsza dziura, nie jako zrobione.
-    - [ ] **Bramka na KLASE MATERIALU u zrodla, obok `assertPrintableDimensions`.**
+    - [x] **Bramka na KLASE MATERIALU u zrodla, obok `assertPrintableDimensions`.**
           Ten sam wzorzec i to samo miejsce: raz, w `createXML.js`, a nie w call-site'ach,
           bo obie sciezki produkcyjne schodza sie w `submitBatchToPrintFactory`.
-    - [ ] **Zasieg jest WEZSZY, niz wyglada - zmierzone, zeby nie robic pracy dwa razy.**
+    - [x] **Zasieg jest WEZSZY, niz wyglada - zmierzone, zeby nie robic pracy dwa razy.**
           Dzis tkanina spoza katalogu i tak nie przechodzi: `getXmlWidthFromCache` zwraca
           dla niej `null`, wiec `assertPrintableDimensions` juz ja odrzuca kodem
           `ERR_UNKNOWN_PRINT_SIZE`. Obie przyczyny `"Unknown"` (brak tkaniny w katalogu,
@@ -864,11 +865,11 @@ a nie w porzadku wierszy.
           ale z `type` spoza `Cottons`/`Polyesters` - wtedy szerokosc przechodzi, klasa
           jest `"Unknown"` i XML powstaje. Droga do tego stanu: edycja w Settings albo
           recznie zmieniony wiersz w `ripflow.db`.
-    - [ ] Komunikat ma miec ten sam ksztalt co przy szerokosci: nazwa PLIKU, nazwa
+    - [x] Komunikat ma miec ten sam ksztalt co przy szerokosci: nazwa PLIKU, nazwa
           TKANINY i co operator ma zrobic (poprawic klase w Settings > Fabrics), a nie
           diagnoza. Kod bledu osobny od `ERR_UNKNOWN_PRINT_SIZE`, bo to inna przyczyna
           i inne dzialanie naprawcze.
-    - [ ] Golden po tej zmianie ma dac 0/70 - zadna z 70 pozycji nie niesie `Unknown`,
+    - [x] Golden po tej zmianie ma dac 0/70 - zadna z 70 pozycji nie niesie `Unknown`,
           wiec bramka nie ma prawa niczego w nich ruszyc. Jesli ruszy, bramka jest zla.
   - **DLUG: wbudowane wymiary jako fallback podstawiaja dane ALEXA.** Zywy od `284e38e`,
     zapisany ZANIM zaczal sie krok 4, bo komentarz w kodzie na to nie wystarcza.
@@ -1323,14 +1324,14 @@ Baza pozostaje jedynym zywym zrodlem prawdy; JSON to tylko transport na wdrozeni
       przez decyzje o kolejnosci z tego samego dnia: 2e jest teraz PIERWSZE, wiec ten
       commit idzie ZARAZ PO nim i przed 2d - wczesniej znaczyloby dzis "przed cala
       reszta ETAPU 2".
-- [ ] **Usunac `fuse.js` z `package.json`** - ZATWIERDZONE przez FILIPA 2026-09-21.
+- [x] **Usunac `fuse.js` z `package.json`** - ZATWIERDZONE przez FILIPA 2026-09-21.
       Zaleznosc jest martwa od czasu usuniecia fuzzy-matchingu z `customOrderMatcher.js`.
       Przemierzone 2026-09-21: szukanie `fuse` po `src/` i `scripts/` zwraca wylacznie
       podciag w angielskim slowie "refuses" - zero importerow. Osobny commit, nie
       doklejany do zadnego ciecia funkcjonalnego, z `npm install` i sprawdzeniem, ze
       `package-lock.json` faktycznie ja usuwa.
-      **WYKONANE `343ec21`** - checkbox zostaje `[ ]` do potwierdzenia bramki przez FILIPA
-      (regula 1). `package-lock.json` faktycznie zdjal wpis; trafienia `fuse`, ktore w nim
+      **WYKONANE `343ec21`, ODHACZONE po potwierdzeniu FILIPA 2026-09-21** (regula 1).
+      `package-lock.json` faktycznie zdjal wpis; trafienia `fuse`, ktore w nim
       zostaly, to `@electron/fuses`, niepowiazana zaleznosc przechodnia electron-buildera.
       Bramki: 412 passed / 31 files (przed cieciami z tego dnia), lint exit 0, build ok.
 - [ ] **Migracja kasujaca trzy osierocone tabele w bazie klienta** - `counters`,
@@ -1498,8 +1499,8 @@ Dopisane 2026-09-11 (commity feat(diag) + test(rollback)). Nie przepisuje sekcji
    pusta liste; operator widzi "brak batchy" (kod PRINTED_ROOT_UNREACHABLE tylko loguje).
    **ROZSTRZYGNIETE przez FILIPA 2026-09-21: BANER DODAJEMY.** Przestaje byc otwarta
    decyzja, staje sie pozycja do zrobienia.
-   **WYKONANE `d07011c`** - checkboxy zostaja `[ ]` do potwierdzenia bramki przez FILIPA
-   (regula 1). Bramki: 436 passed / 33 files, lint exit 0, build ok, golden 0/70.
+   **WYKONANE `d07011c`, ODHACZONE po potwierdzeniu FILIPA 2026-09-21** (regula 1).
+   Bramki: 436 passed / 33 files, lint exit 0, build ok, golden 0/70.
    Mechanizm 1:1 jak baner bazy: flaga modulowa + wstrzykniety sink (`setPrintedRootSink`
    obok `setDbErrorSink` w `main.js`) + emisja RAZ na przejscie + migawka startowa
    (`printed:get-unreachable`, blizniak `db:get-degraded`). Zwracane wartosci obu czytnikow
@@ -1524,16 +1525,16 @@ Dopisane 2026-09-11 (commity feat(diag) + test(rollback)). Nie przepisuje sekcji
    Komunikat nie kaze juz sprawdzac sieci (na swiezej instalacji to BLEDNA instrukcja),
    tylko nazywa OBIE przyczyny i zostawia rozstrzygniecie operatorowi, ktory jako jedyny
    wie, czy cokolwiek juz wydrukowano. Ten sam ksztalt co komunikat bramki rozmiaru.
-   - [ ] Operator ma zobaczyc, ze to AWARIA DOSTEPU, a nie pusty katalog. Dzis te dwa
+   - [x] Operator ma zobaczyc, ze to AWARIA DOSTEPU, a nie pusty katalog. Dzis te dwa
          stany wygladaja identycznie, a roznia sie wszystkim: w jednym nie ma pracy,
          w drugim praca jest i jej nie widac. Dokladnie ten ksztalt mial incydent
          2026-09-10/11, w ktorym trzy zlecenia klienta przez godzine istnialy wylacznie
          na dysku jednej stacji.
-   - [ ] Wzorzec jest juz w aplikacji i nie trzeba wymyslac nowego: `db_banner`
+   - [x] Wzorzec jest juz w aplikacji i nie trzeba wymyslac nowego: `db_banner`
          plus baner profilu w `App.jsx`. Sygnal ma isc z `PRINTED_ROOT_UNREACHABLE`,
          ktory juz powstaje - brakuje wylacznie drogi z maina do renderera i samego
          banera. Zwracane wartosci odczytu zostaja BEZ ZMIAN.
-   - [ ] Uwaga na "trzeci baner": przy martwym NAS-ie beda juz dwa (baza, profil).
+   - [x] Uwaga na "trzeci baner": przy martwym NAS-ie beda juz dwa (baza, profil).
          Decyzja o dwoch banerach byla swiadoma i NIE jest dlugiem, ale trzeci na tej
          samej przyczynie to juz szum - baner PRINTED ma sie NIE pokazywac, gdy leci
          baner bazy, bo wtedy nie wnosi nowej informacji.
