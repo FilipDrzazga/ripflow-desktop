@@ -173,15 +173,26 @@ const App = () => {
           Database unavailable — changes may not be saved. Check the network connection.
         </div>
       )}
-      {/* An unreachable PRINTED root and an empty one render identically - "no batches".
+      {/* A missing PRINTED folder and an empty one render identically - "no batches".
           The banner is what tells the operator which of the two they are looking at.
           Suppressed while the DB banner is up: a dead NAS raises both, and the second
           line would carry no information the first one does not already carry. A PRINTED
           folder that is gone on a healthy share raises this one alone, which is the case
-          nothing else in the app can show. */}
+          nothing else in the app can show.
+
+          THE WORDING NAMES BOTH CAUSES BECAUSE THE CODE CANNOT TELL THEM APART. access()
+          answers ENOENT the same way for "the share is gone" and for "nothing has been
+          printed on this installation yet", and nothing creates PRINTED before the first
+          BatchHistory mount or the first submit - so a brand new client would be told to
+          check a network that is perfectly healthy. Creating the folder at startup to
+          silence it was REJECTED: the folder would come back empty, the batches would
+          still be invisible, and access() would stop failing - trading a false alarm for
+          silence in the very case this banner exists for. So the sentence is what
+          changed, not the condition. */}
       {printedRootUnreachable && !dbDegraded && (
         <div className={styles.db_banner} role="alert">
-          Printed folder unreachable — batch history may be incomplete. Check the network connection.
+          Printed folder not found — no batch history to show. Normal before the first print;
+          otherwise the shared folder is unreachable.
         </div>
       )}
       {/* Reads the stored status, not the profile value. The !isLoading gate this
