@@ -1,131 +1,146 @@
-# RipFlow
+# RipFlow Desktop
 
-## 🚀 Overview
+Electron + React desktop app that drives the print workflow of a textile print shop
+running **PrintFactory**. Operators pick artwork out of an inbox on a network share,
+the app groups it into a batch, moves the files atomically into a dated `PRINTED`
+folder and writes the job XML into PrintFactory's hotfolder. From there it tracks
+each file through production until it ships.
 
-**RipFlow** is a desktop application built with **Electron + React** designed to automate and manage the print workflow in a production environment using **PrintFactory**.
+**Windows only.** Paths, backslashes, drive letters and SMB behaviour are load-bearing,
+not incidental. The app runs 24/7 on several workstations that share one SQLite
+database over the network.
 
-The goal of the application is to reduce manual work, standardize file handling, and streamline the entire pipeline from incoming files to final printed output.
-
----
-
-## 🧠 What problem does it solve?
-
-In a typical print workflow:
-
-- Files arrive in different formats and naming conventions
-- Operators manually sort, rename, and move files
-- Batch creation and preparation take time
-- Errors happen due to inconsistent processes
-
-**RipFlow automates this entire process.**
-
----
-
-## ⚙️ Core Features (MVP)
-
-- 📥 **Inbox scanning**
-  Automatically detects new files in the INBOX folder
-
-- 🧩 **Product type detection**
-  Identifies product types (e.g. LM, SAMPLE, FQ, CUSHION) based on file names
-
-- 📦 **Batch creation**
-  Groups files into structured batches ready for production
-
-- 🔀 **File routing**
-  Moves files into appropriate folders (PRODUCTIZE → READY → BATCH)
-
-- 📊 **Workflow tracking**
-  Keeps track of file status across the pipeline
-
----
-
-## 🔄 Workflow
+## What actually happens
 
 ```
-INBOX → PRODUCTIZE → READY → BATCH → NESTED → PRINTED
+INBOX  ->  parse file names  ->  operator selects files + printer
+       ->  atomic move into PRINTED + job XML into the hotfolder
+       ->  PrintFactory prints
+       ->  production stages  ->  shipped
 ```
 
-### Steps:
+1. **Inbox scan** - the app reads material folders under `storagePath`
+   (`AUTOMATION_WORKFLOW_COTTON` for the cotton printer, `AUTOMATION_WORKFLOW_POLY`
+   for the polyester ones).
+2. **Parse** - `parseFileName.js` extracts order id, customer, product type
+   (LM / FQ / SAMPLE / CUSHION / TEA_TOWEL), material, quantity and dimensions from
+   the PDF file name. A file that cannot be parsed is surfaced as invalid rather than
+   guessed at.
+3. **Batch** - the operator selects files and a printer. Mixing material classes in
+   one batch is blocked.
+4. **Move + XML** - `createBatch.js` locks the source folder, copies page 1 of each
+   PDF, verifies, then commits by rename into
+   `PRINTED\DD-MM-YYYY\PRINTED_HHMMSS-GROUP-PRINTER\`. Any failure rolls back.
+   The generated XML lands in `xmlPath`.
+5. **Production** - each file walks `printed -> heatpress -> qc -> packed -> shipped`,
+   with a `to_sewing` branch. Barcode scans at a workstation advance whole batches
+   according to that station's role.
+6. **Rollback** - the only destructive action. It physically moves the file back to
+   the inbox and records a reason; analytics are built from those reasons.
 
-1. **INBOX**
-   New files are detected
+## Stack
 
-2. **PRODUCTIZE**
-   Files are classified and organized
+| Layer | Tech |
+| --- | --- |
+| Shell | Electron 40, frameless window |
+| UI | React 19 + Vite 7 (dev server on port 5173, strict) |
+| State | Zustand 5 |
+| Styling | CSS Modules + a global stylesheet |
+| DB | better-sqlite3, `ripflow.db` on the **shared** network path |
+| Per-machine settings | electron-store, `%APPDATA%\ripflow-desktop\config.json` |
+| PDF | pdf-lib (page-1 copy), pdfjs-dist **v4** (preview - v5 breaks in Electron 40) |
+| XML | hand-rolled string templates out, fast-xml-parser in (RIP error ingest) |
 
-3. **READY**
-   Files are grouped into batches
+Plain JavaScript, no TypeScript. Tests run on Vitest.
 
-4. **BATCH**
-   Batch metadata is created (manifest, summary)
-
-5. **NESTED**
-   Files are prepared for printing (PrintFactory)
-
-6. **PRINTED**
-   Completed jobs are archived
-
----
-
-## 🏗️ Tech Stack
-
-- **Electron** – desktop environment
-- **React (Vite)** – UI layer
-- **Node.js (fs)** – file system operations
-- **PrintFactory API** _(planned integration)_
-
----
-
-## 📁 Project Structure
+## Repo layout
 
 ```
-src/
-  ui/          # React frontend
-  electron/    # Electron main process + IPC
+src/electron/     main process: window, IPC handlers, helpers (file moves, DB, parsing)
+src/ui/           renderer: components, Zustand store, services (the IPC wrapper layer)
+src/shared/       code used by both sides (print-length estimation, constants)
+scripts/golden/   offline XML regression harness
+golden/           70 anonymised baseline XML files + their inputs
+profiles/         exported fabric catalogue used by the harness
 ```
 
----
+Renderer code never calls `window.api` directly - everything goes through
+`src/ui/services/`.
 
-## 🧩 Key Concepts
+## Configuration model
 
-- **File-based workflow** – system operates directly on folders
-- **Naming-driven logic** – metadata extracted from file names
-- **Non-destructive processing** – original files are never modified
-- **Automation-first approach** – minimal manual interaction
+Two tiers, and the split is deliberate:
 
----
+- **electron-store** holds the machine's own **identity**: storage and XML paths,
+  workstation name, workstation role, label printer. Per machine, never shared.
+- **`ripflow.db`** holds the shop's **rules**: fabric catalogue, rollback reasons and
+  the shop profile (printers, feature flags, scan rules, sewing companies). One row,
+  read by every station.
 
-## ⚠️ Known Challenges
+Rules and identity join by key and are never merged. Putting the role into the shared
+profile would let one row decide what a specific machine on the floor is; putting the
+rules into electron-store would let every station invent its own workflow.
 
-- Inconsistent file naming conventions
-- Material detection edge cases
-- Handling large batches efficiently
+## Getting started
 
----
+```bash
+npm install
+npm run rebuild     # native rebuild of better-sqlite3 against Electron
+npm run dev         # Vite + Electron together
+```
 
-## 🔮 Future Plans
+`npm run dev` is safe to run on a production workstation. The app detects that it is
+running from the repo and relocates `userData`, storage, XML and custom-order folders
+into `<home>\ripflow-sandbox`; it refuses to start if any path setting still points
+outside that sandbox. Label printing and the auto-updater are no-ops there.
 
-- Integration with **PrintFactory Cloud API**
-- UI for managing materials and settings
-- Real-time production tracking
-- Error handling and recovery system
-- Multi-user synchronization
+A local sandbox does **not** reproduce SMB's blindness to another host's writes - a
+local `fs.watch` sees everything, a network one does not. Cross-station behaviour has
+to be verified on real stations.
 
----
+## Build
 
-## 💡 Vision
+```bash
+npm run build       # renderer only, into dist/
+```
 
-RipFlow aims to become a **central control system for print production**, combining:
+`npm run build:dist` builds the installer **and publishes it to GitHub Releases
+immediately**. For a pilot build that goes nowhere, build by hand:
 
-- automation
-- visibility
-- consistency
+```bash
+npm run build
+npx dotenv -e .env -- electron-builder --win --publish never
+```
 
-into a single, reliable workflow tool.
+## Quality gates
 
----
+Run all three before shipping anything. The expected result is "green", not a number -
+counts are recorded with the command that produced them in `PRODUCTIZATION.md`.
 
-## 👨‍💻 Author
+```bash
+npm run test        # Vitest
+npm run lint        # eslint . --max-warnings 0
+ELECTRON_RUN_AS_NODE=1 ./node_modules/.bin/electron scripts/golden/compare-golden.mjs
+```
 
-Built as a custom solution for optimizing real-world print production workflows.
+The golden net renders 70 real (anonymised) batches through the production XML builder
+and diffs the output byte for byte. It is offline and never opens a live database.
+**Never regenerate the baseline to make a diff disappear** - a difference is a finding.
+Decide fix-or-regression first, by hand, and re-capture only once the new value is
+provably the correct one.
+
+An existing test that starts failing is a stop signal, not something to edit. Test
+counts may only go up, and never because an assertion was rewritten.
+
+## Where the documentation lives
+
+One question per file. If something belongs in two of them, the question was wrong.
+
+| File | Answers |
+| --- | --- |
+| `README.md` | what this program is and how to run it |
+| `.claude/CLAUDE.md` | how the code works - architecture reference |
+| `PRODUCTIZATION.md` | what is left to do, and why |
+
+Deployment procedure, per-client infrastructure and the live project state are kept
+outside this repository on purpose.
