@@ -32,89 +32,42 @@ udowadniamy golden-diff (XML bajt w bajt) na kopii jego bazy, nie na oko.
 
 ---
 
-## Stan wdrozenia u Alexa (pomiar 2026-09-10)
+## Stan wdrozenia u Alexa - gdzie go szukac
 
-Zapisane jako USTALENIE, a nie jako notatka, bo stan wdrozenia zgadywalismy dwa razy
-i dwa razy zle. Kazda pozycja nizej niesie komende albo dane, ktorymi ja zmierzono.
+Pomiary wdrozeniowe i obalone tezy z 2026-09-10/11 NIE STOJA JUZ TUTAJ. Byly logiem
+w pliku, ktory jest stanem: 206 linii historii przed pierwszym etapem roadmapy,
+w ktorych nie dalo sie odroznic planu od wrzesnia. Przeniesione 2026-09-21 do
+`claude/DECYZJE-LOG.md` (poza repo - niosa dane wdrozeniowe klienta).
 
-### Co jest zainstalowane
+Co tam poszlo, zeby nie szukac na slepo:
 
-Zainstalowany build to `main` @ `v1.0.21` (`2848aeb`, 2026-08-20 12:12). `v1.0.21` jest
-SCISLYM PRZODKIEM `main` (`git merge-base --is-ancestor v1.0.21 main` -> prawda), a `main`
-jest 66 commitow do przodu (`git rev-list --count v1.0.21..main`). Rozklad tych 66:
-33 `docs`, 12 `feat`, 8 `fix`, 7 `test`, 4 `chore`, 2 `refactor` - czyli polowa to
-dokumentacja i testy.
+- **Co jest zainstalowane** - `v1.0.21` (`2848aeb`) udowodnione porownaniem `app.asar`,
+  wraz z metoda i z pulapka w samej sondzie (offset danych w asar).
+- **ODWOLANIE blednej tezy z 2026-09-10** - tabele `counters` / `custom_clients` /
+  `custom_order_files` w zywej bazie pochodza z jednego przebiegu deweloperskiego,
+  a nie z wdrozonej galezi. Obserwacja byla poprawna, wniosek zly.
+- **RYZYKO OPERACYJNE** - maszyna deweloperska jest stacja produkcyjna. ZAMKNIETE
+  przez sandbox (`3cd3564`).
+- **Rozjazd snapshotu katalogu** - zywa baza ma 133 tkaniny, eksport z ETAPU 0 ma 132.
+  To granica tego, o czym "golden 0/70" moze cokolwiek powiedziec.
+- **P1 - migracja wiersza profilu** (`7937508`) wraz z decyzja o dwoch artefaktach
+  odtworzeniowych (zrzut starego bloba = warunek twardy, `backupDb` = best effort).
+  Regula obowiazuje takze import z ETAPU 3.
+- **Eksperyment ze stacja QC** - uspienie zrywa SMB, hipoteza potwierdzona. Zasila
+  pozycje `powerMonitor` w ETAPIE 4; nie jest warunkiem zadnego wydania.
 
-**METODA, nie tylko wynik - tak to sprawdzac nastepnym razem.** Numer wersji NIE JEST
-dyskryminatorem: galaz `feature/custom-orders-unification` do dzis mowi `1.0.18`, bo nigdy
-nie zrobila bumpa, a `1.0.18` to dokladnie wersja jej merge-base. Build z tej galezi i build
-z `main` z konca lipca podalyby operatorowi ten sam numer. Rozstrzyga porownanie ZAWARTOSCI
-paczki: rozpakowac naglowek `resources/app.asar` zainstalowanej aplikacji i porownac kazdy
-plik `/src/**` z `git show <tag>:<path>` po normalizacji CRLF->LF. Wynik: 40 z 41 plikow
-bajt w bajt; jedyna roznica to `package.json` przepisany przez electron-buildera (usuwa
-`scripts`, `build`, `devDependencies` - sprawdzone klucz po kluczu). Potwierdzenie od strony
-obecnosci plikow: w paczce NIE MA `defaultProfile.js` ani `shopProfile.js` (dodane
-2026-08-27, po buildzie), JEST `shopifyConfig.js` (skasowany w `d7b93db`), i nie ma zadnego
-pliku z galezi custom-orders.
+Stan wdrozenia NA DZIS i procedura: `claude/RUNBOOK-WDROZENIE.md` sekcja 0.
 
-Pulapka w samej sondzie, zapisana zeby jej nie powtorzyc: offset danych w asar to
-`8 + pickleSize`, nie `16 + strLen`. Zly offset daje "wszystkie pliki rozne" oraz
-`package.json`, ktory nie parsuje sie jako JSON - blad NARZEDZIA udajacy wynik, ten sam
-ksztalt, przed ktorym ostrzega metodologia. Walidacja sondy: `package.json` z paczki ma sie
-sparsowac i podac wersje.
-
-Stacje: `logs` zna trzy - "Cotton PC", "Poly", "QC". Pierwsze dwie zaczynaja logowac
-2026-08-20, tego samego dnia co instalacja `1.0.21`. **Wersji na "Poly" i "QC" nie da sie
-odczytac z maszyny deweloperskiej - potwierdzic w Settings > Updates na kazdej z nich.**
-`app-update.yml` wskazuje kanal GitHub Releases (`releaseType: release`), wiec stacje
-z wlaczonym auto-update zbiegaja do najnowszego wydania - ale to poszlaka, nie odczyt.
-
-### ODWOLANIE blednej tezy z 2026-09-10
-
-Teza postawiona i NIEPRAWDZIWA: "produkcja nie chodzi z `main`, deploy moze zabrac funkcje,
-ktorych klient uzywa". Obserwacja u jej zrodla byla POPRAWNA - w zywej bazie sa tabele
-`counters` / `custom_clients` / `custom_order_files`, ktorych `main` nie tworzy nigdzie
-(grep na tych trzech nazwach po `src/` zwraca zero plikow). Zly byl WNIOSEK z niej.
-
-Prawda, zmierzona: tabele pochodza z JEDNEGO przebiegu deweloperskiego z maszyny
-"Cotton PC" 2026-07-31, w dniu, w ktorym powstaly commity galezi. Trzy niezalezne
-przeslanki:
-
-- `counters.custom_order_seq = 2` - `nextCustomOrderSeq()` inkrementuje w transakcji przy
-  KAZDYM zamowieniu i nigdy nie maleje, wiec w CALEJ historii tej bazy przydzielono dwa
-  identyfikatory custom. Licznik jest odporny na kasowanie wierszy, wiec mowi wiecej niz
-  `COUNT(*)`;
-- wszystkie 11 wierszy `custom_order_files` ma identyczny `created_at` co do milisekundy
-  (`2026-07-31T14:14:29.939Z`) - jeden import, jedna chwila;
-- `custom_clients.source_path` wskazuje dysk LOKALNY tej maszyny (`F:\Minerva\...`),
-  zgodnie z jej `customOrderFolderPath` w `config.json`.
-
-Galaz NIGDY nie byla wdrozona, wiec deploy `main` nie zabiera klientowi zadnej funkcji.
-Stara sciezka custom-order z `main` jest za to ZYWA: `custom_order_history` ma 58 wierszy,
-ostatni 2026-09-01.
-
-Granica tego pomiaru, zeby nie czytac go szerzej niz mowi: w `logs` nie ma ZADNEGO sladu
-custom - ale `logs` niesie wylacznie cztery etapy (`submitBatch`, `rollbackFile`,
-`rollbackBatch`, `regenerateXml`), wiec sciezka custom nie pisze tam ani stara, ani nowa.
-Brak wpisow mowi o zakresie logowania, nie o uzyciu.
-
-### RYZYKO OPERACYJNE, ktore z tego zostaje
-
-Obserwacja stojaca u zrodla blednej tezy jest sama w sobie ustaleniem i jest powazna:
-**maszyna deweloperska JEST jednoczesnie stacja produkcyjna "Cotton PC" i pisze do
-produkcyjnej `ripflow.db`** (`storagePath = O:\SPPrintReadyArtwork` w jej `config.json`,
-`workstationRole = cotton`). `npm run dev` na niej zaklada tabele i wiersze w bazie calej
-drukarni - co juz raz sie stalo i zostawilo 11 wierszy plus dwa identyfikatory w liczniku.
-Konsekwencja dla KAZDEGO kroku dotykajacego bazy: kod migracyjny weryfikowac na KOPII pliku
-`.db` w katalogu tymczasowym, odczyty przez `readonly: true`, nigdy przez uruchomienie
-aplikacji.
-- [x] Zakaz `npm run dev` na stacji ZDJETY przez sandbox deweloperski (`3cd3564`): aplikacja z repo pracuje tylko w `<home>\ripflow-sandbox` i odmawia startu, gdy ktorakolwiek sciezka wskazuje poza niego.
+Dwie rzeczy z tamtego bloku ZOSTALY tutaj, bo nie sa historia, tylko otwarta praca:
+lista pozycji do changeloga pierwszego wydania z aktualnego `main` i status galezi
+`feature/custom-orders-unification`, ktora czeka na decyzje "zyje czy umiera".
 
 ### Ryzyko pierwszego wydania z aktualnego `main` - pozycje do CHANGELOGA
 
 To nie jest dlug do splacenia, tylko lista tego, co operator zobaczy. Kolejnosc wg ryzyka:
 
-1. ~~**`scanRules` - BLOKUJACE.**~~ **ZAMKNIETE przez P1 (`7937508`)** - patrz nizej.
+1. ~~**`scanRules` - BLOKUJACE.**~~ **ZAMKNIETE przez P1 (`7937508`)** - opis migracji
+   w `claude/DECYZJE-LOG.md`.
    Zapis oryginalny: bez migracji P1 skan przestanie ruszac etapy na kazdej
    stacji z niepusta rola i pokaze "Role not in scan rules". Zainstalowany `1.0.21`
    powstal PRZED `2eeaa26` (2026-09-04), wiec dzis skaner dziala na starych, zaszytych
@@ -123,7 +76,8 @@ To nie jest dlug do splacenia, tylko lista tego, co operator zobaczy. Kolejnosc 
 2. **Tkanina spoza katalogu przestaje przechodzic po cichu** (`0bf8aa6`). Wczesniej
    dostawala domyslna szerokosc klasy; teraz operator zobaczy blokade w widoku druku.
    Dla dzisiejszych danych no-op (wszystkie 121 usunietych nazw sa w katalogu), ale
-   katalog zyje - patrz rozjazd snapshotu nizej.
+   katalog zyje - patrz "Rozjazd snapshotu katalogu"
+   w `claude/DECYZJE-LOG.md`.
 3. **XML z nieznanym wymiarem nie powstaje** (`b06d57d`, komunikat rozdzielony w
    `8543364`). Wczesniej powstawal plik z pustym `<Width></Width>`, ktory PrintFactory
    brala. Nowa blokada, ktorej operator wczesniej nie widzial.
@@ -131,14 +85,6 @@ To nie jest dlug do splacenia, tylko lista tego, co operator zobaczy. Kolejnosc 
    w chwili wdrozenia sie NIE zmieniaja - zmierzone na zywej bazie: `fabric_globals`
    Alexa (10 / 5 / 1420 / 1420 / 1420 / 1550) sa identyczne z `DEFAULT_FABRIC_GLOBALS`
    i z `DEFAULT_PROFILE.materialClasses`.
-
-### Rozjazd snapshotu katalogu (granica wypowiedzi goldena, nie blad)
-
-Zywa baza ma 133 tkaniny, `profiles/fashion-formula-fabrics.json` z ETAPU 0 ma 132.
-Roznica: `Eco Telis Velvet - Commercial FR`, dodana przez Alexa po eksporcie. Stub goldena
-karmi sie eksportem, wiec o tej tkaninie nie wie nic. To nie jest blad siatki - ma byc
-offline i odtwarzalna - tylko granica tego, o czym "golden 0/70" moze cokolwiek powiedziec.
-Klasy w zywej bazie: Cottons 36, Polyesters 97; zero wierszy z pusta lub zerowa szerokoscia.
 
 ### Galaz `feature/custom-orders-unification` - status
 
@@ -164,71 +110,6 @@ Czysty tekstowo nie znaczy poprawny. Dwa koszty do wziecia swiadomie:
 **To WLASNE ciecie z wlasna bramka, NIE warunek deployu `main`.** Odleglosc rosnie z kazdym
 krokiem ETAPU 2, bo `parseFileName.js` i `db.js` to pliki, ktore ETAP 2 rusza najczesciej.
 Decyzje "zyje czy umiera" trzeba podjac, zanim galaz zestarzeje sie do nieuzywalnosci.
-
-### P1 - migracja wiersza profilu (ZROBIONE, `7937508`)
-
-Zamyka pozycje 1 z listy ryzyk powyzej. `helpers/migrateShopProfile.js` (czysta funkcja,
-zero importow) + `helpers/runShopProfileMigration.js` (orkiestrator) + compare-and-swap
-`db.migrateShopProfileRow`. Wolane w `registerIpcHandlers` po `initDb`, PRZED
-`loadShopProfile`.
-
-Zweryfikowane na PRAWDZIWYM wierszu, na kopii bazy read-only (nigdy na samej bazie):
-`workstationRoles` usuniete, cztery reguly dodane, `schemaVersion` 1 -> 2, pozostalych
-SIEDEM kluczy bajt w bajt bez zmian, drugi przebieg `changed:false`. Bramka: 334 testy
-w 25 plikach (bylo 300/22; caly przyrost w trzech NOWYCH plikach, zaden istniejacy test
-nietkniety), lint czysty, golden 0/70.
-
-**`schemaVersion` przestal byc martwym polem, i to jest tu wazniejsze niz sama migracja.**
-Pomiar przed cieciem: `git grep -n "schemaVersion" -- src/ scripts/` dawal 18 trafien -
-jedna definicja w `defaultProfile.js` i siedemnascie FIXTURE'ow testowych. Zero
-czytelnikow produkcyjnych, czyli czwarte martwe pole profilu obok tych z 2g. Teraz czyta
-je migracja, co spelnia REGULE 24 i **odblokowuje walidacje importu z ETAPU 3**: polowa
-tamtej reguly ("nowszy niz build -> odmowa") jest juz zaimplementowana i otestowana w
-`migrateShopProfile`, bo tam wlasnie jest potrzebna - wiersz zapisany przez nowszy build
-niesie klucze, ktore starszy zgubilby przy round-tripie. Do zrobienia w ETAPIE 3 zostaje
-druga polowa, po stronie importu pliku.
-
-### DECYZJA: dwa artefakty odtworzeniowe, traktowane INACZEJ
-
-Pierwotna regula brzmiala "`backupDb(true)` przed zapisem, bezwarunkowo". Byla dobra
-w intencji i zla w narzedziu, wiec zostala zmieniona PRZED implementacja:
-
-- **Zrzut starego bloba = WARUNEK TWARDY.** Synchroniczny zapis na dysk LOKALNY
-  (`userData/backups/shop_profile_pre_v<N>_<timestamp>.json`). Nieudany zrzut = migracja
-  sie NIE WYKONUJE, log + sygnal przez `signalStartupProblem`. Sciezka trafia do logu,
-  bo artefakt, ktorego nikt nie znajdzie, nie jest odtworzeniem.
-- **`backupDb(true)` = BEST EFFORT.** Logowany, nie blokuje.
-
-Uzasadnienie, bo to jest wybor miedzy DWIEMA awariami i ma byc widoczny: zmienia sie
-okolo kilobajta JSON-a, a baza ma 1,8 MB i lezy na udziale sieciowym. Lokalny zapis
-synchroniczny nie moze sie wywalic na SMB - dlatego moze bramkowac. Gdyby bramka
-zalezala od przejscia po sieci, chwilowa awaria sieci zamienialaby sie w martwy skaner,
-czyli dokladnie w te awarie, ktora ta migracja naprawia. Cena decyzji: przy nieosiagalnym
-`userData` (uprawnienia, dysk pelny) migracja nie pojdzie i skaner zostanie martwy do
-czasu naprawy - to jest swiadomie wybrany kierunek odmowy.
-
-**ZNANY BLEDNY OPIS, zapisany zamiast ukryty:** `signalStartupProblem` zapala baner,
-ktory mowi "Database unavailable - check the network connection", a prawdziwa przyczyna
-to lokalny zapis pliku. Jeden baner jest lepszy niz linia w konsoli, ktorej nikt nie
-czyta; drugi baner dla przypadku, ktory nie wystapil ani razu, nie jest wart okablowania.
-
-### Eksperyment ze stacja QC - uspienie a zawieszanie sie aplikacji (zamkniety 2026-09-11)
-
-**UWAGA DO CZYTELNIKA: to jest PIERWSZY zapis tego eksperymentu w repo.** Grep na
-`powerMonitor` / `lock-screen` / `suspend` / `uspien` po wszystkich czterech plikach `.md`
-zwracal ZERO trafien przed tym commitem, a etykieta "DLUG 4", pod ktora go zaadresowano,
-nie istnieje w tym pliku - jedyna numerowana etykieta dlugu w projekcie to "DEBT 1"
-w `CLAUDE.md`. Tresc ponizej pochodzi z relacji Filipa, nie z pomiaru wykonanego tutaj,
-i tak nalezy ja czytac.
-
-Objaw: aplikacja na stacji QC zawieszala sie. Hipoteza: uspienie systemu zrywa polaczenie
-SMB z `O:`, a aplikacja tego nie zauwaza. Eksperyment: wylaczono uspienie na tej stacji.
-Wynik: **zawieszanie USTALO. Hipoteza POTWIERDZONA.**
-
-Wniosek i zakres: kod z `powerMonitor` (plus pauza pollingu na `suspend` / `lock-screen`)
-jest uzasadniony i wchodzi na liste ETAPU 4 nizej. **NIE jest warunkiem wydania
-`v1.0.22`** - wylaczone uspienie jest dzialajacym obejsciem, wiec to nie jest bloker.
-Osobno i niezaleznie: `storagePath` na QC z litery dysku na sciezke UNC.
 
 ---
 
@@ -1244,7 +1125,7 @@ Baza pozostaje jedynym zywym zrodlem prawdy; JSON to tylko transport na wdrozeni
 ## ETAP 4 - Produktyzacja (moze isc rownolegle z Etapem 2)
 
 - [ ] **`powerMonitor` + pauza pollingu na `suspend` / `lock-screen`.** Uzasadnione
-      eksperymentem na stacji QC (patrz sekcja "Stan wdrozenia u Alexa"): uspienie
+      eksperymentem na stacji QC (zapis w `claude/DECYZJE-LOG.md`): uspienie
       zrywa SMB do `O:`, aplikacja tego nie zauwaza i sie zawiesza. NIE jest warunkiem
       wydania `v1.0.22` - wylaczone uspienie jest dzialajacym obejsciem
 - [ ] **`storagePath` na stacji QC z litery dysku na UNC.** Osobny, NIEZALEZNY krok od
