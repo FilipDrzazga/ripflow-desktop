@@ -561,6 +561,16 @@ VALUES are unchanged** — the signal sits beside the read (pinned by
 `printedRootSignal.test.js`). The renderer half has no test: there is no rendering harness
 (rejected in `50f64c8`).
 
+**The banner's WORDING carries both causes because the code cannot tell them apart.**
+`access()` answers `ENOENT` the same way for "the share is gone" and for "nothing has been
+printed on this installation yet", and nothing creates `PRINTED` before the first
+BatchHistory mount (`startWatcher`) or the first submit (`createBatch`) — while
+`refreshBatchDays` reads at startup. So it fires on a FRESH INSTALL. Creating the folder at
+startup to silence it was **rejected**: the folder would come back empty, the batches would
+still be invisible, and `access()` would stop failing — silence in the one case the banner
+exists for. The sentence changed, not the condition (`31e934d`); it no longer tells anyone
+to check the network, because on a fresh installation that instruction is wrong.
+
 - **`logOnce` (`helpers/logOnce.js`)** — one module instance keyed by folder path; a given
   key logs again only after a **1-hour** window (`createLogOnce({ windowMs })`). Not
   "once per session": the app runs 24/7 and a share can fail, recover, and fail again

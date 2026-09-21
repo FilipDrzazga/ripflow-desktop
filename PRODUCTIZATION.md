@@ -1509,6 +1509,21 @@ Dopisane 2026-09-11 (commity feat(diag) + test(rollback)). Nie przepisuje sekcji
    **ZNANY LIMIT:** polowa renderera (sam element banera i jego wygaszanie) nie ma testu -
    w projekcie nie ma harnessu renderujacego (odrzucony w `50f64c8`), wiec testowalna
    czescia jest sygnal w mainie i tam stoja testy.
+   **FALSZYWY ALARM NA SWIEZEJ INSTALACJI - znalezione w recenzji, rozstrzygniete przez
+   FILIPA 2026-09-21, domkniete w `31e934d`.** `access()` oddaje `ENOENT` tak samo dla
+   "udzial padl" jak dla "na tej instalacji nic jeszcze nie wydrukowano", a `PRINTED`
+   nie powstaje przed pierwszym wejsciem w BatchHistory (`startWatcher`) albo pierwszym
+   submitem (`createBatch`) - podczas gdy `refreshBatchDays` wola `readPrintedDays` zaraz
+   po starcie, na domyslnym widoku druku. Klient #2 przy pierwszym uruchomieniu dostawal
+   wiec polecenie sprawdzenia zdrowej sieci.
+   **ODRZUCONA POPRAWKA, zapisana zeby nie wrocila jako pomysl:** utworzenie `PRINTED`
+   przy starcie obok `initDb`. Katalog wrocilby PUSTY, batche dalej bylyby niewidoczne,
+   a `access()` przestalby zawodzic - zamiana falszywego alarmu na CISZE dokladnie w tym
+   przypadku, dla ktorego ten baner powstal.
+   WYBRANY WARIANT (i): zmienione jest ZDANIE, nie warunek - zero nowych galezi w kodzie.
+   Komunikat nie kaze juz sprawdzac sieci (na swiezej instalacji to BLEDNA instrukcja),
+   tylko nazywa OBIE przyczyny i zostawia rozstrzygniecie operatorowi, ktory jako jedyny
+   wie, czy cokolwiek juz wydrukowano. Ten sam ksztalt co komunikat bramki rozmiaru.
    - [ ] Operator ma zobaczyc, ze to AWARIA DOSTEPU, a nie pusty katalog. Dzis te dwa
          stany wygladaja identycznie, a roznia sie wszystkim: w jednym nie ma pracy,
          w drugim praca jest i jej nie widac. Dokladnie ten ksztalt mial incydent
