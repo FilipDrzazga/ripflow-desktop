@@ -1316,6 +1316,28 @@ Baza pozostaje jedynym zywym zrodlem prawdy; JSON to tylko transport na wdrozeni
       podciag w angielskim slowie "refuses" - zero importerow. Osobny commit, nie
       doklejany do zadnego ciecia funkcjonalnego, z `npm install` i sprawdzeniem, ze
       `package-lock.json` faktycznie ja usuwa.
+- [ ] **Migracja kasujaca trzy osierocone tabele w bazie klienta** - `counters`,
+      `custom_clients`, `custom_order_files`. ZATWIERDZONE przez FILIPA 2026-09-21 jako
+      OSOBNA pozycja, zaraz po rezygnacji z `feature/custom-orders-unification`.
+      Dopoki galaz czekala na decyzje, tabele byly osierocone DO CZASU; od dzis sa
+      osierocone na stale, bo kod, ktory je stworzyl, nie wroci. Nic w `main` ich nie
+      czyta ani nie pisze: `git grep -n "custom_clients\|custom_order_files\|counters"
+      -- src/ scripts/` daje JEDNO trafienie i jest nim niepowiazany komentarz o
+      licznikach w `useStageTransition.js`.
+      Ksztalt jest ustalony tutaj, zeby nie byl wymyslany w dniu wykonania:
+      - [ ] **NAJPIERW pomiar na zywej bazie** - ile wierszy niesie kazda z trzech tabel.
+            To jedyna rzecz, ktorej NIE DA SIE ustalic z repo, a rozstrzyga, czy `DROP`
+            jest sprzataniem, czy kasowaniem danych, ktorych nikt nigdy nie obejrzal.
+            Tabela niepusta ma byc najpierw wyeksportowana do JSON obok kopii bazy.
+      - [ ] **Dopiero potem `DROP TABLE IF EXISTS` w `initDb`**, idempotentnie i w
+            try/catch - tym samym wzorcem co `ensureFabricAliasColumn`, bo kilka stacji
+            startuje przeciw WSPOLDZIELONEJ bazie i migracja musi to przetrwac.
+      - [ ] **Warunek twardy, ten sam co przy P1:** przed migracja idzie RECZNY zrzut
+            pliku bazy. `backupDb` jest best effort i nie moze byc jedynym "przed"
+            migracji, ktora kasuje.
+      - [ ] Osobny commit, nie doklejany do zadnego ciecia ETAPU 2. Po nim notatka
+            o trzech tabelach w `.claude/CLAUDE.md` przestaje byc prawdziwa i znika
+            w tym samym commicie - dzis opisuje wiersze, ktore istnieja.
 
 ---
 
