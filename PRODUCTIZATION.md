@@ -58,9 +58,8 @@ Co tam poszlo, zeby nie szukac na slepo:
 
 Stan wdrozenia NA DZIS i procedura: `claude/RUNBOOK-WDROZENIE.md` sekcja 0.
 
-Dwie rzeczy z tamtego bloku ZOSTALY tutaj, bo nie sa historia, tylko otwarta praca:
-lista pozycji do changeloga pierwszego wydania z aktualnego `main` i status galezi
-`feature/custom-orders-unification`, ktora czeka na decyzje "zyje czy umiera".
+Jedna rzecz z tamtego bloku ZOSTALA tutaj, bo nie jest historia, tylko otwarta praca:
+lista pozycji do changeloga pierwszego wydania z aktualnego `main`.
 
 ### Ryzyko pierwszego wydania z aktualnego `main` - pozycje do CHANGELOGA
 
@@ -85,31 +84,6 @@ To nie jest dlug do splacenia, tylko lista tego, co operator zobaczy. Kolejnosc 
    w chwili wdrozenia sie NIE zmieniaja - zmierzone na zywej bazie: `fabric_globals`
    Alexa (10 / 5 / 1420 / 1420 / 1420 / 1550) sa identyczne z `DEFAULT_FABRIC_GLOBALS`
    i z `DEFAULT_PROFILE.materialClasses`.
-
-### Galaz `feature/custom-orders-unification` - status
-
-6 commitow do przodu, 91 do tylu, merge-base `712eeeb` (2026-07-30, `bump 1.0.18`).
-Wnosi 34 zmienione pliki, 2861 insertions(+), 91 deletions(-)
-(`git diff --stat main...feature/custom-orders-unification`).
-
-`git merge-tree --write-tree main feature/custom-orders-unification` daje konflikt
-w DOKLADNIE JEDNYM pliku i jednym bloku: `src/electron/helpers/db.js`, 213 wierszy,
-add/add - `main` dodal `getShopProfile`/`setShopProfile`, galaz siedem funkcji
-custom-client / custom-order-file. Rozwiazanie to "zachowaj oba", zero sprzecznosci
-semantycznej.
-
-Czysty tekstowo nie znaczy poprawny. Dwa koszty do wziecia swiadomie:
-
-- `parseFileName.js` AUTOMERGUJE sie. Galaz zmienia go o +44 wiersze (`ON|CUS`,
-  `XWD|CID`, `qty` ulamkowe), a `main` przepisal go w `284e38e` i `0bf8aa6`. Git polaczy
-  to bez konfliktu i moze wyprodukowac kod, ktory sie kompiluje i jest zly;
-- z szesciu plikow testowych galezi piec jest NOWYCH, ale `parseFileName.test.js`
-  ISTNIEJE w `main`, wiec merge ZMIENI warstwe wykonywalna istniejacego testu. Podlega
-  REGULE 7 - musi byc jawna decyzja, nie skutek uboczny `git merge`.
-
-**To WLASNE ciecie z wlasna bramka, NIE warunek deployu `main`.** Odleglosc rosnie z kazdym
-krokiem ETAPU 2, bo `parseFileName.js` i `db.js` to pliki, ktore ETAP 2 rusza najczesciej.
-Decyzje "zyje czy umiera" trzeba podjac, zanim galaz zestarzeje sie do nieuzywalnosci.
 
 ---
 
