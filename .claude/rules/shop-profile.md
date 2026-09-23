@@ -100,16 +100,20 @@ substituted shop.
 
 **Renderer**: `store.shopProfile` (null until loaded, exactly like `fabricConfig`), loaded
 by `loadShopProfile()` in the App startup effect via `services/profileService.js`. The
-store checks `res.data` as well as `res.success`, so a null from main does not overwrite
-the sentinel with something that looks loaded. First renderer consumer (2c): the NavBar
+store sets `shopProfile` together with `shopProfileStatus` (`LOADING` → `LOADED` | `FAILED`)
+through `resolveProfileResult`: only `success === true` with a non-empty plain object is
+`LOADED`; a null, an empty object or anything else is `FAILED` with `shopProfile: null`,
+and a `profile:get` timeout (the store's catch) lands on the same failed pair. First renderer consumer (2c): the NavBar
 feature filter — `App.jsx` passes `shopProfile` down as a prop and `NavBar` gates Custom
 Orders and Analytics through `isViewEnabled` (`src/ui/utils/featureVisibility.js`), a
 deliberate fail-closed, strict `=== true` mirror of `getFeature`, because `getFeature`
 is main-process only and is not exposed over IPC. `App.jsx` also guards both gated views
 in the render and corrects `activeView` back to `"print"` during render (not in an
-effect — `react-hooks/set-state-in-effect`). The profile banner is gated on
-`!isLoading`: `shopProfile` is null throughout startup, so an ungated banner would fire
-on every normal launch.
+effect — `react-hooks/set-state-in-effect`). The profile banner reads the STORED status
+(`shopProfileStatus === PROFILE_STATUS.FAILED`), not the profile value: `shopProfile` is
+null throughout startup, and the status says `LOADING` there instead of looking like a
+failure. It replaced an `!isLoading` gate, which was only a timing proxy for "the load
+has finished".
 
 **Two renderer-side reader modules, split by the QUESTION they answer** — keep them apart:
 
