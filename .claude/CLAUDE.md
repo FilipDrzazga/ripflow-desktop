@@ -106,13 +106,14 @@ src/electron/
   helpers/
     parseFileName.js       # CORE LOGIC 600+ lines — change with extreme care
     getMaterialType.js     # material → "Cottons" | "Polyesters" | "Unknown"
-                           # Uses fabricCache as primary; falls back to static sets if cache not loaded
+                           # fabricCache is the ONLY source; cache not loaded → "Unknown" (no static sets)
     getSettings.js         # electron-store: storagePath, xmlPath, workstationName, customOrderFolderPath, workstationRole, labelPrinterName, shippedRetentionDays, batchHistoryEagerDays, labelPrintMode, clientId
                            # NO longer stores reasonDefinitions (migrated to DB on first run)
     getRootPath.js         # Derives all paths from getSettings() — no hardcoded values
     db.js                  # SQLite: all tables; all fns guarded if(!db)
                            # DB errors log via console.error — silent catches removed
-    defaultFabrics.js      # Default seed data: 33 cotton + 87 poly materials with widths/flags
+    defaultFabrics.js      # DEFAULT_FABRIC_GLOBALS (seeded) + DEFAULT_FABRICS = [] (empty on purpose;
+                           # fabric seeding is a no-op). Unused COTTON_NAMES/POLY_NAMES go in ETAP 2h
     fabricCache.js         # In-memory cache of fabrics+globals; load on startup, invalidate on save
                            # getEstimateConfig() — the ONE config source for estimatePrintLength
     fabricCache.test.js    # Vitest — getAliasFromCache sanitization (mocks ./db.js)
@@ -340,7 +341,7 @@ Tables: `logs`, `held_files`, `rollback_reasons`, `custom_order_history`, `reaso
 - `held_files` is keyed by `file_id` (PRIMARY KEY) with an optional `reason` — a **global** hold model (one operator holds a file, everyone sees it; legacy per-workstation rows are migrated to this shape on `initDb`). `file_id` == the inbox item id `${folder}_${filename.pdf}` (same key `readFolders` builds). Rows are **orphan-pruned** on a clean inbox scan (see `pruneOrphanHeldFiles`), because nothing else clears a hold when its file leaves the inbox — `unholdFile` is only ever called by the explicit in-app un-hold toggle (NOT by `createBatch`/rollback)
 - Indexes: `rollback_reasons(batch_path)`, `rollback_reasons(file_id)`, `logs(timestamp DESC)`
 - `getAllLogs` is capped at 500 rows; `addLog` in store trims to 500 entries
-- `fabric_globals` and `fabrics` are seeded from `defaultFabrics.js` on first run if tables empty
+- `fabric_globals` is seeded from `DEFAULT_FABRIC_GLOBALS` on first run; `fabrics` seeding is guarded on `DEFAULT_FABRICS` being non-empty, and it ships empty — a fresh install starts with no materials (Settings > Fabrics or a profile import)
 - `fabrics` has an `alias` column (TEXT, nullable) — short path-safe name for the PRINTED folder / XML; empty/NULL alias = full `name` is used
 - `reason_definitions` is populated via one-time migration from electron-store on first run
 - `rip_errors`: one row per ERRORED FILE (not per xml). `UNIQUE(job_guid, file_id)` — dedup is per (xml, file); a pre-split failure shares one `job_guid` across N files → N rows. Index: `rip_errors(file_id)`
@@ -480,11 +481,12 @@ reload) and reloads even after a FAILED write, so the cache mirrors what the DB 
 rather than what was attempted. `profile:get` returns `null` when the DB was unreachable
 at startup instead of substituting a default that would read as a real profile.
 
-**First consumer: `openInShopify.js`** — the store handle comes from
-`integrations.shopify.storeHandle`, falling back to `DEFAULT_PROFILE` when the cache is
-null or the row carries no handle (`||`, not `??`, so an empty string counts as missing).
-The fallback is mandatory: degraded, never stopped. `shopifyConfig.js` was deleted — one
-consumer, and keeping it would have left the same literal in two places.
+**First consumer: `openInShopify.js`** — the store handle comes ONLY from
+`integrations.shopify.storeHandle`; there is **no `DEFAULT_PROFILE` fallback** (it would
+send another shop's operator into Alex's Shopify admin). The handler is gated fail-closed:
+`getFeature("shopify")` off — which includes an unreadable profile — → `SHOPIFY_DISABLED`;
+flag on but a missing/blank handle → `MISSING_STORE_HANDLE`. A visible failure, never a
+substituted shop.
 
 **Renderer**: `store.shopProfile` (null until loaded, exactly like `fabricConfig`), loaded
 by `loadShopProfile()` in the App startup effect via `services/profileService.js`. The
@@ -1232,14 +1234,14 @@ A local sandbox does NOT reproduce SMB's blindness to other hosts' writes: `fs.w
 14. **Custom Order CSV import**: `customOrder:importCSV` was removed — use `selectCSV()` (returns `files: [{name, content}]`) then `importCSVContent(content)`. Never pass file paths from renderer to main for reading.
 15. **Rollback reason rows**: both batch and single-file rollbacks insert **one row per PDF** with `fileId = filename-stem`. Never use `fileId: null` for new rows — it breaks DataList inbox badges. Existing null rows in DB are handled by the `?? batch.rollbackReasons?.[0]` fallback in BatchRow and FileRow.
 16. **Fabric/reason config is DB-backed and shared** — electron-store holds ONLY machine-specific settings (paths, workstation name). Do NOT store shared config back in electron-store. This is one direction of a two-way split; **see rule 25** for the other, which keeps the machine's own identity OUT of the shared profile.
-17. **fabricCache must be loaded before getMaterialType/parseFileName are called** — `loadFabricCache()` is called in `ipc/index.js` right after `initDb()`. Both functions have static-set fallbacks for the window before DB is ready.
+17. **fabricCache must be loaded before getMaterialType/parseFileName are called** — `loadFabricCache()` is called in `ipc/index.js` right after `initDb()`. There is NO static fallback for the window before the DB is ready: `getMaterialType` answers `"Unknown"` and `parseFileName` leaves the LM width `null` with an "Unknown fabric" warning, so the job is refused rather than guessed.
 18. **Every Production stage transition MUST go through `useStageTransition`** — never hand-roll an optimistic `updateStageInStore`/`addStageHistoryEntry` off `res.success` alone. The guarded UPDATE returns `updated:false` when another station already moved the file; touching the store on `success` (ignoring `updated`) re-introduces the phantom-transition bug in the new call-site. Route via `applyStageTransition(...)`, act only on `"applied"`, and report `"rejected"` (Warning) apart from `"failed"` (Error). Any new stage handler in the DB/IPC layer must also return `{ updated }` for the helper to read.
 19. **Batch rollback reconciles the DB per file after each successful `rename` — never collectively after the loop.** A collective `clearFileStagesByBatch`/reason-insert past the move loop desyncs `file_stages`/`rip_errors` from disk when a rename fails mid-loop (files still in PRINTED but marked cleared). Every rename in a rollback path goes through `renameNoOverwrite` — **never bare `fs.rename`**: on Windows a silent overwrite destroys a full inbox original, because the PRINTED copy is page-1-only. It refuses the overwrite (EEXIST) and surfaces it — no collision/suffix logic.
 20. **`viewMode` values go exclusively through `VIEW_MODE`** (`src/ui/constants/viewModes.js`) — never a bare `"batches"`/`"orders"`/`"receive"` string, in a comparison or an assignment. Note that `"batches"` also occurs as plain UI text elsewhere (e.g. the BatchHistory day-pill plural) — that is not a viewMode value and is not covered by this rule.
 21. **Every stage move in the Receive lens goes through the SAME `receiveFiles`/`undoReceiveFiles` in `Production.jsx`.** Do not add a second receive path inside `SewingReceive.jsx` — one lived there and was merged away precisely because two loops mutating the same rows have to be kept in agreement by hand, and the first change to receive logic would have been applied to only one of them. `SewingReceive` receives the implementation as the `onReceive` prop; the context menu calls it directly.
 22. **"The day a file entered production" is derived from `batch_path`, never from a `file_stages` timestamp.** The table has no creation column and `updated_at` moves on every stage transition — using it as a day silently reports the last stage move instead. Go through `dayKeyFromBatchPath` (`src/ui/utils/dayKey.js`); do not hand-roll another `split(/[/\\]/).at(-2)`. Any new day-aware UI must also keep the scanner contract: clear `dayFilter` and expand the target day before scrolling to a card.
 23. **Every `estimatePrintLength` / `estimateMaterialLengthByGroups` call passes a config** — `getEstimateConfig()` in the main process, `store.fabricConfig` in the renderer (third argument for `estimateMaterialLengthByGroups`). A call site that omits it silently reverts to the `printWidths.js` fallbacks and re-splits the app between two sets of numbers, which is exactly the bug BUG 4 closed. `getEstimateConfig()` must keep returning `null` — never `{ fabrics: [] }` — when the cache is not loaded: an empty array is truthy and drags the estimator into its DB branch with an empty catalog. Run the golden net after any change here.
-24. **The shop profile is read through `shopProfile.js`, never from `db.getShopProfile()` directly** — the helper owns the sentinel, and a call site that reads the DB itself would have to re-derive "not loaded vs no row vs failed" and would get it wrong. `getProfile()` returning `null` means the DB was unreachable: every consumer needs a fallback that keeps the operator working (see `openInShopify.js`), never a hard stop. Any new profile field must reach a consumer in the same change or the next one — `fabricConfig` sat unread for months and that was BUG 4.
+24. **The shop profile is read through `shopProfile.js`, never from `db.getShopProfile()` directly** — the helper owns the sentinel, and a call site that reads the DB itself would have to re-derive "not loaded vs no row vs failed" and would get it wrong. `getProfile()` returning `null` means the DB was unreachable. No consumer may substitute `DEFAULT_PROFILE` (another shop's data) for it. A consumer that performs an EFFECT fails closed: gated effects go through `getFeature`, which is `false` with no profile; an effect the operator asked for explicitly refuses visibly (`openInShopify.js`: `SHOPIFY_DISABLED` / `MISSING_STORE_HANDLE`). `parseFileName.js` is the one deliberate exception still open: with no profile (`shopConfig` null) it degrades to the built-in `DIMS_*` product dimensions — an undecided behaviour, see the comment above `BUILT_IN_DIMS`. Do not turn it into a refusal without that decision; it changes the XML at a station whose NAS is down. Any new profile field must reach a consumer in the same change or the next one — `fabricConfig` sat unread for months and that was BUG 4.
 25. **Shared config carries RULES, the machine carries its IDENTITY — they join by key, never by merging.** The mirror image of rule 16. `shop_profile` says what a role DOES (`scanRules[].from/to`); electron-store says which role THIS PC is (`workstationRole`). Moving the identity into the profile would make one shared row decide what a specific machine on the shop floor is, and moving the rules into electron-store would leave every station free to invent its own workflow. First instance: 2f. Same reason `workstationRoles` was deleted from the profile in that cut — a list of legal roles is neither, so it belonged to neither.
 
 ## Productization Tracking (PRODUCTIZATION.md)
