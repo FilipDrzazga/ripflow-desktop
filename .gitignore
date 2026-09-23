@@ -25,3 +25,10 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Agent harness (S1/S2 loop tooling) - local only, never pushed
+agents-kit/
+INSTRUKCJA.md
+agents.config.json
+chat/
+CLAUDE.local.md
