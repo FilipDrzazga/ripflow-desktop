@@ -98,16 +98,36 @@ Versions live in `package.json` — not repeated here. What the manifest does no
 Only the files whose role the name does not tell, or that carry a rule. Anything else: Glob / grep.
 
 - `src/electron/helpers/parseFileName.js` — the filename parser, core logic; change with extreme care (golden net + `parseFileName.test.js`).
-- `src/electron/ipc/createBatch.js` — atomic move + lock (see Atomic File Move).
+- `src/electron/ipc/createBatch.js` — atomic move + lock (see `.claude/rules/create-batch.md`).
 - `src/electron/ipc/batchHistoryHandlers.js` — rollback / regenerate / delete; `renameNoOverwrite`, `resolveOriginalGroup` (rule 19).
 - `src/electron/ipc/readPrintedFolder.js` — the PRINTED reader: `readPrintedDays`, `readPrintedDay`, `readSingleBatch`, `buildDayGroup`, `normalizeOverrideEntry`.
 - `src/electron/helpers/fabricCache.js`, `shopProfile.js` — in-memory caches with a `null` "not loaded" sentinel; `getEstimateConfig()` is the one config source for the estimator.
 - `src/electron/helpers/validateStoragePath.js` — `assertStorageFilePath` (rule 12); `ipcError.js` — `toIpcError(err, stage, title)`.
 - `src/ui/services/` — the only code that touches `window.api` (rule 10).
 - `src/ui/utils/notify.js` (rule 5), `hooks/useStageTransition.js` (rule 18), `utils/dayKey.js` (rule 22), `utils/pdfRender.js` (rule 8).
-- `src/ui/utils/featureVisibility.js` vs `shopProfileData.js` — two readers split by the question they answer (see Shop Profile).
+- `src/ui/utils/featureVisibility.js` vs `shopProfileData.js` — two readers split by the question they answer (see `.claude/rules/shop-profile.md`).
 - `src/shared/` — used by both processes: `estimatePrintLength.js`, `printWidths.js` (fallbacks), `constants.js` (rule 11).
-- `golden/`, `scripts/golden/`, `profiles/` — the XML regression net, its harness and the catalogue it feeds on (see Golden XML regression net).
+- `golden/`, `scripts/golden/`, `profiles/` — the XML regression net, its harness and the catalogue it feeds on (see "Golden XML regression net" in `.claude/rules/print-xml.md`).
+
+## Topic rules (`.claude/rules/`)
+
+Detail per area lives in path-scoped rule files. Each loads only when a file matching its
+`paths:` frontmatter is READ with the Read tool. Output of `git show`, `grep` or `cat` does
+NOT load anything — when you review or change an area through the shell, open its rule
+file yourself first.
+
+| File                | Area                                                             |
+| ------------------- | ---------------------------------------------------------------- |
+| `production.md`     | Production board, stage transitions, scanner, Sewing Receive lens |
+| `batch-history.md`  | BatchHistory, lazy-load, cross-station poll, PRINTED diagnostics  |
+| `create-batch.md`   | atomic move, lock, `_batch_info.json`, `GROUP_NAME_OVERRIDES`     |
+| `print-xml.md`      | file types, fabric config, print widths, BUG 4, golden net        |
+| `shop-profile.md`   | shop profile cache, sentinel states, feature gates                |
+| `rip-errors.md`     | RIP-error ingest, parser shapes, badges, resolve paths            |
+| `custom-order.md`   | Custom Order CSV import and per-file selection                    |
+| `pdf.md`            | `pdfRender.js`, thumbnails, preview hook                          |
+| `database.md`       | SQLite tables and their contracts                                 |
+| `productization.md` | `PRODUCTIZATION.md` ticking, gates, mutation proof, test rules    |
 
 ## Workflow
 
@@ -123,7 +143,7 @@ INBOX → PARSE FILENAME → UI → SELECT FILES+PRINTER → CREATE BATCH+XML �
 
 ## Views
 
-`activeView` in `App.jsx` picks the view. `DataList`, `BatchHistory` and `Analytics` are wrapped in `ErrorBoundary`; Custom Orders and Analytics are gated by the shop profile (see Shop Profile).
+`activeView` in `App.jsx` picks the view. `DataList`, `BatchHistory` and `Analytics` are wrapped in `ErrorBoundary`; Custom Orders and Analytics are gated by the shop profile (see `.claude/rules/shop-profile.md`).
 
 ## Storage — Two-tier config
 
@@ -182,7 +202,7 @@ The state shape is in the file. What it does not say:
 
 ## Settings Architecture
 
-`Settings.jsx` routes through a `SECTIONS` array + `VIEWS` map; every view shares `SettingsView.module.css`. Per-machine values (General, Paths) go to electron-store; Fabrics and Rollback Reasons are shared DB config (rule 16). The fabric alias field sanitises on `onChange`, but the real gate is `getAliasFromCache` (see Fabric Config).
+`Settings.jsx` routes through a `SECTIONS` array + `VIEWS` map; every view shares `SettingsView.module.css`. Per-machine values (General, Paths) go to electron-store; Fabrics and Rollback Reasons are shared DB config (rule 16). The fabric alias field sanitises on `onChange`, but the real gate is `getAliasFromCache` (see Fabric Config in `.claude/rules/print-xml.md`).
 
 ## Dev Commands
 
@@ -193,7 +213,7 @@ npm run lint       # ESLint flat config v9 — separate rules for ui/ and electr
 npm run test       # Vitest — runs src/**/*.test.js (node environment)
 npm run test:watch # Vitest watch mode
 
-# Golden XML regression net (see below) — offline, reads golden/_inputs.json, never the live DB
+# Golden XML regression net (.claude/rules/print-xml.md) — offline, reads golden/_inputs.json, never the live DB
 ELECTRON_RUN_AS_NODE=1 ./node_modules/.bin/electron scripts/golden/compare-golden.mjs
 ```
 

@@ -123,7 +123,7 @@ all. The sentinel differs by return TYPE, deliberately: a LIST answers `[]` ("th
 none"), a SINGLE record answers `null` ("no rule for this role") — the same reasoning
 `db.getShopProfile` follows. `getScanRule` additionally reads `notifyWhenEmpty` as
 `!== false`, which is the one place these two files do NOT mirror each other; see
-Workstation roles.
+"Workstation roles" in `.claude/rules/production.md`.
 
 **KNOWN LIMIT:** the profile is loaded once at startup and reloaded only on `profile:set`.
 If the DB was unreachable at startup it stays `null` until a restart, even when the NAS
