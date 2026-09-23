@@ -10,7 +10,7 @@ paths:
 
 ## Atomic File Move (`createBatch.js`)
 
-VALIDATE → LOCK (`.lock` file) → DESTINATION_STRUCTURE → COPY (pdf-lib p.1) → VERIFY → COMMIT (rename + write `_batch_info.json { originalGroup, overrides? }`) → DELETE_SOURCE → ROLLBACK on fail
+VALIDATE → LOCK (`.lock` file) → DESTINATION_STRUCTURE → COPY (pdf-lib p.1) → VERIFY → COMMIT (rename + write `_batch_info.json { originalGroup, fileGroups, overrides? }`) → DELETE_SOURCE → ROLLBACK on fail
 
 **LOCK stage — stale-lock removal via RENAME, not unlink.** A stale `.lock` (age > `STALE_LOCK_MS` = 90s on the NAS clock via probe file; 5min conservative fallback when the probe fails) is cleared by `removeStaleLock(lockPath)`: `rename(.lock → .lock.dead-<pid>-<ts>)` then `unlink` of that unique name — **NOT** a destructive `unlink(.lock)` by name. Why: two stations racing to clear the SAME stale lock via unlink-by-name could have station B delete station A's freshly-created lock (TOCTOU) → both enter COPY of the same sources → double print. `rename` is source-consuming: exactly one station wins it; the loser gets `ENOENT` → `removeStaleLock` returns `false` → falls through to `open(.lock, "wx")`, where O_EXCL picks the single winner (EEXIST → "Source folder locked"). Both call-sites (NAS-probe branch + 5min fallback) go through `removeStaleLock`. Leftover `.dead-*` (crash between rename and unlink) is inert — never named `.lock`, so it never blocks a batch; NOT swept by `sweepOrphanTemps` (that scans `PRINTED\<day>\` dirs, not inbox source folders).
 
@@ -26,10 +26,18 @@ VALIDATE → LOCK (`.lock` file) → DESTINATION_STRUCTURE → COPY (pdf-lib p.1
 
 ## GROUP_NAME_OVERRIDES (`createBatchIds.js`)
 
-Maps long group names → short folder names. `resolveOriginalGroup(batchPath, shortGroup)`:
+Maps long group names → short folder names; `GROUP_NAME_OVERRIDES_REVERSE` is its inverse.
+The rollback target is resolved in `batchHistoryHandlers.js` (not here) by the pure
+`resolveGroupFromInfo(info, shortGroup, stem)`, first hit wins:
 
-1. Read `_batch_info.json` from batch folder
-2. Fallback: `GROUP_NAME_OVERRIDES_REVERSE[shortGroup]`
-3. Last fallback: `shortGroup` unchanged
+1. `info.fileGroups[stem]` — the file's own inbox folder (a mixed-source batch)
+2. `info.originalGroup` — the batch-level inbox folder
+3. `GROUP_NAME_OVERRIDES_REVERSE[shortGroup]`
+4. `shortGroup` unchanged
+
+`info` is the parsed `_batch_info.json`, or `null` when it is missing/corrupt (straight to 3).
+Batch rollback reads the file ONCE and calls `resolveGroupFromInfo` per file;
+`resolveOriginalGroup(batchPath, shortGroup, stem)` is the async wrapper (read + resolve)
+used by the single-file path.
 
 **printGroup resolution (single group)** — `getAliasFromCache(group) ?? GROUP_NAME_OVERRIDES[group] ?? group`. The per-material DB `alias` is **primary**; `GROUP_NAME_OVERRIDES` is the **fallback** (legacy "Neraki" / old batches); raw group name is last. `printGroup` = inbox folder name = material `fabrics.name`. Multi-group batches stay `"SAMPLES"` (unchanged). **The alias shortens only the PRINTED folder + `.xml` filename + `<PhysicalGroup>`/`<Path>` — NOT the PDF filename (intentional).** It is a MAX_PATH mitigation, not elimination.
