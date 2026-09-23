@@ -110,9 +110,13 @@ open possibility. A foreign `type` string (a hand-edited row, or an import via
 `setAllFabrics` — Settings cannot produce one, its class is a two-button toggle) therefore
 still renders. Pinned by `materialClassGate.test.js`.
 
-**Fixed product dims stay hardcoded** (never user-editable):
-
-- SAMPLE 220×200mm, FQ 670×480mm, TEA_TOWEL 700×500mm
+**Fixed product dims come from the shop profile**, not from code: `resolveProductDims` in
+`parseFileName.js` reads `profile.productTypes[]` (`{ code, width, height }`, shape-checked per
+row) from the `shopConfig` the CALLER passes — the parser never imports the profile. Alex's seed
+(`defaultProfile.js`): SAMPLE 220×200mm, FQ 670×480mm, TEA_TOWEL 700×500mm. With no profile, a
+malformed list or no row for the code, it falls back to `BUILT_IN_DIMS` = the `DIMS_*` constants
+in `printWidths.js` (same numbers) — the undecided degraded path of rule 24. No Settings UI edits
+them today.
 
 ### Who supplies the config
 
@@ -156,8 +160,10 @@ ELECTRON_RUN_AS_NODE=1 ./node_modules/.bin/electron scripts/golden/compare-golde
 ```
 
 - Offline and reproducible: inputs come from `golden/_inputs.json`, and `scripts/golden/stub-db.mjs`
-  feeds `fabricCache` from `profiles/fashion-formula-fabrics.json` — the harness NEVER opens the
-  live `ripflow.db` (`initDb()` writes, and the baseline must not depend on one machine).
+  feeds `fabricCache` from `profiles/fashion-formula-fabrics.json` and the shop profile from
+  `DEFAULT_PROFILE` — the harness NEVER opens the live `ripflow.db` (`initDb()` writes, and the
+  baseline must not depend on one machine). Because a profile is always present, the no-profile
+  `BUILT_IN_DIMS` path runs zero times in the net, exactly like the `null`-cache path above (Degraded paths).
 - Customer names, order numbers and XWD ids are pseudonymised **at the source**; mappings are derived
   from sorted distinct values, so a re-capture reproduces an identical baseline.
 - Only three things are masked before diffing: the random UUID in `<NestingGroup>`, the same UUID
