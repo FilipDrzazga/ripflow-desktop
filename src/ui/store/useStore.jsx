@@ -11,6 +11,7 @@ import { getRollbackDefinitions as getRollbackDefinitionsApi } from "../services
 import { getFabricGlobals as getFabricGlobalsApi, getFabrics as getFabricsApi } from "../services/fabricService";
 import { getShopProfile as getShopProfileApi } from "../services/profileService";
 import { PROFILE_STATUS, resolveProfileResult } from "../utils/profileStatus";
+import { latestRipErrorPerFile } from "../utils/ripErrorsByFile";
 import { getStagesByBatch as getStagesByBatchApi, getAllStages as getAllStagesApi, getStagesAfter as getStagesAfterApi, getAllStageHistory as getAllStageHistoryApi, clearAllProductionStages as clearAllProductionStagesApi, getOpenReprints as getOpenReprintsApi } from "../services/productionService";
 import { scanRipErrors as scanRipErrorsApi, resolveRipError as resolveRipErrorApi } from "../services/ripErrorService";
 
@@ -327,14 +328,16 @@ export const useStore = create(
       }
     },
 
-    // RIP errors (open only), keyed file_id → error row. Populated by loadRipErrors, which
-    // triggers a main-process scan of WORKFLOW_ERROR/. No UI/polling wired yet (Phase 2/3).
+    // RIP errors (open only), keyed file_id → the file's MOST RECENT open row (a file can
+    // hold several - see latestRipErrorPerFile). Populated by loadRipErrors, which triggers
+    // a main-process scan of AUTOMATION_WORKFLOW_ERROR/; App.jsx polls it every 30s, only
+    // while the ripErrors feature is enabled.
     ripErrors: {},
     loadRipErrors: async () => {
       try {
         const res = await scanRipErrorsApi();
         if (res?.success && Array.isArray(res.data)) {
-          set({ ripErrors: Object.fromEntries(res.data.map((r) => [r.file_id, r])) });
+          set({ ripErrors: latestRipErrorPerFile(res.data) });
           return { success: true };
         }
         return { success: false };
