@@ -156,6 +156,9 @@ describe("openInShopify — the store handle comes from the profile, never a def
     // getProfile() === null is the "DB unreachable" sentinel. Before this cut it landed
     // on the default handle — a stranger's admin panel produced from an unreadable
     // config, which is the failure this whole part exists to remove.
+    // In production getFeature closes first (it is false with no profile), so this
+    // combination - flag on, profile null - is mocked on purpose: it pins the second
+    // line of defence, getStoreHandle, on its own.
     h.profile = null;
     return openInShopify(ORDER).then((res) => {
       expect(res.errors[0].code).toBe("MISSING_STORE_HANDLE");
