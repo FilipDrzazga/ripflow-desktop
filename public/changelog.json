@@ -1,5 +1,35 @@
 [
   {
+    "version": "1.0.23",
+    "date": "2026-09-24",
+    "changes": [
+      {
+        "text": "Batch History now refreshes on its own: a batch sent from another computer shows up without restarting the app or switching tabs. Until now a batch could stay invisible on the other computers until RipFlow was restarted there",
+        "clients": [
+          "all"
+        ]
+      },
+      {
+        "text": "When the PRINTED folder on the network drive cannot be reached, Batch History says so in a banner instead of showing an empty or out-of-date list. If you see it, check that the network drive is connected",
+        "clients": [
+          "all"
+        ]
+      },
+      {
+        "text": "When rolling back a batch fails for some files, the message now names each file that could not be moved back and the error code Windows gave for it, and the same details go to the session log. Until now it only said that the rollback had failed",
+        "clients": [
+          "all"
+        ]
+      },
+      {
+        "text": "The RIP error shown on a file is now the most recent one. When a file had failed more than once, the older error was shown",
+        "clients": [
+          "all"
+        ]
+      }
+    ]
+  },
+  {
     "version": "1.0.22",
     "date": "2026-09-10",
     "changes": [
