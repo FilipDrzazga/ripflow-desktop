@@ -1,16 +1,36 @@
 import { ipcMain } from "electron";
 import fs from "fs";
 import path from "path";
-import { getRipErrorRootPath } from "../helpers/getRootPath.js";
+import { getStorageRootPath } from "../helpers/getRootPath.js";
 import { parseRipErrorXml } from "../helpers/parseRipErrorXml.js";
 import { insertRipError, getOpenRipErrors, resolveRipErrorsByFile } from "../helpers/db.js";
 import { toIpcError } from "../helpers/ipcError.js";
+import { getFolder } from "../helpers/shopProfile.js";
+import { createLogOnce } from "../helpers/logOnce.js";
 
-// Scan AUTOMATION_WORKFLOW_ERROR/, parse each *.xml (ignore the paired .tif), persist any
-// error rows (INSERT OR IGNORE dedups the (job_guid, file_id) pair), then return all open
-// errors. One bad xml can't sink the scan — each file is isolated in its own try/catch.
+// The scan runs every 30 s (App.jsx poll) - one warning per hour is enough.
+const logOnce = createLogOnce();
+
+// Scan {storagePath}\<folders.ripError>\ (Alex: AUTOMATION_WORKFLOW_ERROR), parse each *.xml
+// (ignore the paired .tif), persist any error rows (INSERT OR IGNORE dedups the
+// (job_guid, file_id) pair), then return all open errors. One bad xml can't sink the scan -
+// each file is isolated in its own try/catch.
+//
+// The folder name is shop-profile data since ETAP 2d-3 (PrintFactory's export folder is
+// configured per shop; it was renamed once already). It is resolved HERE, not in
+// getRootPath.js: db.js imports getRootPath.js, so getRootPath.js importing shopProfile.js
+// (which imports db.js) would be a cycle. No usable name (profile unreadable, key missing,
+// not one plain folder name) -> the scan reads nothing and answers exactly like a folder
+// that does not exist yet: the open errors already in the DB, so no badge disappears.
 export const scanRipErrors = async () => {
-  const dir = getRipErrorRootPath();
+  const folder = getFolder("ripError");
+  if (folder === null) {
+    if (logOnce("ripError-folder")) {
+      console.warn("[ripErrors] no RIP-error folder in the shop profile (folders.ripError) - scan skipped");
+    }
+    return { success: true, data: getOpenRipErrors() };
+  }
+  const dir = path.join(getStorageRootPath(), folder);
 
   let entries;
   try {
