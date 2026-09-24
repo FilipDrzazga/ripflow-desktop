@@ -5,7 +5,7 @@
 ## Overview
 
 **RipFlow Desktop** — Electron + React app automating print workflow for PrintFactory machines.
-**Platform:** Windows only (network paths, backslashes) | **Users:** production operators | **Code comments:** English
+**Platform:** Windows only (network paths, backslashes) | **Users:** production operators | **Code:** English only — identifiers, comments, UI/log/error strings; Polish found in code you edit is translated in the same change
 
 ## Stack
 
