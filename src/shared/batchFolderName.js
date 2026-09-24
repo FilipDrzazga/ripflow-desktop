@@ -13,8 +13,8 @@
 //
 // The code is letters and digits only. Excluding "_" is what keeps the collision suffix
 // out of it: `DGEN_1` can never become a printer called "DGEN_1".
-// It is upper-cased here, at the input, so every consumer compares one form
-// (getPrinterByCode is case-insensitive, the PRINTER constants are not).
+// It is upper-cased here, at the input, so every consumer compares one form. (There is no
+// PRINTER constant any more - which printers exist is printers[] in the shop profile.)
 // The full shape is required, not just "the last segment": temp folders
 // (`.tmp-PRINTED_...-<pid>-<ms>`) end in a number that would otherwise read as a code.
 // Exported for the BATCH_FOLDER_SKIPPED diagnostic, which records the pattern it failed.

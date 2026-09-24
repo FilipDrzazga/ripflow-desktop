@@ -10,12 +10,6 @@ export const FILE_STATUS = {
   ROLLED_BACK: "rolled_back",
 };
 
-export const PRINTER = {
-  DGEN: "DGEN",
-  YOKO: "YOKO",
-  YUMI: "YUMI",
-};
-
 export const CUSTOM_ORDER_STATUS = {
   COMPLETE: "complete",
   PARTIAL: "partial",
