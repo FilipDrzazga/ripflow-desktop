@@ -47,8 +47,11 @@ ONE plain folder name - `isFolderName` from `src/shared/folderName.js`, the SAME
 `createXML.js` applies to `printers[].hotfolder` (moved there in 2d-2, not copied). Profile not
 loaded, `folders` missing or not an object, the key absent, or a value with a separator, a dot
 or `..` -> `null`. No `DEFAULT_PROFILE` stands in for an unreadable profile (rule 24); what an
-effect does with `null` is the caller's decision (2d-3 RIP-error scan: skip; 2d-4 custom order:
-refuse visibly). `folders.printed` has NO consumer on purpose: "PRINTED" is RipFlow's own folder
+effect does with `null` is the caller's decision. Consumers: `ripErrorHandlers.js`
+(`folders.ripError`, 2d-3) skips the scan and returns the open errors already in the DB;
+`customOrderHandlers.js` (`folders.customOrder`, 2d-4) refuses visibly with
+`CUSTOM_ORDER_FOLDER_MISSING` BEFORE creating or writing anything - the operator asked for
+that XML, so a silent skip would be wrong there. `folders.printed` has NO consumer on purpose: "PRINTED" is RipFlow's own folder
 and lives inside stored `batch_path` values (rule 22) - out of 2d (P19).
 
 **Three real states in `db.getShopProfile()`, and only ONE of them yields a value.**

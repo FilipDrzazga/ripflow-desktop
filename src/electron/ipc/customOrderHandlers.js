@@ -8,7 +8,7 @@ import { parseCSVContent } from "../helpers/parseCustomOrderCSV.js";
 import { scanCustomOrderFolder, matchFiles } from "../helpers/customOrderMatcher.js";
 import { insertCustomOrder, getAllCustomOrders, clearCustomOrders, deleteCustomOrder } from "../helpers/db.js";
 import { CUSTOM_ORDER_STATUS } from "../../shared/constants.js";
-import { getPrinterByCode } from "../helpers/shopProfile.js";
+import { getPrinterByCode, getFolder } from "../helpers/shopProfile.js";
 import { buildCustomOrderXML } from "../helpers/customOrderXml.js";
 
 let cachedFileNames = [];
@@ -55,7 +55,7 @@ export function registerCustomOrderHandlers() {
       const { poNumber, printer, files, totalMeters } = group;
 
       // Custom orders are polyester-only: this XML hardcodes <MaterialType>Polyesters</MaterialType>
-      // and the Minerva hotfolder. Which printers print polyester is profile data (ETAP 2e
+      // (the hotfolder comes from the profile, see below). Which printers print polyester is profile data (ETAP 2e
       // step 2); it used to be a YOKO/YUMI check. No profile = no printer qualifies (rule 24).
       if (getPrinterByCode(printer)?.materialClass !== "Polyesters") {
         return {
@@ -64,7 +64,19 @@ export function registerCustomOrderHandlers() {
         };
       }
 
-      const workflowPath = path.join(getStorageRootPath(), "AUTOMATION_WORKFLOW_MINERVA");
+      // The hotfolder is shop-profile data since ETAP 2d-4 (folders.customOrder; Alex:
+      // AUTOMATION_WORKFLOW_MINERVA). An operator asked for this XML explicitly, so no usable
+      // name is a VISIBLE refusal before anything is created or written - never Alex's folder
+      // as a fallback (rule 24; the same pattern as SHOPIFY_DISABLED).
+      const folder = getFolder("customOrder");
+      if (folder === null) {
+        return {
+          success: false,
+          code: "CUSTOM_ORDER_FOLDER_MISSING",
+          error: "This shop's configuration has no custom-order hotfolder (folders.customOrder), or the configuration could not be read. Nothing was written.",
+        };
+      }
+      const workflowPath = path.join(getStorageRootPath(), folder);
       await fs.promises.mkdir(workflowPath, { recursive: true });
 
       const safePo = poNumber.replace(/[^a-zA-Z0-9_-]/g, "_");
