@@ -219,11 +219,11 @@ golden-diff czysty.
       z profilu po stronie renderera, dotad renderer czytal wylacznie `features`.
       Swiadomie osobny plik od `featureVisibility.js`: tamten odpowiada na "czy ta
       funkcja jest widoczna", ten na "co zawiera konfiguracja tego klienta"; przy 2e
-      dojda tam drukarki. Zwraca `[]`, nigdy `null` - udokumentowany wyjatek od
+      dojda tam drukarki (-> doszly w 2e: `f61d078`, `ccbc7d4`). Zwraca `[]`, nigdy `null` - udokumentowany wyjatek od
       dyscypliny sentinela, bo to LISTA i pusta tablica legalnie znaczy "brak szwalni"
       (ten sam wybor co `getAllFabrics`). Po tym cieciu `Production.jsx` nie wnosi juz
       ZADNEJ nazwy wlasnej Alexa jako wartosci (zostala jedna w komentarzu przy `id`
-      podmenu); kody drukarek DGEN/YOKO/YUMI zostaja i ida w 2e.
+      podmenu); kody drukarek DGEN/YOKO/YUMI zostaja i ida w 2e (-> poszly w 2e).
     - `canSew` wymaga NIEPUSTEJ listy, nie samej flagi. Bez tego klient z
       `features.sewing: true` i pusta lista dostawalby pozycje z pustym podmenu -
       dokladnie ten drugi, zly "off" opisany przy shopify (flaga on + pusty handle).
@@ -531,7 +531,18 @@ a nie w porzadku wierszy.
   - DRUGI w kolejnosci. Zawiera `customOrderHandlers.js`, czyli plik objety dziura (b)
     w bramce Etapu 2 (brak baseline'u dla XML zamowien custom) - to jest samodzielny
     powod, zeby nie zaczynac od niego.
-- [ ] **2e - Drukarki -> `printers[]`** (NAJSZERSZY zasieg, w tym regexy widocznosci)
+- [x] **2e - Drukarki -> `printers[]`** (NAJSZERSZY zasieg, w tym regexy widocznosci)
+  - **ZROBIONE 2026-09-24, bramka potwierdzona przez FILIPA ("Bramka przeszla", 13:41,
+    test reczny w piaskownicy: DGEN, YOKO, YUMI).** Piec krokow, kazdy zatwierdzony przez
+    S2: `8ea5ff3` jeden parser nazwy folderu batcha (bez listy, sufiks kolizji `_n`),
+    `718a199` routing XML z `printers[].hotfolder`, `f61d078` listy drukarek w UI
+    z profilu + bramka w VALIDATE `createBatch`, `ccbc7d4` kolory z profilu
+    (`PRINTER_COLORS` usuniete), `6d6e3b9` stala `PRINTER` usunieta. Literaly w kodzie
+    produkcyjnym (wariant B): 28 / 56 / 13 -> 13 / 23 / 8. Swiadomie zostaly: seed
+    `defaultProfile.js` (ETAP 3) i tekst pomocy `FabricsView.jsx` (2h). Bramka: 475
+    testow, golden 0/70, zero zmian w istniejacych testach poza jedna asercja w
+    `readPrintedFolder.diag.test.js` za zgoda FILIPA (12:26). Dowody:
+    `chat/artefakty/2e-pomiar/`, `2e-krok1/` ... `2e-krok5/`.
   - **PIERWSZY w kolejnosci, decyzja FILIPA z 2026-09-21.** Argument, ktory ja niesie,
     stoi nizej w sekcji "Przy 2e (drukarki jako dane)" (KROK A): kody `DGEN|YOKO|YUMI`
     siedza w `BATCH_FOLDER_RE` w `ipc/readPrintedFolder.js`, ktory jest TWARDA bramka
@@ -547,6 +558,9 @@ a nie w porzadku wierszy.
     | A | `git grep -c "DGEN\|YOKO\|YUMI" -- src/` (oraz `-o \| wc -l`, `-l \| wc -l`) | ile razy kody drukarek wystepuja w calym `src/`, RAZEM z testami | 46 | 77 | 18 |
     | B | to samo + `':!*.test.js'` | ile razy wystepuja w kodzie PRODUKCYJNYM | 28 | 56 | 13 |
     | E | to samo + `':!*.test.js' ':!src/electron/helpers/defaultProfile.js'` | ile razy wystepuja w kodzie produkcyjnym POZA seedem profilu | 25 | 53 | 12 |
+
+    -> po 2e (`6d6e3b9`, ta sama komenda): B = 13 / 23 / 8. Poza komentarzami zostaly
+    tylko seed `defaultProfile.js` i tekst pomocy `FabricsView.jsx` (oba swiadomie).
 
     LINIE bierze `git grep -c` (liczy WIERSZE z trafieniem, nie trafienia),
     WYSTAPIENIA `git grep -o ... | wc -l`, PLIKI `git grep -l ... | wc -l`. To trzy rozne
@@ -628,11 +642,19 @@ a nie w porzadku wierszy.
     - `helpers/defaultProfile.js` - 3 wystapienia to WARTOSCI seeda, czyli juz profil.
       Znikaja przy oproznieniu `DEFAULT_PROFILE` w ETAPIE 3, nie przy 2e.
   - regex na "ostatni segment po ostatnim -" + walidacja kodu `[A-Z0-9_]+`
+    -> zrobione w 2e INACZEJ (`8ea5ff3`): pelny ksztalt `PRINTED_hhmmss-GRUPA-KOD[_n]`
+    (sam ostatni segment wzialby znacznik czasu z folderu `.tmp-*`), a kod BEZ `_`,
+    bo `_n` to sufiks kolizji z `createBatch.js` (recenzja S2 2026-09-24 11:52).
   - test reczny: submit -> XML -> PRINTED -> BatchHistory -> Production dla KAZDEJ drukarki
-  - [ ] getPrinterByCode jest case-insensitive (shopProfile.js, ETAP 1 krok 2),
+    -> zrobione: FILIP 2026-09-24 13:41 w piaskownicy, DGEN / YOKO / YUMI.
+  - [x] getPrinterByCode jest case-insensitive (shopProfile.js, ETAP 1 krok 2),
         ale PRINTER.* porownuje sie scisle - ten sam kod przechodzi lookup i odbija
         sie od porownania. Przy 2e znormalizowac kod na WEJSCIU (uppercase przy
         wyciaganiu z nazwy folderu) i zaostrzyc lookup, zamiast luzowac go dalej.
+        -> zrobione w 2e od DRUGIEJ strony: kod jest normalizowany na wejsciu
+        (`8ea5ff3`), a scisle porownania zniknely razem z `PRINTER` (`6d6e3b9`), wiec
+        rozjazdu juz nie ma. Lookupu NIE zaostrzono: zmienialoby to asercje istniejacego
+        testu, a luzny lookup niczemu juz nie szkodzi (`0ca7393` opisuje to w tescie).
 - [x] **2f - `scanRules[]`** zamiast 4 galezi `workstationRole` (`2eeaa26`)
   - **Pomiar wejsciowy:** CZTERY galezie `workstationRole` w `handleScan`, z czego `cotton`
     i `polyester` IDENTYCZNE BAJT W BAJT (31/31 linii po podmianie samego literalu roli).
@@ -955,6 +977,8 @@ a nie w porzadku wierszy.
       drukarka -> klasa materialu, ktora ustawia blokade wyboru drukarki (plus miejsce
       nizej, gdzie `Cottons` automatycznie wybiera DGEN). **To nalezy do 2e, nie do 2g**: pole
       opisuje DRUKARKE, nie klase. Zapisane tutaj, zeby 2e nie zaczynalo od zera.
+      -> zrobione w 2e (`f61d078`): `DataPrintSelection.jsx` czyta `materialClass`
+      przez `getPrinters`, a domyslny wybor daje `defaultPrinterFor`.
   - `productTypes` przestaje byc martwe dopiero wtedy, gdy `parseFileName.js` je czyta.
     Warunek wstepny: dziura (d) w bramce Etapu 2 - harness goldena nie laduje profilu -
     ORAZ krawedz mocka w `parseFileName.test.js`, ktora mockuje WYLACZNIE
@@ -1492,6 +1516,8 @@ Dopisane 2026-09-11 (commity feat(diag) + test(rollback)). Nie przepisuje sekcji
   blad wdrozeniowy, nie tylko postulat architektoniczny.
 - Od teraz kod logu BATCH_FOLDER_SKIPPED jest sladem dokladnie tego przypadku (folder,
   ktory nie pasuje do regexu, z pelna sciezka i nazwa stacji w logu sesji).
+- -> zrobione w 2e (`8ea5ff3`): parser czyta kod z KSZTALTU nazwy, bez listy drukarek,
+  wiec batch drukarki spoza listy (i batch z sufiksem kolizji `_n`) jest widoczny.
 
 ### Dlugi z KROKU A (miejsce wskazane nazwa funkcji, nie numerem linii)
 
