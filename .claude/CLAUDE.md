@@ -136,6 +136,10 @@ The state shape is in the file. What it does not say:
 npm run dev        # Vite + Electron concurrently (wait-on)
 npm run build      # Vite → dist/
 npm run lint       # ESLint flat config v9 — separate rules for ui/ and electron/
+
+# Release (claude/RUNBOOK-WDROZENIE.md, section 3) — NOT `npm run build:dist`, which publishes a FULL release at once
+node scripts/release/release.mjs build             # tagged HEAD -> installer copied out of dist/ + SHA256SUMS
+node scripts/release/release.mjs publish [--full]  # a PRE-release unless --full; --dry-run on both
 npm run test       # Vitest — runs every *.test.js: src/** and eslint-rules/ (node environment)
 npm run test:watch # Vitest watch mode
 
