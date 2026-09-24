@@ -8,7 +8,8 @@ import {
 import {
   PRODUCTION_STAGE, STAGE_LABEL, STAGE_SHORT_LABEL, STAGE_COLOR,
 } from "../../../shared/constants";
-import { PRINTER_COLORS } from "@/constants/printerColors";
+import { useStore } from "@/store/useStore";
+import { getPrinterColor } from "@/utils/shopProfileData";
 import style from "./Production.module.css";
 
 const SEWING_PIPELINE = [
@@ -68,6 +69,8 @@ const StagePill = ({ stageKey, status, company, title }) => {
 // render exactly as before and pay for no SMB reads.
 const ProductionCard = ({ stage: row, history = [], highlighted, restored = false, selected, awaitingQc, ripError, idleDays = null, idleAlert = false, thumbnail, onRipBadgeClick, onSelect, onContextMenu }) => {
   const cardRef  = useRef(null);
+  // printer badge colours are shop-profile data (ETAP 2e step 4)
+  const shopProfile = useStore((s) => s.shopProfile);
   // Where the mouse went down, so a click that ends a text-selection drag doesn't toggle the card.
   const pointerDownRef = useRef(null);
 
@@ -167,7 +170,7 @@ const ProductionCard = ({ stage: row, history = [], highlighted, restored = fals
           </span>
         )}
         {row.printer && (() => {
-          const pc = PRINTER_COLORS[row.printer] ?? { bg: "#f0f0f0", color: "#616161" };
+          const pc = getPrinterColor(shopProfile, row.printer) ?? { bg: "#f0f0f0", color: "#616161" };
           return <span className={style.card_printer_badge} style={{ backgroundColor: pc.bg, color: pc.color }}>{row.printer}</span>;
         })()}
         {awaitingQc && (() => {

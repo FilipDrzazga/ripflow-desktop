@@ -93,7 +93,10 @@ export const getScanRule = (profile, role) => {
 // row the main process could never route or parse back is never offered. Order is the
 // profile's, first occurrence of a code wins.
 const PRINTER_CODE_RE = /^[A-Za-z0-9]+$/;
-export const getPrinters = (profile) => {
+
+// The usable printers[] rows, in profile order, first occurrence of a code wins - shared
+// by getPrinters and getPrinterColor so a row is either valid for both or for neither.
+const usablePrinterRows = (profile) => {
   // null / undefined = the profile could not be read. We know nothing, so we offer nothing.
   if (!profile) return [];
   const list = profile.printers;
@@ -108,9 +111,36 @@ export const getPrinters = (profile) => {
     const upper = code.toUpperCase();
     if (seen.has(upper)) continue;
     seen.add(upper);
-    out.push({ code: upper, materialClass });
+    out.push({ code: upper, materialClass, color: p.color });
   }
   return out;
+};
+
+export const getPrinters = (profile) =>
+  usablePrinterRows(profile).map(({ code, materialClass }) => ({ code, materialClass }));
+
+// A printer's badge colours from the profile (ETAP 2e step 4 - they used to be the
+// PRINTER_COLORS constant), in the shape the components use: { bg, color }. The profile
+// stores the text colour as `text`. null when the printer is unknown or its colours are
+// not both hex values - each component keeps its OWN grey fallback, so an unknown printer
+// looks exactly as it did before this step. Hex only: the value goes into a style object,
+// and a profile edited by hand must not be able to put anything else there.
+const HEX_COLOR_RE = /^#[0-9a-fA-F]{3,8}$/;
+export const getPrinterColor = (profile, code) => {
+  if (typeof code !== "string" || code === "") return null;
+  const want = code.trim().toUpperCase();
+  const row = usablePrinterRows(profile).find((r) => r.code === want);
+  const c = row?.color;
+  if (!c || typeof c !== "object" || !HEX_COLOR_RE.test(c.bg) || !HEX_COLOR_RE.test(c.text)) return null;
+  return { bg: c.bg, color: c.text };
+};
+
+// A material class borrows the colours of its FIRST printer in the profile (Analytics
+// badges). Before this step it was hardwired: Cottons -> DGEN, Polyesters -> YOKO - which
+// is exactly what this answers on Alex's profile. null when the class has no printer.
+export const getMaterialClassColor = (profile, materialClass) => {
+  const first = usablePrinterRows(profile).find((r) => r.materialClass === materialClass);
+  return first ? getPrinterColor(profile, first.code) : null;
 };
 
 // The printer the print view pre-selects for a material class: the ONLY printer of that

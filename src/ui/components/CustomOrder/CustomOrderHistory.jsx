@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { LuChevronRight, LuCheck, LuX, LuLayers, LuTrash2 } from "react-icons/lu";
-import { PRINTER_COLORS } from "@/constants/printerColors";
+import { useStore } from "@/store/useStore";
+import { getPrinterColor } from "@/utils/shopProfileData";
 import { notify } from "@/utils/notify";
 import { deleteCustomOrder } from "../../services/customOrderService";
 import { showConfirm } from "../../services/systemService";
@@ -15,6 +16,7 @@ const formatDate = (isoString) => {
 const CustomOrderHistory = ({ history, onDeleted }) => {
   const [expandedIdx, setExpandedIdx] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
+  const shopProfile = useStore((s) => s.shopProfile);
 
   const handleDelete = async (e, order) => {
     e.stopPropagation();
@@ -46,7 +48,7 @@ const CustomOrderHistory = ({ history, onDeleted }) => {
   return (
     <div className={styles.container}>
       {history.map((order, idx) => {
-        const printerColor = PRINTER_COLORS[order.printer] || { bg: "#f1f5f9", color: "#334155" };
+        const printerColor = getPrinterColor(shopProfile, order.printer) || { bg: "#f1f5f9", color: "#334155" };
         const isExpanded = expandedIdx === idx;
         const files = order.files ?? [];
         const isComplete = order.status === CUSTOM_ORDER_STATUS.COMPLETE;

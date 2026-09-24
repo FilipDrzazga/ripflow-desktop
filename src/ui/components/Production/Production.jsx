@@ -37,10 +37,9 @@ import { notify } from "@/utils/notify";
 import { usePdfPreview } from "../../hooks/usePdfPreview";
 import { useStageTransition } from "../../hooks/useStageTransition";
 import { useScrollAnchor } from "../../hooks/useScrollAnchor";
-import { PRINTER_COLORS } from "../../constants/printerColors";
 import { VIEW_MODE } from "../../constants/viewModes";
 import { isFeatureEnabled } from "../../utils/featureVisibility";
-import { getSewingCompanies, getScanRule } from "../../utils/shopProfileData";
+import { getSewingCompanies, getScanRule, getPrinterColor } from "../../utils/shopProfileData";
 import { UNKNOWN_ORDER_KEY } from "../../utils/groupByOrder";
 import {
   UNKNOWN_DAY_KEY,
@@ -136,9 +135,10 @@ const notifyStageFailed = (n) =>
 const batchNameOf = (batchPath) => batchPath?.split(/[/\\]/).pop() ?? "Unknown";
 
 const BatchGroupHeader = ({ batchPath, rows, selectedFileIds, onSelectAll }) => {
+  const shopProfile = useStore((s) => s.shopProfile);
   const batchName = batchPath?.split(/[/\\]/).pop() ?? "Unknown";
   const printer = printerOfBatch(batchName);
-  const pc = printer ? (PRINTER_COLORS[printer] ?? { bg: "#f0f0f0", color: "#616161" }) : null;
+  const pc = printer ? (getPrinterColor(shopProfile, printer) ?? { bg: "#f0f0f0", color: "#616161" }) : null;
   const stageCounts = {};
   for (const r of rows) stageCounts[r.stage] = (stageCounts[r.stage] ?? 0) + 1;
   const allSelected = rows.length > 0 && rows.every((r) => selectedFileIds.has(r.file_id));

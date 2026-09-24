@@ -3,7 +3,7 @@ import { LuChevronRight, LuChevronDown, LuPackageCheck, LuFileText } from "react
 import { useStore } from "../../store/useStore";
 import { STAGE_LABEL, STAGE_SHORT_LABEL, STAGE_COLOR } from "../../../shared/constants";
 import { groupByOrder, ORDER_STAGE_PIPELINE, UNKNOWN_ORDER_LABEL, UNKNOWN_ORDER_KEY } from "../../utils/groupByOrder";
-import { PRINTER_COLORS } from "../../constants/printerColors";
+import { getPrinterColor } from "../../utils/shopProfileData";
 import style from "./Production.module.css";
 import ov from "./OrderView.module.css";
 
@@ -27,8 +27,9 @@ const StageCountPills = ({ stageCounts }) => (
 );
 
 const OrderFileRow = ({ row }) => {
+  const shopProfile = useStore((s) => s.shopProfile);
   const sc = STAGE_COLOR[row.stage] ?? { bg: "#f0f0f0", color: "#616161" };
-  const pc = row.printer ? (PRINTER_COLORS[row.printer] ?? { bg: "#f0f0f0", color: "#616161" }) : null;
+  const pc = row.printer ? (getPrinterColor(shopProfile, row.printer) ?? { bg: "#f0f0f0", color: "#616161" }) : null;
   return (
     <div className={ov.file_row}>
       <LuFileText className={ov.file_icon} />

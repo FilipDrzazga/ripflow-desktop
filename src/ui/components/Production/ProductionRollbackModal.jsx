@@ -4,7 +4,7 @@ import { LuFileText } from "react-icons/lu";
 import { HiChevronDown } from "react-icons/hi2";
 import { useStore } from "../../store/useStore";
 import { resolveIcon } from "../../constants/rollbackReasonIcons";
-import { PRINTER_COLORS } from "@/constants/printerColors";
+import { getPrinterColor } from "@/utils/shopProfileData";
 import style from "./Production.module.css";
 
 // ─── ReasonDropdown ────────────────────────────────────────────────────────────
@@ -107,6 +107,7 @@ const overrideToStr = (ov) => (ov == null ? "" : String(ov.meters ?? ov.qty));
 // rows: stageRow[] from productionStages
 const ProductionRollbackModal = ({ rows, onConfirm, onCancel }) => {
   const reasonDefinitions = useStore((s) => s.reasonDefinitions);
+  const shopProfile = useStore((s) => s.shopProfile);
 
   // fileId → { reason, otherText, override }
   const [choices, setChoices] = useState(() => {
@@ -236,7 +237,7 @@ const ProductionRollbackModal = ({ rows, onConfirm, onCancel }) => {
                 <div className={style.card_info}>
                   <span className={style.card_filename} title={row.file_id}>{row.file_id}</span>
                   {row.printer && (() => {
-                    const pc = PRINTER_COLORS[row.printer] ?? { bg: "#f0f0f0", color: "#616161" };
+                    const pc = getPrinterColor(shopProfile, row.printer) ?? { bg: "#f0f0f0", color: "#616161" };
                     return <span className={style.card_printer_badge} style={{ backgroundColor: pc.bg, color: pc.color }}>{row.printer}</span>;
                   })()}
                 </div>

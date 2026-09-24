@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { PRINTER_COLORS } from "@/constants/printerColors";
 import { PRINT_TYPE_MAP } from "@/constants/printTypeMap";
 import { useStore } from "@/store/useStore";
 import { LuDownload, LuRefreshCw, LuChevronDown, LuChevronUp, LuFilter, LuSearch, LuX, LuMinus, LuCircle, LuTrash2 } from "react-icons/lu";
@@ -10,7 +9,7 @@ import { showConfirm } from "@/services/systemService";
 import { notify } from "@/utils/notify";
 import Summary from "../Summary/Summary";
 import style from "./Details.module.css";
-import { getPrinters } from "@/utils/shopProfileData";
+import { getPrinters, getPrinterColor, getMaterialClassColor } from "@/utils/shopProfileData";
 
 const PROCESS_OPTIONS = ["All", "Cottons", "Polyesters"];
 const PERIODS = [
@@ -18,11 +17,6 @@ const PERIODS = [
   { id: "30d", label: "30 days" },
   { id: "all", label: "All time" },
 ];
-
-const PROCESS_BADGE = {
-  Cottons: { bg: PRINTER_COLORS.DGEN.bg, color: PRINTER_COLORS.DGEN.color },
-  Polyesters: { bg: PRINTER_COLORS.YOKO.bg, color: PRINTER_COLORS.YOKO.color },
-};
 
 const formatDate = (iso) => {
   if (!iso) return "";
@@ -59,8 +53,10 @@ const groupByDay = (rows) => {
 const Empty = () => <LuMinus size={13} className={style.empty_cell} />;
 
 const ProcessBadge = ({ process }) => {
+  const shopProfile = useStore((s) => s.shopProfile);
   if (!process) return <Empty />;
-  const colors = PROCESS_BADGE[process];
+  // a class wears its first printer's colours (ETAP 2e step 4; was DGEN / YOKO hardwired)
+  const colors = getMaterialClassColor(shopProfile, process);
   if (!colors) return <span className={style.badge_neutral}>{process}</span>;
   return (
     <span className={style.badge} style={{ background: colors.bg, color: colors.color }}>
@@ -70,8 +66,9 @@ const ProcessBadge = ({ process }) => {
 };
 
 const PrinterBadge = ({ printer }) => {
+  const shopProfile = useStore((s) => s.shopProfile);
   if (!printer) return <Empty />;
-  const colors = PRINTER_COLORS[printer] || { bg: "#f1f1f1", color: "#616161" };
+  const colors = getPrinterColor(shopProfile, printer) || { bg: "#f1f1f1", color: "#616161" };
   return (
     <span className={style.badge} style={{ background: colors.bg, color: colors.color }}>
       {printer}

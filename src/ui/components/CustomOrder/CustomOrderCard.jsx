@@ -1,13 +1,12 @@
 import { useState, useEffect, useMemo } from "react";
 import { notify } from "@/utils/notify";
 import { LuChevronRight, LuCheck, LuPlay, LuTrash2, LuScanLine, LuFileText, LuLayers } from "react-icons/lu";
-import { PRINTER_COLORS } from "@/constants/printerColors";
 import styles from "./CustomOrderCard.module.css";
 import { generateCustomOrderXML } from "../../services/customOrderService";
 import { useStore } from "../../store/useStore";
-import { getPrinters } from "../../utils/shopProfileData";
+import { getPrinters, getPrinterColor } from "../../utils/shopProfileData";
 
-// A printer the colour map does not know yet (colours move to the profile in 2e step 4).
+// A printer whose colours the profile does not carry (or carries as non-hex).
 const FALLBACK_COLORS = { bg: "#f0f0f0", color: "#616161" };
 
 const CustomOrderCard = ({ group, onGenerated, onRefresh, onRemove }) => {
@@ -151,7 +150,7 @@ const CustomOrderCard = ({ group, onGenerated, onRefresh, onRemove }) => {
         <div className={styles.printer_toggles} onClick={(e) => e.stopPropagation()}>
           {printers.map((p) => {
             const isActive = selectedPrinter === p;
-            const colors = PRINTER_COLORS[p] ?? FALLBACK_COLORS;
+            const colors = getPrinterColor(shopProfile, p) ?? FALLBACK_COLORS;
             return (
               <button
                 key={p}

@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { LuRefreshCw, LuFolderOpen, LuCornerUpLeft, LuTrash2, LuChevronRight, LuChevronDown, LuPrinter } from "react-icons/lu";
 import { BATCH_STATUS, FILE_STATUS } from "../../../shared/constants";
-import { PRINTER_COLORS } from "../../constants/printerColors";
+import { getPrinterColor } from "../../utils/shopProfileData";
 import { useStore } from "../../store/useStore";
 import FileRow from "./FileRow";
 import style from "./BatchHistory.module.css";
@@ -26,6 +26,7 @@ const BatchRow = ({
   const productionStages = useStore((s) => s.productionStages);
   const loadStagesForBatch = useStore((s) => s.loadStagesForBatch);
   const ripErrors = useStore((s) => s.ripErrors);
+  const shopProfile = useStore((s) => s.shopProfile);
 
   useEffect(() => {
     if (isBatchExpanded) loadStagesForBatch(batch.path);
@@ -33,7 +34,7 @@ const BatchRow = ({
 
   const isRolledBack = batch.status === BATCH_STATUS.ROLLED_BACK;
   const rolledBackCount = batch.files.filter((f) => f.status === FILE_STATUS.ROLLED_BACK).length;
-  const printerColors = PRINTER_COLORS[batch.printer] || { bg: "#f0f0f0", color: "#555" };
+  const printerColors = getPrinterColor(shopProfile, batch.printer) || { bg: "#f0f0f0", color: "#555" };
   const batchLevelReason = isRolledBack
     ? (batch.rollbackReasons?.find((r) => r.file_id === null) ?? batch.rollbackReasons?.[0] ?? null)
     : null;

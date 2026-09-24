@@ -4,7 +4,7 @@ import { FiLock } from "react-icons/fi";
 import { useStore, getLastBatch } from "../../store/useStore";
 import { PRODUCTION_STAGE, STAGE_COLOR, STAGE_LABEL } from "../../../shared/constants";
 import { STAGE_ICON } from "../../constants/stageIcons";
-import { PRINTER_COLORS } from "../../constants/printerColors";
+import { getPrinterColor } from "../../utils/shopProfileData";
 import { isFeatureEnabled } from "../../utils/featureVisibility";
 import style from "./OverviewPanel.module.css";
 
@@ -119,7 +119,7 @@ const OverviewPanel = ({ onNavigate }) => {
 
   const batch = result?.batch;
   const day = result?.day;
-  const printerColors = batch ? (PRINTER_COLORS[batch.printer] ?? { bg: "#f0f0f0", color: "#555" }) : null;
+  const printerColors = batch ? (getPrinterColor(shopProfile, batch.printer) ?? { bg: "#f0f0f0", color: "#555" }) : null;
 
   const shippedColors = STAGE_COLOR[PRODUCTION_STAGE.SHIPPED];
   const ShippedIcon = STAGE_ICON[PRODUCTION_STAGE.SHIPPED];

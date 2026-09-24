@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { PRINTER_COLORS } from "@/constants/printerColors";
+import { getPrinterColor } from "@/utils/shopProfileData";
 import { useStore } from "@/store/useStore";
 import { resolveIcon } from "@/constants/rollbackReasonIcons";
 import style from "./Summary.module.css";
@@ -10,6 +10,7 @@ const getReasonLabel = (code, label) => (code === "OTHER" ? "Other..." : label);
 
 const Summary = ({ stats, isLoading }) => {
   const reasonDefinitions = useStore((s) => s.reasonDefinitions);
+  const shopProfile = useStore((s) => s.shopProfile);
   const reasonIconMap = useMemo(
     () => Object.fromEntries(reasonDefinitions.map((r) => [r.code, resolveIcon(r.iconName)])),
     [reasonDefinitions],
@@ -64,7 +65,7 @@ const Summary = ({ stats, isLoading }) => {
         ) : (
           <div className={style.list}>
             {byPrinter.map(({ printer, count }) => {
-              const colors = PRINTER_COLORS[printer] || { bg: "#f1f1f1", color: "#616161" };
+              const colors = getPrinterColor(shopProfile, printer) || { bg: "#f1f1f1", color: "#616161" };
               return (
                 <div key={printer} className={style.list_row}>
                   <span
