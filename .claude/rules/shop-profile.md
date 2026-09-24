@@ -74,6 +74,15 @@ worse than admitting ignorance.
 style: the profile carries the material classes and hotfolder names the fabric layer will
 read once those consumers land (ETAP 2), so it has to be in memory first.
 
+**`printers[]` consumers in main (ETAP 2e step 2):** `createXML.js` routes a job to
+`printers[].hotfolder` through `setPrinterResolver(getPrinterByCode)`, wired right after
+`loadShopProfile()` — injected, because `createXML.js` must stay importable without `db.js`
+(template tests, golden harness). Unwired, or a printer/profile it cannot find, or a
+hotfolder that is not one plain folder name → `ERR_INVALID_PRINTER`, fail-closed.
+`customOrderHandlers.js` accepts a printer whose `materialClass` is `Polyesters` (custom
+orders are polyester-only). Renderer lists and colours still come from constants until
+steps 3-4.
+
 **`getFeature` is fail-closed and strict.** No profile means no feature, and only a real
 boolean `true` counts — a flag written as `1` or `"true"` by a sloppy import stays off. A
 dark button is a worse experience; a live button wired to a config we could not read is a
