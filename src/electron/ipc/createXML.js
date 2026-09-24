@@ -3,6 +3,7 @@ import { randomUUID } from "crypto";
 import path from "path";
 import fs from "fs";
 import { estimatePrintLength } from "../../shared/estimatePrintLength.js";
+import { isFolderName } from "../../shared/folderName.js";
 import { toIpcError } from "../helpers/ipcError.js";
 import { getFabricByName, getEstimateConfig } from "../helpers/fabricCache.js";
 
@@ -66,9 +67,8 @@ export const setPrinterResolver = (fn) => {
   printerResolver = typeof fn === "function" ? fn : () => null;
 };
 
-// A hotfolder is ONE folder name under storagePath. The profile is a free-form blob in a
-// shared DB row, so a separator or ".." in it must not become a path outside that root.
-const HOTFOLDER_NAME_RE = /^[A-Za-z0-9_-]+$/;
+// A hotfolder is ONE folder name under storagePath - checked by isFolderName
+// (src/shared/folderName.js), the same rule the profile's folders.* go through (ETAP 2d-2).
 
 // Throws ERR_INVALID_PRINTER when the printer is not in the profile, the profile could not be
 // read (the same answer: nothing to route by) or its hotfolder is not a plain folder name.
@@ -77,7 +77,7 @@ const HOTFOLDER_NAME_RE = /^[A-Za-z0-9_-]+$/;
 // reaches this one on restart (profile:set reloads it only where it was saved).
 export const getWorkflowFolderName = (printer) => {
   const hotfolder = printerResolver(printer)?.hotfolder;
-  if (typeof hotfolder === "string" && HOTFOLDER_NAME_RE.test(hotfolder)) return hotfolder;
+  if (isFolderName(hotfolder)) return hotfolder;
   throw Object.assign(
     new Error(
       `Printer "${printer}" has no valid hotfolder in this shop's configuration, or the configuration could not be read.`,

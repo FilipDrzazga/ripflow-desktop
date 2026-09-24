@@ -1,5 +1,6 @@
 import { getShopProfile } from "./db.js";
 import { DEFAULT_PROFILE } from "./defaultProfile.js";
+import { isFolderName } from "../../shared/folderName.js";
 
 // null = not loaded (DB unreachable, or the read threw); object = loaded.
 // Same sentinel discipline as fabricCache.js: "not loaded" and "loaded but empty"
@@ -38,6 +39,18 @@ export const getPrinterByCode = (code) => {
   if (!code) return null;
   const wanted = String(code).toUpperCase();
   return getPrinters().find((p) => String(p?.code).toUpperCase() === wanted) ?? null;
+};
+
+// A folder name from profile.folders (ETAP 2d: "ripError", "customOrder"), or null when the
+// profile could not be read, the key is missing, or the value is not ONE plain folder name
+// (isFolderName - the same rule as printers[].hotfolder). null is the only failure answer:
+// no DEFAULT_PROFILE stands in (rule 24), and the caller decides what an effect does with it.
+export const getFolder = (name) => {
+  if (cachedProfile === null) return null;
+  const folders = cachedProfile.folders;
+  if (!folders || typeof folders !== "object") return null;
+  const value = folders[name];
+  return isFolderName(value) ? value : null;
 };
 
 // Fail-closed: no profile means no feature. A dark button is a worse experience;

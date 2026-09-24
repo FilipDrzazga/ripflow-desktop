@@ -39,7 +39,17 @@ getProfile(); // null | DEFAULT_PROFILE | the DB row
 getPrinters(); // profile.printers, or [] when not loaded / the field is not an array
 getPrinterByCode(code); // printer | null — case-insensitive, see the 2e debt
 getFeature(name); // boolean, fail-closed, strict === true
+getFolder(name); // profile.folders[name] | null - see "Folder names" below (ETAP 2d)
 ```
+
+**Folder names (`folders.*`, ETAP 2d).** `getFolder(name)` returns the value only when it is
+ONE plain folder name - `isFolderName` from `src/shared/folderName.js`, the SAME check
+`createXML.js` applies to `printers[].hotfolder` (moved there in 2d-2, not copied). Profile not
+loaded, `folders` missing or not an object, the key absent, or a value with a separator, a dot
+or `..` -> `null`. No `DEFAULT_PROFILE` stands in for an unreadable profile (rule 24); what an
+effect does with `null` is the caller's decision (2d-3 RIP-error scan: skip; 2d-4 custom order:
+refuse visibly). `folders.printed` has NO consumer on purpose: "PRINTED" is RipFlow's own folder
+and lives inside stored `batch_path` values (rule 22) - out of 2d (P19).
 
 **Three real states in `db.getShopProfile()`, and only ONE of them yields a value.**
 The function has three branches, not two:
