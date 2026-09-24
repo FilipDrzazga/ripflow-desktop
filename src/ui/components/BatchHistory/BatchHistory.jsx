@@ -53,8 +53,8 @@ const parseDayFromBatchPath = (batchPath) => {
   return parts.length >= 2 ? parts[parts.length - 2] : null;
 };
 
-// Doczytuje rollbackReasons do batchy dnia (rolled_back batch lub batch z plikiem
-// rolled_back). Wydzielone z loadData — reużywane przy lazy-load pojedynczego dnia.
+// Loads rollbackReasons into a day's batches (a rolled_back batch, or a batch with a
+// rolled_back file). Extracted from loadData — reused by the lazy-load of a single day.
 const attachReasonsToDay = async (day) => ({
   ...day,
   batches: await Promise.all(
@@ -817,7 +817,7 @@ const BatchHistory = () => {
           refreshFiles();
           searchInputRef.current?.focus();
         } else if (res?.restoredFiles?.length > 0) {
-          // Częściowy rollback: część plików wróciła do inboksu, część padła.
+          // Partial rollback: some files went back to the inbox, some failed.
           const failed = res.failedFiles || [];
           const failedStems = new Set(failed.map((f) => f.name.replace(/\.[^.]+$/, "")));
           const batch = dayGroupsRef.current.flatMap((d) => d.batches).find((b) => b.path === batchPath);
@@ -833,11 +833,11 @@ const BatchHistory = () => {
             },
             { stage: "rollback", code: "BATCH_ROLLBACK_PARTIAL", detail: { batchPath, failedFiles: failed } },
           );
-          // Optymistyczne clear'y TYLKO dla plików, które przeszły.
+          // Optimistic clears ONLY for the files that moved.
           movedStems.forEach((stem) => removeStageFromStore(stem));
           clearRipErrorsForFiles(movedStems);
-          // runMutation NIE woła refresh przy success:false → jawnie. loadData maluje
-          // prawdę z dysku (moved→ROLLED_BACK przez masking, stuck→active).
+          // runMutation does NOT call refresh on success:false → do it explicitly. loadData
+          // paints the truth from disk (moved→ROLLED_BACK through masking, stuck→active).
           await refreshFiles();
           loadData();
           searchInputRef.current?.focus();

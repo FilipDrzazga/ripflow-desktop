@@ -3,6 +3,7 @@ import globals from "globals";
 import reactHooks from "eslint-plugin-react-hooks";
 import reactRefresh from "eslint-plugin-react-refresh";
 import { defineConfig, globalIgnores } from "eslint/config";
+import noPolishOrControl from "./eslint-rules/no-polish-or-control.js";
 
 export default defineConfig([
   globalIgnores(["dist"]),
@@ -32,5 +33,15 @@ export default defineConfig([
     rules: {
       "no-unused-vars": ["error", { varsIgnorePattern: "^[A-Z_]" }],
     },
+  },
+  {
+    // Code is English only: no Polish letters, no control characters (USPR 5). Covers
+    // src/shared too, which no block above lints. The rule's own test is left out - its
+    // test data IS Polish text.
+    files: ["src/**/*.{js,jsx}", "eslint-rules/**/*.js"],
+    ignores: ["eslint-rules/no-polish-or-control.test.js"],
+    plugins: { local: { rules: { "no-polish-or-control": noPolishOrControl } } },
+    languageOptions: { parserOptions: { ecmaFeatures: { jsx: true } } },
+    rules: { "local/no-polish-or-control": "error" },
   },
 ]);

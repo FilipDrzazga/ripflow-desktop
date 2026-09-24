@@ -43,7 +43,7 @@ const renameNoOverwrite = async (src, dest) => {
     await fs.promises.access(dest);
     throw Object.assign(new Error(`Destination already exists: ${dest}`), { code: "EEXIST" });
   } catch (e) {
-    if (e.code !== "ENOENT") throw e;   // ENOENT = wolne; EEXIST/inne → w górę
+    if (e.code !== "ENOENT") throw e;   // ENOENT = the name is free; EEXIST / anything else → rethrow
   }
   await fs.promises.rename(src, dest);
 };

@@ -88,8 +88,8 @@ const CustomOrderHistory = ({ history, onDeleted }) => {
                 className={styles.delete_btn}
                 onClick={(e) => handleDelete(e, order)}
                 disabled={deletingId === order.id}
-                aria-label="Usuń wpis"
-                title="Usuń wpis"
+                aria-label="Delete entry"
+                title="Delete entry"
               >
                 <LuTrash2 size={15} />
               </button>
