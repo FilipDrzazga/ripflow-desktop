@@ -28,6 +28,7 @@ import {
   PRODUCTION_STAGE,
   STAGE_COLOR,
 } from "../../../shared/constants";
+import { printerOfBatch } from "../../../shared/batchFolderName";
 import { advanceStage, setSewingSent, setSewingReceived, printBatchLabel } from "../../services/productionService";
 import { rollbackFile } from "../../services/batchService";
 import { openInFolder as openInFolderApi, openInShopify as openInShopifyApi } from "../../services/fileService";
@@ -136,8 +137,7 @@ const batchNameOf = (batchPath) => batchPath?.split(/[/\\]/).pop() ?? "Unknown";
 
 const BatchGroupHeader = ({ batchPath, rows, selectedFileIds, onSelectAll }) => {
   const batchName = batchPath?.split(/[/\\]/).pop() ?? "Unknown";
-  const printerMatch = batchName.match(/-(DGEN|YOKO|YUMI)$/i);
-  const printer = printerMatch ? printerMatch[1].toUpperCase() : null;
+  const printer = printerOfBatch(batchName);
   const pc = printer ? (PRINTER_COLORS[printer] ?? { bg: "#f0f0f0", color: "#616161" }) : null;
   const stageCounts = {};
   for (const r of rows) stageCounts[r.stage] = (stageCounts[r.stage] ?? 0) + 1;
@@ -586,8 +586,7 @@ const Production = () => {
     const stageRows = Object.values(productionStages);
     const batchPath = row.batch_path;
     const batchName = batchPath?.split(/[/\\]/).pop() ?? "";
-    const printerMatch = batchName.match(/-(DGEN|YOKO|YUMI)$/i);
-    const printer = printerMatch ? printerMatch[1].toUpperCase() : "UNKNOWN";
+    const printer = printerOfBatch(batchName) ?? "UNKNOWN";
     const batchRows = stageRows.filter((r) => r.batch_path === batchPath);
     const materials = [...new Set(batchRows.map((r) => r.material).filter(Boolean))];
     const material = materials.length === 1 ? materials[0] : "Mixed";

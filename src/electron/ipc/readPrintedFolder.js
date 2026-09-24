@@ -8,7 +8,11 @@ import { getEstimateConfig } from "../helpers/fabricCache.js";
 import { estimatePrintLength } from "../../shared/estimatePrintLength.js";
 import { getOpenReprintRequestsByFileIds, insertLog, getDbDegraded } from "../helpers/db.js";
 import { BATCH_STATUS, FILE_STATUS } from "../../shared/constants.js";
+import { BATCH_FOLDER_RE, parseBatchFolderName } from "../../shared/batchFolderName.js";
 import { createLogOnce } from "../helpers/logOnce.js";
+
+// Re-exported: batchHistoryHandlers.js and ipc/index.js import it from here.
+export { parseBatchFolderName };
 
 const getPrintedRootPath = () => path.join(getStorageRootPath(), "PRINTED");
 
@@ -98,13 +102,8 @@ const signalPrintedRoot = (unreachable) => {
 const osFields = (err) => ({ code: err?.code ?? null, errno: err?.errno ?? null, syscall: err?.syscall ?? null });
 
 const DAY_FOLDER_RE = /^\d{2}-\d{2}-\d{4}$/;
-const BATCH_FOLDER_RE = /^PRINTED_\d{6}-(.+)-(DGEN|YOKO|YUMI)$/;
-
-export const parseBatchFolderName = (name) => {
-  const m = name.match(BATCH_FOLDER_RE);
-  if (!m) return null;
-  return { group: m[1], printer: m[2] };
-};
+// The batch folder name is read by src/shared/batchFolderName.js - the one parser for
+// every consumer (ETAP 2e step 1). A folder that fails it is logged as BATCH_FOLDER_SKIPPED.
 
 // Normalize a _batch_info.overrides[stem] entry to the Etap-2 provenance shape.
 // New shape: { printed:{meters}|{qty}, manual:bool, reprintQty, reprintOriginal }.

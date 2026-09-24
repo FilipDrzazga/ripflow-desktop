@@ -5,6 +5,7 @@ import Database from "better-sqlite3";
 import { getStorageRootPath } from "./getRootPath.js";
 import { DEFAULT_FABRICS, DEFAULT_FABRIC_GLOBALS } from "./defaultFabrics.js";
 import { DEFAULT_PROFILE } from "./defaultProfile.js";
+import { printerOfBatch } from "../../shared/batchFolderName.js";
 
 let db = null;
 let stmtInsert = null;
@@ -41,7 +42,6 @@ let stmtGetFileStagesAfter = null;
 let stmtInsertRipError = null;
 let stmtGetOpenRipErrors = null;
 
-const PRINTER_RE = /-(DGEN|YOKO|YUMI)$/i;
 
 // ── DB error signalling (critical writes only) ──────────────────────────────────
 // Transient errors are already retried by busy_timeout (#1) — never alarm on them.
@@ -627,9 +627,7 @@ export const getRollbackStats = (since) => {
       }
       reasonMap.get(rk).count++;
 
-      const batchFolder = row.batch_path ? row.batch_path.split(/[/\\]/).pop() : "";
-      const printerMatch = batchFolder.match(PRINTER_RE);
-      const printer = printerMatch ? printerMatch[1].toUpperCase() : "UNKNOWN";
+      const printer = printerOfBatch(row.batch_path) ?? "UNKNOWN";
       printerMap.set(printer, (printerMap.get(printer) || 0) + 1);
 
       const proc = row.process || "Unknown";
@@ -1000,9 +998,7 @@ export const getFileStagesAfter = (since) => {
 };
 
 const addPrinterToStageRow = (row) => {
-  const batchFolder = row.batch_path ? row.batch_path.split(/[/\\]/).pop() : "";
-  const printerMatch = batchFolder.match(PRINTER_RE);
-  return { ...row, printer: printerMatch ? printerMatch[1].toUpperCase() : null };
+  return { ...row, printer: printerOfBatch(row.batch_path) };
 };
 
 export const getAllFileStages = () => {
@@ -1239,9 +1235,7 @@ export const getRollbackDetails = (since) => {
       : db.prepare("SELECT * FROM rollback_reasons ORDER BY timestamp DESC").all();
 
     return rows.map((row) => {
-      const batchFolder = row.batch_path ? row.batch_path.split(/[/\\]/).pop() : "";
-      const printerMatch = batchFolder.match(PRINTER_RE);
-      const printer = printerMatch ? printerMatch[1].toUpperCase() : null;
+      const printer = printerOfBatch(row.batch_path);
       return { ...row, printer };
     });
   } catch (err) {

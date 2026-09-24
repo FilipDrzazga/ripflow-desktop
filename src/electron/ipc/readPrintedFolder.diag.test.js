@@ -30,6 +30,7 @@ vi.mock("../helpers/getMaterialType.js", () => ({ getMaterialType: () => "Unknow
 vi.mock("../helpers/fabricCache.js", () => ({ getEstimateConfig: () => null }));
 
 import { readPrintedDay, readPrintedDays, setDiagWorkstationResolver } from "./readPrintedFolder.js";
+import { BATCH_FOLDER_RE } from "../../shared/batchFolderName.js";
 
 const skippedCalls = () => h.insertLog.mock.calls.filter((c) => c[0]?.code === "BATCH_FOLDER_SKIPPED");
 const dayUnreadableCalls = () => h.insertLog.mock.calls.filter((c) => c[0]?.code === "PRINTED_DAY_UNREADABLE");
@@ -70,7 +71,9 @@ describe("readPrintedFolder diagnostics", () => {
     expect(entry.type).toBe("warning");
     expect(entry.detail.name).toBe("NOT_A_BATCH");
     expect(entry.detail.path).toBe(path.join(dayDir, "NOT_A_BATCH"));
-    expect(entry.detail.pattern).toContain("DGEN|YOKO|YUMI");
+    // the pattern the folder failed - the shared parser's; since 2e step 1 it carries no
+    // printer list (assertion changed with FILIP's consent, 2026-09-24 12:26)
+    expect(entry.detail.pattern).toBe(BATCH_FOLDER_RE.source);
     expect(entry.workstation).toBe("TEST-PC");
 
     // A repeat within the window must NOT log a second time (module-level logOnce, 1h).

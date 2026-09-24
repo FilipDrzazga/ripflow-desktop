@@ -4,6 +4,7 @@
 import { register } from "node:module";
 import path from "node:path";
 import { pathToFileURL, fileURLToPath } from "node:url";
+import { printerOfBatch } from "../../src/shared/batchFolderName.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 export const REPO = path.join(here, "..", "..");
@@ -34,7 +35,9 @@ const dropLast = (p) => p.slice(0, p.length - lastSeg(p).length - 1);
 
 // batchId as createBatch.js builds it: `${DD-MM-YYYY}/${PRINTED_HHMMSS-GROUP-PRINTER}`
 export const batchIdOf = (batchPath) => `${lastSeg(dropLast(batchPath))}/${lastSeg(batchPath)}`;
-export const printerOf = (batchPath) => (batchPath.match(/-(DGEN|YOKO|YUMI)$/i)?.[1] ?? "UNKNOWN").toUpperCase();
+// The production parser, not a copy of it: a copy here would make golden check different
+// logic from the one that ships (ETAP 2e step 1).
+export const printerOf = (batchPath) => printerOfBatch(batchPath) ?? "UNKNOWN";
 
 // Mirrors the per-file object readFolders.js builds (parsed meta + printGroup +
 // materialType), plus the

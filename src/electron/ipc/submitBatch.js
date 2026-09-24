@@ -10,6 +10,7 @@ import { getFeature } from "../helpers/shopProfile.js";
 import { getMaterialType } from "../helpers/getMaterialType.js";
 import { getEstimateConfig } from "../helpers/fabricCache.js";
 import { estimatePrintLength } from "../../shared/estimatePrintLength.js";
+import { printerOfBatch } from "../../shared/batchFolderName.js";
 
 const toSubmitBatchError = (error, stage, fallbackTitle = "Batch submission failed") =>
   toIpcError(error, stage, fallbackTitle);
@@ -90,8 +91,7 @@ export const submitBatch = async (batch) => {
     // without features.labelPrinting would get a label per batch it never asked for.
     // getFeature is fail-closed, so an unreadable profile prints nothing.
     if (getFeature("labelPrinting") && getSettings().labelPrintMode !== "manual") {
-      const printerMatch = batchName.match(/-(DGEN|YOKO|YUMI)$/i);
-      const batchPrinter = printerMatch ? printerMatch[1].toUpperCase() : "UNKNOWN";
+      const batchPrinter = printerOfBatch(batchName) ?? "UNKNOWN";
       const parsedForLength = batch.map((item) => ({ ...item, materialType: getMaterialType(item.material) }));
       const { fixedTotalLengthM } = estimatePrintLength(parsedForLength, getEstimateConfig());
       printBatchLabel({
