@@ -5,7 +5,7 @@
 ## Overview
 
 **RipFlow Desktop** — Electron + React app automating print workflow for PrintFactory machines.
-**Platform:** Windows only (network paths, backslashes) | **Users:** production operators | **Code:** English only — identifiers, comments, UI/log/error strings; Polish found in code you edit is translated in the same change
+**Platform:** Windows only (network paths, backslashes) | **Users:** production operators | **Code:** English only — identifiers, comments, UI/log/error strings; Polish found in code you edit is translated in the same change (Polish letters and control characters fail `npm run lint`: `eslint-rules/no-polish-or-control.js`)
 
 ## Stack
 
@@ -136,7 +136,7 @@ The state shape is in the file. What it does not say:
 npm run dev        # Vite + Electron concurrently (wait-on)
 npm run build      # Vite → dist/
 npm run lint       # ESLint flat config v9 — separate rules for ui/ and electron/
-npm run test       # Vitest — runs src/**/*.test.js (node environment)
+npm run test       # Vitest — runs every *.test.js: src/** and eslint-rules/ (node environment)
 npm run test:watch # Vitest watch mode
 
 # Golden XML regression net (.claude/rules/print-xml.md) — offline, reads golden/_inputs.json, never the live DB
