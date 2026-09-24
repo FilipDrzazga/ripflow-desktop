@@ -159,12 +159,12 @@ describe("shopProfile — shape guards", () => {
 });
 
 describe("shopProfile — getPrinterByCode is case-insensitive ON PURPOSE", () => {
-  // DEBT, not a quirk: the lookup is loose while PRINTER.* is compared strictly, so
-  // the same code passes here and bounces off a comparison elsewhere. Recorded in
-  // PRODUCTIZATION.md under 2e, where the fix is to normalise the code on INPUT
-  // (uppercase when pulling it out of a folder name) and tighten this lookup - NOT
-  // to loosen more call sites. Until then this test pins the current behaviour, so
-  // whoever tightens it at 2e sees a failing test rather than a silent change.
+  // Was a DEBT until ETAP 2e: the lookup was loose while PRINTER.* was compared strictly,
+  // so the same code could pass here and bounce off a comparison elsewhere. 2e closed the
+  // strict side instead of tightening this: the code is upper-cased on INPUT
+  // (src/shared/batchFolderName.js) and the PRINTER constant is gone, so nothing compares
+  // printer codes strictly any more. The lookup stays loose, harmlessly; this test pins it,
+  // so tightening it later is a visible, deliberate change.
   beforeEach(() => {
     dbBehaviour = () => ROW;
     loadShopProfile();
