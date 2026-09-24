@@ -93,7 +93,9 @@ still be invisible, and `access()` would stop failing — silence in the one cas
 exists for. So the wording changes, not the condition: it deliberately does not tell anyone
 to check the network, because on a fresh installation that instruction is wrong.
 
-- **`logOnce` (`helpers/logOnce.js`)** — one module instance keyed by folder path; a given
+- **`logOnce` (`helpers/logOnce.js`)** — one module instance in `readPrintedFolder.js`, keyed by
+  folder path (`ripErrorHandlers.js` keeps its OWN instance since ETAP 2d-3, for its "no RIP-error
+  folder in the profile" warning - separate keys, separate maps); a given
   key logs again only after a **1-hour** window (`createLogOnce({ windowMs })`). Not
   "once per session": the app runs 24/7 and a share can fail, recover, and fail again
   hours later. No map size cap — keys are folder paths, bounded by the share (~1600 batch
