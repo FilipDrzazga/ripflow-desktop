@@ -4,6 +4,7 @@ paths:
   - "src/electron/helpers/parseRipErrorXml.js"
   - "src/ui/components/RipErrorPopover/**"
   - "src/ui/services/ripErrorService.js"
+  - "src/ui/store/useStore.jsx"
 ---
 
 ## RIP Errors
