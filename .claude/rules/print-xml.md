@@ -84,10 +84,13 @@ imports no `printWidths.js` `LM_XML_*` constants.
 ## Print Widths — Hardcoded vs DB
 
 `printWidths.js` values are **fallbacks only — with one live exception**. DB (`fabric_globals` +
-`fabrics`) is the primary source everywhere the table below says so. The exception is
-`customOrderHandlers.js`, which imports `LM_XML_POLY` and writes it straight into the custom-order
-XML as `<Width>${LM_XML_POLY}</Width>`, next to a hardcoded `<MaterialType>Polyesters</MaterialType>` — not a fallback,
-a live literal, and one with no golden baseline (hole (b) in the Etap 2 gate).
+`fabrics`) is the primary source everywhere the table below says so. The exception is the
+custom-order XML builder `helpers/customOrderXml.js` (moved out of `customOrderHandlers.js` in
+ETAP 2d-1, byte for byte), which imports `LM_XML_POLY` and writes it straight into the XML as
+`<Width>${LM_XML_POLY}</Width>`, next to a hardcoded `<MaterialType>Polyesters</MaterialType>` — not a
+fallback, a live literal. It is NOT in the golden net; its baseline is the full expected text in
+`customOrderXml.test.js` (closes hole (b) in the Etap 2 gate). The builder is pure - the handler
+passes `customOrderFolderPath` (settings) and `nestingId` (randomUUID) in.
 
 | Config                           | DB table                                  | Fallback                                           |
 | -------------------------------- | ----------------------------------------- | -------------------------------------------------- |

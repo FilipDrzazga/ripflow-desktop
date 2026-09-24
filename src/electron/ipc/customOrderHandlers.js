@@ -7,63 +7,11 @@ import { getStorageRootPath } from "../helpers/getRootPath.js";
 import { parseCSVContent } from "../helpers/parseCustomOrderCSV.js";
 import { scanCustomOrderFolder, matchFiles } from "../helpers/customOrderMatcher.js";
 import { insertCustomOrder, getAllCustomOrders, clearCustomOrders, deleteCustomOrder } from "../helpers/db.js";
-import { LM_XML_POLY } from "../../shared/printWidths.js";
 import { CUSTOM_ORDER_STATUS } from "../../shared/constants.js";
 import { getPrinterByCode } from "../helpers/shopProfile.js";
+import { buildCustomOrderXML } from "../helpers/customOrderXml.js";
 
 let cachedFileNames = [];
-
-const escapeXml = (value) => {
-  const str = String(value ?? "");
-  return str
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&apos;");
-};
-
-const buildCustomOrderXML = (group, batchId) => {
-  const { poNumber, materialName, printer, files } = group;
-  const foundFiles = files.filter((f) => f.found);
-  const totalMeters = foundFiles.reduce((sum, f) => sum + f.metersToprint, 0).toFixed(1);
-  const nestingId = randomUUID();
-  const { customOrderFolderPath } = getSettings();
-
-  const documentsXml = foundFiles
-    .map((f) => {
-      const filePath = path.join(customOrderFolderPath, `${f.fileName}.tif`);
-      return `    <Document>
-      <Path>${escapeXml(filePath)}</Path>
-      <Name>${escapeXml(f.fileName)}</Name>
-      <Copies>1</Copies>
-      <DocumentId>${escapeXml(f.fileName)}</DocumentId>
-      <Width>${LM_XML_POLY}</Width>
-      <Height>${Math.round(f.metersToprint * 1000)}</Height>
-      <Material>${escapeXml(materialName)}</Material>
-      <MaterialType>Polyesters</MaterialType>
-      <OrderId>${escapeXml(poNumber)}</OrderId>
-      <PrintTypeCode>LM</PrintTypeCode>
-      <IsVelvet>false</IsVelvet>
-      <IsLinen>false</IsLinen>
-      <IsBlossom>false</IsBlossom>
-    </Document>`;
-    })
-    .join("\n");
-
-  return `<RipFlowJob>
-  <BatchId>${escapeXml(batchId)}</BatchId>
-  <Printer>${escapeXml(printer)}</Printer>
-  <BatchType>CUSTOM_ORDER</BatchType>
-  <PONumber>${escapeXml(poNumber)}</PONumber>
-  <NestingGroup>${escapeXml(nestingId)}</NestingGroup>
-  <LogisticGroup>${escapeXml(nestingId)}_${escapeXml(totalMeters)}m</LogisticGroup>
-  <PhysicalGroup>Min_${escapeXml(materialName)}_${escapeXml(totalMeters)}m_PO${escapeXml(poNumber)}</PhysicalGroup>
-  <Documents>
-${documentsXml}
-  </Documents>
-</RipFlowJob>`;
-};
 
 export function registerCustomOrderHandlers() {
   ipcMain.handle("customOrder:scanFolder", async () => {
@@ -126,7 +74,12 @@ export function registerCustomOrderHandlers() {
       const tempPath = path.join(workflowPath, `${xmlFileName}.tmp`);
       const finalPath = path.join(workflowPath, xmlFileName);
 
-      const xml = buildCustomOrderXML(group, batchId);
+      // same order as before the move: the nesting id is drawn right after the batch id,
+      // and the artwork folder is read from the settings at generate time
+      const xml = buildCustomOrderXML(group, batchId, {
+        customOrderFolderPath: getSettings().customOrderFolderPath,
+        nestingId: randomUUID(),
+      });
       await fs.promises.writeFile(tempPath, xml, "utf8");
       await fs.promises.rename(tempPath, finalPath);
 
