@@ -4,7 +4,6 @@ import path from "path";
 import fs from "fs";
 import { estimatePrintLength } from "../../shared/estimatePrintLength.js";
 import { toIpcError } from "../helpers/ipcError.js";
-import { PRINTER } from "../../shared/constants.js";
 import { getFabricByName, getEstimateConfig } from "../helpers/fabricCache.js";
 
 const STAGES = {
@@ -55,15 +54,41 @@ const isVelvet = (item) => getFabricFlag(item, "isVelvet", "velvet");
 const isLinen = (item) => getFabricFlag(item, "isLinen", "linen");
 const isBlossom = (item) => getFabricFlag(item, "isBlossom", "blossom");
 
-const getWorkflowFolderName = (printer) => {
-  if (printer === PRINTER.DGEN) return "AUTOMATION_WORKFLOW_COTTON";
-  if (printer === PRINTER.YOKO || printer === PRINTER.YUMI) return "AUTOMATION_WORKFLOW_POLY";
-  throw Object.assign(new Error(`Unrecognized printer: "${printer}". Expected DGEN, YOKO, or YUMI.`), {
-    code: "ERR_INVALID_PRINTER",
-    stage: "validate",
-    title: "Invalid printer",
-    type: "Error",
-  });
+// Which hotfolder a printer's job goes to is shop-profile DATA (printers[].hotfolder) since
+// ETAP 2e step 2 - it used to be an if-chain over DGEN / YOKO / YUMI here.
+//
+// The lookup is INJECTED, not imported: shopProfile.js pulls db.js (better-sqlite3), and this
+// file is also imported by the XML template tests and the golden harness, which must not load
+// a database driver. ipc/index.js wires it to getPrinterByCode. Unwired, it knows no printer,
+// so every job is refused - fail-closed (rule 24), and loud on the first submit.
+let printerResolver = () => null;
+export const setPrinterResolver = (fn) => {
+  printerResolver = typeof fn === "function" ? fn : () => null;
+};
+
+// A hotfolder is ONE folder name under storagePath. The profile is a free-form blob in a
+// shared DB row, so a separator or ".." in it must not become a path outside that root.
+const HOTFOLDER_NAME_RE = /^[A-Za-z0-9_-]+$/;
+
+// Throws ERR_INVALID_PRINTER when the printer is not in the profile, the profile could not be
+// read (the same answer: nothing to route by) or its hotfolder is not a plain folder name.
+// No new failure mode on a dead NAS: without the DB the fabric catalogue already refuses the
+// job (rule 17). The profile is cached at startup; a printers[] edit made on ANOTHER station
+// reaches this one on restart (profile:set reloads it only where it was saved).
+export const getWorkflowFolderName = (printer) => {
+  const hotfolder = printerResolver(printer)?.hotfolder;
+  if (typeof hotfolder === "string" && HOTFOLDER_NAME_RE.test(hotfolder)) return hotfolder;
+  throw Object.assign(
+    new Error(
+      `Printer "${printer}" has no valid hotfolder in this shop's configuration, or the configuration could not be read.`,
+    ),
+    {
+      code: "ERR_INVALID_PRINTER",
+      stage: "validate",
+      title: "Invalid printer",
+      type: "Error",
+    },
+  );
 };
 
 // Refuse to build a job whose print size is unknown.

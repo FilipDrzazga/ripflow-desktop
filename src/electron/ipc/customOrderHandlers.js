@@ -8,7 +8,8 @@ import { parseCSVContent } from "../helpers/parseCustomOrderCSV.js";
 import { scanCustomOrderFolder, matchFiles } from "../helpers/customOrderMatcher.js";
 import { insertCustomOrder, getAllCustomOrders, clearCustomOrders, deleteCustomOrder } from "../helpers/db.js";
 import { LM_XML_POLY } from "../../shared/printWidths.js";
-import { PRINTER, CUSTOM_ORDER_STATUS } from "../../shared/constants.js";
+import { CUSTOM_ORDER_STATUS } from "../../shared/constants.js";
+import { getPrinterByCode } from "../helpers/shopProfile.js";
 
 let cachedFileNames = [];
 
@@ -105,8 +106,14 @@ export function registerCustomOrderHandlers() {
     try {
       const { poNumber, printer, files, totalMeters } = group;
 
-      if (!printer || (printer !== PRINTER.YOKO && printer !== PRINTER.YUMI)) {
-        return { success: false, error: "Invalid printer selection. Choose YOKO or YUMI." };
+      // Custom orders are polyester-only: this XML hardcodes <MaterialType>Polyesters</MaterialType>
+      // and the Minerva hotfolder. Which printers print polyester is profile data (ETAP 2e
+      // step 2); it used to be a YOKO/YUMI check. No profile = no printer qualifies (rule 24).
+      if (getPrinterByCode(printer)?.materialClass !== "Polyesters") {
+        return {
+          success: false,
+          error: `Printer "${printer ?? ""}" is not a polyester printer in this shop's configuration, or the configuration could not be read.`,
+        };
       }
 
       const workflowPath = path.join(getStorageRootPath(), "AUTOMATION_WORKFLOW_MINERVA");

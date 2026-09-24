@@ -18,7 +18,8 @@ import { parsePrintFileName } from "../helpers/parseFileName.js";
 import { getSettings, setSettings, getRollbackDefinitions, clearRollbackDefinitions } from "../helpers/getSettings.js";
 import { initDb, insertLog, getAllLogs, clearAllLogs, holdFile, unholdFile, getHeldFiles, pruneOrphanHeldFiles, getRollbackReasonsByBatch, getRollbackReasonsByFile, getRollbackStats, getRollbackDetails, clearAllRollbackReasons, deleteRollbackReason, getLatestRollbackReasonsForFileIds, getReasonDefinitions, setReasonDefinitions as setReasonDefinitionsDb, migrateReasonDefinitions, getAllFabrics, saveFabric, deleteFabric as deleteFabricDb, setAllFabrics, getFabricGlobals, setFabricGlobals, setShopProfile, backupDb, cleanupShippedStages, getDbDegraded } from "../helpers/db.js";
 import { loadFabricCache, invalidateFabricCache } from "../helpers/fabricCache.js";
-import { loadShopProfile, invalidateShopProfile, getProfile } from "../helpers/shopProfile.js";
+import { loadShopProfile, invalidateShopProfile, getProfile, getPrinterByCode } from "../helpers/shopProfile.js";
+import { setPrinterResolver } from "./createXML.js";
 import { runShopProfileMigration } from "../helpers/runShopProfileMigration.js";
 import { describeRollbackFailure, buildRollbackBatchLog } from "../helpers/rollbackFailure.js";
 
@@ -189,6 +190,10 @@ export async function registerIpcHandlers() {
   // names the fabric layer will read once those consumers land (ETAP 2).
   loadShopProfile();
   loadFabricCache();
+  // createXML.js routes a job to printers[].hotfolder through this lookup (ETAP 2e step 2);
+  // injected because createXML.js must stay importable without db.js. getPrinterByCode reads
+  // the live cache on every call, so a profile:set on this station applies at once.
+  setPrinterResolver(getPrinterByCode);
   registerCustomOrderHandlers();
   registerProductionHandlers();
   registerRipErrorHandlers();
