@@ -82,8 +82,8 @@ hotfolder that is not one plain folder name → `ERR_INVALID_PRINTER`, fail-clos
 `customOrderHandlers.js` accepts a printer whose `materialClass` is `Polyesters` (custom
 orders are polyester-only). Since step 3, `createBatch.js` runs the same
 `getWorkflowFolderName` in its VALIDATE stage, BEFORE any file moves. Renderer printer
-LISTS come from the profile since step 3 (`getPrinters` below); colours still come from
-`PRINTER_COLORS` until step 4.
+LISTS come from the profile since step 3 (`getPrinters` below) and badge COLOURS since
+step 4 (`getPrinterColor`, `getMaterialClassColor`); `PRINTER_COLORS` no longer exists.
 
 **`getFeature` is fail-closed and strict.** No profile means no feature, and only a real
 boolean `true` counts — a flag written as `1` or `"true"` by a sloppy import stays off. A
@@ -129,7 +129,7 @@ has finished".
 **Two renderer-side reader modules, split by the QUESTION they answer** — keep them apart:
 
 - `utils/featureVisibility.js` — "is this feature visible to this client": `isFeatureEnabled(flag, profile)`, `isViewEnabled(viewId, profile)`. Gates.
-- `utils/shopProfileData.js` — "what does this client's config contain": `getSewingCompanies(profile)` → `string[]`, `getScanRule(profile, role)` → rule `| null`, `getPrinters(profile)` → `[{ code, materialClass }]` (codes upper-cased and batch-folder-shaped, bad rows dropped; read by DataPrintSelection, the BatchHistory and Analytics filters, CustomOrderCard), `defaultPrinterFor(printers, class)` → the only printer of that class `| null`. Data.
+- `utils/shopProfileData.js` — "what does this client's config contain": `getSewingCompanies(profile)` → `string[]`, `getScanRule(profile, role)` → rule `| null`, `getPrinters(profile)` → `[{ code, materialClass }]` (codes upper-cased and batch-folder-shaped, bad rows dropped; read by DataPrintSelection, the BatchHistory and Analytics filters, CustomOrderCard), `defaultPrinterFor(printers, class)` → the only printer of that class `| null`, `getPrinterColor(profile, code)` → `{ bg, color }` from `printers[].color` (`{ bg, text }`, hex only) `| null` — each of the ten badge components keeps its OWN grey fallback — and `getMaterialClassColor(profile, class)` → the colours of the class's FIRST printer `| null` (Analytics). Data.
 
 Both are pure functions, fail-closed on an unreadable profile, and that shape is not
 stylistic: the renderer's profile gates have no standing guard (the rendering harness was
