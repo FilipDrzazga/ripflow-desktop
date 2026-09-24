@@ -14,7 +14,7 @@ import gsap from "gsap";
 import { LuRefreshCw, LuEye, LuCornerUpLeft, LuFolderOpen, LuChevronsDownUp, LuChevronDown, LuChevronRight } from "react-icons/lu";
 import { HiMagnifyingGlass, HiXMark } from "react-icons/hi2";
 import style from "./BatchHistory.module.css";
-import { BATCH_STATUS, FILE_STATUS, PRINTER } from "../../../shared/constants";
+import { BATCH_STATUS, FILE_STATUS } from "../../../shared/constants";
 import {
   readPrintedDays,
   readPrintedDay,
@@ -32,9 +32,9 @@ import { showConfirm } from "../../services/systemService";
 import { getSettings } from "../../services/settingsService";
 import { printBatchLabel } from "../../services/productionService";
 import { isFeatureEnabled } from "../../utils/featureVisibility";
+import { getPrinters } from "../../utils/shopProfileData";
 import { shouldTick, pickDaysToPoll, mergePolledDays } from "../../utils/batchHistoryPoll";
 
-const PRINTERS = Object.values(PRINTER);
 
 // Cross-station poll. 30s (not Production's 15s): each polled day also runs SQLite reads in
 // main, and the recon measured ~75-130 ms SMB per tick, so a slower cadence is enough.
@@ -80,6 +80,9 @@ const BatchHistory = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [activePrinters, setActivePrinters] = useState(new Set());
+  // Filter pills = the profile's printers (ETAP 2e step 3). A batch of a printer the
+  // profile does not know is still listed (2e step 1) - it shows with no pill active.
+  const printerCodes = useMemo(() => getPrinters(shopProfile).map((p) => p.code), [shopProfile]);
   const [expandedDays, setExpandedDays] = useState(new Set());
   const [expandedBatches, setExpandedBatches] = useState(new Set());
   const [loadingDays, setLoadingDays] = useState(new Set()); // dayFolder set — lazy-load in flight
@@ -976,7 +979,7 @@ const BatchHistory = () => {
         </div>
         <div className={style.separator} />
         <div className={style.printer_filters}>
-          {PRINTERS.map((p) => (
+          {printerCodes.map((p) => (
             <button
               key={p}
               type="button"

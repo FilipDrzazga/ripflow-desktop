@@ -6,15 +6,10 @@ import { useStore } from "../../store/useStore";
 import { notify } from "../../utils/notify";
 import { runMutation } from "../../utils/runMutation";
 import style from "./DataPrintSelection.module.css";
-import { PRINTER } from "../../../shared/constants";
+import { getPrinters, defaultPrinterFor } from "../../utils/shopProfileData";
+import { PROFILE_STATUS } from "../../utils/profileStatus";
 
 gsap.registerPlugin(useGSAP);
-
-const PRINTERS = [
-  { name: PRINTER.DGEN, value: PRINTER.DGEN, materialType: "Cottons" },
-  { name: PRINTER.YOKO, value: PRINTER.YOKO, materialType: "Polyesters" },
-  { name: PRINTER.YUMI, value: PRINTER.YUMI, materialType: "Polyesters" },
-];
 
 const DataPrintSelection = () => {
   const [selectedPrinter, setSelectedPrinter] = useState(null);
@@ -29,7 +24,14 @@ const DataPrintSelection = () => {
   const selectedOverrides = useStore((state) => state.selectedOverrides);
   const fabricConfig = useStore((state) => state.fabricConfig);
   const clearAllOverrides = useStore((state) => state.clearAllOverrides);
+  const shopProfile = useStore((state) => state.shopProfile);
+  const shopProfileStatus = useStore((state) => state.shopProfileStatus);
   const contentRef = useRef(null);
+
+  // The printers come from the shop profile (ETAP 2e step 3), each locked to its material
+  // class. No readable profile = no printer to offer (P11, rule 24): the main process would
+  // refuse the job anyway, and it would do so AFTER moving the files.
+  const printers = useMemo(() => getPrinters(shopProfile), [shopProfile]);
 
   const isSelectionMode = selectedIds.size > 0;
 
@@ -58,6 +60,16 @@ const DataPrintSelection = () => {
   // message nobody can open - and the wrong hypothesis has already formed by the time
   // anyone hovers. Rendered only in selection mode, so it never nags an idle screen.
   const blockedReason = useMemo(() => {
+    // Checked first: without a printer list nothing can be chosen, whatever the fabric.
+    // shopProfile is null both while loading and after a failed load, so the STATUS tells
+    // them apart - the same split App.jsx makes for its banner.
+    if (shopProfileStatus === PROFILE_STATUS.FAILED) {
+      return "Shop configuration could not be read - check the connection to the shared database. Printing is blocked until it loads.";
+    }
+    if (shopProfile === null) return "Loading the shop configuration...";
+    if (materialType && materialType !== "Unknown" && !printers.some((p) => p.materialClass === materialType)) {
+      return `No printer for ${materialType} in the shop configuration.`;
+    }
     if (materialType !== "Unknown") return null;
     if (fabricConfig === null) {
       return "Fabric catalogue could not be read - check the connection to the shared database. Printing is blocked until it loads.";
@@ -72,15 +84,13 @@ const DataPrintSelection = () => {
     });
     if (unknown.length === 0) return "Unknown material - this file has no fabric to route by, so no printer can be chosen.";
     return `Not in the fabric catalogue: ${unknown.join(", ")}. Add it in Settings > Fabrics to choose a printer.`;
-  }, [materialType, fabricConfig, filteredFiles, selectedIds]);
+  }, [materialType, fabricConfig, filteredFiles, selectedIds, shopProfile, shopProfileStatus, printers]);
 
+  // Pre-select the only printer of the selected class; several (or none) = operator chooses.
+  // On Alex's profile this is the old rule exactly: Cottons -> DGEN, Polyesters -> none.
   useEffect(() => {
-    if (materialType === "Cottons") {
-      setSelectedPrinter(PRINTER.DGEN);
-    } else {
-      setSelectedPrinter(null);
-    }
-  }, [materialType]);
+    setSelectedPrinter(defaultPrinterFor(printers, materialType));
+  }, [materialType, printers]);
 
   useGSAP(
     () => {
@@ -240,19 +250,19 @@ const DataPrintSelection = () => {
         </>
       )}
       <form className={style.selection_form} onSubmit={handleSubmit}>
-        {PRINTERS.map((printer) => (
-          <label key={printer.value} className={style.selection_label} htmlFor={printer.value}>
+        {printers.map((printer) => (
+          <label key={printer.code} className={style.selection_label} htmlFor={printer.code}>
             <input
               className={style.selection_input}
-              id={printer.value}
+              id={printer.code}
               name="printSelection"
               type="radio"
-              value={printer.value}
-              disabled={materialType !== printer.materialType || isSubmitting}
-              checked={selectedPrinter === printer.value}
-              onChange={() => setSelectedPrinter(printer.value)}
+              value={printer.code}
+              disabled={materialType !== printer.materialClass || isSubmitting}
+              checked={selectedPrinter === printer.code}
+              onChange={() => setSelectedPrinter(printer.code)}
             />
-            {printer.name}
+            {printer.code}
           </label>
         ))}
         <div className={style.separator}></div>

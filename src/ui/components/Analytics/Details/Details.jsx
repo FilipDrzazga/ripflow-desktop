@@ -10,10 +10,9 @@ import { showConfirm } from "@/services/systemService";
 import { notify } from "@/utils/notify";
 import Summary from "../Summary/Summary";
 import style from "./Details.module.css";
-import { PRINTER } from "../../../../shared/constants";
+import { getPrinters } from "@/utils/shopProfileData";
 
 const PROCESS_OPTIONS = ["All", "Cottons", "Polyesters"];
-const PRINTER_OPTIONS = ["All", PRINTER.DGEN, PRINTER.YOKO, PRINTER.YUMI];
 const PERIODS = [
   { id: "7d", label: "7 days" },
   { id: "30d", label: "30 days" },
@@ -93,6 +92,9 @@ const TypeBadge = ({ printType }) => {
 
 const Details = ({ details, stats, isLoading, period, onPeriodChange, onRefresh }) => {
   const reasonDefinitions = useStore((s) => s.reasonDefinitions);
+  const shopProfile = useStore((s) => s.shopProfile);
+  // Printer filter = "All" + the profile's printers (ETAP 2e step 3).
+  const printerOptions = useMemo(() => ["All", ...getPrinters(shopProfile).map((p) => p.code)], [shopProfile]);
   const reasonLabels = useMemo(
     () => Object.fromEntries(reasonDefinitions.map((r) => [r.code, r.label])),
     [reasonDefinitions],
@@ -232,7 +234,7 @@ const Details = ({ details, stats, isLoading, period, onPeriodChange, onRefresh 
             <div className={style.separator} />
 
             <div className={style.filter_group}>
-              {PRINTER_OPTIONS.map((p) => (
+              {printerOptions.map((p) => (
                 <button
                   key={p}
                   className={`${style.filter_btn} ${printerFilter === p ? style.filter_btn_active : ""}`}

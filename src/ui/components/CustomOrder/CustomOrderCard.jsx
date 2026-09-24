@@ -1,12 +1,14 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { notify } from "@/utils/notify";
 import { LuChevronRight, LuCheck, LuPlay, LuTrash2, LuScanLine, LuFileText, LuLayers } from "react-icons/lu";
 import { PRINTER_COLORS } from "@/constants/printerColors";
 import styles from "./CustomOrderCard.module.css";
 import { generateCustomOrderXML } from "../../services/customOrderService";
-import { PRINTER } from "../../../shared/constants";
+import { useStore } from "../../store/useStore";
+import { getPrinters } from "../../utils/shopProfileData";
 
-const PRINTERS = [PRINTER.YOKO, PRINTER.YUMI];
+// A printer the colour map does not know yet (colours move to the profile in 2e step 4).
+const FALLBACK_COLORS = { bg: "#f0f0f0", color: "#616161" };
 
 const CustomOrderCard = ({ group, onGenerated, onRefresh, onRemove }) => {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -15,6 +17,13 @@ const CustomOrderCard = ({ group, onGenerated, onRefresh, onRemove }) => {
   const [isGenerated, setIsGenerated] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState(() => new Set());
+  const shopProfile = useStore((state) => state.shopProfile);
+  // Custom orders are polyester-only (the XML hardcodes the class): the profile's polyester
+  // printers, the same set customOrderHandlers.js accepts (ETAP 2e steps 2-3).
+  const printers = useMemo(
+    () => getPrinters(shopProfile).filter((p) => p.materialClass === "Polyesters").map((p) => p.code),
+    [shopProfile],
+  );
 
   // Default-select every file exactly once, the moment CSV parsing finishes
   // (isParsing true -> false). A later rescan (onRefresh) never flips isParsing
@@ -140,9 +149,9 @@ const CustomOrderCard = ({ group, onGenerated, onRefresh, onRemove }) => {
           </span>
         </div>
         <div className={styles.printer_toggles} onClick={(e) => e.stopPropagation()}>
-          {PRINTERS.map((p) => {
+          {printers.map((p) => {
             const isActive = selectedPrinter === p;
-            const colors = PRINTER_COLORS[p];
+            const colors = PRINTER_COLORS[p] ?? FALLBACK_COLORS;
             return (
               <button
                 key={p}

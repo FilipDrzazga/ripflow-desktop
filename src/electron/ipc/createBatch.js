@@ -4,9 +4,10 @@ import { PDFDocument } from "pdf-lib";
 import { createBatchIds } from "../helpers/createBatchIds.js";
 import { getStorageRootPath } from "../helpers/getRootPath.js";
 import { toIpcError } from "../helpers/ipcError.js";
+import { getWorkflowFolderName } from "./createXML.js";
 
-const LOCK_HEARTBEAT_MS = 10 * 1000;   // odświeżanie mtime locka w trakcie COPY
-const STALE_LOCK_MS = 90 * 1000;       // brak heartbeatu dłużej niż to = lock martwy
+const LOCK_HEARTBEAT_MS = 10 * 1000;   // refresh the lock's mtime during COPY
+const STALE_LOCK_MS = 90 * 1000;       // no heartbeat for longer than this = the lock is dead
 
 const STAGES = {
   INIT: "init",
@@ -163,6 +164,13 @@ export const createBatch = async (batch) => {
         title: "Invalid batch input",
       });
     }
+
+    // The printer must be routable BEFORE anything moves (S2 review of 2e step 2): createXML
+    // runs this same lookup after the move, where a refusal costs a full rollback. The
+    // renderer lists the profile's printers, but its copy can be stale (edited on another
+    // station), so the list is no proof. The SAME function, so the two checks cannot
+    // disagree. Throws ERR_INVALID_PRINTER at stage "validate".
+    getWorkflowFolderName(batch[0]?.printer);
 
     const PRINTED_ROOT_PATH = getPrintedRootPath();
     const batchIds = createBatchIds(batch);

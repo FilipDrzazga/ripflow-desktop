@@ -81,3 +81,43 @@ export const getScanRule = (profile, role) => {
     notifyWhenEmpty: rule.notifyWhenEmpty !== false,
   };
 };
+
+// The printers this shop can print on, as clean { code, materialClass } rows (ETAP 2e
+// step 3 - the renderer lists used to come from the PRINTER constant).
+//
+// A LIST, so [] and never null, like getSewingCompanies: [] means "no printer to offer",
+// and the print view says why (an unreadable profile vs. no printer for the class).
+// Shape-checked per row because the profile is a free-form blob: a row without a usable
+// code or class is dropped, not guessed. The code is upper-cased and must look like the
+// codes batch folders carry (letters and digits, src/shared/batchFolderName.js), so a
+// row the main process could never route or parse back is never offered. Order is the
+// profile's, first occurrence of a code wins.
+const PRINTER_CODE_RE = /^[A-Za-z0-9]+$/;
+export const getPrinters = (profile) => {
+  // null / undefined = the profile could not be read. We know nothing, so we offer nothing.
+  if (!profile) return [];
+  const list = profile.printers;
+  if (!Array.isArray(list)) return [];
+  const seen = new Set();
+  const out = [];
+  for (const p of list) {
+    if (!p || typeof p !== "object") continue;
+    const code = typeof p.code === "string" ? p.code.trim() : "";
+    const materialClass = typeof p.materialClass === "string" ? p.materialClass.trim() : "";
+    if (!PRINTER_CODE_RE.test(code) || materialClass === "") continue;
+    const upper = code.toUpperCase();
+    if (seen.has(upper)) continue;
+    seen.add(upper);
+    out.push({ code: upper, materialClass });
+  }
+  return out;
+};
+
+// The printer the print view pre-selects for a material class: the ONLY printer of that
+// class, or null when there are none or several (the operator chooses). For Alex's seed
+// that is exactly the old hardcoded rule - Cottons -> DGEN, Polyesters -> no default.
+export const defaultPrinterFor = (printers, materialClass) => {
+  if (!Array.isArray(printers) || typeof materialClass !== "string" || materialClass === "") return null;
+  const ofClass = printers.filter((p) => p?.materialClass === materialClass);
+  return ofClass.length === 1 ? ofClass[0].code : null;
+};
