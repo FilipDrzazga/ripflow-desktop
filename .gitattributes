@@ -1,0 +1,21 @@
+# Line endings belong to the repository, not to the machine (PRODUCTIZATION.md, approved by
+# FILIP 2026-09-21). Without this file core.autocrlf from the system gitconfig decided, and a
+# file rewritten with other line endings did not even show up in git status on this station.
+* text=auto eol=lf
+
+# Windows command scripts need CRLF to run reliably under cmd.exe
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Binary - never converted, never diffed as text
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.db binary
+*.zip binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
