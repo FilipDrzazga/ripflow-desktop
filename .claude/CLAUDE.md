@@ -88,7 +88,7 @@ storagePath:     O:\SPPrintReadyArtwork       (default)
 xmlPath:         \\192.168.0.17\Original_files\SPPrintReadyArtwork
 workstationName: os.hostname()               (set on first run)
 
-Derived paths:
+Derived paths (hotfolders = printers[].hotfolder in the shop profile; Alex's values):
   {storagePath}\AUTOMATION_WORKFLOW_COTTON\  ← DGEN
   {storagePath}\AUTOMATION_WORKFLOW_POLY\    ← YOKO/YUMI
   {storagePath}\PRINTED\DD-MM-YYYY\PRINTED_HHMMSS-GROUP-PRINTER\
@@ -162,7 +162,7 @@ A local sandbox does NOT reproduce SMB's blindness to other hosts' writes: `fs.w
 8. Load PDF via IPC `readFileBuffer` → base64 → Uint8Array → `pdfjsLib.getDocument({ data })` — NOT `file://`. That path lives in **`src/ui/utils/pdfRender.js`** and belongs there — call `renderPdfToJpeg` instead of re-implementing it (re-implementing also means re-setting `GlobalWorkerOptions.workerSrc`).
 9. `DataDaysCounter` was removed — age rendered inline in DataList; do not recreate
 10. **Never call `window.api` directly in components** — always import from `src/ui/services/`
-11. **Use constants from `src/shared/constants.js`** — never compare against raw strings. Covers: `BATCH_STATUS`, `FILE_STATUS`, `PRINTER`, `CUSTOM_ORDER_STATUS`, `PRODUCTION_STAGE`, `STAGE_NEXT`, `STAGE_PREV`, `STAGE_LABEL`, `STAGE_COLOR`, `QC_ACTION`, `SEWING_SUGGESTED_TYPES`
+11. **Use constants from `src/shared/constants.js`** — never compare against raw strings. Covers: `BATCH_STATUS`, `FILE_STATUS`, `CUSTOM_ORDER_STATUS`, `PRODUCTION_STAGE`, `STAGE_NEXT`, `STAGE_PREV`, `STAGE_LABEL`, `STAGE_COLOR`, `QC_ACTION`, `SEWING_SUGGESTED_TYPES`. Printer codes are NOT a constant: they are shop-profile data (`printers[]`, ETAP 2e) — read them through `getPrinterByCode` (main) or `getPrinters` / `getPrinterColor` (`utils/shopProfileData.js`), and the code of a batch through `printerOfBatch` (`src/shared/batchFolderName.js`).
 12. **All file IPC handlers** use `assertStorageFilePath` — prevents path traversal outside storagePath
 13. Vitest tests exist in `src/shared/` — run `npm run test` before shipping changes to `estimatePrintLength.js`
 14. **Custom Order CSV import**: `customOrder:importCSV` was removed — use `selectCSV()` (returns `files: [{name, content}]`) then `importCSVContent(content)`. Never pass file paths from renderer to main for reading.
