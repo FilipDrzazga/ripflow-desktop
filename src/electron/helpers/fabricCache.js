@@ -68,7 +68,8 @@ export const getAliasFromCache = (name) => {
 // class default (or with Alex's static per-material map). Both are gone. The flag was
 // computed in parseFileName.js from a hardcoded Set of Alex's polyester names, so an
 // unknown fabric got a width derived from another shop's catalogue, and the two paths
-// disagreed on five of his own 132 fabrics (see the BUG 4 section in CLAUDE.md).
+// disagreed on five of his own 132 fabrics (BUG 4 - see "Print Widths — Hardcoded vs
+// DB" in .claude/rules/print-xml.md).
 // The class also has ONE home now - fabrics.type - instead of being re-derived by the
 // caller from a list this module knew nothing about.
 export const getXmlWidthFromCache = (name) => {

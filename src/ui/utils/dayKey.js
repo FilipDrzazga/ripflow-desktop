@@ -11,8 +11,8 @@
 // key BatchHistory groups by, so both views agree on "the day".
 //
 // The renderer cannot import from src/electron, so DAY_FOLDER_RE mirrors the regex of
-// the same name in ipc/readPrintedFolder.js, and getDayLabel mirrors the Today/Yesterday
-// labelling buildDayGroup applies there.
+// the same name in ipc/readPrintedFolder.js, and getDayLabel mirrors getDayLabel there
+// (the Today/Yesterday labelling that buildDayGroup and the lazy skeletons call).
 
 const DAY_FOLDER_RE = /^\d{2}-\d{2}-\d{4}$/;
 
