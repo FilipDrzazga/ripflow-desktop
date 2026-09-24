@@ -330,7 +330,7 @@ export const useStore = create(
 
     // RIP errors (open only), keyed file_id → the file's MOST RECENT open row (a file can
     // hold several - see latestRipErrorPerFile). Populated by loadRipErrors, which triggers
-    // a main-process scan of AUTOMATION_WORKFLOW_ERROR/; App.jsx polls it every 30s, only
+    // a main-process scan of the profile's RIP-error folder (folders.ripError); App.jsx polls it every 30s, only
     // while the ripErrors feature is enabled.
     ripErrors: {},
     loadRipErrors: async () => {
