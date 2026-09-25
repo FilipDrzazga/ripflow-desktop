@@ -1045,9 +1045,15 @@ Kolejnosc jest wiec wymuszona i nie wolno jej odwrocic: import profilu -> oprozn
 `DEFAULT_PROFILE` -> grep kontrolny na trzy rodziny nazw.
 
 - [ ] `defaultFabrics.js`: usunac `COTTON_NAMES` / `POLY_NAMES`
+      **ZROBIONE W KODZIE 2026-09-25 (`6534b72`, 2g-1), czeka na bramke FILIPA** - obie
+      listy usuniete; `git grep` na nie w `src/` i `scripts/` daje zero trafien.
 - [ ] `getMaterialType.js`: statyczne listy nazw Alexa -> czytanie klas z `profile.materialClasses`
       (fallback zwraca "Unknown", nie liste Alexa)
 - [ ] `printWidths.js`: mapy `LM_ROLL_COTTON` / `LM_XML_COTTON` (per nazwa Alexa) -> profil
+      **ZROBIONE W KODZIE 2026-09-25, czeka na bramke FILIPA:** `LM_XML_COTTON` usuniete
+      w `6534b72` (2g-1), `LM_ROLL_COTTON` w `32f03bf` (2g-2: galaz zdegradowana bierze
+      szerokosc klasy, cztery tkaniny schodza do 1420). Obie nazwy zostaly tylko
+      w komentarzach historycznych. Zapis ponizej to stan sprzed ciecia.
       **ZAKRES ROZSTRZYGNIETY 2026-09-21 - patrz krok 6 w 2g.** Usuwamy MAPY, modul ZOSTAJE
       (cztery stale klasowe nie niosa nazw klienta). `LM_XML_COTTON` nie ma konsumenta;
       `LM_ROLL_COTTON` ma jednego - galaz zdegradowana `getRollWidth`, cztery tkaniny.
@@ -1095,6 +1101,11 @@ Kolejnosc jest wiec wymuszona i nie wolno jej odwrocic: import profilu -> oprozn
       `sewing`, gdzie brief zakladal, ze trzeba zabramkowac `QC_ACTION.SEWING` - nie bylo
       czego. Nalezy do sprzatania katalogu, NIE do 2c-bis; usuwac razem z `REJECTED` /
       `OVERRIDDEN`, po sprawdzeniu, czy stare wiersze w bazie tego nie czytaja
+      **CZESCIOWO 2026-09-25 (`1b9adc8`, 2h-1):** `QC_ACTION` usuniete (zero trafien
+      w `src/`, `scripts/`, `.claude/`). `REJECTED` / `OVERRIDDEN` ZOSTALY - `production.md`
+      trzyma je dla starych wierszy. Pomiar na kopii bazy 2026-09-25 (db-peek, readonly):
+      654 wiersze `file_stages`, ZERO ze stage `rejected` / `overridden`. Decyzja o ich
+      usunieciu OTWARTA - baza jest wspolna, wiec pomiar trzeba powtorzyc tuz przed.
 - [ ] Grep kontrolny: zero `if (clientId === "...")` w logice, zero zaszytych adresow,
       zero literalu "Fashion Formula" (audyt: byl jeden; osobno `"fashionformulauk"`
       wyzej - inny string, wiec grep na "Fashion Formula" go NIE lapie).
