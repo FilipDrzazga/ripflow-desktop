@@ -2,33 +2,40 @@ import React, { useEffect, useState, useMemo } from "react";
 import { LuPencil, LuTrash2, LuPlus } from "react-icons/lu";
 import { useStore } from "@/store/useStore";
 import {
-  getFabricGlobals,
   setFabricGlobals as setFabricGlobalsApi,
   getFabrics,
   saveFabric as saveFabricApi,
   deleteFabric as deleteFabricApi,
 } from "../../../services/fabricService";
+import { getShopProfile, setShopProfile } from "../../../services/profileService";
 import { showConfirm } from "../../../services/systemService";
 import { notify } from "@/utils/notify";
+import { saveClassNumbers } from "@/utils/saveClassNumbers";
+import { PROFILE_STATUS } from "@/utils/profileStatus";
+import { classGlobalsFromProfile } from "../../../../shared/classGlobals";
+import { MARGIN_COTTON, MARGIN_POLY, LM_ROLL_COTTON_DEFAULT, LM_ROLL_POLY } from "../../../../shared/printWidths";
 import styles from "./FabricsView.module.css";
 
+// The class numbers (ETAP 2g-3c): owned by the shop profile's materialClasses, edited here.
+// The two "XML Width Cotton/Poly" fields are gone - no reader since 0bf8aa6, the editor lied.
+// Grid order: the grid has two columns, so Cotton sits left and Poly right on each row.
 const GLOBAL_FIELDS_GROUPED = [
   { key: "marginCotton", label: "Margin Cotton", unit: "mm" },
   { key: "marginPoly", label: "Margin Poly", unit: "mm" },
-  { key: "defaultXmlWidthCotton", label: "XML Width Cotton", unit: "mm" },
-  { key: "defaultXmlWidthPoly", label: "XML Width Poly", unit: "mm" },
   { key: "defaultRollWidthCotton", label: "Roll Width Cotton", unit: "mm" },
   { key: "defaultRollWidthPoly", label: "Roll Width Poly", unit: "mm" },
 ];
 
-const DEFAULT_GLOBALS = {
-  marginCotton: 10,
-  marginPoly: 5,
-  defaultXmlWidthCotton: 1420,
-  defaultXmlWidthPoly: 1420,
-  defaultRollWidthCotton: 1420,
-  defaultRollWidthPoly: 1550,
+// What the estimator uses for a number the profile does not carry - shown, so the field says
+// what is in effect rather than a blank.
+const CLASS_CONSTANTS = {
+  marginCotton: MARGIN_COTTON,
+  marginPoly: MARGIN_POLY,
+  defaultRollWidthCotton: LM_ROLL_COTTON_DEFAULT,
+  defaultRollWidthPoly: LM_ROLL_POLY,
 };
+
+const valuesFromProfile = (profile) => ({ ...CLASS_CONSTANTS, ...classGlobalsFromProfile(profile) });
 
 const DEFAULT_NEW_FABRIC = {
   name: "",
@@ -50,37 +57,49 @@ const FLAG_DEFS = [
 // ── Global Params Card ───────────────────────────────────────────────────────
 
 const GlobalParamsCard = () => {
-  const loadFabricConfig = useStore((s) => s.loadFabricConfig);
-  const [values, setValues] = useState(DEFAULT_GLOBALS);
-  const [initialValues, setInitialValues] = useState(DEFAULT_GLOBALS);
+  const shopProfile = useStore((s) => s.shopProfile);
+  const shopProfileStatus = useStore((s) => s.shopProfileStatus);
+  const loadShopProfile = useStore((s) => s.loadShopProfile);
+  const profileFailed = shopProfileStatus === PROFILE_STATUS.FAILED;
+  // The form follows the stored profile: filled when it loads, refilled after every save
+  // (loadShopProfile). Adjusting state during render instead of an effect -
+  // react-hooks/set-state-in-effect.
+  const [loadedFrom, setLoadedFrom] = useState(shopProfile);
+  const [values, setValues] = useState(() => valuesFromProfile(shopProfile));
+  if (loadedFrom !== shopProfile) {
+    setLoadedFrom(shopProfile);
+    setValues(valuesFromProfile(shopProfile));
+  }
+  const initialValues = valuesFromProfile(shopProfile);
+  // The profile was saved but the fabric_globals copy was not: the form then matches the
+  // profile, and Save must stay available to retry the copy.
+  const [legacyPending, setLegacyPending] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-
-  useEffect(() => {
-    getFabricGlobals().then((res) => {
-      if (res?.success && res.data) {
-        const loaded = { ...DEFAULT_GLOBALS, ...res.data };
-        setValues(loaded);
-        setInitialValues(loaded);
-      }
-    });
-  }, []);
 
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      const parsed = {};
-      for (const { key } of GLOBAL_FIELDS_GROUPED) parsed[key] = Number(values[key]) || 0;
-      const res = await setFabricGlobalsApi(parsed);
-      if (res?.success) {
-        setInitialValues(parsed);
-        await loadFabricConfig();
-        notify({ type: "Success", title: "Saved", message: "Global fabric parameters updated." });
-      } else {
+      const { outcome, error } = await saveClassNumbers(values, {
+        getProfile: getShopProfile,
+        setProfile: setShopProfile,
+        setLegacyGlobals: setFabricGlobalsApi,
+      });
+      // Reload whatever happened after a write was attempted: main reloads its cache from the
+      // DB after profile:set, so the store and the estimates show what the DB holds now.
+      if (outcome !== "no-profile" && outcome !== "missing-class") await loadShopProfile();
+      setLegacyPending(outcome === "legacy-failed");
+      if (outcome === "saved") {
+        notify({ type: "Success", title: "Saved", message: "Material class numbers updated." });
+      } else if (outcome === "legacy-failed") {
         notify({
           type: "Error",
-          title: "Save failed",
-          message: res?.error || "Could not save — check the database connection.",
+          title: "Saved only in part",
+          message: `The shop profile was saved, but the copy read by stations on older versions was not (${error}). Press Save again.`,
         });
+      } else if (outcome === "profile-failed") {
+        notify({ type: "Error", title: "Save failed", message: `${error} The form now shows what the database holds.` });
+      } else {
+        notify({ type: "Error", title: "Save failed", message: `${error} Nothing was changed.` });
       }
     } finally {
       setIsSaving(false);
@@ -92,13 +111,16 @@ const GlobalParamsCard = () => {
     return !v || v <= 0;
   });
 
-  const isUnchanged = GLOBAL_FIELDS_GROUPED.every(({ key }) => Number(values[key]) === Number(initialValues[key]));
+  const isUnchanged =
+    !legacyPending && GLOBAL_FIELDS_GROUPED.every(({ key }) => Number(values[key]) === Number(initialValues[key]));
 
   return (
     <div className={`${styles.card} ${styles.card_globals}`}>
       <div className={styles.card_header}>
         <p className={styles.card_title}>Global Parameters</p>
-        <p className={styles.card_desc}>Default margins and widths — used when no per-material value is set.</p>
+        <p className={styles.card_desc}>
+          Margins and roll widths per material class — the roll width is used when a material has none set.
+        </p>
       </div>
       <div className={styles.globals_body}>
         {GLOBAL_FIELDS_GROUPED.map(({ key, label, unit }) => {
@@ -121,8 +143,15 @@ const GlobalParamsCard = () => {
         })}
       </div>
       <div className={styles.globals_footer}>
+        {profileFailed && (
+          <p className={styles.globals_error_msg}>The shop profile could not be read — these numbers cannot be saved.</p>
+        )}
         {hasInvalid && <p className={styles.globals_error_msg}>All values must be greater than 0.</p>}
-        <button className={styles.save_btn} onClick={handleSave} disabled={isSaving || hasInvalid || isUnchanged}>
+        <button
+          className={styles.save_btn}
+          onClick={handleSave}
+          disabled={isSaving || hasInvalid || isUnchanged || !shopProfile}
+        >
           {isSaving ? "Saving…" : "Save"}
         </button>
       </div>

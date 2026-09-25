@@ -51,8 +51,6 @@ getFabricTypeFromCache(name); // → "Cottons" | "Polyesters" | "Unknown" | null
 getXmlWidthFromCache(name); // → fabric.xmlWidth | null — no class default, see below
 getAliasFromCache(name); // → short path-safe alias | null (null = no/unusable alias or cache not loaded)
 getCachedFabrics(); // → fabric[]
-getCachedGlobals(); // → { marginCotton, marginPoly, defaultRollWidthCotton, defaultRollWidthPoly, defaultXmlWidth* }
-//   the two defaultXmlWidth* keys are DEAD — stored, editable, read by nobody
 getEstimateConfig(); // → { globals, fabrics } | null (null = cache not loaded — NEVER { fabrics: [] })
 ```
 
@@ -140,8 +138,17 @@ A Settings edit reaching the XML is therefore **intended**.
   `src/shared/classGlobals.js`. `globals` = the four class keys the estimator reads, from
   `profile.materialClasses` (`classGlobalsFromProfile`; no profile or no valid number -> the key is
   absent and the estimator uses the class constant). `fabric_globals` is no longer READ for estimates
-  (it is still written by FabricsView until 2g-3c - the pilot's dual write, variant A). The store
-  rebuilds `fabricConfig` when EITHER the catalogue or the profile finishes loading.
+  (FabricsView still writes it - the pilot's dual write, variant A, see "Class numbers editor"
+  below). The store rebuilds `fabricConfig` when EITHER the catalogue or the profile finishes
+  loading - in `loadShopProfile` in the SAME `set()` as the profile, a failed reload included.
+- **Class numbers editor (ETAP 2g-3c)**: Settings -> Fabrics "Global Parameters" shows and saves the
+  four numbers of the profile (a number the profile lacks shows the class constant).
+  `saveClassNumbers` (`src/ui/utils/`) writes `profile:set` FIRST (the profile via
+  `withClassNumbers`, patched from `profile:get`), then the same four keys to `fabricGlobals:set`
+  for older stations. Profile unreadable / a class missing / `profile:set` failed -> nothing else
+  is written; the second write failed -> "Saved only in part", visible, Save stays enabled for a
+  retry. The dead "XML Width Cotton/Poly" fields are gone from the editor (the keys stay in
+  `fabric_globals`, untouched).
 
 **`getEstimateConfig()` returns `null`, never `{ fabrics: [] }`, when the cache is not loaded.** An
 empty array is truthy, so the estimator would take its DB branch with an empty catalog and silently

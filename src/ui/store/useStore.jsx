@@ -10,6 +10,11 @@ import { getRollbackReasonsForFiles as getRollbackReasonsForFilesApi } from "../
 import { getRollbackDefinitions as getRollbackDefinitionsApi } from "../services/reasonDefsService";
 import { getFabrics as getFabricsApi } from "../services/fabricService";
 import { estimateConfigFrom } from "../../shared/classGlobals";
+
+// The class numbers of an already loaded catalogue follow the profile (ETAP 2g-3b) - also to
+// null, like getEstimateConfig in main. No catalogue yet -> no field: fabricConfig stays null.
+const fabricConfigFor = (state, profile) =>
+  state.fabricConfig ? { fabricConfig: estimateConfigFrom(state.fabricConfig.fabrics, profile) } : {};
 import { getShopProfile as getShopProfileApi } from "../services/profileService";
 import { PROFILE_STATUS, resolveProfileResult } from "../utils/profileStatus";
 import { latestRipErrorPerFile } from "../utils/ripErrorsByFile";
@@ -219,18 +224,16 @@ export const useStore = create(
     loadShopProfile: async () => {
       try {
         const res = await getShopProfileApi();
-        // One set() for both fields: a render that saw a loaded status next to a null
-        // profile (or the reverse) would be reading a state that never really existed.
+        // One set() for all three fields: a render that saw a loaded status next to a null
+        // profile (or the reverse), or a new profile next to the old class numbers, would be
+        // reading a state that never really existed.
         const { status, profile } = resolveProfileResult(res);
-        set({ shopProfile: profile, shopProfileStatus: status });
-        // the class numbers of an already loaded catalogue follow the profile (ETAP 2g-3b)
-        const fabricConfig = get().fabricConfig;
-        if (fabricConfig) set({ fabricConfig: estimateConfigFrom(fabricConfig.fabrics, profile) });
+        set({ shopProfile: profile, shopProfileStatus: status, ...fabricConfigFor(get(), profile) });
       } catch (err) {
         // withTimeout REJECTS on the 5s profile:get deadline, so a hung main process
         // arrives here rather than in resolveProfileResult. Same failed pair either way.
         console.error("[store] loadShopProfile failed:", err);
-        set({ shopProfile: null, shopProfileStatus: PROFILE_STATUS.FAILED });
+        set({ shopProfile: null, shopProfileStatus: PROFILE_STATUS.FAILED, ...fabricConfigFor(get(), null) });
       }
     },
     productionStages: {},

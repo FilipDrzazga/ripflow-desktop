@@ -99,8 +99,11 @@ and the next start tries again. Since 2g-3b the estimator READS the class number
 profile (`estimateConfigFrom`, `src/shared/classGlobals.js`, main and renderer alike).
 Pilot with two versions on one DB (variant A, FILIP 2026-09-25): an older build meeting v3
 refuses to migrate and keeps reading the row; it still reads the class numbers from
-`fabric_globals`, so until every station runs the new version FabricsView writes BOTH (2g-3c),
-and nobody edits class numbers on an old station. The dual write goes once all stations are
+`fabric_globals`, so until every station runs the new version FabricsView writes BOTH (2g-3c,
+`saveClassNumbers`: profile first, see "Who supplies the config" in print-xml.md), and nobody
+edits class numbers on an old station. FabricsView is the first renderer caller of
+`profile:set`; it replaces the WHOLE row, so it patches what `profile:get` returns (the main
+process cache, reloaded after every `profile:set`), never the store's copy. The dual write goes once all stations are
 upgraded (PRODUCTIZATION).
 
 **`printers[]` consumers in main (ETAP 2e step 2):** `createXML.js` routes a job to
