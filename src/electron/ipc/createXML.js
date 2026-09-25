@@ -41,19 +41,46 @@ const normalizeBatchId = (createdBatchId) => {
   return "";
 };
 
-const getFabricFlag = (item, flagKey, fallbackKeyword) => {
-  const fabric = getFabricByName((item.material ?? "").trim());
-  if (fabric) return !!fabric[flagKey];
-  // Fallback to string matching when material not in DB
+// The velvet / linen / blossom flags come from the fabric's catalogue row and from nowhere
+// else. A fabric with no row gets false for all three (ETAP 2h-2, FILIP 2026-09-25).
+//
+// There used to be a fallback here: the flag was guessed from the words "velvet", "linen"
+// or "blossom" in the material name or in the FILE name. That is the same kind of guess
+// 0bf8aa6 removed from the material class - it matches this shop's naming, not another
+// shop's, and a file name is free text.
+//
+// When the row can be missing at all, measured rather than assumed: the two guards in
+// buildPFJobXML refuse a fabric outside the catalogue (its width and class come from the
+// same catalogue), so the branch is reached only with a STALE item - the inbox read the
+// file while the fabric was in the catalogue, and the fabric was deleted or renamed
+// before submit. On the 2026-09-25 backup all 79 distinct materials in file_stages are in
+// the catalogue. Regeneration re-reads the class fresh, so it is refused instead.
+//
+// "false" is written, but not silently: submitBatchToPrintFactory adds a warning that
+// names the fabric (uncataloguedFabricWarning), which the submit shows to the operator.
+const getFabricFlag = (item, flagKey) => !!getFabricByName((item.material ?? "").trim())?.[flagKey];
+
+const isVelvet = (item) => getFabricFlag(item, "isVelvet");
+const isLinen = (item) => getFabricFlag(item, "isLinen");
+const isBlossom = (item) => getFabricFlag(item, "isBlossom");
+
+// The warning for the case above, or null when every fabric of the batch has a row.
+// Names each fabric once, in the order the batch first mentions it.
+export const uncataloguedFabricWarning = (batch) => {
+  const missing = [
+    ...new Set(
+      (batch ?? [])
+        .map((item) => (typeof item?.material === "string" ? item.material.trim() : ""))
+        .filter((material) => getFabricByName(material) === null),
+    ),
+  ];
+  if (missing.length === 0) return null;
+  const names = missing.map((m) => (m ? `"${m}"` : "an unnamed fabric")).join(", ");
   return (
-    item.material?.toLowerCase().includes(fallbackKeyword) ||
-    item.file?.name?.toLowerCase().includes(fallbackKeyword)
+    `Not in the fabric catalogue: ${names}. Velvet, Linen and Blossom were sent to the printer as "No" for ${missing.length === 1 ? "it" : "them"}. ` +
+    "If that is wrong, add the fabric back in Settings > Fabrics and regenerate the XML from Batch History."
   );
 };
-
-const isVelvet = (item) => getFabricFlag(item, "isVelvet", "velvet");
-const isLinen = (item) => getFabricFlag(item, "isLinen", "linen");
-const isBlossom = (item) => getFabricFlag(item, "isBlossom", "blossom");
 
 // Which hotfolder a printer's job goes to is shop-profile DATA (printers[].hotfolder) since
 // ETAP 2e step 2 - it used to be an if-chain over DGEN / YOKO / YUMI here.
@@ -377,6 +404,9 @@ export async function submitBatchToPrintFactory(batch, createdBatchId, batchFold
 
     result.success = true;
     result.finalXmlPath = finalXmlPath;
+
+    const flagWarning = uncataloguedFabricWarning(batch);
+    if (flagWarning) result.warnings.push(flagWarning);
 
     if (typeof batchFolderPath === "string" && batchFolderPath.trim() !== "") {
       const localTempXmlPath = path.join(batchFolderPath, `${xmlFileName}.tmp`);

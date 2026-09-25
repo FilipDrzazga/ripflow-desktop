@@ -101,7 +101,14 @@ passes `customOrderFolderPath` (settings) and `nestingId` (randomUUID) in.
 | Per-material XML width           | `fabrics.xml_width`                       | **none — `null`, and the job is refused**          |
 | Per-material roll width          | `fabrics.roll_width`                      | the class width above (map removed in 2g-2)        |
 | Material type routing            | `fabrics.type`                            | **none — `"Unknown"`, and the job is refused**     |
-| XML flags (velvet/linen/blossom) | `fabrics.is_velvet/is_linen/is_blossom`   | string-contains fallback                           |
+| XML flags (velvet/linen/blossom) | `fabrics.is_velvet/is_linen/is_blossom`   | **none — `false`, and the submit warns** (2h-2)    |
+
+**XML flags have no guess.** Before 2h-2 a fabric with no catalogue row got its flag from the
+words `velvet` / `linen` / `blossom` in the material or the FILE name. Now it gets `false` for all
+three, and `submitBatchToPrintFactory` adds `uncataloguedFabricWarning(batch)` to `warnings`
+(shown as "Batch printed with warnings"). The branch is reachable only with a STALE inbox item
+(fabric deleted or renamed after the inbox read): the width and class guards refuse a fresh one.
+Pinned by `fabricFlagSource.test.js`. Do not add the string match back.
 
 **`<MaterialType>` cannot leave as `Unknown`** — `assertKnownMaterialClass` in
 `createXML.js` refuses the job at the source, beside `assertPrintableDimensions` and
