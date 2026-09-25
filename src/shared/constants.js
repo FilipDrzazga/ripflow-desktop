@@ -78,11 +78,4 @@ export const STAGE_COLOR = {
   overridden:  { bg: "#f1f1f1", color: "#909090" },
 };
 
-export const QC_ACTION = {
-  PASS:    "pass",
-  REJECT:  "reject",
-  SEWING:  "sewing",
-  PENDING: "pending",
-};
-
 export const SEWING_SUGGESTED_TYPES = ["CUSHION", "TEA_TOWEL"];
