@@ -1,5 +1,6 @@
 import {
   getShopProfileRaw,
+  getFabricGlobalsRaw,
   migrateShopProfileRow,
   dumpShopProfileBlob,
   signalStartupProblem,
@@ -49,8 +50,22 @@ export const runShopProfileMigration = async () => {
     return;
   }
 
-  const { profile, changed, applied, skipped } = migrateShopProfile(parsed);
+  // v2 -> v3 moves the class numbers from THIS shop's fabric_globals into the profile
+  // (ETAP 2g-3a). Read at migration time, raw - no seed filled in; any failure is null, and
+  // null BLOCKS that step (the row stays at v2) instead of migrating on default numbers.
+  let fabricGlobals = null;
+  try {
+    fabricGlobals = getFabricGlobalsRaw();
+  } catch (err) {
+    console.error("[profile-migration] could not read fabric_globals:", err);
+    fabricGlobals = null;
+  }
+
+  const { profile, changed, applied, skipped, blocked } = migrateShopProfile(parsed, { fabricGlobals });
   for (const note of skipped) console.warn("[profile-migration] skipped:", note);
+  // not an error: the row stays at the last version that could be reached, and the next
+  // start tries again - but it must be visible, the class numbers did NOT move
+  if (blocked) console.warn("[profile-migration] stopped before the next version:", blocked);
   // The steady state from the second run onwards: nothing written, nothing dumped, and
   // the asynchronous path below is never entered.
   if (!changed) return;

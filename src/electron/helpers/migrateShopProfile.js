@@ -14,7 +14,7 @@
 //
 // It deliberately does NOT read DEFAULT_PROFILE. See SCAN_RULES_2F below.
 
-export const PROFILE_SCHEMA_VERSION = 2;
+export const PROFILE_SCHEMA_VERSION = 3;
 
 // FROZEN COPY of the four scan rules as DEFAULT_PROFILE carried them at 2f. Do NOT
 // re-point this at DEFAULT_PROFILE, however tempting the duplication looks:
@@ -73,15 +73,75 @@ const stepToV2 = (profile) => {
   return { profile: out, applied, skipped };
 };
 
+// v2 -> v3 (ETAP 2g-3a, FILIP 2026-09-25 09:31, design chat/artefakty/2g-3/projekt.md):
+// profile.materialClasses[] becomes the owner of the class NUMBERS, which until now lived in
+// fabric_globals under keys that carry the class name. The numbers come from THIS shop's
+// fabric_globals, passed in by the caller - never from DEFAULT_PROFILE or the fabric seed:
+// a migration that fills in Alex's numbers where it could not read the shop's own would write
+// another shop's data into the shared profile for good (bc68fbe, 0bf8aa6, the same shape).
+//
+// FROZEN like SCAN_RULES_2F: the key names as fabric_globals had them at 2g. A third class has
+// no key there, so it keeps whatever it has. defaultXmlWidth is dropped: dead since 0bf8aa6 -
+// nothing reads a class XML width (PRODUCTIZATION step 5: it must not become a dead profile
+// field, rule 24).
+const CLASS_GLOBAL_KEYS_2G = {
+  Cottons: { margin: "marginCotton", defaultRollWidth: "defaultRollWidthCotton" },
+  Polyesters: { margin: "marginPoly", defaultRollWidth: "defaultRollWidthPoly" },
+};
+
+const stepToV3 = (profile, { fabricGlobals } = {}) => {
+  // Unreadable fabric_globals = we do not know this shop's numbers. The step is BLOCKED: the
+  // row stays at v2 and the next start tries again (S2 2026-09-25 09:33).
+  if (!isPlainObject(fabricGlobals)) {
+    return { blocked: "fabric_globals could not be read - class numbers not moved, the row stays at v2" };
+  }
+  const out = { ...profile };
+  const applied = [];
+  const skipped = [];
+  if (!Array.isArray(out.materialClasses)) {
+    skipped.push("materialClasses missing - no class to move numbers into");
+    return { profile: out, applied, skipped };
+  }
+  out.materialClasses = out.materialClasses.map((cls) => {
+    if (!isPlainObject(cls)) return cls;
+    const next = { ...cls };
+    if (has(next, "defaultXmlWidth")) {
+      delete next.defaultXmlWidth;
+      applied.push(`${cls.name}: drop defaultXmlWidth (dead)`);
+    }
+    const keys = CLASS_GLOBAL_KEYS_2G[cls.name];
+    if (!keys) {
+      skipped.push(`${cls.name}: no counterpart in fabric_globals - numbers left as they are`);
+      return next;
+    }
+    for (const [field, key] of Object.entries(keys)) {
+      const value = Number(fabricGlobals[key]);
+      if (has(fabricGlobals, key) && fabricGlobals[key] !== null && Number.isFinite(value)) {
+        next[field] = value;
+        applied.push(`${cls.name}.${field} = ${value} (fabric_globals.${key})`);
+      } else {
+        skipped.push(`${cls.name}.${field}: fabric_globals.${key} missing or not a number - left as it is`);
+      }
+    }
+    return next;
+  });
+  return { profile: out, applied, skipped };
+};
+
 // Ordered by the version each step takes the row TO.
-const STEPS = [{ to: 2, apply: stepToV2 }];
+const STEPS = [
+  { to: 2, apply: stepToV2 },
+  { to: 3, apply: stepToV3 },
+];
 
 // row -> { profile, changed, applied, skipped }
 //
 // changed === false means "write nothing at all": no dump, no backup, no UPDATE. That is
 // the steady state from the second run onwards, and it is what keeps this idempotent
 // without a separate "already done" marker - schemaVersion IS the marker.
-export const migrateShopProfile = (row) => {
+// context: what a step needs from outside the row. { fabricGlobals } - the raw
+// fabric_globals rows (db.getFabricGlobalsRaw), null when unreadable - for v2 -> v3.
+export const migrateShopProfile = (row, context = {}) => {
   if (!isPlainObject(row)) {
     return {
       profile: null,
@@ -115,10 +175,19 @@ export const migrateShopProfile = (row) => {
   let version = from;
   const applied = [];
   const skipped = [];
+  let blocked = null;
 
   for (const step of STEPS) {
     if (step.to <= version) continue;
-    const result = step.apply(current);
+    const result = step.apply(current, context);
+    // A BLOCKED step stops the chain before its bump: the row keeps the version of the last
+    // step that did run (2g-3a - unreadable fabric_globals keep a v1/v2 row at v2). The reason
+    // goes to its own field, not to `skipped`: skipped notes one operation inside a step that
+    // ran, blocked says the chain stopped - the caller logs and reports them differently.
+    if (result.blocked) {
+      blocked = result.blocked;
+      break;
+    }
     current = result.profile;
     applied.push(...result.applied);
     skipped.push(...result.skipped);
@@ -129,5 +198,5 @@ export const migrateShopProfile = (row) => {
     version = step.to;
   }
 
-  return { profile: current, changed: applied.length > 0, applied, skipped };
+  return { profile: current, changed: applied.length > 0, applied, skipped, blocked };
 };

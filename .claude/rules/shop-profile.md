@@ -87,6 +87,17 @@ worse than admitting ignorance.
 style: the profile carries the material classes and hotfolder names the fabric layer will
 read once those consumers land (ETAP 2), so it has to be in memory first.
 
+**Schema migration (`migrateShopProfile.js` + `runShopProfileMigration.js`).** `schemaVersion`
+IS the marker; a pure function per step, frozen data (`SCAN_RULES_2F`, `CLASS_GLOBAL_KEYS_2G`),
+compare-and-swap write on the raw row text (`migrateShopProfileRow`), a newer row is refused
+and left alone (an older build keeps reading it). **v2 -> v3 (ETAP 2g-3a):** the class numbers
+(`margin`, `defaultRollWidth` of Cottons / Polyesters) move into `materialClasses` FROM this
+shop's `fabric_globals`, read raw at migration time (`db.getFabricGlobalsRaw`, `null` on any
+failure) - never from `DEFAULT_PROFILE` or the fabric seed; the dead `defaultXmlWidth` is
+dropped. Unreadable `fabric_globals` BLOCKS the step (`blocked`, logged): the row stays at v2
+and the next start tries again. Until 2g-3b the READERS still use `fabric_globals`; the
+two-version plan for the pilot is `chat/artefakty/2g-3/projekt.md` (variant A, FILIP 2026-09-25).
+
 **`printers[]` consumers in main (ETAP 2e step 2):** `createXML.js` routes a job to
 `printers[].hotfolder` through `setPrinterResolver(getPrinterByCode)`, wired right after
 `loadShopProfile()` — injected, because `createXML.js` must stay importable without `db.js`

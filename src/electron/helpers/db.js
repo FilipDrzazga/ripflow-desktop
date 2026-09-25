@@ -768,6 +768,24 @@ export const getFabricGlobals = () => {
   }
 };
 
+// The raw rows of fabric_globals, WITHOUT the seed filled in: { key: value } for what the
+// table actually holds, or null when it could not be read (no DB, or the SELECT threw).
+// For the profile migration v2 -> v3 (ETAP 2g-3a), which must move THIS shop's numbers
+// into the profile and must never mistake the seed for them - getFabricGlobals above
+// silently substitutes DEFAULT_FABRIC_GLOBALS on a failure, which is right for a reader
+// and wrong for a migration that writes the result into the shared profile for good.
+export const getFabricGlobalsRaw = () => {
+  if (!db) return null;
+  try {
+    const result = {};
+    for (const row of db.prepare("SELECT key, value FROM fabric_globals").all()) result[row.key] = row.value;
+    return result;
+  } catch (err) {
+    console.error("[db] getFabricGlobalsRaw failed:", err);
+    return null;
+  }
+};
+
 export const setFabricGlobals = (globals) => {
   if (!db) return false;
   try {

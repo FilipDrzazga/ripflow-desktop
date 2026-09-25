@@ -125,9 +125,9 @@ describe("migrateShopProfile - when nothing may be written", () => {
   });
 
   it("refuses a row written by a newer build", () => {
-    const { profile, changed, skipped } = migrateShopProfile({ schemaVersion: 3, whatever: true });
+    const { profile, changed, skipped } = migrateShopProfile({ schemaVersion: PROFILE_SCHEMA_VERSION + 1, whatever: true });
     expect(changed).toBe(false);
-    expect(profile).toEqual({ schemaVersion: 3, whatever: true });
+    expect(profile).toEqual({ schemaVersion: PROFILE_SCHEMA_VERSION + 1, whatever: true });
     expect(skipped[0]).toMatch(/newer than this build/);
   });
 

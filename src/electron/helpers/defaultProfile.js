@@ -3,10 +3,11 @@
 // margins, roles, sewing companies, Shopify handle). Seeded into shop_profile on first
 // run and kept here as the in-memory fallback when the row cannot be read.
 export const DEFAULT_PROFILE = {
-  // Bumped to 2 with the v1 -> v2 migration (helpers/migrateShopProfile.js). A freshly
-  // seeded row must carry the version whose SHAPE it has, or the migration would treat
-  // every new install as one step behind and write a row it had nothing to change.
-  schemaVersion: 2,
+  // Bumped with each migration step (helpers/migrateShopProfile.js): 2 at v1 -> v2, 3 at
+  // v2 -> v3 (ETAP 2g-3a, class numbers owned by materialClasses). A freshly seeded row must
+  // carry the version whose SHAPE it has, or the migration would treat every new install as
+  // one step behind and write a row it had nothing to change.
+  schemaVersion: 3,
   printers: [
     {
       code: "DGEN",
@@ -28,8 +29,10 @@ export const DEFAULT_PROFILE = {
     },
   ],
   materialClasses: [
-    { name: "Cottons", margin: 10, defaultXmlWidth: 1420, defaultRollWidth: 1420 },
-    { name: "Polyesters", margin: 5, defaultXmlWidth: 1420, defaultRollWidth: 1550 },
+    // margin + defaultRollWidth are the class numbers (owner since v3, ETAP 2g-3a); no
+    // defaultXmlWidth - no reader since 0bf8aa6, a dead field would break rule 24.
+    { name: "Cottons", margin: 10, defaultRollWidth: 1420 },
+    { name: "Polyesters", margin: 5, defaultRollWidth: 1550 },
   ],
   productTypes: [
     { code: "SAMPLE", width: 220, height: 200 },
