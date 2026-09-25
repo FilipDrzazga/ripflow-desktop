@@ -1,5 +1,17 @@
 [
   {
+    "version": "1.0.24",
+    "date": "2026-09-25",
+    "changes": [
+      {
+        "text": "Behind-the-scenes work so RipFlow can be set up for other print shops: the printers, their colours and the network folders it writes to now come from this shop's configuration instead of being built into the app. Nothing changes in your daily work - the same printers and the same folders as before",
+        "clients": [
+          "all"
+        ]
+      }
+    ]
+  },
+  {
     "version": "1.0.23",
     "date": "2026-09-24",
     "changes": [
