@@ -527,7 +527,19 @@ Pozycje zostaja w tej liscie w kolejnosci alfabetycznej, bo tak sa opisane w cal
 pliku i przenumerowanie ich rozjechaloby kazde odwolanie - kolejnosc PRACY jest tutaj,
 a nie w porzadku wierszy.
 
-- [ ] **2d - Nazwy hotfolderow** do profilu (`createXML.js`, `customOrderHandlers.js`, `getRootPath.js`)
+- [x] **2d - Nazwy hotfolderow** do profilu (`createXML.js`, `customOrderHandlers.js`, `getRootPath.js`)
+  - **ZROBIONE 2026-09-24/25 (plan NOC), bramka potwierdzona przez FILIPA ("gate passed",
+    2026-09-25 07:30).** XML batchy szedl z `printers[].hotfolder` juz od 2e (`718a199`);
+    2d domknelo reszte w czterech krokach, kazdy zatwierdzony przez S2:
+    `3f59374` siatka pod XML custom order (builder w czystym `helpers/customOrderXml.js`,
+    pelny oczekiwany tekst w tescie - zamyka dziure (b)), `c85018d` `getFolder(name)` +
+    jedna walidacja nazwy (`src/shared/folderName.js`), `0dc5a06` (+ docs `890558f`,
+    `680c637`) folder bledow RIP z `folders.ripError` (bez nazwy: skan pominiety, badge
+    zostaja), `e78c839` folder custom order z `folders.customOrder` (bez nazwy: widoczna
+    odmowa `CUSTOM_ORDER_FOLDER_MISSING` przed zapisem). Bramka: 515 testow, golden 0/70,
+    zero zmian w istniejacych testach, mutacje 6+6+5+5. Dowody: `chat/artefakty/2d-1/`
+    ... `2d-4/`. Swiadomie POZA 2d: `folders.printed` - "PRINTED" siedzi w zapisanych
+    `batch_path` (regula 22), zmiana nazwy odcina historie (P19).
   - DRUGI w kolejnosci. Zawiera `customOrderHandlers.js`, czyli plik objety dziura (b)
     w bramce Etapu 2 (brak baseline'u dla XML zamowien custom) - to jest samodzielny
     powod, zeby nie zaczynac od niego.
@@ -1333,7 +1345,12 @@ Baza pozostaje jedynym zywym zrodlem prawdy; JSON to tylko transport na wdrozeni
       (bez zawartosci plikow), wynik testu dostepu do hotfolderow. Bez telemetrii
 - [ ] **Kreator pierwszego uruchomienia** (sciezki -> import profilu -> test zapisu do hotfoldera)
 - [ ] `changelog.json` - uzywac pola `clients` per wpis zamiast "all"
-- [ ] Konce linii zaleza od MASZYNY, nie od repo. Nie ma `.gitattributes`, a
+- [x] Konce linii zaleza od MASZYNY, nie od repo. Nie ma `.gitattributes`, a
+      **ZROBIONE `8cd2fd6` (2026-09-24, plan NOC), bramka potwierdzona przez FILIPA
+      2026-09-25 07:30.** `* text=auto eol=lf`, .bat/.cmd eol=crlf, binarne jako binary.
+      Pomiar przed: indeks juz w calosci LF, wiec `git add --renormalize .` nic nie
+      zmienil - osobny commit mechaniczny okazal sie zbedny. Dowody: `chat/artefakty/noc-2/`.
+      Opis problemu ponizej zostaje jako historia:
       `core.autocrlf=true` pochodzi z SYSTEMOWEGO gitconfiga Git for Windows
       (`C:/Program Files/Git/etc/gitconfig`) - w `.git/config` tego wpisu NIE MA,
       w globalnym tez nie. Zweryfikowane `git config --show-origin`. Na stacji z tym
