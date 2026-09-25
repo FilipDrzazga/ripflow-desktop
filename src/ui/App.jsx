@@ -20,6 +20,9 @@ import Production from "./components/Production/Production";
 import { onDbError, onDbRecovered, onPrintedRootUnreachable, onPrintedRootReachable } from "./services/systemService";
 import { isFeatureEnabled, isViewEnabled } from "./utils/featureVisibility";
 import { PROFILE_STATUS } from "./utils/profileStatus";
+import { notify } from "./utils/notify";
+import { getSettings } from "./services/settingsService";
+import { missingRequiredPaths, PATHS_NOT_SET_MESSAGE, PATHS_NOT_SET_TITLE } from "../shared/requiredPaths";
 
 const RIP_ERROR_POLL_INTERVAL = 30_000;
 
@@ -79,6 +82,17 @@ const App = () => {
     safetyTimerRef.current = setTimeout(finishStartup, 30000);
 
     const fetchFolders = async () => {
+      // ETAP 2h-3: with no storage or XML path the main process refuses every path-based
+      // call (getRootPath.js) and opens no database. Say why once, and open Settings,
+      // where the paths are set (src/shared/requiredPaths.js).
+      getSettings()
+        .then((res) => {
+          if (res?.success && missingRequiredPaths(res.settings).length > 0) {
+            notify({ type: "Error", title: PATHS_NOT_SET_TITLE, message: PATHS_NOT_SET_MESSAGE });
+            setActiveView("settings");
+          }
+        })
+        .catch((err) => console.error("[startup] getSettings failed:", err));
       loadLogsFromDb();
       loadReasonDefinitions();
       loadFabricConfig();

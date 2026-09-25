@@ -101,10 +101,7 @@ describe("classification - no getSettings key escapes the guard", () => {
     }
   });
 
-  it("with the shipped defaults the guard refuses to start (O: and the IP share)", () => {
-    expect(findUnsafeSettings(getSettings(), ROOT).map((u) => [u.key, u.reason])).toEqual([
-      ["storagePath", "production drive O:"],
-      ["xmlPath", "UNC network path"],
-    ]);
+  it("with the shipped defaults (blank since 2h-3) the guard lets the app start - getRootPath refuses them instead", () => {
+    expect(findUnsafeSettings(getSettings(), ROOT).map((u) => [u.key, u.reason])).toEqual([]);
   });
 });

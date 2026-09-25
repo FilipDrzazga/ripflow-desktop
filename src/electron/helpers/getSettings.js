@@ -3,8 +3,10 @@ import Store from "electron-store";
 
 const store = new Store({
   defaults: {
-    storagePath: "O:\\SPPrintReadyArtwork",
-    xmlPath: "\\\\192.168.0.17\\Original_files\\SPPrintReadyArtwork",
+    // Blank on purpose (ETAP 2h-3): no shop's network paths in the code. A blank path is
+    // refused by getRootPath.js and reported at startup - see src/shared/requiredPaths.js.
+    storagePath: "",
+    xmlPath: "",
     workstationName: os.hostname(),
     customOrderFolderPath: "",
     labelPrinterName: "",

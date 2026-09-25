@@ -61,7 +61,7 @@ file yourself first.
 INBOX → PARSE FILENAME → UI → SELECT FILES+PRINTER → CREATE BATCH+XML → PRINTFACTORY → PRINT
 ```
 
-1. Scan `storagePath` (default `O:\SPPrintReadyArtwork`)
+1. Scan `storagePath` (no default - set per station in Settings)
 2. Parse PDF filenames → extract metadata (product type, material, qty, dimensions)
 3. Operator selects files + printer → submit
 4. Atomically move files (temp → rename) with rollback on failure
@@ -84,9 +84,13 @@ INBOX → PARSE FILENAME → UI → SELECT FILES+PRINTER → CREATE BATCH+XML �
 - Shared config: `reason_definitions`, `fabric_globals`, `fabrics`, `shop_profile`
 
 ```
-storagePath:     O:\SPPrintReadyArtwork       (default)
-xmlPath:         \\192.168.0.17\Original_files\SPPrintReadyArtwork
+storagePath:     ""  (default since 2h-3; Alex's stations: \\FAS-LON-SRV01\... or O:\SPPrintReadyArtwork)
+xmlPath:         ""  (default since 2h-3)
 workstationName: os.hostname()               (set on first run)
+
+A blank storagePath / xmlPath is REFUSED by getRootPath.js (ERR_PATHS_NOT_SET) - no database,
+no scan, no XML - and App.jsx opens Settings with a "Paths not set" error (src/shared/requiredPaths.js).
+Never hand "" to path.join: it yields a RELATIVE path (the process's working directory).
 
 Derived paths (hotfolders = printers[].hotfolder in the shop profile; Alex's values):
   {storagePath}\AUTOMATION_WORKFLOW_COTTON\  ← DGEN
