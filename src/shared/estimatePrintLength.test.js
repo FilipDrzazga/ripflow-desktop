@@ -99,7 +99,7 @@ describe("estimatePrintLength", () => {
   });
 
   it("a cotton without a catalogue still gets an estimate (degraded path, class roll width)", () => {
-    // 'Melino Linen' has roll width 1420 in LM_ROLL_COTTON — same as default here, just verifying no crash
+    // no config = the degraded path: every cotton gets the class roll width (1420) since 2g-2 - just verifying no crash
     const result = estimatePrintLength([
       makeFile({ material: "Melino Linen", width: 400, height: 500 }),
     ]);
