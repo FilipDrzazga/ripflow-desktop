@@ -1,36 +1,32 @@
-import { getAllFabrics, getFabricGlobals } from "./db.js";
-import { DEFAULT_FABRIC_GLOBALS } from "./defaultFabrics.js";
+import { getAllFabrics } from "./db.js";
+import { getProfile } from "./shopProfile.js";
+import { estimateConfigFrom } from "../../shared/classGlobals.js";
 
 // null = not loaded (DB unreadable); array = loaded (empty only when the table is empty)
 let cachedFabrics = null;
-let cachedGlobals = null;
 
 export const loadFabricCache = () => {
   try {
     cachedFabrics = getAllFabrics();
-    cachedGlobals = getFabricGlobals();
   } catch (err) {
     console.error("[fabricCache] loadFabricCache failed:", err);
     cachedFabrics = null;
-    cachedGlobals = null;
   }
 };
 
 export const invalidateFabricCache = () => {
   cachedFabrics = null;
-  cachedGlobals = null;
 };
 
 export const getCachedFabrics = () => cachedFabrics ?? [];
 
-export const getCachedGlobals = () => cachedGlobals ?? { ...DEFAULT_FABRIC_GLOBALS };
-
-// Config for estimatePrintLength: the DB-backed globals plus the catalog, or null when
-// the cache is not loaded. Deliberately null and NOT { fabrics: [] } - an empty array is
-// truthy, so the estimator would enter its DB branch with an empty catalog and lose the
-// static per-material roll widths. null keeps it on the printWidths.js fallbacks.
-export const getEstimateConfig = () =>
-  cachedFabrics === null ? null : { globals: getCachedGlobals(), fabrics: cachedFabrics };
+// Config for estimatePrintLength: the class numbers plus the catalog, or null when the
+// catalog is not loaded (never { fabrics: [] } - rule 23). Since ETAP 2g-3b the class numbers
+// come from the shop profile's materialClasses (their owner since profile v3), not from
+// fabric_globals - estimateConfigFrom (src/shared/classGlobals.js), the SAME function the
+// renderer builds store.fabricConfig with. No profile -> no numbers -> the estimator uses the
+// class constants of printWidths.js for each of them (the seed's own values).
+export const getEstimateConfig = () => estimateConfigFrom(cachedFabrics, getProfile());
 
 export const getFabricByName = (name) => {
   if (cachedFabrics === null) return null;

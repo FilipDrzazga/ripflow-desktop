@@ -8,7 +8,8 @@ import { readPrintedDays, readPrintedDay } from "../services/batchService";
 import { getLogs, clearLogs as clearLogsApi, getHeldFiles, holdFile as holdFileApi, unholdFile as unholdFileApi, pruneOrphanHolds, getDbDegraded, getPrintedRootUnreachable } from "../services/systemService";
 import { getRollbackReasonsForFiles as getRollbackReasonsForFilesApi } from "../services/analyticsService";
 import { getRollbackDefinitions as getRollbackDefinitionsApi } from "../services/reasonDefsService";
-import { getFabricGlobals as getFabricGlobalsApi, getFabrics as getFabricsApi } from "../services/fabricService";
+import { getFabrics as getFabricsApi } from "../services/fabricService";
+import { estimateConfigFrom } from "../../shared/classGlobals";
 import { getShopProfile as getShopProfileApi } from "../services/profileService";
 import { PROFILE_STATUS, resolveProfileResult } from "../utils/profileStatus";
 import { latestRipErrorPerFile } from "../utils/ripErrorsByFile";
@@ -195,12 +196,17 @@ export const useStore = create(
       } catch (err) { console.error("[store] loadReasonDefinitions failed:", err); }
     },
 
+    // { globals, fabrics } for the estimator, built by estimateConfigFrom (src/shared/
+    // classGlobals.js) - the SAME function the main process uses. Since ETAP 2g-3b the class
+    // numbers (globals) come from the shop profile's materialClasses, not from fabric_globals;
+    // they are rebuilt when the profile arrives (loadShopProfile below), because the two loads
+    // are independent and either may finish first. null until the catalogue answers.
     fabricConfig: null,
     loadFabricConfig: async () => {
       try {
-        const [globalsRes, fabricsRes] = await Promise.all([getFabricGlobalsApi(), getFabricsApi()]);
-        if (globalsRes?.success && fabricsRes?.success) {
-          set({ fabricConfig: { globals: globalsRes.data, fabrics: fabricsRes.data } });
+        const fabricsRes = await getFabricsApi();
+        if (fabricsRes?.success) {
+          set({ fabricConfig: estimateConfigFrom(fabricsRes.data, get().shopProfile) });
         }
       } catch (err) { console.error("[store] loadFabricConfig failed:", err); }
     },
@@ -217,6 +223,9 @@ export const useStore = create(
         // profile (or the reverse) would be reading a state that never really existed.
         const { status, profile } = resolveProfileResult(res);
         set({ shopProfile: profile, shopProfileStatus: status });
+        // the class numbers of an already loaded catalogue follow the profile (ETAP 2g-3b)
+        const fabricConfig = get().fabricConfig;
+        if (fabricConfig) set({ fabricConfig: estimateConfigFrom(fabricConfig.fabrics, profile) });
       } catch (err) {
         // withTimeout REJECTS on the 5s profile:get deadline, so a hung main process
         // arrives here rather than in resolveProfileResult. Same failed pair either way.

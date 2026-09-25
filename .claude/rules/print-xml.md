@@ -83,8 +83,9 @@ imports no `printWidths.js` `LM_XML_*` constants.
 
 ## Print Widths — Hardcoded vs DB
 
-`printWidths.js` values are **fallbacks only — with one live exception**. DB (`fabric_globals` +
-`fabrics`) is the primary source everywhere the table below says so. The exception is the
+`printWidths.js` values are **fallbacks only — with one live exception**. The profile's
+`materialClasses` (class numbers, since 2g-3b) and the DB `fabrics` catalogue are the primary
+source everywhere the table below says so. The exception is the
 custom-order XML builder `helpers/customOrderXml.js` (moved out of `customOrderHandlers.js` in
 ETAP 2d-1, byte for byte), which imports `LM_XML_POLY` and writes it straight into the XML as
 `<Width>${LM_XML_POLY}</Width>`, next to a hardcoded `<MaterialType>Polyesters</MaterialType>` — not a
@@ -94,9 +95,9 @@ passes `customOrderFolderPath` (settings) and `nestingId` (randomUUID) in.
 
 | Config                           | DB table                                  | Fallback                                           |
 | -------------------------------- | ----------------------------------------- | -------------------------------------------------- |
-| Margins (cotton/poly)            | `fabric_globals`                          | `MARGIN_COTTON=10`, `MARGIN_POLY=5`                |
-| Default XML widths               | `fabric_globals` — **DEAD, zero readers** | none                                               |
-| Default roll widths              | `fabric_globals`                          | `LM_ROLL_POLY=1550`, `LM_ROLL_COTTON_DEFAULT=1420` |
+| Margins (cotton/poly)            | `profile.materialClasses[].margin` (2g-3b; was `fabric_globals`) | `MARGIN_COTTON=10`, `MARGIN_POLY=5` |
+| Default XML widths               | `fabric_globals` — **DEAD, zero readers**; dropped from the profile in v3 | none                |
+| Default roll widths              | `profile.materialClasses[].defaultRollWidth` (2g-3b; was `fabric_globals`) | `LM_ROLL_POLY=1550`, `LM_ROLL_COTTON_DEFAULT=1420` |
 | Per-material XML width           | `fabrics.xml_width`                       | **none — `null`, and the job is refused**          |
 | Per-material roll width          | `fabrics.roll_width`                      | the class width above (map removed in 2g-2)        |
 | Material type routing            | `fabrics.type`                            | **none — `"Unknown"`, and the job is refused**     |
@@ -135,12 +136,19 @@ A Settings edit reaching the XML is therefore **intended**.
 - **renderer** → `store.fabricConfig` (`useStore.applySort`, `DataList`,
   `PrintMaterialBreakdownCard`, `ProductionOverviewCard` — the last one passes it **third**, after
   `materialType`)
+- **Both are built by ONE function since ETAP 2g-3b**: `estimateConfigFrom(fabrics, profile)` in
+  `src/shared/classGlobals.js`. `globals` = the four class keys the estimator reads, from
+  `profile.materialClasses` (`classGlobalsFromProfile`; no profile or no valid number -> the key is
+  absent and the estimator uses the class constant). `fabric_globals` is no longer READ for estimates
+  (it is still written by FabricsView until 2g-3c - the pilot's dual write, variant A). The store
+  rebuilds `fabricConfig` when EITHER the catalogue or the profile finishes loading.
 
 **`getEstimateConfig()` returns `null`, never `{ fabrics: [] }`, when the cache is not loaded.** An
 empty array is truthy, so the estimator would take its DB branch with an empty catalog and silently
 read "not loaded" as "loaded and empty". `null` keeps the degraded path on the class defaults in
 `printWidths.js`. Same sentinel discipline as `cachedFabrics === null` everywhere else in that file.
-Never build `{ globals: getCachedGlobals(), fabrics: getCachedFabrics() }` by hand.
+Never build the config by hand - go through `estimateConfigFrom` (`getCachedGlobals` no longer
+exists: the class numbers are not cached apart from the profile).
 
 **Degraded paths.** `xmlWidth` has none (see Fabric Config: `null` and the job is refused).
 `rollWidth` still does, and since ETAP 2g-2 it is the CLASS width only: with no config

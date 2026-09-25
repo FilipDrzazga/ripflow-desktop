@@ -95,8 +95,13 @@ and left alone (an older build keeps reading it). **v2 -> v3 (ETAP 2g-3a):** the
 shop's `fabric_globals`, read raw at migration time (`db.getFabricGlobalsRaw`, `null` on any
 failure) - never from `DEFAULT_PROFILE` or the fabric seed; the dead `defaultXmlWidth` is
 dropped. Unreadable `fabric_globals` BLOCKS the step (`blocked`, logged): the row stays at v2
-and the next start tries again. Until 2g-3b the READERS still use `fabric_globals`; the
-two-version plan for the pilot is `chat/artefakty/2g-3/projekt.md` (variant A, FILIP 2026-09-25).
+and the next start tries again. Since 2g-3b the estimator READS the class numbers from the
+profile (`estimateConfigFrom`, `src/shared/classGlobals.js`, main and renderer alike).
+Pilot with two versions on one DB (variant A, FILIP 2026-09-25): an older build meeting v3
+refuses to migrate and keeps reading the row; it still reads the class numbers from
+`fabric_globals`, so until every station runs the new version FabricsView writes BOTH (2g-3c),
+and nobody edits class numbers on an old station. The dual write goes once all stations are
+upgraded (PRODUCTIZATION).
 
 **`printers[]` consumers in main (ETAP 2e step 2):** `createXML.js` routes a job to
 `printers[].hotfolder` through `setPrinterResolver(getPrinterByCode)`, wired right after
