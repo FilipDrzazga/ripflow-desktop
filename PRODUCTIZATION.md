@@ -798,6 +798,25 @@ a nie w porzadku wierszy.
        `DEFAULT_PROFILE.materialClasses` NIE dostaje `defaultXmlWidth` - inaczej byloby
        to trzecie martwe pole profilu, wbrew REGULE 24. To NIE jest odrzucony wariant
        (b): tam odbieraloby sie funkcje dzialajaca, tu znika samo zludzenie.
+       **ZAIMPLEMENTOWANE 2026-09-25 (plan 2G, wariant A FILIPA z 09:31 - jedno wydanie,
+       podwojny zapis do konca pilotazu), czeka na bramke FILIPA:** `ae9ef54` migracja
+       profilu v2 -> v3 (liczby Z `fabric_globals` tego sklepu, nieczytelne = krok
+       zablokowany), `af9487f` estymator czyta liczby z `profile.materialClasses`
+       (`estimateConfigFrom`, jedna funkcja dla main i renderera), `93d9443` FabricsView
+       zapisuje `profile:set`, potem te same 4 klucze do `fabric_globals`; pola "XML Width"
+       usuniete z edytora. Zasada na pilotaz w runbooku (sekcja 4): liczb klas nie edytowac
+       na stacji ze stara wersja.
+       - [ ] **Sprzatanie podwojnego zapisu - wydanie PO pilotazu, gdy WSZYSTKIE stacje sa
+             na wersji z 2g-3.** Wczesniej nie wolno: stara stacja czyta liczby tylko
+             z `fabric_globals`. Zakres: `saveClassNumbers` bez drugiego zapisu (wynik
+             "legacy-failed" znika), IPC `fabricGlobals:get` / `fabricGlobals:set` +
+             preload + `fabricService` (`getFabricGlobals` nie ma wolajacego od `93d9443`),
+             `db.getFabricGlobals` / `setFabricGlobals`, seed `DEFAULT_FABRIC_GLOBALS`,
+             `getFabricGlobals` w stubie goldena (`scripts/golden/stub-db.mjs`). Klucz
+             `getFabricGlobals` w `vi.mock` trzech istniejacych testow ZOSTAJE (regula 7 -
+             mock to tresc wykonywalna; nadmiarowy klucz niczego nie psuje).
+             `getFabricGlobalsRaw` zostaje, dopoki moze istniec wiersz profilu v2 (migracja).
+             DROP tabeli `fabric_globals` osobno, razem z trzema osieroconymi tabelami (ETAP 4).
     6. **usuniecie DWOCH MAP per-tkanina z `printWidths.js`** - NIE kasowanie modulu.
        **Zakres przepisany 2026-09-21 po pomiarze (S1, potwierdzony przez S2) i decyzja
        FILIPA.** Poprzedni zapis brzmial "skasowanie `printWidths.js` - ostatnie, bo lamie
@@ -979,8 +998,10 @@ a nie w porzadku wierszy.
   - **MARTWE POLA W PROFILU** (`git grep -n "<pole>" -- src/ scripts/`). Zmierzone na
     `297ef22` jako TRZY; po `284e38e` zostaly **DWA** - `productTypes` ma juz konsumenta. Kazde lamie REGULE 24 dokladnie tak, jak usuniete w 2f
     `workstationRoles`: pole istnieje w `defaultProfile.js` i NIKT go nie czyta.
-    - `materialClasses` (`defaultProfile.js`) - jedno trafienie, definicja. Zero
-      czytelnikow. Marginesy i domyslne szerokosci bierze dzis `fabric_globals`.
+    - ~~`materialClasses`~~ - **JUZ NIE MARTWE** (`af9487f`, 2g-3b): liczby klas czyta
+      `classGlobalsFromProfile` (`src/shared/classGlobals.js`) dla estymatora w main
+      i rendererze; pisze je FabricsView (`93d9443`). NAZWY klas nadal nie decyduja
+      o niczym - to 2g-4 (odlozone, P21).
     - ~~`productTypes`~~ - **JUZ NIE MARTWE** (`284e38e`): czyta je `resolveProductDims`
       w `parseFileName.js`, przez `options.shopConfig` podane przez call-site.
     - `printers[].materialClass` (`defaultProfile.js`) - poza definicja tylko
