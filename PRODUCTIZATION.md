@@ -124,6 +124,9 @@ i "Bramka weryfikacji" ODSYLAJA po oczekiwana wartosc.
     jednostka: PRZYPADKI (nie bloki `it(`) / PLIKI testowe
   - zmierzone niezaleznie przez S1 i przez S2 w tej samej sesji, ten sam wynik
   - `npm run lint` -> exit 0, golden -> 0 differences across 70 batches
+- po kroku 5 w 2g (plan 2G, `51ee95a`, 2026-09-25): **576 passed / 55 files**
+  - komenda: `npm run test`; zmierzone przez S1 na HEAD `51ee95a` po bramce FILIPA
+  - `npm run lint` -> exit 0, golden -> 0 differences across 70 batches
 
 - [x] **BUG 1** - `clientId` przechodzi przez `settings:set`
   - `src/electron/ipc/index.js`, handler `settings:set`: destrukturyzacja `clientId`
@@ -798,8 +801,9 @@ a nie w porzadku wierszy.
        `DEFAULT_PROFILE.materialClasses` NIE dostaje `defaultXmlWidth` - inaczej byloby
        to trzecie martwe pole profilu, wbrew REGULE 24. To NIE jest odrzucony wariant
        (b): tam odbieraloby sie funkcje dzialajaca, tu znika samo zludzenie.
-       **ZAIMPLEMENTOWANE 2026-09-25 (plan 2G, wariant A FILIPA z 09:31 - jedno wydanie,
-       podwojny zapis do konca pilotazu), czeka na bramke FILIPA:** `ae9ef54` migracja
+       **ZROBIONE 2026-09-25 - bramka FILIPA przeszla (13:19: push, test w piaskownicy
+       pozytywny, "Gate passed"). Plan 2G, wariant A FILIPA z 09:31 - jedno wydanie,
+       podwojny zapis do konca pilotazu:** `ae9ef54` migracja
        profilu v2 -> v3 (liczby Z `fabric_globals` tego sklepu, nieczytelne = krok
        zablokowany), `af9487f` estymator czyta liczby z `profile.materialClasses`
        (`estimateConfigFrom`, jedna funkcja dla main i renderera), `93d9443` FabricsView
