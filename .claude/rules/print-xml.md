@@ -42,6 +42,8 @@ Tokenize by `_`, detect CUSHION/TEA_TOWEL by keyword, others by XWD hex token.
 
 In-memory cache loaded at startup (`loadFabricCache()` called in `ipc/index.js` after `initDb()`).
 Invalidated and reloaded after every `fabrics:save`, `fabrics:delete`, `fabrics:setAll`, `fabricGlobals:set`.
+The reload after `fabricGlobals:set` changes nothing since 2g-3b - the cache holds the catalogue
+only; the class numbers come from the profile, which `profile:set` reloads.
 
 ```js
 loadFabricCache(); // load from DB into memory
@@ -94,7 +96,7 @@ passes `customOrderFolderPath` (settings) and `nestingId` (randomUUID) in.
 | Config                           | DB table                                  | Fallback                                           |
 | -------------------------------- | ----------------------------------------- | -------------------------------------------------- |
 | Margins (cotton/poly)            | `profile.materialClasses[].margin` (2g-3b; was `fabric_globals`) | `MARGIN_COTTON=10`, `MARGIN_POLY=5` |
-| Default XML widths               | `fabric_globals` — **DEAD, zero readers**; dropped from the profile in v3 | none                |
+| Default XML widths               | `fabric_globals` — **DEAD, zero readers**; dropped from the profile in v3, off the editor since 2g-3c | none |
 | Default roll widths              | `profile.materialClasses[].defaultRollWidth` (2g-3b; was `fabric_globals`) | `LM_ROLL_POLY=1550`, `LM_ROLL_COTTON_DEFAULT=1420` |
 | Per-material XML width           | `fabrics.xml_width`                       | **none — `null`, and the job is refused**          |
 | Per-material roll width          | `fabrics.roll_width`                      | the class width above (map removed in 2g-2)        |

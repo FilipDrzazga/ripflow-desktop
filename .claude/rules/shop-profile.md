@@ -84,8 +84,9 @@ A failed RELOAD also drops a previously loaded profile — serving a stale one q
 worse than admitting ignorance.
 
 **`loadShopProfile()` runs BEFORE `loadFabricCache()`** in `registerIpcHandlers`. Not
-style: the profile carries the material classes and hotfolder names the fabric layer will
-read once those consumers land (ETAP 2), so it has to be in memory first.
+style: the profile carries the class numbers the fabric layer reads (`getEstimateConfig` takes
+them from `getProfile()` since 2g-3b) and the hotfolder names `createXML.js` routes by (2e), so
+it has to be in memory first.
 
 **Schema migration (`migrateShopProfile.js` + `runShopProfileMigration.js`).** `schemaVersion`
 IS the marker; a pure function per step, frozen data (`SCAN_RULES_2F`, `CLASS_GLOBAL_KEYS_2G`),
