@@ -1,6 +1,5 @@
 import {
   LM_ROLL_POLY,
-  LM_ROLL_COTTON,
   LM_ROLL_COTTON_DEFAULT,
   MARGIN_COTTON,
   MARGIN_POLY,
@@ -28,8 +27,11 @@ export const estimatePrintLength = (files, config = null) => {
         ? (globals?.defaultRollWidthPoly ?? LM_ROLL_POLY)
         : (globals?.defaultRollWidthCotton ?? LM_ROLL_COTTON_DEFAULT);
     }
-    if (file.materialType !== "Cottons") return LM_ROLL_POLY;
-    return LM_ROLL_COTTON[material] ?? LM_ROLL_COTTON_DEFAULT;
+    // Degraded path (no catalogue): the CLASS roll width. Until ETAP 2g-2 a cotton was looked
+    // up in LM_ROLL_COTTON, a per-fabric map keyed by Alex's fabric names - another shop's data
+    // standing in for a catalogue we could not read (same shape as 0bf8aa6 / bc68fbe).
+    // Pinned by estimatePrintLength.degraded.test.js; the golden net never runs this path.
+    return file.materialType !== "Cottons" ? LM_ROLL_POLY : LM_ROLL_COTTON_DEFAULT;
   };
 
   const groupsByWidth = new Map();

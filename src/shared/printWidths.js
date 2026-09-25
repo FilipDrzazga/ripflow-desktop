@@ -9,45 +9,12 @@ export const LM_XML_COTTON_DEFAULT = 1420;
 // in ETAP 2g-1. XML widths come from the fabric catalogue.)
 
 // ── LM – Roll widths for print-length estimation ──────────────────────────────
-// LM_ROLL_COTTON below is read ONLY by the degraded path of estimatePrintLength (catalogue
-// not loaded); it carries Alex's fabric names and goes in ETAP 2g-2.
+// CLASS roll widths - the degraded path of estimatePrintLength (catalogue not loaded) uses
+// them for every fabric of the class. The per-fabric map LM_ROLL_COTTON (Alex's names) was
+// removed in ETAP 2g-2. With these, printWidths.js carries no client's data any more - only
+// the degraded path's class defaults (and the product dimensions below, ETAP 5).
 export const LM_ROLL_POLY = 1550;
 export const LM_ROLL_COTTON_DEFAULT = 1420;
-export const LM_ROLL_COTTON = {
-  "Cotton Slub": 1420,
-  "Stretch Lycra French Terry": 1420,
-  "Poppy Lycra Jersey": 1420,
-  "Organic Jersey Interlock": 1420,
-  "Organic Iris Jersey": 1420,
-  "Single Cotton Elastane Jersey": 1420,
-  "DSTK - Stretch Lycra French Terry": 1420,
-  "Organic Drill Natural": 1420,
-  Panama: 1420,
-  "Organic Leve Panama Natural": 1420,
-  "Hector Linen": 1460,
-  Poplin: 1420,
-  "Light Twill": 1420,
-  "Organic Drill Optic": 1420,
-  "Organic Optic Calico": 1420,
-  Satin: 1420,
-  "Top Sateen": 1420,
-  "Organic Blossom Muslin Gauze": 1270,
-  "Organic Panama Natural": 1420,
-  "Organic Leve Cotton Panama Natural": 1420,
-  "Organic Jasmine Lycra Jersey": 1420,
-  "Cotton Denim": 1420,
-  "Organic Poplin": 1420,
-  "Organic Satin": 1420,
-  "Optic White Organic Panama": 1420,
-  "Melino Linen": 1420,
-  "Limani Linen": 1420,
-  "DSTK - Organic Jersey Interlock": 1420,
-  "Organic Stratos Linen": 1370,
-  "Organic Nimbus Linen": 1370,
-  "Organic Calico Natural": 1420,
-  "Calico Plain Cotton": 1420,
-  Drill: 1420,
-};
 
 // ── Fixed product dimensions (width × height in mm) ──────────────────────────
 export const DIMS_SAMPLE = { width: 220, height: 200 };

@@ -98,7 +98,7 @@ passes `customOrderFolderPath` (settings) and `nestingId` (randomUUID) in.
 | Default XML widths               | `fabric_globals` — **DEAD, zero readers** | none                                               |
 | Default roll widths              | `fabric_globals`                          | `LM_ROLL_POLY=1550`, `LM_ROLL_COTTON_DEFAULT=1420` |
 | Per-material XML width           | `fabrics.xml_width`                       | **none — `null`, and the job is refused**          |
-| Per-material roll width          | `fabrics.roll_width`                      | `LM_ROLL_COTTON[name]` map                         |
+| Per-material roll width          | `fabrics.roll_width`                      | the class width above (map removed in 2g-2)        |
 | Material type routing            | `fabrics.type`                            | **none — `"Unknown"`, and the job is refused**     |
 | XML flags (velvet/linen/blossom) | `fabrics.is_velvet/is_linen/is_blossom`   | string-contains fallback                           |
 
@@ -138,18 +138,19 @@ A Settings edit reaching the XML is therefore **intended**.
 
 **`getEstimateConfig()` returns `null`, never `{ fabrics: [] }`, when the cache is not loaded.** An
 empty array is truthy, so the estimator would take its DB branch with an empty catalog and silently
-lose the per-material roll widths from `LM_ROLL_COTTON`. `null` keeps the degraded path on
+read "not loaded" as "loaded and empty". `null` keeps the degraded path on the class defaults in
 `printWidths.js`. Same sentinel discipline as `cachedFabrics === null` everywhere else in that file.
 Never build `{ globals: getCachedGlobals(), fabrics: getCachedFabrics() }` by hand.
 
 **Degraded paths.** `xmlWidth` has none (see Fabric Config: `null` and the job is refused).
-`rollWidth` still does: `estimatePrintLength`'s `getRollWidth` falls back to
-`LM_ROLL_COTTON[name] ?? LM_ROLL_COTTON_DEFAULT` (poly: `LM_ROLL_POLY`) with no config. To check that
-the two answers agree, load `profiles/fashion-formula-fabrics.json` and compare each row's
-`rollWidth` against that fallback — never trust a recorded result without re-running it. The golden
-harness always feeds `fabricCache` a full catalogue, so the `null` path executes in the net zero
-times (hole (a) in the Etap 2 gate): cover it with a unit test (`materialClassSource.test.js`),
-never with the golden net. ETAP 2h (moving the maps into the profile) removes the second answer.
+`rollWidth` still does, and since ETAP 2g-2 it is the CLASS width only: with no config
+`getRollWidth` answers `LM_ROLL_COTTON_DEFAULT` (1420) for every cotton and `LM_ROLL_POLY` (1550)
+for every polyester. The per-fabric map `LM_ROLL_COTTON` (Alex's 33 names) is gone - four fabrics
+used to differ there (Hector Linen 1460, Organic Blossom Muslin Gauze 1270, Organic Stratos /
+Nimbus Linen 1370) and now get the class width on this path, the same move as `0bf8aa6` made for
+the class. The golden harness always feeds `fabricCache` a full catalogue, so the `null` path
+executes in the net zero times (hole (a) in the Etap 2 gate): it is pinned by unit tests
+(`estimatePrintLength.degraded.test.js`, `materialClassSource.test.js`), never by the golden net.
 
 ### Golden XML regression net (`golden/` + `scripts/golden/`)
 
