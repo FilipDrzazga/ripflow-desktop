@@ -1,5 +1,17 @@
 [
   {
+    "version": "1.0.25",
+    "date": "2026-09-25",
+    "changes": [
+      {
+        "text": "Settings > Fabrics: the margins and default roll widths for Cottons and Polyesters are now saved in this shop's configuration, which is where print-length estimates read them from. The two \"XML Width\" fields are gone - they were saved but never changed anything. If a save only partly succeeds, the screen says so and Save stays active so you can try again. Estimates and printing stay exactly as before",
+        "clients": [
+          "all"
+        ]
+      }
+    ]
+  },
+  {
     "version": "1.0.24",
     "date": "2026-09-25",
     "changes": [
