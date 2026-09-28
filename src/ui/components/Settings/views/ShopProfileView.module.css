@@ -212,7 +212,10 @@
   border-bottom: none;
 }
 
-.num {
+/* th.num / td.num: the plain `.table th { text-align: left }` above is more specific than a bare
+   `.num`, so a number header stayed left over a right-aligned column (S2 at 4-ui-profile). */
+.table th.num,
+.table td.num {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
