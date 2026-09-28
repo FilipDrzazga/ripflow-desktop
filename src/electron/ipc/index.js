@@ -16,9 +16,10 @@ import { getStorageRootPath } from "../helpers/getRootPath.js";
 import { assertStorageFilePath } from "../helpers/validateStoragePath.js";
 import { parsePrintFileName } from "../helpers/parseFileName.js";
 import { getSettings, setSettings, getRollbackDefinitions, clearRollbackDefinitions } from "../helpers/getSettings.js";
-import { initDb, insertLog, getAllLogs, clearAllLogs, holdFile, unholdFile, getHeldFiles, pruneOrphanHeldFiles, getRollbackReasonsByBatch, getRollbackReasonsByFile, getRollbackStats, getRollbackDetails, clearAllRollbackReasons, deleteRollbackReason, getLatestRollbackReasonsForFileIds, getReasonDefinitions, setReasonDefinitions as setReasonDefinitionsDb, migrateReasonDefinitions, getAllFabrics, saveFabric, deleteFabric as deleteFabricDb, setAllFabrics, getFabricGlobals, setFabricGlobals, setShopProfile, backupDb, cleanupShippedStages, getDbDegraded } from "../helpers/db.js";
+import { initDb, insertLog, getAllLogs, clearAllLogs, holdFile, unholdFile, getHeldFiles, pruneOrphanHeldFiles, getRollbackReasonsByBatch, getRollbackReasonsByFile, getRollbackStats, getRollbackDetails, clearAllRollbackReasons, deleteRollbackReason, getLatestRollbackReasonsForFileIds, getReasonDefinitions, setReasonDefinitions as setReasonDefinitionsDb, migrateReasonDefinitions, getAllFabrics, saveFabric, deleteFabric as deleteFabricDb, setAllFabrics, getFabricGlobals, setFabricGlobals, backupDb, cleanupShippedStages, getDbDegraded } from "../helpers/db.js";
 import { loadFabricCache, invalidateFabricCache } from "../helpers/fabricCache.js";
-import { loadShopProfile, invalidateShopProfile, getProfile, getPrinterByCode } from "../helpers/shopProfile.js";
+import { loadShopProfile, getProfile, getPrinterByCode } from "../helpers/shopProfile.js";
+import { saveShopProfile } from "../helpers/saveShopProfile.js";
 import { setPrinterResolver } from "./createXML.js";
 import { runShopProfileMigration } from "../helpers/runShopProfileMigration.js";
 import { describeRollbackFailure, buildRollbackBatchLog } from "../helpers/rollbackFailure.js";
@@ -502,24 +503,9 @@ export async function registerIpcHandlers() {
     return { success: true, data: getProfile() };
   });
 
-  ipcMain.handle("profile:set", (_event, profile) => {
-    if (!profile || typeof profile !== "object" || Array.isArray(profile)) {
-      return { success: false, error: "Profile must be an object." };
-    }
-    let ok = false;
-    let error = null;
-    try {
-      ok = setShopProfile(profile, getSettings().workstationName);
-    } catch (err) {
-      console.error("[ipc] profile:set failed:", err);
-      error = err?.message ?? "Could not save the shop profile.";
-    }
-    // Reload either way, so the cache reflects what the DB actually holds now -
-    // after a failed write that is the previous row, not the rejected one.
-    invalidateShopProfile();
-    loadShopProfile();
-    return error ? { success: false, error } : { success: ok };
-  });
+  // Compare-and-swap against the profile this station loaded; refuses with PROFILE_CHANGED when
+  // another station saved in between, and reloads the cache either way (saveShopProfile.js).
+  ipcMain.handle("profile:set", (_event, profile) => saveShopProfile(profile, getSettings().workstationName));
 
   ipcMain.handle("db:backup", async () => {
     return backupDb(true);

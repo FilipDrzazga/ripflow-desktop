@@ -135,6 +135,20 @@ reload) and reloads even after a FAILED write, so the cache mirrors what the DB 
 rather than what was attempted. `profile:get` returns `null` when the DB was unreachable
 at startup instead of substituting a default that would read as a real profile.
 
+**`profile:set` is a compare-and-swap (ETAP 3-1, `helpers/saveShopProfile.js`).** Every writer
+replaces the WHOLE row with a patched copy of its station's cache, and that cache is read once
+at startup - an unguarded write let a station that had not restarted put its old profile back
+over one saved elsewhere, silently. So the row is written only when (1) it still holds, AS DATA
+(key order ignored), the profile this station loaded, and (2) the UPDATE matches the exact row
+text read for that check (`migrateShopProfileRow`, the migration's CAS - the only statement that
+rewrites the row; there is no UPSERT any more). Otherwise the answer is
+`{ success: false, code: PROFILE_CHANGED }` (`src/shared/constants.js`) and the cache is reloaded
+to the other station's profile. No baseline - the cache is `null`, or the `DEFAULT_PROFILE`
+stand-in for a missing row - refuses without that code: there is nothing to compare against.
+`saveClassNumbers` maps the code to its own outcome `profile-changed`; FabricsView shows it as
+a Warning, apart from a failed save (the rule 18 split). Any new writer (the ETAP 3 import)
+goes through `saveShopProfile`, never around it.
+
 **First consumer: `openInShopify.js`** — the store handle comes ONLY from
 `integrations.shopify.storeHandle`; there is **no `DEFAULT_PROFILE` fallback** (it would
 send another shop's operator into Alex's Shopify admin). The handler is gated fail-closed:

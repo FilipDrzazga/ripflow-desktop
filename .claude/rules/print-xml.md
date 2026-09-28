@@ -155,7 +155,9 @@ A Settings edit reaching the XML is therefore **intended**.
   `saveClassNumbers` (`src/ui/utils/`) writes `profile:set` FIRST (the profile via
   `withClassNumbers`, patched from `profile:get`), then the same four keys to `fabricGlobals:set`
   for older stations. Profile unreadable / a class missing / `profile:set` failed -> nothing else
-  is written; the second write failed -> "Saved only in part", visible, Save stays enabled for a
+  is written; `profile:set` refused with `PROFILE_CHANGED` (another station saved since this one
+  loaded, ETAP 3-1) -> nothing else is written either, a Warning, and the form reloads to the
+  current numbers; the second write failed -> "Saved only in part", visible, Save stays enabled for a
   retry. The dead "XML Width Cotton/Poly" fields are gone from the editor (the keys stay in
   `fabric_globals`, untouched).
 

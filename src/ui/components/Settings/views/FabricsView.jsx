@@ -96,6 +96,14 @@ const GlobalParamsCard = () => {
           title: "Saved only in part",
           message: `The shop profile was saved, but the copy read by stations on older versions was not (${error}). Press Save again.`,
         });
+      } else if (outcome === "profile-changed") {
+        // Not a failure: main refused on purpose and reloaded - the form now shows the other
+        // station's numbers, which the operator checks before saving again (Warning, rule 18).
+        notify({
+          type: "Warning",
+          title: "Profile changed elsewhere",
+          message: `${error} The form now shows the current values - check them and save again.`,
+        });
       } else if (outcome === "profile-failed") {
         notify({ type: "Error", title: "Save failed", message: `${error} The form now shows what the database holds.` });
       } else {

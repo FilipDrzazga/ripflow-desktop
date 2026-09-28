@@ -79,3 +79,7 @@ export const STAGE_COLOR = {
 };
 
 export const SEWING_SUGGESTED_TYPES = ["CUSHION", "TEA_TOWEL"];
+
+// The code profile:set answers when the stored shop profile is no longer the one this station
+// loaded - another station saved it in between (ETAP 3-1, helpers/saveShopProfile.js).
+export const PROFILE_CHANGED = "PROFILE_CHANGED";

@@ -15,10 +15,13 @@
 //   "saved"          - both writes succeeded
 //   "no-profile"     - the profile could not be read; nothing written
 //   "missing-class"  - the profile lists no Cottons or no Polyesters class; nothing written
+//   "profile-changed" - profile:set refused: another station saved the profile after this one
+//                       loaded it (ETAP 3-1); nothing written, fabric_globals not touched
 //   "profile-failed" - profile:set failed or did not answer; fabric_globals not touched
 //   "legacy-failed"  - the profile was saved, the fabric_globals copy was not
 
 import { CLASS_NUMBER_KEYS, withClassNumbers } from "../../shared/classGlobals";
+import { PROFILE_CHANGED } from "../../shared/constants";
 
 const errorOf = (res, err, fallback) => err?.message || res?.error || fallback;
 
@@ -43,6 +46,7 @@ export const saveClassNumbers = async (values, { getProfile, setProfile, setLega
 
   try {
     const res = await setProfile(next);
+    if (res?.code === PROFILE_CHANGED) return { outcome: "profile-changed", error: res.error };
     if (!res?.success) return { outcome: "profile-failed", error: errorOf(res, null, "Could not save the shop profile.") };
   } catch (err) {
     // A timeout: the write may or may not have landed - the caller reloads and shows what is there.

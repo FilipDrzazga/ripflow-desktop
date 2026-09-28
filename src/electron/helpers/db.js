@@ -882,20 +882,10 @@ export const getShopProfile = () => {
   return row ? JSON.parse(row.data) : null;
 };
 
-export const setShopProfile = (profile, workstation) => {
-  if (!db) return false;
-  db.prepare(
-    "INSERT INTO shop_profile (id, data, updated_at, updated_by) VALUES (1, ?, ?, ?) " +
-      "ON CONFLICT(id) DO UPDATE SET data = excluded.data, " +
-      "updated_at = excluded.updated_at, updated_by = excluded.updated_by",
-  ).run(JSON.stringify(profile), new Date().toISOString(), workstation ?? null);
-  return true;
-};
-
 // The profile row as STORED - the original column text, not a re-serialisation of it.
 //
-// getShopProfile above parses and throws the string away. The migration needs the exact
-// bytes, because its UPDATE compares against them: JSON.stringify(JSON.parse(text)) can
+// getShopProfile above parses and throws the string away. The migration and profile:set need
+// the exact bytes, because their UPDATE compares against them: JSON.stringify(JSON.parse(text)) can
 // differ from text in key order or whitespace, and a compare-and-swap against a
 // re-serialised value would match zero rows on every run. The migration would then never
 // execute and would look, from the outside, exactly like "already migrated".
@@ -909,15 +899,16 @@ export const getShopProfileRaw = () => {
   return row ? row.data : null;
 };
 
-// Compare-and-swap write for the migration. Returns { updated }.
+// Compare-and-swap write of the profile row - the ONLY way the row is rewritten. Returns
+// { updated }. Two callers: the startup migration, and profile:set (saveShopProfile.js,
+// ETAP 3-1). There is no unguarded UPSERT any more: it let a station that had not restarted
+// put its old cached profile back over one saved elsewhere.
 //
-// NOT setShopProfile: that is an unguarded UPSERT and it is right for a deliberate save,
-// where the operator's click IS the authority. A migration has no such authority. Three
-// stations start against the shared database at once, and an awaited backup sits between
-// the read and this write, so the row can legitimately change underneath us: another
-// station may have migrated it, or a person may have saved a profile through profile:set.
-// Both cases want the same answer - write nothing - and the WHERE clause gives it without
-// having to tell them apart.
+// Three stations start against the shared database at once, and an awaited backup sits
+// between the migration's read and this write, so the row can legitimately change
+// underneath us: another station may have migrated it, or saved a profile through
+// profile:set. Every case wants the same answer - write nothing - and the WHERE clause
+// gives it without having to tell them apart.
 //
 // Same discipline as the guarded stage UPDATE behind rule 18: the boolean, not the absence
 // of an exception, is what says whether anything moved.
