@@ -20,16 +20,41 @@ const POLISH = String.fromCharCode(
 );
 const PATTERN = new RegExp(`[${POLISH}]|[\\u0000-\\u0008\\u000B\\u000C\\u000E-\\u001F\\u007F-\\u009F]`, "g");
 
+// Invisible format characters (ETAP 3-8, FILIP 2026-09-28, ODP 28). Printable in theory, drawn as
+// nothing in every editor and diff: a U+FEFF typed into a regex by a tool went through review and
+// lint on 2026-09-28 (3-3) and changed what the regex matched. The bidi controls are the "Trojan
+// Source" set - they reorder how a line is DISPLAYED without changing what runs. Built from code
+// points, like POLISH, so this file passes its own rule:
+//   U+00AD soft hyphen; U+180E Mongolian vowel separator; U+200B-U+200F zero width space /
+//   non-joiner / joiner, LRM, RLM; U+202A-U+202E bidi embeddings and overrides; U+2060-U+2064
+//   word joiner and invisible operators; U+2066-U+2069 bidi isolates; U+FEFF BOM / zero width
+//   no-break space.
+const INVISIBLE_RANGES = [
+  [0xad, 0xad],
+  [0x180e, 0x180e],
+  [0x200b, 0x200f],
+  [0x202a, 0x202e],
+  [0x2060, 0x2064],
+  [0x2066, 0x2069],
+  [0xfeff, 0xfeff],
+];
+const INVISIBLE = INVISIBLE_RANGES.flatMap(([from, to]) =>
+  Array.from({ length: to - from + 1 }, (_, i) => String.fromCharCode(from + i)),
+).join("");
+const INVISIBLE_PATTERN = new RegExp(`[${INVISIBLE}]`, "g");
+
 const hex = (ch) => ch.codePointAt(0).toString(16).toUpperCase().padStart(4, "0");
 
 export default {
   meta: {
     type: "problem",
-    docs: { description: "Disallow Polish letters and control characters in source files" },
+    docs: { description: "Disallow Polish letters, control characters and invisible characters in source files" },
     schema: [],
     messages: {
       polish: 'Polish letter "{{ch}}" - code is English only (identifiers, comments, UI strings).',
       control: "Control character U+{{code}} - invisible in review; remove it.",
+      invisible:
+        "Invisible character U+{{code}} - drawn as nothing in editors and diffs; write it as an escape (\\u{{code}}) or remove it.",
     },
   },
   create(context) {
@@ -37,11 +62,19 @@ export default {
     return {
       Program() {
         const text = sourceCode.text;
+        // ESLint strips a leading BOM from `text` and reports it as hasBOM - same character, same rule.
+        if (sourceCode.hasBOM) {
+          context.report({ loc: { line: 1, column: 0 }, messageId: "invisible", data: { code: "FEFF" } });
+        }
         for (const m of text.matchAll(PATTERN)) {
           const ch = m[0];
           const loc = sourceCode.getLocFromIndex(m.index);
           if (POLISH.includes(ch)) context.report({ loc, messageId: "polish", data: { ch } });
           else context.report({ loc, messageId: "control", data: { code: hex(ch) } });
+        }
+        for (const m of text.matchAll(INVISIBLE_PATTERN)) {
+          const loc = sourceCode.getLocFromIndex(m.index);
+          context.report({ loc, messageId: "invisible", data: { code: hex(m[0]) } });
         }
       },
     };

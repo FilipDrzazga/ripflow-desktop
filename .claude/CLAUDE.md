@@ -5,7 +5,7 @@
 ## Overview
 
 **RipFlow Desktop** — Electron + React app automating print workflow for PrintFactory machines.
-**Platform:** Windows only (network paths, backslashes) | **Users:** production operators | **Code:** English only — identifiers, comments, UI/log/error strings; Polish found in code you edit is translated in the same change (Polish letters and control characters fail `npm run lint`: `eslint-rules/no-polish-or-control.js`)
+**Platform:** Windows only (network paths, backslashes) | **Users:** production operators | **Code:** English only — identifiers, comments, UI/log/error strings; Polish found in code you edit is translated in the same change (Polish letters, control characters and invisible characters - BOM, zero-width, bidi controls - fail `npm run lint`: `eslint-rules/no-polish-or-control.js`; write such a character as an escape)
 
 ## Stack
 
