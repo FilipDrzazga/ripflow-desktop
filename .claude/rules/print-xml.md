@@ -123,8 +123,9 @@ still renders. Pinned by `materialClassGate.test.js`.
 
 **Fixed product dims come from the shop profile**, not from code: `resolveProductDims` in
 `parseFileName.js` reads `profile.productTypes[]` (`{ code, width, height }`, shape-checked per
-row) from the `shopConfig` the CALLER passes — the parser never imports the profile. Alex's seed
-(`defaultProfile.js`): SAMPLE 220×200mm, FQ 670×480mm, TEA_TOWEL 700×500mm. With no profile, a
+row) from the `shopConfig` the CALLER passes — the parser never imports the profile. Alex's profile
+(`profiles/fashion-formula-profile.json`; the seed is an empty skeleton since ETAP 3-6): SAMPLE
+220×200mm, FQ 670×480mm, TEA_TOWEL 700×500mm. With no profile, an empty (the skeleton) or a
 malformed list or no row for the code, it falls back to `BUILT_IN_DIMS` = the `DIMS_*` constants
 in `printWidths.js` (same numbers) — the undecided degraded path of rule 24. No Settings UI edits
 them today.

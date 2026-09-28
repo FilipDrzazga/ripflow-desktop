@@ -19,8 +19,8 @@ export const PROFILE_SCHEMA_VERSION = 3;
 // FROZEN COPY of the four scan rules as DEFAULT_PROFILE carried them at 2f. Do NOT
 // re-point this at DEFAULT_PROFILE, however tempting the duplication looks:
 //
-//  - ETAP 3 plans to empty DEFAULT_PROFILE in favour of an imported profile. A migration
-//    reading it at call time would then write scanRules: [] into a v1 row and kill the
+//  - ETAP 3-6 emptied DEFAULT_PROFILE into a skeleton in favour of an imported profile. A
+//    migration reading it at call time would write scanRules: [] into a v1 row and kill the
 //    scanner silently - the migration would look like it ran and would have done nothing.
 //  - A migration is a HISTORICAL artifact. It describes what the shape looked like when
 //    the step was written, not what the current default happens to be. Freezing its data

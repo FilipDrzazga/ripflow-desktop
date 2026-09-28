@@ -19,6 +19,7 @@ import CustomOrder from "./components/CustomOrder/CustomOrder";
 import Production from "./components/Production/Production";
 import { onDbError, onDbRecovered, onPrintedRootUnreachable, onPrintedRootReachable } from "./services/systemService";
 import { isFeatureEnabled, isViewEnabled } from "./utils/featureVisibility";
+import { isProfileUnconfigured } from "./utils/shopProfileData";
 import { PROFILE_STATUS } from "./utils/profileStatus";
 import { notify } from "./utils/notify";
 import { getSettings } from "./services/settingsService";
@@ -215,6 +216,12 @@ const App = () => {
       {shopProfileStatus === PROFILE_STATUS.FAILED && (
         <div className={styles.db_banner} role="alert">
           Shop profile could not be loaded — some features are hidden. Restart the app to retry.
+        </div>
+      )}
+      {/* ETAP 3-6: a fresh install seeds an empty profile - no printer, every feature off. */}
+      {shopProfileStatus === PROFILE_STATUS.LOADED && isProfileUnconfigured(shopProfile) && (
+        <div className={styles.db_banner} role="alert">
+          Shop profile not configured — nothing can be printed yet. Import the profile in Settings &gt; Shop Profile.
         </div>
       )}
       {isLoading && <StartupLoader onDone={finishStartup} />}

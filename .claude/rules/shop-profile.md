@@ -69,11 +69,18 @@ things: **a dead NAS yields `null`, the failure sentinel — never `DEFAULT_PROF
 `PROFILE_STATUS.FAILED` (`utils/profileStatus.js`), and `App.jsx` shows the banner.
 `DEFAULT_PROFILE` stands in for **branch 2 only** — an absent row on a HEALTHY database.
 
-That substitution is still a real problem, but it is **DEBT 1 (seed vs migration, ETAP 3),
-not a defect in the sentinel**: `initDb` seeds `DEFAULT_PROFILE` into every fresh
-`shop_profile` table, so client #2 does not get Alex's config transiently during an
-outage — they get it as their OWN durable row, indistinguishable from configuration
-somebody set on purpose. That row also carries the scan rules that move production stages.
+**Since ETAP 3-6 `DEFAULT_PROFILE` is an EMPTY SKELETON** (DEBT 1, seed vs migration, closed):
+no printer, no class, no product type, no scan rule, no sewing company, `folders.ripError` /
+`customOrder` `null`, an empty Shopify handle, every feature `false`. `initDb` seeds it only
+into an EMPTY `shop_profile` table (`db.seedProfile.test.js`; a table holding a profile is not
+touched). Before 3-6 it was Alex's setup, so client #2 would have got his scan rules, printers
+and store handle as their OWN durable row. Alex's profile is `profiles/fashion-formula-profile.json`
+(his live row, 3-5): the golden net renders against it, and it is what brings his setup back by
+Import. A loaded profile with no usable printer raises the "Shop profile not configured" banner
+(`isProfileUnconfigured`, `utils/shopProfileData.js`) - not the failure banner, which is only for
+an unreadable profile. With the skeleton, `parseFileName` still falls back to `BUILT_IN_DIMS`
+(Alex's product dimensions, rule 24, undecided) - harmless there, because with no printer every
+batch is refused (`ERR_INVALID_PRINTER`) before any XML exists.
 
 `shopProfile.test.js` cannot cover branch 1: it does `vi.mock("./db.js")`, so the real
 guard never executes. `db.shopProfile.test.js` covers it instead, asserting the throw on

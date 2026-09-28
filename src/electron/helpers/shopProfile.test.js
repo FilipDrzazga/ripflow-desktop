@@ -64,12 +64,13 @@ describe("shopProfile — no row in the DB (fresh install)", () => {
     expect(getProfile()).toBe(DEFAULT_PROFILE);
   });
 
-  it("serves the default printers", () => {
-    expect(getPrinters().map((p) => p.code)).toEqual(["DGEN", "YOKO", "YUMI"]);
+  it("serves no printers - the skeleton configures nothing", () => {
+    expect(getPrinters()).toEqual([]);
   });
 
-  it("serves the default feature flags", () => {
-    expect(getFeature("shopify")).toBe(true);
+  it("every feature is off until a profile is imported", () => {
+    expect(getFeature("shopify")).toBe(false);
+    expect(getFeature("analytics")).toBe(false);
   });
 });
 
@@ -88,9 +89,9 @@ describe("shopProfile — a row exists in the DB", () => {
     expect(getPrinters().map((p) => p.code)).toEqual(["AAA", "BBB"]);
   });
 
-  it("a false flag in the DB beats a true one in the default", () => {
+  it("a true flag in the DB turns on what the default leaves off", () => {
     // The point of the whole table: the DB configures the app, the code does not.
-    expect(DEFAULT_PROFILE.features.shopify).toBe(true);
+    expect(DEFAULT_PROFILE.features.analytics).toBe(false);
     expect(getFeature("shopify")).toBe(false);
     expect(getFeature("analytics")).toBe(true);
   });

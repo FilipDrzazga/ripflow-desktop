@@ -121,6 +121,11 @@ const usablePrinterRows = (profile) => {
 export const getPrinters = (profile) =>
   usablePrinterRows(profile).map(({ code, materialClass }) => ({ code, materialClass }));
 
+// A LOADED profile with no usable printer: the fresh-install skeleton (ETAP 3-6), or an import that
+// never happened. Nothing can be printed, so App.jsx says so and points at Settings -> Shop
+// Profile. An unreadable profile (null) is NOT "not configured" - it is the failure banner's case.
+export const isProfileUnconfigured = (profile) => !!profile && usablePrinterRows(profile).length === 0;
+
 // A printer's badge colours from the profile (ETAP 2e step 4 - they used to be the
 // PRINTER_COLORS constant), in the shape the components use: { bg, color }. The profile
 // stores the text colour as `text`. null when the printer is unknown or its colours are

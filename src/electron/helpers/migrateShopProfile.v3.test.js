@@ -125,7 +125,7 @@ describe("migrateShopProfile v2 -> v3 (class numbers into materialClasses)", () 
     expect(twice.profile).toBe(once);
   });
 
-  it("DEFAULT_PROFILE (the seed and the golden stub) already has the v3 shape", () => {
+  it("DEFAULT_PROFILE (the seed) already has the v3 shape", () => {
     expect(DEFAULT_PROFILE.schemaVersion).toBe(3);
     expect(DEFAULT_PROFILE.materialClasses.every((c) => !("defaultXmlWidth" in c))).toBe(true);
     expect(migrateShopProfile(structuredClone(DEFAULT_PROFILE), { fabricGlobals: ALEX_GLOBALS }).changed).toBe(false);
