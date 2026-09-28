@@ -78,9 +78,10 @@ and store handle as their OWN durable row. Alex's profile is `profiles/fashion-f
 (his live row, 3-5): the golden net renders against it, and it is what brings his setup back by
 Import. A loaded profile with no usable printer raises the "Shop profile not configured" banner
 (`isProfileUnconfigured`, `utils/shopProfileData.js`) - not the failure banner, which is only for
-an unreadable profile. With the skeleton, `parseFileName` still falls back to `BUILT_IN_DIMS`
-(Alex's product dimensions, rule 24, undecided) - harmless there, because with no printer every
-batch is refused (`ERR_INVALID_PRINTER`) before any XML exists.
+an unreadable profile. With the skeleton, `parseFileName` refuses every fixed-size type (no
+`productTypes` - `UNKNOWN_PRODUCT_SIZE`, ETAP 4 4-types-e); before that it fell back to Alex's
+`BUILT_IN_DIMS`. Either way nothing is printed there: with no printer every batch is refused
+(`ERR_INVALID_PRINTER`) before any XML exists.
 
 `shopProfile.test.js` cannot cover branch 1: it does `vi.mock("./db.js")`, so the real
 guard never executes. `db.shopProfile.test.js` covers it instead, asserting the throw on

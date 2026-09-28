@@ -190,10 +190,14 @@ function parseDimensionsFromText(text) {
 // precondition for ETAP 5: a parser that reaches for global caches by import cannot be
 // lifted into parsers/<client>.js without dragging that chain along.
 //
-// No config, a config of the wrong shape, or no entry for this code => the built-in
-// constants, i.e. exactly what the parser did before this argument existed. Nothing is
-// removed; DIMS_* stay as the degraded answer until a later cut decides what SHOULD
-// happen at a client whose profile could not be read.
+// What happens without a usable entry (ETAP 4, 4-types-e - FILIP 2026-09-28: "Odmawia"):
+// - shopConfig null (the profile could not be read) or a profile with no valid entry for
+//   this code => { refused } - the job is refused with the reason, never sized with another
+//   shop's dimensions (rule 24). Every production caller passes shopConfig explicitly
+//   (getProfile(), null when unreadable); parseFileNameCallers.test.js keeps it that way.
+// - shopConfig undefined (NO options at all) => BUILT_IN_DIMS: Alex's parser, kept ONLY for
+//   the characterization tests of parseFileName.test.js until ETAP 5 lifts it, with those
+//   asserts, into parsers/fashionFormula.js. No production path reaches this branch.
 const BUILT_IN_DIMS = {
   SAMPLE: DIMS_SAMPLE,
   FQ: DIMS_FQ,
@@ -201,13 +205,13 @@ const BUILT_IN_DIMS = {
 };
 
 function resolveProductDims(code, shopConfig) {
-  const builtIn = BUILT_IN_DIMS[code] ?? null;
-  if (!shopConfig) return builtIn;
-  const list = shopConfig.productTypes;
-  if (!Array.isArray(list)) return builtIn;
-  // Shape-checked per record, like every other profile reader: the profile is a
-  // free-form JSON blob, and a half-imported row must degrade to the built-in rather
-  // than put NaN into <Width>.
+  if (shopConfig === undefined) return BUILT_IN_DIMS[code] ?? null;
+  if (!shopConfig || typeof shopConfig !== "object") {
+    return { refused: `the shop profile could not be read, so the ${code} size is unknown - use Reload shop data in Settings > Shop Profile` };
+  }
+  const list = Array.isArray(shopConfig.productTypes) ? shopConfig.productTypes : [];
+  // Shape-checked per record, like every other profile reader: the profile is a free-form
+  // JSON blob, and a half-imported row must not put NaN into <Width>.
   const hit = list.find(
     (t) =>
       t &&
@@ -216,7 +220,22 @@ function resolveProductDims(code, shopConfig) {
       Number.isFinite(t.width) &&
       Number.isFinite(t.height),
   );
-  return hit ? { width: hit.width, height: hit.height } : builtIn;
+  if (hit) return { width: hit.width, height: hit.height };
+  return { refused: `${code} has no size in the shop profile (Settings > Shop Profile)` };
+}
+
+// Sets width/height from the resolved dimensions, or refuses the file: null sizes plus an
+// error, so the file is INVALID in the inbox with the reason instead of reaching the XML guard.
+function applyProductDims(out, code, shopConfig) {
+  const dims = resolveProductDims(code, shopConfig);
+  if (dims?.refused) {
+    out.width = null;
+    out.height = null;
+    addError(out, "UNKNOWN_PRODUCT_SIZE", `Cannot size this file: ${dims.refused}.`);
+    return;
+  }
+  out.width = dims.width;
+  out.height = dims.height;
 }
 
 function applyDimensions(out, text) {
@@ -247,24 +266,18 @@ function applyLmDimensions(out, shopConfig) {
   }
 
   if (out.printTypeCode === "SAMPLE") {
-    const dims = resolveProductDims("SAMPLE", shopConfig);
-    out.width = dims.width;
-    out.height = dims.height;
+    applyProductDims(out, "SAMPLE", shopConfig);
     return;
   }
 
   if (out.printTypeCode === "FQ") {
-    const dims = resolveProductDims("FQ", shopConfig);
-    out.width = dims.width;
-    out.height = dims.height;
+    applyProductDims(out, "FQ", shopConfig);
   }
 }
 
 function applyTeaTowelDimensions(out, shopConfig) {
   if (out.printTypeCode === "TEA_TOWEL") {
-    const dims = resolveProductDims("TEA_TOWEL", shopConfig);
-    out.width = dims.width;
-    out.height = dims.height;
+    applyProductDims(out, "TEA_TOWEL", shopConfig);
   }
 }
 
@@ -586,7 +599,8 @@ function validateByType(out) {
     }
   }
 
-  if (out.size && (out.width == null || out.height == null)) {
+  // A refused product size (UNKNOWN_PRODUCT_SIZE) already says why the size is missing.
+  if (out.size && (out.width == null || out.height == null) && !out.errors.some((e) => e.code === "UNKNOWN_PRODUCT_SIZE")) {
     addWarning(out, "Size exists but width/height could not be parsed.");
   }
 }

@@ -125,10 +125,12 @@ still renders. Pinned by `materialClassGate.test.js`.
 `parseFileName.js` reads `profile.productTypes[]` (`{ code, width, height }`, shape-checked per
 row) from the `shopConfig` the CALLER passes — the parser never imports the profile. Alex's profile
 (`profiles/fashion-formula-profile.json`; the seed is an empty skeleton since ETAP 3-6): SAMPLE
-220×200mm, FQ 670×480mm, TEA_TOWEL 700×500mm. With no profile, an empty (the skeleton) or a
-malformed list or no row for the code, it falls back to `BUILT_IN_DIMS` = the `DIMS_*` constants
-in `printWidths.js` (same numbers) — the undecided degraded path of rule 24. No Settings UI edits
-them today.
+220×200mm, FQ 670×480mm, TEA_TOWEL 700×500mm. With an unreadable profile (`shopConfig` null), an
+empty list (the skeleton), a malformed list or no valid row for the code, the file is REFUSED
+(ETAP 4, 4-types-e): width/height null + error `UNKNOWN_PRODUCT_SIZE` naming the reason, status
+INVALID. `BUILT_IN_DIMS` (= the `DIMS_*` of `printWidths.js`) answers only a call with NO options
+(`shopConfig` undefined) - the characterization tests, until ETAP 5 (rule 24). No Settings UI edits
+the sizes today.
 
 ### Who supplies the config
 
@@ -193,8 +195,8 @@ ELECTRON_RUN_AS_NODE=1 ./node_modules/.bin/electron scripts/golden/compare-golde
   `profiles/fashion-formula-profile.json` (Alex's live row, exported from a DB copy 2026-09-28 in
   the `profile:export` format - ETAP 3-5; before that `DEFAULT_PROFILE`, which 3-6 empties into a
   skeleton) — the harness NEVER opens the live `ripflow.db` (`initDb()` writes, and the
-  baseline must not depend on one machine). Because a profile is always present, the no-profile
-  `BUILT_IN_DIMS` path runs zero times in the net, exactly like the `null`-cache path above (Degraded paths).
+  baseline must not depend on one machine). Because a profile is always present, neither the
+  refusal (4-types-e) nor the `BUILT_IN_DIMS` path runs in the net, exactly like the `null`-cache path above (Degraded paths).
 - Customer names, order numbers and XWD ids are pseudonymised **at the source**; mappings are derived
   from sorted distinct values, so a re-capture reproduces an identical baseline.
 - Only three things are masked before diffing: the random UUID in `<NestingGroup>`, the same UUID

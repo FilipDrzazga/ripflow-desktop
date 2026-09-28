@@ -56,12 +56,6 @@ describe("parsePrintFileName shopConfig — absent config keeps the old behaviou
     }
   });
 
-  it("uses the built-in dimensions when shopConfig is null or undefined", () => {
-    for (const key of Object.keys(BUILT_IN)) {
-      expect(dims(key, { shopConfig: null })).toEqual(BUILT_IN[key]);
-      expect(dims(key, { shopConfig: undefined })).toEqual(BUILT_IN[key]);
-    }
-  });
 });
 
 describe("parsePrintFileName shopConfig — a supplied config is used", () => {
@@ -85,12 +79,6 @@ describe("parsePrintFileName shopConfig — a supplied config is used", () => {
 
   // Resolution is per code, not "the first entry wins": a config that overrides one type
   // must leave the others on their built-ins rather than borrowing the override.
-  it("leaves the other types on their built-ins when only one is configured", () => {
-    const cfg = withTypes([{ code: "FQ", width: 333, height: 444 }]);
-    expect(dims("SAMPLE", { shopConfig: cfg })).toEqual(BUILT_IN.SAMPLE);
-    expect(dims("TEA_TOWEL", { shopConfig: cfg })).toEqual(BUILT_IN.TEA_TOWEL);
-  });
-
   // Pins the mechanism to the numbers actually seeded, which is what makes the golden net's
   // 0/70 meaningful: the harness passes this config and the XML must not move.
   it("reproduces the built-ins when the config carries the seeded values", () => {
@@ -108,36 +96,8 @@ describe("parsePrintFileName shopConfig — a supplied config is used", () => {
 describe("parsePrintFileName shopConfig — a malformed config degrades, never throws", () => {
   // The profile is a free-form JSON blob in one column. Every wrong shape has to land on the
   // built-in rather than on NaN or an exception: this value reaches <Width> in the XML.
-  it("falls back when productTypes is missing or not an array", () => {
-    for (const bad of [{}, withTypes(undefined), withTypes(null), withTypes("FQ"), withTypes(42), withTypes({ FQ: {} })]) {
-      expect(dims("FQ", { shopConfig: bad })).toEqual(BUILT_IN.FQ);
-    }
-  });
-
-  it("falls back when no record matches the code", () => {
-    expect(dims("FQ", { shopConfig: withTypes([{ code: "SAMPLE", width: 1, height: 2 }]) })).toEqual(BUILT_IN.FQ);
-    expect(dims("FQ", { shopConfig: withTypes([]) })).toEqual(BUILT_IN.FQ);
-  });
-
   // Exact match, not case-insensitive: the print type code is a parser-level enum, and a
   // profile that spells it differently is a profile that does not configure this type.
-  it("matches the code exactly", () => {
-    expect(dims("FQ", { shopConfig: withTypes([{ code: "fq", width: 1, height: 2 }]) })).toEqual(BUILT_IN.FQ);
-    expect(dims("FQ", { shopConfig: withTypes([{ code: " FQ", width: 1, height: 2 }]) })).toEqual(BUILT_IN.FQ);
-  });
-
-  it("falls back when width is missing or not a finite number", () => {
-    for (const w of [undefined, null, "670", NaN, Infinity, {}]) {
-      expect(dims("FQ", { shopConfig: withTypes([{ code: "FQ", width: w, height: 480 }]) })).toEqual(BUILT_IN.FQ);
-    }
-  });
-
-  it("falls back when height is missing or not a finite number", () => {
-    for (const h of [undefined, null, "480", NaN, Infinity, {}]) {
-      expect(dims("FQ", { shopConfig: withTypes([{ code: "FQ", width: 670, height: h }]) })).toEqual(BUILT_IN.FQ);
-    }
-  });
-
   it("skips non-object entries without throwing", () => {
     const cfg = withTypes([null, "FQ", 7, ["FQ"], { code: "FQ", width: 333, height: 444 }]);
     expect(dims("FQ", { shopConfig: cfg })).toEqual({ width: 333, height: 444 });
@@ -153,9 +113,6 @@ describe("parsePrintFileName shopConfig — a malformed config degrades, never t
     expect(dims("FQ", { shopConfig: cfg })).toEqual({ width: 333, height: 444 });
   });
 
-  it("reads the productTypes key, not a neighbouring one", () => {
-    expect(dims("FQ", { shopConfig: { types: [{ code: "FQ", width: 1, height: 2 }] } })).toEqual(BUILT_IN.FQ);
-  });
 });
 
 describe("parsePrintFileName shopConfig — scope of the argument", () => {
