@@ -20,6 +20,7 @@ import { initDb, insertLog, getAllLogs, clearAllLogs, holdFile, unholdFile, getH
 import { loadFabricCache, invalidateFabricCache } from "../helpers/fabricCache.js";
 import { getProfile, getPrinterByCode } from "../helpers/shopProfile.js";
 import { loadShopData, reloadShopData } from "../helpers/reloadShopData.js";
+import { fabricSaveError } from "../helpers/fabricInput.js";
 import { saveShopProfile } from "../helpers/saveShopProfile.js";
 import { exportShopProfile, previewShopProfileImport, applyShopProfileImport } from "../helpers/profileTransfer.js";
 import { setPrinterResolver } from "./createXML.js";
@@ -460,7 +461,9 @@ export async function registerIpcHandlers() {
   });
 
   ipcMain.handle("fabrics:save", (_event, { oldName, fabric }) => {
-    if (!fabric?.name?.trim()) return { success: false, error: "Fabric name is required." };
+    // name AND material class (helpers/fabricInput.js, 4-types-b)
+    const inputError = fabricSaveError(fabric);
+    if (inputError) return { success: false, error: inputError };
     const ok = saveFabric(oldName ?? fabric.name, fabric);
     invalidateFabricCache();
     loadFabricCache();

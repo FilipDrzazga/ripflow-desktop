@@ -259,7 +259,7 @@ const EditPanel = ({ fabric, title, onSave, onCancel, isSaving }) => {
           <button className={styles.cancel_btn} onClick={onCancel}>
             Cancel
           </button>
-          <button className={styles.save_row_btn} onClick={() => onSave(draft)} disabled={isSaving || !draft.name.trim()}>
+          <button className={styles.save_row_btn} onClick={() => onSave(draft)} disabled={isSaving || !draft.name.trim() || !draft.type}>
             {isSaving ? "Saving…" : "Save"}
           </button>
         </div>
