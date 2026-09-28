@@ -6,6 +6,21 @@
 // nor "Unknown". The Save button is disabled then, but this is the real gate: main refuses.
 // Pure: ipc/index.js is unreachable from a test, so the rule lives here.
 
+// fabrics:setAll (the whole catalogue at once, 4-types-d): the same gate per row. The FIRST bad
+// row refuses the whole list - setAll replaces the catalogue, and half of one is worse than the old
+// one - and the message names the row (1-based, as a person counts) and the fabric.
+export const fabricListError = (fabrics) => {
+  if (!Array.isArray(fabrics)) return "Fabrics must be an array.";
+  for (let i = 0; i < fabrics.length; i++) {
+    const error = fabricSaveError(fabrics[i]);
+    if (error) {
+      const name = typeof fabrics[i]?.name === "string" && fabrics[i].name.trim() ? ` ("${fabrics[i].name.trim()}")` : "";
+      return `Row ${i + 1}${name}: ${error} Nothing was saved.`;
+    }
+  }
+  return null;
+};
+
 // null when the fabric may be saved, else the message for the operator.
 export const fabricSaveError = (fabric) => {
   if (typeof fabric?.name !== "string" || !fabric.name.trim()) return "Fabric name is required.";

@@ -117,9 +117,10 @@ and keeps the width message it has today). The RIP cannot accept the value; none
 golden baselines carries it. The gate refuses a **missing** class — blank, or the literal
 `Unknown` in any case — and deliberately **not** a class outside a list: a whitelist would
 put the class names back into the code 2g/2h is emptying of them, and a third class is an
-open possibility. A foreign `type` string (a hand-edited row, or an import via
-`setAllFabrics` — Settings cannot produce one, its class is a two-button toggle) therefore
-still renders. Pinned by `materialClassGate.test.js`.
+open possibility. A foreign `type` string (a hand-edited row; Settings offers only the profile's
+classes, and since ETAP 4 `fabrics:save` / `fabrics:setAll` refuse a row with no class -
+`helpers/fabricInput.js`, setAll the whole list at the first bad row) therefore still renders.
+Pinned by `materialClassGate.test.js`.
 
 **Fixed product dims come from the shop profile**, not from code: `resolveProductDims` in
 `parseFileName.js` reads `profile.productTypes[]` (`{ code, width, height }`, shape-checked per

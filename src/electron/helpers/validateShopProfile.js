@@ -1,7 +1,6 @@
 import { PRODUCTION_STAGE } from "../../shared/constants.js";
 import { isFolderName } from "../../shared/folderName.js";
 import { isHexColor } from "../../shared/hexColor.js";
-import { MATERIAL_CLASS_NAMES } from "../../shared/classGlobals.js";
 
 // Validates a shop profile before it may replace the stored one (ETAP 3-2, used by the import in
 // 3-3). Pure, and it imports only from src/shared: the import orchestrator can then be tested
@@ -33,13 +32,17 @@ const PRINTER_CODE_RE = /^[A-Z0-9]+$/;
 const STORE_HANDLE_RE = /^[a-z0-9][a-z0-9-]*$/;
 
 // The product codes parseFileName.js resolves through productTypes (resolveProductDims). A code
-// outside this list would be a row nobody reads; a missing one silently falls back to the
-// built-in dimensions, which are another shop's (rule 24) - so all three are required.
+// outside this list would be a row nobody reads (new codes need a parser of their own - ETAP 5).
+// Since ETAP 4 (4-types-d) the profile lists the SUBSET the shop makes: a missing code is a type
+// this shop does not have, and parseFileName refuses such a file (4-types-e).
 export const PRODUCT_TYPE_CODES = ["SAMPLE", "FQ", "TEA_TOWEL"];
 
 export const FEATURE_FLAGS = ["customOrders", "analytics", "ripErrors", "labelPrinting", "shopify", "sewing"];
 
 export const MAX_SEWING_COMPANY_LENGTH = 40;
+
+// Two class slots in the UI (materialClasses.js); a third class is frozen until client #2.
+export const MAX_MATERIAL_CLASSES = 2;
 
 const TOP_LEVEL_KEYS = [
   "schemaVersion",
@@ -110,16 +113,22 @@ export const validateShopProfile = (profile, { schemaVersion } = {}) => {
   if (!Array.isArray(profile.materialClasses) || profile.materialClasses.length === 0) {
     if ("materialClasses" in profile) err("materialClasses: must be a non-empty list.");
   } else {
+    // One or two classes, named by the shop (ETAP 4, 4-types-d): the estimator, the editor, the
+    // tabs and badges all work by class NAME now (4-types-a/b). Two slots - a third class is frozen
+    // in PRODUCTIZATION until client #2. The name goes to PrintFactory as <MaterialType> and must
+    // match the shop's own PrintFactory setup; "Unknown" is taken - it is what getMaterialType
+    // answers for a fabric outside the catalogue, and the Inbox card's row for such files.
+    if (profile.materialClasses.length > MAX_MATERIAL_CLASSES) {
+      err(`materialClasses: at most ${MAX_MATERIAL_CLASSES} classes (got ${profile.materialClasses.length}).`);
+    }
     profile.materialClasses.forEach((c, i) => {
       const at = `materialClasses[${i}]`;
       if (!isPlainObject(c)) return err(`${at}: must be an object.`);
       onlyKeys(c, CLASS_RECORD_KEYS, at);
-      // Only the classes the app knows (MATERIAL_CLASS_NAMES): a fabric's class is one of them
-      // (fabrics.type), and only they carry class numbers. "Cotton" or "Silk" would pass here and
-      // then fail quietly - the estimator back on the printWidths.js constants (Alex's numbers),
-      // FabricsView answering missing-class, a printer of that class never getting a file.
-      if (!MATERIAL_CLASS_NAMES.includes(c.name)) {
-        err(`${at}.name: must be one of ${MATERIAL_CLASS_NAMES.join(", ")} (got ${show(c.name)}).`);
+      if (!isText(c.name) || c.name !== c.name.trim()) {
+        err(`${at}.name: must be a name without outer spaces (got ${show(c.name)}).`);
+      } else if (c.name.toLowerCase() === "unknown") {
+        err(`${at}.name: "${c.name}" is reserved - it is the class of a fabric outside the catalogue.`);
       } else if (classNames.has(c.name)) err(`${at}.name: "${c.name}" is listed twice.`);
       else classNames.add(c.name);
       if (!Number.isFinite(c.margin) || c.margin < 0) err(`${at}.margin: must be a number >= 0 (got ${show(c.margin)}).`);
@@ -127,9 +136,6 @@ export const validateShopProfile = (profile, { schemaVersion } = {}) => {
         err(`${at}.defaultRollWidth: must be a number > 0 (got ${show(c.defaultRollWidth)}).`);
       }
     });
-    // Both required: a class the profile lacks has no numbers to edit (FabricsView refuses the
-    // save with missing-class) and its estimates silently use the printWidths.js constants.
-    for (const name of MATERIAL_CLASS_NAMES) if (!classNames.has(name)) err(`materialClasses: no entry for ${name}.`);
   }
 
   // ── printers ─────────────────────────────────────────────────────────────
@@ -174,7 +180,8 @@ export const validateShopProfile = (profile, { schemaVersion } = {}) => {
       if (!Number.isFinite(t.width) || t.width <= 0) err(`${at}.width: must be a number > 0 (got ${show(t.width)}).`);
       if (!Number.isFinite(t.height) || t.height <= 0) err(`${at}.height: must be a number > 0 (got ${show(t.height)}).`);
     });
-    for (const code of PRODUCT_TYPE_CODES) if (!seen.has(code)) err(`productTypes: no entry for ${code}.`);
+    // A SUBSET is enough since ETAP 4 (4-types-d): a shop without tea towels lists no TEA_TOWEL, and
+    // parseFileName refuses such a file (4-types-e) instead of sizing it with another shop's numbers.
   }
 
   // ── folders ──────────────────────────────────────────────────────────────
@@ -287,6 +294,12 @@ export const validateShopProfile = (profile, { schemaVersion } = {}) => {
       err(`customOrders.materialClass: must be null or one of the materialClasses names (got ${show(mc)}).`);
     }
   } else if ("customOrders" in profile) err("customOrders: must be an object.");
+  // 4-types-d: a shop that turns custom orders on must say which class they are printed in -
+  // otherwise every Generate is refused (CUSTOM_ORDER_CLASS_MISSING). A v4 rule: the field exists
+  // from v4, and an older file is migrated up before it gets here.
+  if (v >= 4 && profile.features?.customOrders === true && !isText(profile.customOrders?.materialClass)) {
+    err("features.customOrders is on, but customOrders.materialClass is not set.");
+  }
 
   return { ok: errors.length === 0, errors };
 };

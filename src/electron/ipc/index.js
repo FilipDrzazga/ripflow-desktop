@@ -20,7 +20,7 @@ import { initDb, insertLog, getAllLogs, clearAllLogs, holdFile, unholdFile, getH
 import { loadFabricCache, invalidateFabricCache } from "../helpers/fabricCache.js";
 import { getProfile, getPrinterByCode } from "../helpers/shopProfile.js";
 import { loadShopData, reloadShopData } from "../helpers/reloadShopData.js";
-import { fabricSaveError } from "../helpers/fabricInput.js";
+import { fabricSaveError, fabricListError } from "../helpers/fabricInput.js";
 import { saveShopProfile } from "../helpers/saveShopProfile.js";
 import { exportShopProfile, previewShopProfileImport, applyShopProfileImport } from "../helpers/profileTransfer.js";
 import { setPrinterResolver } from "./createXML.js";
@@ -479,7 +479,10 @@ export async function registerIpcHandlers() {
   });
 
   ipcMain.handle("fabrics:setAll", (_event, fabrics) => {
-    if (!Array.isArray(fabrics)) return { success: false, error: "Fabrics must be an array." };
+    // every row needs a name and a material class; the first bad row refuses the whole list
+    // (helpers/fabricInput.js, 4-types-d)
+    const listError = fabricListError(fabrics);
+    if (listError) return { success: false, error: listError };
     const ok = setAllFabrics(fabrics);
     invalidateFabricCache();
     loadFabricCache();

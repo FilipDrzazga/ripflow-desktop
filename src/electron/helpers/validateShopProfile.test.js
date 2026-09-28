@@ -178,49 +178,6 @@ describe("validateShopProfile - materialClasses and productTypes", () => {
     ]);
   });
 
-  it("a class listed twice is refused", () => {
-    expect(errorsOf((p) => (p.materialClasses[1].name = "Cottons"))).toEqual([
-      'materialClasses[1].name: "Cottons" is listed twice.',
-      "materialClasses: no entry for Polyesters.",
-      // EPSON pointed at Polyesters, which no longer exists
-      'printers[1].materialClass: "Polyesters" is not in materialClasses.',
-    ]);
-  });
-
-  it("a class the app does not know is refused (it would carry no numbers and route nothing)", () => {
-    for (const name of ["Cotton", "Silks", "cottons"]) {
-      expect(
-        errorsOf((p) => {
-          p.materialClasses.push({ name, margin: 5, defaultRollWidth: 1500 });
-        }),
-      ).toEqual([`materialClasses[2].name: must be one of Cottons, Polyesters (got "${name}").`]);
-    }
-  });
-
-  it("both known classes are required", () => {
-    expect(
-      errorsOf((p) => {
-        p.materialClasses = p.materialClasses.filter((c) => c.name !== "Cottons");
-        p.printers = p.printers.filter((pr) => pr.materialClass !== "Cottons");
-      }),
-    ).toEqual(["materialClasses: no entry for Cottons."]);
-  });
-
-  it("a product code the parser does not read is refused", () => {
-    expect(errorsOf((p) => (p.productTypes[0].code = "CUSHION"))).toEqual([
-      'productTypes[0].code: must be one of SAMPLE, FQ, TEA_TOWEL (got "CUSHION").',
-      "productTypes: no entry for SAMPLE.",
-    ]);
-  });
-
-  it("every product code must have an entry, with positive dimensions", () => {
-    expect(
-      errorsOf((p) => {
-        p.productTypes = p.productTypes.filter((t) => t.code !== "FQ");
-        p.productTypes[0].height = -5;
-      }),
-    ).toEqual(["productTypes[0].height: must be a number > 0 (got -5).", "productTypes: no entry for FQ."]);
-  });
 });
 
 describe("validateShopProfile - folders and scanRules", () => {

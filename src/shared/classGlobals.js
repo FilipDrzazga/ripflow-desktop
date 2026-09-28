@@ -7,10 +7,6 @@
 // Fabrics editor (4-types-b) - the four fixed keys (marginCotton, ...) and their helpers are gone.
 // Pure, zero imports: carries a test without Electron, the DB or the store.
 
-// The two class names validateShopProfile still requires in an imported profile (ETAP 3-2). Only
-// the import validator reads this; 4-types-d relaxes it to "one or two classes, any names".
-export const MATERIAL_CLASS_NAMES = ["Cottons", "Polyesters"];
-
 // The editor's write (4-types-b): a NEW profile whose classes carry the numbers from `numbers` -
 // { [className]: { margin, defaultRollWidth } }. Everything else - other classes, other fields,
 // other profile sections - is copied untouched; the input is never mutated. A class the profile
