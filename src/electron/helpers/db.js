@@ -304,12 +304,16 @@ export const initDb = () => {
         updated_by TEXT
       )
     `);
-    // Seed on first run only — same guard as fabric_globals above, so several stations
-    // starting against the shared DB cannot overwrite an edited profile with the default.
+    // Seed on first run only, so several stations starting against the shared DB cannot
+    // overwrite an edited profile with the default. ON CONFLICT (ETAP 4): two stations starting
+    // on an EMPTY database both see COUNT = 0; the second INSERT hit the PRIMARY KEY, threw,
+    // and initDb left that station with no database at all. Only the id conflict is ignored
+    // (unlike OR IGNORE, which would also swallow a NOT NULL failure). The COUNT stays so a
+    // started shop does not take a write lock on the shared file at every station start.
     const profileCount = db.prepare("SELECT COUNT(*) AS c FROM shop_profile").get().c;
     if (profileCount === 0) {
       db.prepare(
-        "INSERT INTO shop_profile (id, data, updated_at, updated_by) VALUES (1, ?, ?, ?)",
+        "INSERT INTO shop_profile (id, data, updated_at, updated_by) VALUES (1, ?, ?, ?) ON CONFLICT(id) DO NOTHING",
       ).run(JSON.stringify(DEFAULT_PROFILE), new Date().toISOString(), "system");
     }
 
