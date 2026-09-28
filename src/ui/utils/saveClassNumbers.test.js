@@ -1,9 +1,9 @@
 import { describe, it, expect, vi } from "vitest";
 import { saveClassNumbers } from "./saveClassNumbers.js";
 
-// ETAP 2g-3c, variant A: the class numbers go to the shop profile FIRST, then to fabric_globals
-// (read by stations on older versions during the pilot). A failure of either write is its own
-// outcome - never a silent split (S2 condition, plan 2g-3c).
+// ETAP 2g-3c: the class numbers go to the shop profile. The pilot's second write to fabric_globals
+// went in 1.0.26 (every station on 1.0.25); setLegacyGlobals stays in deps as a spy only, so each
+// case can still assert that nothing reaches fabric_globals any more.
 
 const PROFILE = {
   schemaVersion: 3,
@@ -15,7 +15,6 @@ const PROFILE = {
 };
 // the form holds strings (input values) - the save converts them
 const FORM = { marginCotton: "12", defaultRollWidthCotton: "1400", marginPoly: "6", defaultRollWidthPoly: "1600" };
-const NUMBERS = { marginCotton: 12, defaultRollWidthCotton: 1400, marginPoly: 6, defaultRollWidthPoly: 1600 };
 
 const deps = (over = {}) => ({
   getProfile: vi.fn(async () => ({ success: true, data: PROFILE })),
@@ -25,7 +24,7 @@ const deps = (over = {}) => ({
 });
 
 describe("saveClassNumbers", () => {
-  it("writes the profile, then the same four numbers to fabric_globals", async () => {
+  it("writes the profile and nothing else - fabric_globals is not written any more", async () => {
     const d = deps();
     expect(await saveClassNumbers(FORM, d)).toEqual({ outcome: "saved" });
     const written = d.setProfile.mock.calls[0][0];
@@ -34,14 +33,7 @@ describe("saveClassNumbers", () => {
       { name: "Polyesters", margin: 6, defaultRollWidth: 1600 },
     ]);
     expect(written.printers).toEqual(PROFILE.printers);
-    expect(d.setLegacyGlobals).toHaveBeenCalledWith(NUMBERS);
-    expect(d.setProfile.mock.invocationCallOrder[0]).toBeLessThan(d.setLegacyGlobals.mock.invocationCallOrder[0]);
-  });
-
-  it("never writes the dead XML width keys to fabric_globals", async () => {
-    const d = deps();
-    await saveClassNumbers({ ...FORM, defaultXmlWidthCotton: 9 }, d);
-    expect(Object.keys(d.setLegacyGlobals.mock.calls[0][0]).sort()).toEqual(Object.keys(NUMBERS).sort());
+    expect(d.setLegacyGlobals).not.toHaveBeenCalled();
   });
 
   it("writes nothing when the profile cannot be read (null data, failure, rejection)", async () => {
@@ -78,16 +70,5 @@ describe("saveClassNumbers", () => {
     const d = deps({ setProfile: vi.fn(async () => { throw new Error("profile:set timed out"); }) });
     expect(await saveClassNumbers(FORM, d)).toEqual({ outcome: "profile-failed", error: "profile:set timed out" });
     expect(d.setLegacyGlobals).not.toHaveBeenCalled();
-  });
-
-  it("reports the split when the profile was saved and fabric_globals was not", async () => {
-    const d = deps({ setLegacyGlobals: vi.fn(async () => ({ success: false })) });
-    expect(await saveClassNumbers(FORM, d)).toEqual({ outcome: "legacy-failed", error: "Could not write fabric_globals." });
-    expect(d.setProfile).toHaveBeenCalledTimes(1);
-  });
-
-  it("reports the split when the fabric_globals write does not answer", async () => {
-    const d = deps({ setLegacyGlobals: vi.fn(async () => { throw new Error("setFabricGlobals timed out"); }) });
-    expect(await saveClassNumbers(FORM, d)).toEqual({ outcome: "legacy-failed", error: "setFabricGlobals timed out" });
   });
 });

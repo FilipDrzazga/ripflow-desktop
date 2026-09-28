@@ -2,7 +2,6 @@ import React, { useEffect, useState, useMemo } from "react";
 import { LuPencil, LuTrash2, LuPlus } from "react-icons/lu";
 import { useStore } from "@/store/useStore";
 import {
-  setFabricGlobals as setFabricGlobalsApi,
   getFabrics,
   saveFabric as saveFabricApi,
   deleteFabric as deleteFabricApi,
@@ -71,9 +70,6 @@ const GlobalParamsCard = () => {
     setValues(valuesFromProfile(shopProfile));
   }
   const initialValues = valuesFromProfile(shopProfile);
-  // The profile was saved but the fabric_globals copy was not: the form then matches the
-  // profile, and Save must stay available to retry the copy.
-  const [legacyPending, setLegacyPending] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
   const handleSave = async () => {
@@ -82,20 +78,12 @@ const GlobalParamsCard = () => {
       const { outcome, error } = await saveClassNumbers(values, {
         getProfile: getShopProfile,
         setProfile: setShopProfile,
-        setLegacyGlobals: setFabricGlobalsApi,
       });
       // Reload whatever happened after a write was attempted: main reloads its cache from the
       // DB after profile:set, so the store and the estimates show what the DB holds now.
       if (outcome !== "no-profile" && outcome !== "missing-class") await loadShopProfile();
-      setLegacyPending(outcome === "legacy-failed");
       if (outcome === "saved") {
         notify({ type: "Success", title: "Saved", message: "Material class numbers updated." });
-      } else if (outcome === "legacy-failed") {
-        notify({
-          type: "Error",
-          title: "Saved only in part",
-          message: `The shop profile was saved, but the copy read by stations on older versions was not (${error}). Press Save again.`,
-        });
       } else if (outcome === "profile-changed") {
         // Not a failure: main refused on purpose and reloaded - the form now shows the other
         // station's numbers, which the operator checks before saving again (Warning, rule 18).
@@ -119,8 +107,7 @@ const GlobalParamsCard = () => {
     return !v || v <= 0;
   });
 
-  const isUnchanged =
-    !legacyPending && GLOBAL_FIELDS_GROUPED.every(({ key }) => Number(values[key]) === Number(initialValues[key]));
+  const isUnchanged = GLOBAL_FIELDS_GROUPED.every(({ key }) => Number(values[key]) === Number(initialValues[key]));
 
   return (
     <div className={`${styles.card} ${styles.card_globals}`}>

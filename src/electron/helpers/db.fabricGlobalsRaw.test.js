@@ -2,8 +2,9 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // ETAP 2g-3a: getFabricGlobalsRaw - what fabric_globals really holds, or null. The REAL db.js
 // with a fake driver, exactly as db.shopProfile.test.js does it (see its header for why and
-// what this does not prove). The point: unlike getFabricGlobals, it never fills in the seed,
-// so the profile migration cannot mistake Alex's defaults for a shop's own numbers.
+// what this does not prove). The point: it never fills in a default, so the profile migration
+// cannot mistake Alex's defaults for a shop's own numbers. (getFabricGlobals, the reader that
+// DID fill in the seed, went in 1.0.26 with the dual write.)
 
 vi.mock("electron", () => ({
   app: { getPath: () => "C:/tmp", getAppPath: () => "C:/tmp" },
@@ -41,7 +42,7 @@ vi.mock("better-sqlite3", () => ({
   },
 }));
 
-import { initDb, getFabricGlobalsRaw, getFabricGlobals } from "./db.js";
+import { initDb, getFabricGlobalsRaw } from "./db.js";
 
 describe("getFabricGlobalsRaw", () => {
   beforeEach(() => {
@@ -51,9 +52,8 @@ describe("getFabricGlobalsRaw", () => {
   });
 
   // db.js keeps its handle in module state, so this case has to run before initDb
-  it("no database handle -> null (getFabricGlobals would answer the seed here)", () => {
+  it("no database handle -> null", () => {
     expect(getFabricGlobalsRaw()).toBeNull();
-    expect(getFabricGlobals().marginCotton).toBe(10);
   });
 
   it("returns exactly the rows the table holds - no seed key added", () => {

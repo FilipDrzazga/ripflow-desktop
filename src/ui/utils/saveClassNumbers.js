@@ -1,31 +1,25 @@
-// Saving the class numbers from Settings -> Fabrics (ETAP 2g-3c, variant A, FILIP 2026-09-25).
+// Saving the class numbers from Settings -> Fabrics (ETAP 2g-3c).
 //
-// Two writes, in this order:
-//   1. profile:set - the shop profile's materialClasses, the numbers' owner since profile v3.
-//      Every station on this version reads them from there.
-//   2. fabricGlobals:set - the same four numbers in fabric_globals, ONLY for stations still on an
-//      older version during the pilot (they read the numbers from there). The dual write goes
-//      away once every station is upgraded (PRODUCTIZATION).
-// The profile goes first: if it fails, nothing was written and nothing is split. If the second
-// write fails, the stations have split (new ones see the new numbers, old ones the old) - that is
-// reported as its own outcome so the view can say so, never folded into "saved".
+// ONE write: profile:set - the shop profile's materialClasses, the numbers' owner since profile
+// v3; every station reads them from there. During the 2G pilot a second write copied the same
+// four numbers to fabric_globals for stations still on an older version; that dual write went in
+// 1.0.26, once every station ran 1.0.25 (FILIP 2026-09-28 10:49).
 //
 // The IPC calls are injected so the sequence carries a test without window.api (rule 10: the
 // view passes the services in). Returns { outcome, error? }:
-//   "saved"          - both writes succeeded
-//   "no-profile"     - the profile could not be read; nothing written
-//   "missing-class"  - the profile lists no Cottons or no Polyesters class; nothing written
+//   "saved"           - the profile was written
+//   "no-profile"      - the profile could not be read; nothing written
+//   "missing-class"   - the profile lists no Cottons or no Polyesters class; nothing written
 //   "profile-changed" - profile:set refused: another station saved the profile after this one
-//                       loaded it (ETAP 3-1); nothing written, fabric_globals not touched
-//   "profile-failed" - profile:set failed or did not answer; fabric_globals not touched
-//   "legacy-failed"  - the profile was saved, the fabric_globals copy was not
+//                       loaded it (ETAP 3-1); nothing written
+//   "profile-failed"  - profile:set failed or did not answer
 
 import { CLASS_NUMBER_KEYS, withClassNumbers } from "../../shared/classGlobals";
 import { PROFILE_CHANGED } from "../../shared/constants";
 
 const errorOf = (res, err, fallback) => err?.message || res?.error || fallback;
 
-export const saveClassNumbers = async (values, { getProfile, setProfile, setLegacyGlobals }) => {
+export const saveClassNumbers = async (values, { getProfile, setProfile }) => {
   const numbers = {};
   for (const key of CLASS_NUMBER_KEYS) numbers[key] = Number(values[key]);
 
@@ -51,13 +45,6 @@ export const saveClassNumbers = async (values, { getProfile, setProfile, setLega
   } catch (err) {
     // A timeout: the write may or may not have landed - the caller reloads and shows what is there.
     return { outcome: "profile-failed", error: errorOf(null, err, "The shop profile save did not answer.") };
-  }
-
-  try {
-    const res = await setLegacyGlobals(numbers);
-    if (!res?.success) return { outcome: "legacy-failed", error: errorOf(res, null, "Could not write fabric_globals.") };
-  } catch (err) {
-    return { outcome: "legacy-failed", error: errorOf(null, err, "The fabric_globals write did not answer.") };
   }
   return { outcome: "saved" };
 };

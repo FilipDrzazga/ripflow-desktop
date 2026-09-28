@@ -1,9 +1,5 @@
 import { withTimeout } from "@/utils/ipcWithTimeout";
 
-export const getFabricGlobals = () =>
-  withTimeout(window.api.getFabricGlobals(), 5_000, "getFabricGlobals");
-export const setFabricGlobals = (globals) =>
-  withTimeout(window.api.setFabricGlobals(globals), 30_000, "setFabricGlobals");
 export const getFabrics = () =>
   withTimeout(window.api.getFabrics(), 5_000, "getFabrics");
 export const saveFabric = (oldName, fabric) =>

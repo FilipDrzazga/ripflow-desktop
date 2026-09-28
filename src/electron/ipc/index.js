@@ -16,7 +16,7 @@ import { getStorageRootPath } from "../helpers/getRootPath.js";
 import { assertStorageFilePath } from "../helpers/validateStoragePath.js";
 import { parsePrintFileName } from "../helpers/parseFileName.js";
 import { getSettings, setSettings, getRollbackDefinitions, clearRollbackDefinitions } from "../helpers/getSettings.js";
-import { initDb, insertLog, getAllLogs, clearAllLogs, holdFile, unholdFile, getHeldFiles, pruneOrphanHeldFiles, getRollbackReasonsByBatch, getRollbackReasonsByFile, getRollbackStats, getRollbackDetails, clearAllRollbackReasons, deleteRollbackReason, getLatestRollbackReasonsForFileIds, getReasonDefinitions, setReasonDefinitions as setReasonDefinitionsDb, migrateReasonDefinitions, getAllFabrics, saveFabric, deleteFabric as deleteFabricDb, setAllFabrics, getFabricGlobals, setFabricGlobals, backupDb, cleanupShippedStages, getDbDegraded } from "../helpers/db.js";
+import { initDb, insertLog, getAllLogs, clearAllLogs, holdFile, unholdFile, getHeldFiles, pruneOrphanHeldFiles, getRollbackReasonsByBatch, getRollbackReasonsByFile, getRollbackStats, getRollbackDetails, clearAllRollbackReasons, deleteRollbackReason, getLatestRollbackReasonsForFileIds, getReasonDefinitions, setReasonDefinitions as setReasonDefinitionsDb, migrateReasonDefinitions, getAllFabrics, saveFabric, deleteFabric as deleteFabricDb, setAllFabrics, backupDb, cleanupShippedStages, getDbDegraded } from "../helpers/db.js";
 import { loadFabricCache, invalidateFabricCache } from "../helpers/fabricCache.js";
 import { loadShopProfile, getProfile, getPrinterByCode } from "../helpers/shopProfile.js";
 import { saveShopProfile } from "../helpers/saveShopProfile.js";
@@ -453,18 +453,6 @@ export async function registerIpcHandlers() {
   ipcMain.handle("reasonDefs:set", (_event, definitions) => {
     if (!Array.isArray(definitions)) return { success: false, error: "Definitions must be an array." };
     return { success: setReasonDefinitionsDb(definitions) };
-  });
-
-  ipcMain.handle("fabricGlobals:get", () => {
-    return { success: true, data: getFabricGlobals() };
-  });
-
-  ipcMain.handle("fabricGlobals:set", (_event, globals) => {
-    if (!globals || typeof globals !== "object") return { success: false, error: "Globals must be an object." };
-    const ok = setFabricGlobals(globals);
-    invalidateFabricCache();
-    loadFabricCache();
-    return { success: ok };
   });
 
   ipcMain.handle("fabrics:getAll", () => {

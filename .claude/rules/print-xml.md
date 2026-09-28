@@ -41,9 +41,9 @@ Tokenize by `_`, detect CUSHION/TEA_TOWEL by keyword, others by XWD hex token.
 ## Fabric Config (`fabricCache.js`)
 
 In-memory cache loaded at startup (`loadFabricCache()` called in `ipc/index.js` after `initDb()`).
-Invalidated and reloaded after every `fabrics:save`, `fabrics:delete`, `fabrics:setAll`, `fabricGlobals:set`.
-The reload after `fabricGlobals:set` changes nothing since 2g-3b - the cache holds the catalogue
-only; the class numbers come from the profile, which `profile:set` reloads.
+Invalidated and reloaded after every `fabrics:save`, `fabrics:delete`, `fabrics:setAll`. The cache
+holds the catalogue only; the class numbers come from the profile, which `profile:set` reloads
+(`fabricGlobals:set` and its reload went in 1.0.26 with the pilot's dual write).
 
 ```js
 loadFabricCache(); // load from DB into memory
@@ -147,20 +147,18 @@ A Settings edit reaching the XML is therefore **intended**.
 - **Both are built by ONE function since ETAP 2g-3b**: `estimateConfigFrom(fabrics, profile)` in
   `src/shared/classGlobals.js`. `globals` = the four class keys the estimator reads, from
   `profile.materialClasses` (`classGlobalsFromProfile`; no profile or no valid number -> the key is
-  absent and the estimator uses the class constant). `fabric_globals` is no longer READ for estimates
-  (FabricsView still writes it - the pilot's dual write, variant A, see "Class numbers editor"
-  below). The store rebuilds `fabricConfig` when EITHER the catalogue or the profile finishes
+  absent and the estimator uses the class constant). `fabric_globals` is neither read for estimates
+  nor written since 1.0.26 (the pilot's dual write is gone). The store rebuilds `fabricConfig` when EITHER the catalogue or the profile finishes
   loading - in `loadShopProfile` in the SAME `set()` as the profile, a failed reload included.
 - **Class numbers editor (ETAP 2g-3c)**: Settings -> Fabrics "Global Parameters" shows and saves the
   four numbers of the profile (a number the profile lacks shows the class constant).
-  `saveClassNumbers` (`src/ui/utils/`) writes `profile:set` FIRST (the profile via
-  `withClassNumbers`, patched from `profile:get`), then the same four keys to `fabricGlobals:set`
-  for older stations. Profile unreadable / a class missing / `profile:set` failed -> nothing else
-  is written; `profile:set` refused with `PROFILE_CHANGED` (another station saved since this one
-  loaded, ETAP 3-1) -> nothing else is written either, a Warning, and the form reloads to the
-  current numbers; the second write failed -> "Saved only in part", visible, Save stays enabled for a
-  retry. The dead "XML Width Cotton/Poly" fields are gone from the editor (the keys stay in
-  `fabric_globals`, untouched).
+  `saveClassNumbers` (`src/ui/utils/`) writes ONE thing: `profile:set` (the profile via
+  `withClassNumbers`, patched from `profile:get`). Until 1.0.26 a second write copied the four keys
+  to `fabric_globals` for older stations - gone, with its "Saved only in part" outcome. Profile
+  unreadable / a class missing -> nothing written; `profile:set` refused with `PROFILE_CHANGED`
+  (another station saved since this one loaded, ETAP 3-1) -> a Warning, and the form reloads to the
+  current numbers; `profile:set` failed -> an Error. The dead "XML Width Cotton/Poly" fields are gone
+  from the editor.
 
 **`getEstimateConfig()` returns `null`, never `{ fabrics: [] }`, when the cache is not loaded.** An
 empty array is truthy, so the estimator would take its DB branch with an empty catalog and silently

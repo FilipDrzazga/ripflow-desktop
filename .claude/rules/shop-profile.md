@@ -105,14 +105,12 @@ failure) - never from `DEFAULT_PROFILE` or the fabric seed; the dead `defaultXml
 dropped. Unreadable `fabric_globals` BLOCKS the step (`blocked`, logged): the row stays at v2
 and the next start tries again. Since 2g-3b the estimator READS the class numbers from the
 profile (`estimateConfigFrom`, `src/shared/classGlobals.js`, main and renderer alike).
-Pilot with two versions on one DB (variant A, FILIP 2026-09-25): an older build meeting v3
-refuses to migrate and keeps reading the row; it still reads the class numbers from
-`fabric_globals`, so until every station runs the new version FabricsView writes BOTH (2g-3c,
-`saveClassNumbers`: profile first, see "Who supplies the config" in print-xml.md), and nobody
-edits class numbers on an old station. FabricsView is the first renderer caller of
+The 2G pilot ran two versions on one DB (variant A, FILIP 2026-09-25): FabricsView wrote the class
+numbers to the profile AND to `fabric_globals`, which older builds read. That dual write went in
+1.0.26, once every station ran 1.0.25 (FILIP 2026-09-28): `saveClassNumbers` writes the profile
+only ("Who supplies the config" in print-xml.md). FabricsView was the first renderer caller of
 `profile:set`; it replaces the WHOLE row, so it patches what `profile:get` returns (the main
-process cache, reloaded after every `profile:set`), never the store's copy. The dual write goes once all stations are
-upgraded (PRODUCTIZATION).
+process cache, reloaded after every `profile:set`), never the store's copy.
 
 **`printers[]` consumers in main (ETAP 2e step 2):** `createXML.js` routes a job to
 `printers[].hotfolder` through `setPrinterResolver(getPrinterByCode)`, wired right after

@@ -3,7 +3,7 @@ import { mkdirSync, existsSync, readdirSync, unlinkSync, statSync, writeFileSync
 import { app } from "electron";
 import Database from "better-sqlite3";
 import { getStorageRootPath } from "./getRootPath.js";
-import { DEFAULT_FABRICS, DEFAULT_FABRIC_GLOBALS } from "./defaultFabrics.js";
+import { DEFAULT_FABRICS } from "./defaultFabrics.js";
 import { DEFAULT_PROFILE } from "./defaultProfile.js";
 import { printerOfBatch } from "../../shared/batchFolderName.js";
 
@@ -262,13 +262,9 @@ export const initDb = () => {
         value REAL NOT NULL
       )
     `);
-    const globalsCount = db.prepare("SELECT COUNT(*) AS c FROM fabric_globals").get().c;
-    if (globalsCount === 0) {
-      const stmtG = db.prepare("INSERT INTO fabric_globals (key, value) VALUES (?, ?)");
-      for (const [key, value] of Object.entries(DEFAULT_FABRIC_GLOBALS)) {
-        stmtG.run(key, value);
-      }
-    }
+    // Not seeded any more (1.0.26, the cleanup after the 2G pilot): nothing reads the table but the
+    // profile migration v2 -> v3 (getFabricGlobalsRaw), and only for a row written before v3. A
+    // fresh install seeds its profile at v3. The table itself is dropped in ETAP 4.
 
     // ── fabrics ──────────────────────────────────────────────────────────────
     db.exec(`
@@ -755,25 +751,11 @@ export const migrateReasonDefinitions = (defs) => {
 
 // ── fabric_globals ───────────────────────────────────────────────────────────
 
-export const getFabricGlobals = () => {
-  if (!db) return { ...DEFAULT_FABRIC_GLOBALS };
-  try {
-    const rows = db.prepare("SELECT key, value FROM fabric_globals").all();
-    const result = { ...DEFAULT_FABRIC_GLOBALS };
-    for (const row of rows) result[row.key] = row.value;
-    return result;
-  } catch (err) {
-    console.error("[db] getFabricGlobals failed:", err);
-    return { ...DEFAULT_FABRIC_GLOBALS };
-  }
-};
-
-// The raw rows of fabric_globals, WITHOUT the seed filled in: { key: value } for what the
-// table actually holds, or null when it could not be read (no DB, or the SELECT threw).
-// For the profile migration v2 -> v3 (ETAP 2g-3a), which must move THIS shop's numbers
-// into the profile and must never mistake the seed for them - getFabricGlobals above
-// silently substitutes DEFAULT_FABRIC_GLOBALS on a failure, which is right for a reader
-// and wrong for a migration that writes the result into the shared profile for good.
+// The raw rows of fabric_globals: { key: value } for what the table actually holds, or null when
+// it could not be read (no DB, or the SELECT threw). The ONLY reader left (1.0.26 removed the
+// pilot's dual write, the seed and getFabricGlobals / setFabricGlobals): the profile migration
+// v2 -> v3 (ETAP 2g-3a), which moves THIS shop's numbers into the profile and must never fill
+// in a default - a default written into the shared profile would be another shop's numbers.
 export const getFabricGlobalsRaw = () => {
   if (!db) return null;
   try {
@@ -783,20 +765,6 @@ export const getFabricGlobalsRaw = () => {
   } catch (err) {
     console.error("[db] getFabricGlobalsRaw failed:", err);
     return null;
-  }
-};
-
-export const setFabricGlobals = (globals) => {
-  if (!db) return false;
-  try {
-    const stmt = db.prepare("INSERT OR REPLACE INTO fabric_globals (key, value) VALUES (?, ?)");
-    db.transaction(() => {
-      for (const [key, value] of Object.entries(globals)) stmt.run(key, Number(value));
-    })();
-    return true;
-  } catch (err) {
-    console.error("[db] setFabricGlobals failed:", err);
-    return false;
   }
 };
 

@@ -11,19 +11,9 @@ const fabrics = JSON.parse(fs.readFileSync(profile, "utf8"));
 const shopProfilePath = path.join(here, "..", "..", "profiles", "fashion-formula-profile.json");
 const shopProfile = JSON.parse(fs.readFileSync(shopProfilePath, "utf8"));
 
-// Alex's fabric_globals, read once from his DB and confirmed equal to
-// DEFAULT_FABRIC_GLOBALS. Spelled out here so the harness needs no database at all.
-const globals = {
-  marginCotton: 10,
-  marginPoly: 5,
-  defaultXmlWidthCotton: 1420,
-  defaultXmlWidthPoly: 1420,
-  defaultRollWidthCotton: 1420,
-  defaultRollWidthPoly: 1550,
-};
-
+// No fabric_globals here: db.getFabricGlobals is gone (1.0.26) and the class numbers come from
+// the shop profile below (materialClasses), exactly as on a station.
 export const getAllFabrics = () => fabrics.map((f) => ({ ...f }));
-export const getFabricGlobals = () => ({ ...globals });
 
 // The shop profile, so loadShopProfile() gets a row instead of throwing. Without this
 // the harness runs with cachedProfile === null, and the moment any module on the XML

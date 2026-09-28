@@ -127,11 +127,6 @@ const api = Object.freeze({
     if (!Array.isArray(defs)) throw new TypeError("Definitions must be an array.");
     return ipcRenderer.invoke("reasonDefs:set", defs);
   },
-  getFabricGlobals: () => ipcRenderer.invoke("fabricGlobals:get"),
-  setFabricGlobals: (globals) => {
-    if (!isPlainObject(globals)) throw new TypeError("Globals must be a plain object.");
-    return ipcRenderer.invoke("fabricGlobals:set", globals);
-  },
   getFabrics: () => ipcRenderer.invoke("fabrics:getAll"),
   saveFabric: (oldName, fabric) => {
     if (!isPlainObject(fabric)) throw new TypeError("Fabric must be a plain object.");
