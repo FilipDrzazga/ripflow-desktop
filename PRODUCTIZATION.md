@@ -1114,11 +1114,11 @@ Kolejnosc jest wiec wymuszona i nie wolno jej odwrocic: import profilu -> oprozn
       Dzis nieszkodliwe, bo zadna stacja nie uzywa domyslnej wartosci (wszystkie trzy
       maja `xmlPath = O:\SPPrintReadyArtwork` w `config.json`) - szkodliwe stanie sie
       przy pierwszej instalacji, ktora tej wartosci nie nadpisze.
-- [ ] `defaultProfile.js`: `integrations.shopify.storeHandle: "fashionformulauk"` -> `""`.
+- [x] `defaultProfile.js`: `integrations.shopify.storeHandle: "fashionformulauk"` -> `""`.
       Zostalo po skasowanym 2a: konsument czyta juz profil (ETAP 1), ale seed nadal wnosi
       nazwe Alexa do kodu. Uwaga na `openInShopify.js` - fallback celowo uzywa `||`, wiec
       pusty handle liczy sie jako brak i degraduje zamiast budowac zly link
-      **ZROBIONE w ETAPIE 3-6 (`a128fac`), CZEKA NA BRAMKE FILIPA:** caly `DEFAULT_PROFILE` jest
+      **ZROBIONE w ETAPIE 3-6 (`a128fac`), bramka FILIPA 2026-09-28 10:49 (ETAP 3):** caly `DEFAULT_PROFILE` jest
       pustym szkieletem (handle `""`); profil Alexa w `profiles/fashion-formula-profile.json`.
       Kod w `main`, NIE w wydaniu.
 - [ ] `QC_ACTION` (`shared/constants.js`) to MARTWY KOD - jedno trafienie w calym
@@ -1131,7 +1131,7 @@ Kolejnosc jest wiec wymuszona i nie wolno jej odwrocic: import profilu -> oprozn
       trzyma je dla starych wierszy. Pomiar na kopii bazy 2026-09-25 (db-peek, readonly):
       654 wiersze `file_stages`, ZERO ze stage `rejected` / `overridden`. Decyzja o ich
       usunieciu OTWARTA - baza jest wspolna, wiec pomiar trzeba powtorzyc tuz przed.
-- [ ] Grep kontrolny: zero `if (clientId === "...")` w logice, zero zaszytych adresow,
+- [x] Grep kontrolny: zero `if (clientId === "...")` w logice, zero zaszytych adresow,
       zero literalu "Fashion Formula" (audyt: byl jeden; osobno `"fashionformulauk"`
       wyzej - inny string, wiec grep na "Fashion Formula" go NIE lapie).
       Grep kontrolny ma szukac TRZECH rodzin, nie jednej:
@@ -1157,7 +1157,7 @@ Kolejnosc jest wiec wymuszona i nie wolno jej odwrocic: import profilu -> oprozn
       w ETAPIE 3. Zostaje jako weryfikacja po tamtej zmianie, nie jako praca do wykonania.
       Trzy rodziny do sprawdzenia i wylaczenie testow zostaja w opisie - to jest wartosc
       tej pozycji, nie sam fakt odpalenia grepa.
-      **ZROBIONE w ETAPIE 3-7 (`b0e9933`), CZEKA NA BRAMKE FILIPA:** `git grep` trzech rodzin
+      **ZROBIONE w ETAPIE 3-7 (`b0e9933`), bramka FILIPA 2026-09-28 10:49 (ETAP 3):** `git grep` trzech rodzin
       w `src/` poza testami = 0 (dwa komentarze przepisane). Mierzone tez tam, gdzie klient to
       dostaje: rozpakowany `app.asar` zbudowanej aplikacji (`electron-builder --dir`) = 0 trafien
       i 0 plikow `*.test.js` - `build.files` ma `!**/*.test.js` (wczesniej instalator niosl 45
