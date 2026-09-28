@@ -10,8 +10,8 @@ import { notify } from "@/utils/notify";
 import Summary from "../Summary/Summary";
 import style from "./Details.module.css";
 import { getPrinters, getPrinterColor, getMaterialClassColor } from "@/utils/shopProfileData";
+import { materialClassNames } from "@/utils/materialClasses";
 
-const PROCESS_OPTIONS = ["All", "Cottons", "Polyesters"];
 const PERIODS = [
   { id: "7d", label: "7 days" },
   { id: "30d", label: "30 days" },
@@ -92,6 +92,8 @@ const Details = ({ details, stats, isLoading, period, onPeriodChange, onRefresh 
   const shopProfile = useStore((s) => s.shopProfile);
   // Printer filter = "All" + the profile's printers (ETAP 2e step 3).
   const printerOptions = useMemo(() => ["All", ...getPrinters(shopProfile).map((p) => p.code)], [shopProfile]);
+  // the material classes of the shop profile, like the printers above (4-types-b)
+  const processOptions = useMemo(() => ["All", ...materialClassNames(shopProfile)], [shopProfile]);
   const reasonLabels = useMemo(
     () => Object.fromEntries(reasonDefinitions.map((r) => [r.code, r.label])),
     [reasonDefinitions],
@@ -217,7 +219,7 @@ const Details = ({ details, stats, isLoading, period, onPeriodChange, onRefresh 
           {/* Filters bar */}
           <div className={style.filters}>
             <div className={style.filter_group}>
-              {PROCESS_OPTIONS.map((p) => (
+              {processOptions.map((p) => (
                 <button
                   key={p}
                   className={`${style.filter_btn} ${processFilter === p ? style.filter_btn_active : ""}`}

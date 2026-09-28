@@ -17,7 +17,15 @@ import { LuRefreshCw, LuCircle } from "react-icons/lu";
 import { IoLeaf, IoLeafOutline } from "react-icons/io5";
 import { PiPolygon, PiPolygonFill } from "react-icons/pi";
 import { PRINT_TYPE_MAP } from "@/constants/printTypeMap";
+import { withSlotLooks } from "@/utils/materialClasses";
 import styles from "./DataFilters.module.css";
+
+// The icon pair of each material-class slot (4-types-b): slot 0 = the leaf Cottons always had,
+// slot 1 = the polygon of Polyesters. The tab's NAME comes from the shop profile.
+const CLASS_TAB_LOOKS = [
+  { IconOn: IoLeaf, IconOff: IoLeafOutline },
+  { IconOn: PiPolygonFill, IconOff: PiPolygon },
+];
 
 const SORT_OPTIONS = [
   { value: null, label: "Sort by", icon: HiArrowsUpDown },
@@ -46,6 +54,9 @@ const DataFilters = () => {
   const setSortOrder = useStore((state) => state.setSortOrder);
   const printTypeFilter = useStore((state) => state.printTypeFilter);
   const setPrintTypeFilter = useStore((state) => state.setPrintTypeFilter);
+  const shopProfile = useStore((state) => state.shopProfile);
+  // one tab per material class of the profile, in its order (4-types-b)
+  const classTabs = withSlotLooks(shopProfile, CLASS_TAB_LOOKS);
 
   const [sortOpen, setSortOpen] = useState(false);
   const [typeOpen, setTypeOpen] = useState(false);
@@ -116,18 +127,16 @@ const DataFilters = () => {
       >
         {activeTab === "All" ? <HiClipboardDocumentList /> : <HiOutlineClipboardDocumentList />}All
       </button>
-      <button
-        onClick={() => handleClick("Cottons")}
-        className={`${styles.filter_button} ${activeTab === "Cottons" ? styles.active : ""}`}
-      >
-        {activeTab === "Cottons" ? <IoLeaf /> : <IoLeafOutline />}Cottons
-      </button>
-      <button
-        onClick={() => handleClick("Polyesters")}
-        className={`${styles.filter_button} ${activeTab === "Polyesters" ? styles.active : ""}`}
-      >
-        {activeTab === "Polyesters" ? <PiPolygonFill /> : <PiPolygon />}Polyesters
-      </button>
+      {classTabs.map(({ name, IconOn, IconOff }) => (
+        <button
+          key={name}
+          onClick={() => handleClick(name)}
+          className={`${styles.filter_button} ${activeTab === name ? styles.active : ""}`}
+        >
+          {activeTab === name ? <IconOn /> : <IconOff />}
+          {name}
+        </button>
+      ))}
       <div className={styles.filter_separator} />
       <div className={styles.sort_wrapper} ref={typeRef}>
         <button

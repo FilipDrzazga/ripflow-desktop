@@ -3,16 +3,17 @@ import style from "./PrintMaterialBreakdownCard.module.css";
 import OthersTooltip from "./OthersTooltip";
 import { useStore } from "../../../store/useStore";
 import { estimatePrintLength } from "../../../../shared/estimatePrintLength";
+import { withSlotLooks } from "../../../utils/materialClasses";
 
-const MATERIAL_SECTIONS = [
+// One section per material class of the shop profile (4-types-b); the colours belong to the
+// class's slot - slot 0 the blues Cottons always had, slot 1 the violets of Polyesters.
+const SECTION_SLOT_LOOKS = [
   {
-    label: "Cottons",
     accent: "#2e7fd6",
     palette: ["#2e7fd6", "#4d9de8", "#78b8ef"],
     othersColor: "#b9dbf7",
   },
   {
-    label: "Polyesters",
     accent: "#7c4ff0",
     palette: ["#6a3de8", "#8f6bef", "#b298f5"],
     othersColor: "#ddd0fa",
@@ -81,14 +82,16 @@ const getSectionData = (files, materialType, sectionConfig, config) => {
 const PrintMaterialBreakdownCard = () => {
   const files = useStore((state) => state.files);
   const fabricConfig = useStore((state) => state.fabricConfig);
+  const shopProfile = useStore((state) => state.shopProfile);
 
   const sections = useMemo(
     () =>
-      MATERIAL_SECTIONS.map((section) => ({
+      withSlotLooks(shopProfile, SECTION_SLOT_LOOKS).map((section) => ({
         ...section,
-        ...getSectionData(files, section.label, section, fabricConfig),
+        label: section.name,
+        ...getSectionData(files, section.name, section, fabricConfig),
       })),
-    [files, fabricConfig],
+    [files, fabricConfig, shopProfile],
   );
 
   return (

@@ -11,6 +11,7 @@ import { showConfirm } from "../../../services/systemService";
 import { notify } from "@/utils/notify";
 import { saveClassNumbers } from "@/utils/saveClassNumbers";
 import { PROFILE_STATUS } from "@/utils/profileStatus";
+import { materialClassNames, withSlotLooks } from "@/utils/materialClasses";
 import { classGlobalsFromProfile } from "../../../../shared/classGlobals";
 import { MARGIN_COTTON, MARGIN_POLY, LM_ROLL_COTTON_DEFAULT, LM_ROLL_POLY } from "../../../../shared/printWidths";
 import styles from "./FabricsView.module.css";
@@ -36,9 +37,14 @@ const CLASS_CONSTANTS = {
 
 const valuesFromProfile = (profile) => ({ ...CLASS_CONSTANTS, ...classGlobalsFromProfile(profile) });
 
+// The CSS of each material-class slot (4-types-b): slot 0 = what Cottons always had, slot 1 =
+// Polyesters. The class NAMES come from the shop profile (materialClasses.js).
+const TYPE_BTN_SLOT_LOOKS = [{ activeClass: "type_btn_active_cottons" }, { activeClass: "type_btn_active_polyesters" }];
+const BADGE_SLOT_CLASSES = ["mat_type_cottons", "mat_type_polyesters"];
+
 const DEFAULT_NEW_FABRIC = {
   name: "",
-  type: "Cottons",
+  type: "", // EditPanel fills in the profile's first class
   xmlWidth: 1420,
   rollWidth: 1420,
   isVelvet: false,
@@ -157,7 +163,10 @@ const GlobalParamsCard = () => {
 // ── Edit Panel ───────────────────────────────────────────────────────────────
 
 const EditPanel = ({ fabric, title, onSave, onCancel, isSaving }) => {
-  const [draft, setDraft] = useState({ ...fabric });
+  const shopProfile = useStore((s) => s.shopProfile);
+  const classes = withSlotLooks(shopProfile, TYPE_BTN_SLOT_LOOKS);
+  // a new fabric starts in the profile's FIRST class (4-types-b; was the literal "Cottons")
+  const [draft, setDraft] = useState({ ...fabric, type: fabric.type || classes[0]?.name || "" });
   const set = (key, val) => setDraft((d) => ({ ...d, [key]: val }));
 
   return (
@@ -190,20 +199,17 @@ const EditPanel = ({ fabric, title, onSave, onCancel, isSaving }) => {
         <div className={styles.type_toggle}>
           <span className={styles.edit_field_label}>Type</span>
           <div className={styles.type_toggle_btns}>
-            <button
-              type="button"
-              className={`${styles.type_btn} ${draft.type === "Cottons" ? styles.type_btn_active_cottons : ""}`}
-              onClick={() => set("type", "Cottons")}
-            >
-              Cottons
-            </button>
-            <button
-              type="button"
-              className={`${styles.type_btn} ${draft.type === "Polyesters" ? styles.type_btn_active_polyesters : ""}`}
-              onClick={() => set("type", "Polyesters")}
-            >
-              Polyesters
-            </button>
+            {classes.length === 0 && <span className={styles.edit_field_label}>No material classes in the shop profile</span>}
+            {classes.map(({ name, activeClass }) => (
+              <button
+                key={name}
+                type="button"
+                className={`${styles.type_btn} ${draft.type === name ? styles[activeClass] : ""}`}
+                onClick={() => set("type", name)}
+              >
+                {name}
+              </button>
+            ))}
           </div>
         </div>
 
@@ -266,6 +272,8 @@ const EditPanel = ({ fabric, title, onSave, onCancel, isSaving }) => {
 
 const MaterialsCard = () => {
   const loadFabricConfig = useStore((s) => s.loadFabricConfig);
+  const shopProfile = useStore((s) => s.shopProfile);
+  const classNames = useMemo(() => materialClassNames(shopProfile), [shopProfile]);
   const [fabrics, setFabrics] = useState([]);
   const [typeFilter, setTypeFilter] = useState("All");
   const [search, setSearch] = useState("");
@@ -291,13 +299,13 @@ const MaterialsCard = () => {
     });
   }, [fabrics, typeFilter, search]);
 
-  const counts = useMemo(
-    () => ({
-      all: fabrics.length,
-      cottons: fabrics.filter((f) => f.type === "Cottons").length,
-      polyesters: fabrics.filter((f) => f.type === "Polyesters").length,
-    }),
-    [fabrics],
+  // "All" plus one tab per class of the profile, each with its count (4-types-b)
+  const filterTabs = useMemo(
+    () => [
+      { id: "All", label: `All (${fabrics.length})` },
+      ...classNames.map((name) => ({ id: name, label: `${name} (${fabrics.filter((f) => f.type === name).length})` })),
+    ],
+    [fabrics, classNames],
   );
 
   const handleSave = async (oldName, fabric) => {
@@ -374,11 +382,7 @@ const MaterialsCard = () => {
 
       <div className={styles.materials_toolbar}>
         <div className={styles.filter_group}>
-          {[
-            { id: "All", label: `All (${counts.all})` },
-            { id: "Cottons", label: `Cottons (${counts.cottons})` },
-            { id: "Polyesters", label: `Polyesters (${counts.polyesters})` },
-          ].map(({ id, label }) => (
+          {filterTabs.map(({ id, label }) => (
             <button
               key={id}
               className={`${styles.filter_btn} ${typeFilter === id ? styles.filter_btn_active : ""}`}
@@ -417,9 +421,9 @@ const MaterialsCard = () => {
                         ) : null}
                         <div className={styles.mat_row_badges}>
                           <span
-                            className={`${styles.mat_type_badge} ${fabric.type === "Cottons" ? styles.mat_type_cottons : styles.mat_type_polyesters}`}
+                            className={`${styles.mat_type_badge} ${styles[BADGE_SLOT_CLASSES[classNames.indexOf(fabric.type)]] ?? ""}`}
                           >
-                            {fabric.type === "Cottons" ? "Cotton" : "Poly"}
+                            {fabric.type || "-"}
                           </span>
                           {activeFlags.map(({ key, label }) => (
                             <span key={key} className={styles.mat_flag}>

@@ -10,6 +10,7 @@ import { FILE_STATUS } from "../../../shared/constants";
 import { resolveIcon } from "../../constants/rollbackReasonIcons";
 import { openInFolder as openInFolderApi, openInShopify as openInShopifyApi } from "../../services/fileService";
 import { isFeatureEnabled } from "../../utils/featureVisibility";
+import { materialClassSlot } from "../../utils/materialClasses";
 import { FiInbox, FiLock, FiUnlock } from "react-icons/fi";
 import {
   LuClock,
@@ -39,10 +40,18 @@ const formatFileSize = (bytes) => {
 const getOriginalQty = (item) =>
   item.printTypeCode === "LM" ? (item.height != null ? item.height / 1000 : null) : item.qty;
 
-const MATERIAL_MAP = {
-  Cottons: { Icon: LuLeaf, color: "#3B6D11", label: "Cottons" },
-  Polyesters: { Icon: PiPolygon, color: "#185FA5", label: "Polyesters" },
-  Unknown: { Icon: LuCircleHelp, color: "#888780", label: "Unknown" },
+// The material badge of a row (4-types-b): a class of the shop profile gets the look of its
+// slot (slot 0 = the leaf Cottons always had, slot 1 = the polygon of Polyesters) and its own
+// name; anything else - "Unknown", or a class the profile does not list - the grey question mark.
+const MATERIAL_SLOT_LOOKS = [
+  { Icon: LuLeaf, color: "#3B6D11" },
+  { Icon: PiPolygon, color: "#185FA5" },
+];
+const OTHER_MATERIAL_LOOK = { Icon: LuCircleHelp, color: "#888780" };
+const materialDefFor = (profile, materialType) => {
+  if (!materialType) return null;
+  const slot = materialClassSlot(profile, materialType);
+  return { ...(slot >= 0 ? MATERIAL_SLOT_LOOKS[slot] : OTHER_MATERIAL_LOOK), label: materialType };
 };
 
 const STATUS_MAP = {
@@ -276,7 +285,7 @@ const DataList = () => {
                 const ageLabel = age === 0 ? "New" : `${age}d`;
 
                 const printTypeDef = PRINT_TYPE_MAP[item.printTypeCode];
-                const materialDef = MATERIAL_MAP[item.materialType];
+                const materialDef = materialDefFor(shopProfile, item.materialType);
                 const statusDef = STATUS_MAP[item.status];
 
                 const rowClasses = [
