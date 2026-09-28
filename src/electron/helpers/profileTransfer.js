@@ -1,6 +1,8 @@
 import { randomUUID } from "crypto";
 import { getShopProfileRaw, getAllFileStages, dumpShopProfileBlob, backupDb } from "./db.js";
 import { saveShopProfile } from "./saveShopProfile.js";
+import { getProfile } from "./shopProfile.js";
+import { DEFAULT_PROFILE } from "./defaultProfile.js";
 import { validateShopProfile } from "./validateShopProfile.js";
 import { PROFILE_SCHEMA_VERSION } from "./migrateShopProfile.js";
 import { PRODUCTION_STAGE } from "../../shared/constants.js";
@@ -110,6 +112,12 @@ export const importImpact = (diff, stageRows) => {
   return { stageRowsCounted: rows.length, byRemovedPrinter, atSewingByRemovedCompany: atRemovedCompany };
 };
 
+const stationIsStale = (storedProfile) => {
+  const loaded = getProfile();
+  if (loaded === null || loaded === DEFAULT_PROFILE || storedProfile === null) return true;
+  return canonical(loaded) !== canonical(storedProfile);
+};
+
 export const previewShopProfileImport = async ({ chooseOpenPath, readFile, statSize }) => {
   pending = null;
   const filePath = await chooseOpenPath();
@@ -156,6 +164,10 @@ export const previewShopProfileImport = async ({ chooseOpenPath, readFile, statS
     token,
     fileName: filePath.split(/[/\\]/).pop(),
     unchanged: diff.changedSections.length === 0,
+    // The apply writes through the 3-1 CAS against what THIS station loaded at startup. When
+    // that is not the stored row (another station saved since, or nothing was loaded), the apply
+    // can only end in a refusal - said before the click, not after (S2 2026-09-28 09:43).
+    stationStale: stationIsStale(stored.profile),
     diff,
     impact,
   };

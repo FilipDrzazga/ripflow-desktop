@@ -133,7 +133,7 @@ The state shape is in the file. What it does not say:
 
 ## Settings Architecture
 
-`Settings.jsx` routes through a `SECTIONS` array + `VIEWS` map; every view shares `SettingsView.module.css`. Per-machine values (General, Paths) go to electron-store; Fabrics and Rollback Reasons are shared DB config (rule 16). The fabric alias field sanitises on `onChange`, but the real gate is `getAliasFromCache` (see Fabric Config in `.claude/rules/print-xml.md`).
+`Settings.jsx` routes through a `SECTIONS` array + `VIEWS` map; every view shares `SettingsView.module.css`. Per-machine values (General, Paths) go to electron-store; Fabrics and Rollback Reasons are shared DB config (rule 16). Shop Profile is read-only plus Export / Import of the profile file (deployment level, see `.claude/rules/shop-profile.md`). The fabric alias field sanitises on `onChange`, but the real gate is `getAliasFromCache` (see Fabric Config in `.claude/rules/print-xml.md`).
 
 ## Dev Commands
 

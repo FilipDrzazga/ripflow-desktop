@@ -185,7 +185,20 @@ local copy of what is replaced = nothing replaced), then `backupDb(true)` best e
 never blocking), then `saveShopProfile` - the 3-1 CAS, so an import cannot land on a profile
 another station saved after this one loaded (`PROFILE_CHANGED`). The import never touches
 `fabrics`. Other stations keep their startup cache until restart - except one whose own save is
-refused with `PROFILE_CHANGED`, which reloads then (see 3-1 above).
+refused with `PROFILE_CHANGED`, which reloads then (see 3-1 above). The preview also answers
+`stationStale`: THIS station's loaded profile is not the stored row (or it holds no baseline -
+`null` or the `DEFAULT_PROFILE` stand-in, even when the row now equals it), so the apply can only
+end in `PROFILE_CHANGED` - the UI says so before the click.
+
+**Settings -> Shop Profile (`ShopProfileView.jsx`, ETAP 3-4)** - deployment level, so READ-ONLY
+plus the file: Export, and Import = preview -> native `showConfirm` with the diff and the impact ->
+apply. After an apply attempt it calls the store's `loadShopProfile()`, which sets `shopProfile` and
+`shopProfileStatus` in ONE `set()` from main's reloaded cache - the view never writes the store
+itself. Everything it says is in `utils/shopProfileView.js` (pure, tested): `profileSections`
+(a feature reads "on" only for a real `true`, like `getFeature`), `importConfirmMessage` (stale
+warning first, restart note last), `importResultNotice` (`PROFILE_CHANGED` = Warning, apart from a
+failure; a failed backup after a successful import = Warning), `importErrorsNotice`,
+`exportResultNotice`.
 
 **First consumer: `openInShopify.js`** — the store handle comes ONLY from
 `integrations.shopify.storeHandle`; there is **no `DEFAULT_PROFILE` fallback** (it would
