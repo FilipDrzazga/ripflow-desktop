@@ -127,6 +127,10 @@ i "Bramka weryfikacji" ODSYLAJA po oczekiwana wartosc.
 - po kroku 5 w 2g (plan 2G, `51ee95a`, 2026-09-25): **576 passed / 55 files**
   - komenda: `npm run test`; zmierzone przez S1 na HEAD `51ee95a` po bramce FILIPA
   - `npm run lint` -> exit 0, golden -> 0 differences across 70 batches
+- po planie 2H (`3fb712c`, 2026-09-28): **599 passed / 59 files**
+  - komenda: `npm run test`; zmierzone przez S1 na HEAD `3fb712c` po bramce FILIPA (P23);
+    jedna zmiana istniejacego testu (`sandboxGuard.test.js`) za zgoda FILIPA 2026-09-25 15:19
+  - `npm run lint` -> exit 0, golden -> 0 differences across 70 batches
 
 - [x] **BUG 1** - `clientId` przechodzi przez `settings:set`
   - `src/electron/ipc/index.js`, handler `settings:set`: destrukturyzacja `clientId`
@@ -1044,16 +1048,18 @@ indziej - decyzja o PUSTYM profilu-szkielecie (ETAP 3, seed vs migracja) oprozan
 Kolejnosc jest wiec wymuszona i nie wolno jej odwrocic: import profilu -> oproznienie
 `DEFAULT_PROFILE` -> grep kontrolny na trzy rodziny nazw.
 
-- [ ] `defaultFabrics.js`: usunac `COTTON_NAMES` / `POLY_NAMES`
-      **ZROBIONE W KODZIE 2026-09-25 (`6534b72`, 2g-1), czeka na bramke FILIPA** - obie
+- [x] `defaultFabrics.js`: usunac `COTTON_NAMES` / `POLY_NAMES`
+      **ZROBIONE (`6534b72`, 2g-1), bramka FILIPA 2026-09-28 07:32 (P23)** - obie
       listy usuniete; `git grep` na nie w `src/` i `scripts/` daje zero trafien.
+      Kod w `1.0.25` (plan 2G, pilotaz na Cotton).
 - [ ] `getMaterialType.js`: statyczne listy nazw Alexa -> czytanie klas z `profile.materialClasses`
       (fallback zwraca "Unknown", nie liste Alexa)
-- [ ] `printWidths.js`: mapy `LM_ROLL_COTTON` / `LM_XML_COTTON` (per nazwa Alexa) -> profil
-      **ZROBIONE W KODZIE 2026-09-25, czeka na bramke FILIPA:** `LM_XML_COTTON` usuniete
+- [x] `printWidths.js`: mapy `LM_ROLL_COTTON` / `LM_XML_COTTON` (per nazwa Alexa) -> profil
+      **ZROBIONE, bramka FILIPA 2026-09-28 07:32 (P23):** `LM_XML_COTTON` usuniete
       w `6534b72` (2g-1), `LM_ROLL_COTTON` w `32f03bf` (2g-2: galaz zdegradowana bierze
       szerokosc klasy, cztery tkaniny schodza do 1420). Obie nazwy zostaly tylko
-      w komentarzach historycznych. Zapis ponizej to stan sprzed ciecia.
+      w komentarzach historycznych. Kod w `1.0.25` (plan 2G, pilotaz na Cotton).
+      Zapis ponizej to stan sprzed ciecia.
       **ZAKRES ROZSTRZYGNIETY 2026-09-21 - patrz krok 6 w 2g.** Usuwamy MAPY, modul ZOSTAJE
       (cztery stale klasowe nie niosa nazw klienta). `LM_XML_COTTON` nie ma konsumenta;
       `LM_ROLL_COTTON` ma jednego - galaz zdegradowana `getRollWidth`, cztery tkaniny.
@@ -1069,7 +1075,12 @@ Kolejnosc jest wiec wymuszona i nie wolno jej odwrocic: import profilu -> oprozn
       Komenda produkujaca te liczbe: zaladowac oba eksporty z
       `src/shared/printWidths.js` i wypisac klucze, dla ktorych
       `LM_XML_COTTON[k] !== LM_ROLL_COTTON[k]`.
-- [ ] Flagi `isVelvet` / `isLinen` / `isBlossom` - **opis skorygowany po pomiarze, zakres
+- [x] Flagi `isVelvet` / `isLinen` / `isBlossom` - **ZROBIONE (`4d62789`, 2h-2), bramka
+      FILIPA 2026-09-28 07:32 (P23):** flaga tylko z wiersza katalogu; tkanina bez wiersza =
+      `false` + ostrzezenie przy submit (`uncataloguedFabricWarning`), bez zgadywania z nazwy.
+      **Kod w `main`, NIE w wydaniu** - `1.0.25` niesie 2G; 2H pojdzie w nastepnym wydaniu,
+      po pilotazu `1.0.25`. Zapis ponizej to stan sprzed ciecia.
+      **Opis skorygowany po pomiarze, zakres
       jest WEZSZY niz zapisano.** `getFabricFlag` (`createXML.js`) czyta flage
       z BAZY (`getFabricByName(item.material)` -> `fabric[flagKey]`); `name.includes()`
       jest WYLACZNIE fallbackiem dla materialu spoza katalogu i dodatkowo patrzy na nazwe
@@ -1080,7 +1091,12 @@ Kolejnosc jest wiec wymuszona i nie wolno jej odwrocic: import profilu -> oprozn
       zamiast listy Alexa. Poprzedni opis ("wywodzone przez `name.includes()`") zawyzal
       zakres i sugerowal migracje, ktora juz sie odbyla.
 - [ ] Katalog FF -> `profiles/fashion-formula-fabrics.json` (juz wyeksportowany w Etapie 0)
-- [ ] `getSettings.js`: domyslne sciezki `O:\SPPrintReadyArtwork` / `\\192.168.0.17\...` -> `""`
+- [x] `getSettings.js`: domyslne sciezki `O:\SPPrintReadyArtwork` / `\\192.168.0.17\...` -> `""`
+      **ZROBIONE (`3fb712c`, 2h-3), bramka FILIPA 2026-09-28 07:32 (P23; reczny test
+      w piaskownicy przeszedl):** domyslne `""`; pusta sciezka = `ERR_PATHS_NOT_SET`
+      w `getRootPath.js` (bez bazy, skanu i XML) + blad "Paths not set" i Settings przy starcie.
+      **Kod w `main`, NIE w wydaniu** - `1.0.25` niesie 2G; 2H pojdzie w nastepnym wydaniu,
+      po pilotazu `1.0.25`. Zapis ponizej to stan sprzed ciecia.
       **Ten drugi literal jest osobnym problemem, nie tylko nazwa Alexa w kodzie.**
       Zmierzone 2026-09-21: `getSettings.js` ma `storagePath: "O:\\SPPrintReadyArtwork"`
       i `xmlPath: "\\\\192.168.0.17\\Original_files\\SPPrintReadyArtwork"` - czyli
