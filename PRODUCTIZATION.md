@@ -1112,6 +1112,9 @@ Kolejnosc jest wiec wymuszona i nie wolno jej odwrocic: import profilu -> oprozn
       Zostalo po skasowanym 2a: konsument czyta juz profil (ETAP 1), ale seed nadal wnosi
       nazwe Alexa do kodu. Uwaga na `openInShopify.js` - fallback celowo uzywa `||`, wiec
       pusty handle liczy sie jako brak i degraduje zamiast budowac zly link
+      **ZROBIONE w ETAPIE 3-6 (`a128fac`), CZEKA NA BRAMKE FILIPA:** caly `DEFAULT_PROFILE` jest
+      pustym szkieletem (handle `""`); profil Alexa w `profiles/fashion-formula-profile.json`.
+      Kod w `main`, NIE w wydaniu.
 - [ ] `QC_ACTION` (`shared/constants.js`) to MARTWY KOD - jedno trafienie w calym
       `src/`, sama definicja, ZERO konsumentow (QCModal zostal usuniety). Odkryte przy
       `sewing`, gdzie brief zakladal, ze trzeba zabramkowac `QC_ACTION.SEWING` - nie bylo
@@ -1148,6 +1151,14 @@ Kolejnosc jest wiec wymuszona i nie wolno jej odwrocic: import profilu -> oprozn
       w ETAPIE 3. Zostaje jako weryfikacja po tamtej zmianie, nie jako praca do wykonania.
       Trzy rodziny do sprawdzenia i wylaczenie testow zostaja w opisie - to jest wartosc
       tej pozycji, nie sam fakt odpalenia grepa.
+      **ZROBIONE w ETAPIE 3-7 (`b0e9933`), CZEKA NA BRAMKE FILIPA:** `git grep` trzech rodzin
+      w `src/` poza testami = 0 (dwa komentarze przepisane). Mierzone tez tam, gdzie klient to
+      dostaje: rozpakowany `app.asar` zbudowanej aplikacji (`electron-builder --dir`) = 0 trafien
+      i 0 plikow `*.test.js` - `build.files` ma `!**/*.test.js` (wczesniej instalator niosl 45
+      testow, 3 z nazwami Alexa). Przy okazji: Settings > Fabrics pokazywalo KAZDEMU klientowi
+      "Cottons -> DGEN, Polyesters -> YOKO/YUMI" (tekst UI) - przepisane. Poza trzema rodzinami
+      zostaja w komentarzach `src/electron` (idzie do asar jako zrodlo) historyczne wzmianki
+      "Alex" i kody DGEN/YOKO/YUMI - wyjasniaja, co bylo wczesniej; nie sa danymi klienta.
 
 **WYJATEK - swiadomie ZOSTAJE (nie usuwac):**
 
@@ -1230,6 +1241,31 @@ i `reason_definitions`. Odrebne od edytora profilu z ETAPU 3, ktory jest WDROZEN
 
 Baza pozostaje jedynym zywym zrodlem prawdy; JSON to tylko transport na wdrozenie.
 
+**STAN 2026-09-28: CALY ETAP 3 ZROBIONY W KODZIE, CZEKA NA BRAMKE FILIPA (nic nie odhaczone).**
+Plan i uzasadnienia: `chat/artefakty/3-rekon/projekt.md`; dowody per krok: `chat/artefakty/3-0` .. `3-8`.
+Kod w `main`, NIE w wydaniu (plan: 1.0.26 = 2H + sprzatanie podwojnego zapisu, 1.0.27 = ETAP 3;
+importu wolno uzyc dopiero, gdy kazda stacja ma wersje z CAS 3-1). Kroki:
+3-1 `564f419` CAS w `profile:set`; 3-2 `0d7b397` + `b21b6b5` walidator; 3-3 `0bebbab` export/import
+w main; 3-4 `3d51d3f` sekcja Shop Profile (reczny test FILIPA OK, ODP 29); 3-5 `627fab6` fikstura
+profilu Alexa + stub golden; 3-6 `ab9bb35` + `a128fac` pusty szkielet + baner (reczny test na swiezej
+bazie: `chat/artefakty/3-6/reczny-test.md`, u FILIPA); 3-7 `b0e9933` instalator bez testow i nazw;
+3-8 `0d0f2d8` lint na niewidoczne znaki.
+Korekty zapisu ponizej, zmierzone przy rekonesansie (3-rekon, sekcja 2):
+- kod drukarki `^[A-Z0-9]+$`, NIE `^[A-Z0-9_]+$` - `BATCH_FOLDER_RE` czyta `_<cyfry>` na koncu jako
+  sufiks kolizji (`MIMAKI_2` -> drukarka `MIMAKI`), wiec podkreslnik psuje nazwe folderu jak myslnik;
+- profil NIE ma klucza `stages` - `scanRules.from/to` sprawdzane wzgledem `PRODUCTION_STAGE`;
+- `schemaVersion` starszy niz 3 = ODMOWA, nie migracja w gore (FILIP ODP 25): plikow v1/v2 nie ma,
+  a migracja wzielaby liczby klas z seeda tej bazy, czyli liczby Alexa.
+Pozycje dodane w trakcie (regula 5 - nowe linie zamiast rozszerzania istniejacych):
+- [ ] `profile:set` jako compare-and-swap (3-1): stacja bez restartu nadpisywala po cichu profil zapisany
+      gdzie indziej (FabricsView zapisuje CALY wiersz ze swojego cache); `PROFILE_CHANGED` = Warning
+- [ ] walidator: `materialClasses` = dokladnie Cottons + Polyesters; `productTypes` = dokladnie
+      SAMPLE / FQ / TEA_TOWEL, wszystkie trzy; `ripErrors` => `folders.ripError`, `customOrders` =>
+      `folders.customOrder`; `storeHandle` w ksztalcie URL; nieznane klucze = odmowa (3-2)
+- [ ] podglad importu mowi `stationStale` PRZED kliknieciem (3-4)
+- [ ] instalator bez `*.test.js` (`build.files`), grep na rozpakowanym `app.asar` (3-7)
+- [ ] lint odrzuca niewidoczne znaki: BOM, zero-width, bidi "Trojan Source" (3-8, FILIP ODP 28)
+
 - [ ] Nowa sekcja `Shop Profile` w Settings (podglad read-only + Import/Export)
   - **Edytor profilu MUSI zapisywac `shopProfile` i `shopProfileStatus` RAZEM, jednym
     `set()`.** Dzis zgodnosc tych dwoch pol gwarantuje wylacznie fakt, ze pisze je jedna
@@ -1292,6 +1328,21 @@ Baza pozostaje jedynym zywym zrodlem prawdy; JSON to tylko transport na wdrozeni
 ---
 
 ## ETAP 4 - Produktyzacja (moze isc rownolegle z Etapem 2)
+
+- [ ] **Typy produktow i klasy materialow z profilu** (FILIP ODP 27, 2026-09-28): klient ma sam
+      definiowac swoje typy produktow. Dzis kody SAMPLE / FQ / TEA_TOWEL zna parser
+      (`parseFileName.js`), a klasy Cottons / Polyesters - `getMaterialType` i `classGlobals.js`,
+      wiec walidator importu (3-2) jest scisly i wymaga dokladnie tych list. Poluzowac RAZEM z
+      parserem czytajacym kody z profilu i `getMaterialType` czytajacym klasy z profilu - inaczej
+      brakujacy typ po cichu dostaje wymiary Alexa (`BUILT_IN_DIMS`), a nieznana klasa - stale.
+- [ ] **Seed profilu przy dwoch stacjach startujacych naraz na PUSTEJ bazie** (S2 przy 3-6): `initDb`
+      robi COUNT, potem INSERT - druga stacja dostanie wyjatek w `initDb` (db = null). Tylko pierwszy
+      start nowego klienta. Naprawa: `INSERT OR IGNORE`.
+- [ ] **Import przy `stationStale`: zamiast okna potwierdzenia sam komunikat** (S2 przy 3-4) - dzis
+      okno pozwala kliknac OK, apply robi zrzut + backup i dopiero wtedy odmawia `PROFILE_CHANGED`.
+- [ ] **Dziura siatki golden (e): trasowanie po drukarkach** (zmierzone przy 3-5) - harness wola
+      `buildPFJobXML` wprost, wiec `printers[]` / hotfolder nie wplywaja na wynik (fikstura bez drukarek
+      = 0/70). Pilnuje tego `hotfolderRouting.test.js`, nie golden.
 
 - [ ] **`powerMonitor` + pauza pollingu na `suspend` / `lock-screen`.** Uzasadnione
       eksperymentem na stacji QC (zapis w `claude/DECYZJE-LOG.md`): uspienie
