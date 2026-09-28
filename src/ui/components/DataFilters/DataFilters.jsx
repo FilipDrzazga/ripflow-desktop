@@ -18,6 +18,7 @@ import { IoLeaf, IoLeafOutline } from "react-icons/io5";
 import { PiPolygon, PiPolygonFill } from "react-icons/pi";
 import { PRINT_TYPE_MAP } from "@/constants/printTypeMap";
 import { withSlotLooks } from "@/utils/materialClasses";
+import { printTypeOptions } from "@/utils/printTypeOptions";
 import styles from "./DataFilters.module.css";
 
 // The icon pair of each material-class slot (4-types-b): slot 0 = the leaf Cottons always had,
@@ -33,13 +34,6 @@ const SORT_OPTIONS = [
   { value: "date_asc", label: "Oldest", icon: HiClock },
 ];
 
-const PRINT_TYPE_OPTIONS = [
-  { value: "LM",        label: "Linear Meter" },
-  { value: "FQ",        label: "Fat Quarter"  },
-  { value: "SAMPLE",    label: "Sample"       },
-  { value: "CUSHION",   label: "Cushion"      },
-  { value: "TEA_TOWEL", label: "Tea Towel"    },
-];
 
 const DataFilters = () => {
   const activeTab = useStore((state) => state.activeTab);
@@ -57,6 +51,8 @@ const DataFilters = () => {
   const shopProfile = useStore((state) => state.shopProfile);
   // one tab per material class of the profile, in its order (4-types-b)
   const classTabs = withSlotLooks(shopProfile, CLASS_TAB_LOOKS);
+  // the print types this shop has (4-types-f): fixed-size ones only from the profile
+  const typeOptions = printTypeOptions(shopProfile);
 
   const [sortOpen, setSortOpen] = useState(false);
   const [typeOpen, setTypeOpen] = useState(false);
@@ -106,7 +102,7 @@ const DataFilters = () => {
   };
 
   const singleTypeOpt = printTypeFilter.length === 1
-    ? PRINT_TYPE_OPTIONS.find((o) => o.value === printTypeFilter[0])
+    ? typeOptions.find((o) => o.value === printTypeFilter[0])
     : null;
   const singleTypeDef = singleTypeOpt ? PRINT_TYPE_MAP[singleTypeOpt.value] : null;
   const typeButtonLabel =
@@ -165,7 +161,7 @@ const DataFilters = () => {
                 All Types
               </span>
             </button>
-            {PRINT_TYPE_OPTIONS.map((opt) => {
+            {typeOptions.map((opt) => {
               const isSelected = printTypeFilter.includes(opt.value);
               const def = PRINT_TYPE_MAP[opt.value];
               const Icon = def?.Icon;
