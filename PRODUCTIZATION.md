@@ -131,6 +131,12 @@ i "Bramka weryfikacji" ODSYLAJA po oczekiwana wartosc.
   - komenda: `npm run test`; zmierzone przez S1 na HEAD `3fb712c` po bramce FILIPA (P23);
     jedna zmiana istniejacego testu (`sandboxGuard.test.js`) za zgoda FILIPA 2026-09-25 15:19
   - `npm run lint` -> exit 0, golden -> 0 differences across 70 batches
+- po ETAPIE 3 (`08496a9`, 2026-09-28): **714 passed / 69 files**
+  - komenda: `npm run test`; zmierzone przez S1 na HEAD `08496a9` po bramce FILIPA (10:49)
+  - zmiany istniejacych testow, wszystkie za zgoda FILIPA: 3-6a - 3 linie importu
+    (`hotfolderRouting`, `shopProfileData.colors`, `shopProfileData.printers`; 08:56);
+    3-6b - 3 testy w `shopProfile.test.js` + 1 nazwa w `migrateShopProfile.v3.test.js` (10:16)
+  - `npm run lint` -> exit 0 (od 3-8 takze niewidoczne znaki), golden -> 0 differences across 70 batches
 
 - [x] **BUG 1** - `clientId` przechodzi przez `settings:set`
   - `src/electron/ipc/index.js`, handler `settings:set`: destrukturyzacja `clientId`
@@ -1241,9 +1247,9 @@ i `reason_definitions`. Odrebne od edytora profilu z ETAPU 3, ktory jest WDROZEN
 
 Baza pozostaje jedynym zywym zrodlem prawdy; JSON to tylko transport na wdrozenie.
 
-**STAN 2026-09-28: CALY ETAP 3 ZROBIONY W KODZIE, CZEKA NA BRAMKE FILIPA (nic nie odhaczone).**
+**STAN 2026-09-28: ETAP 3 ZROBIONY I ZABRAMKOWANY (FILIP 10:49 "gate passed"), odhaczony w 3-tick.**
 Plan i uzasadnienia: `chat/artefakty/3-rekon/projekt.md`; dowody per krok: `chat/artefakty/3-0` .. `3-8`.
-Kod w `main`, NIE w wydaniu (plan: 1.0.26 = 2H + sprzatanie podwojnego zapisu, 1.0.27 = ETAP 3;
+Kod w `main`, NIE w wydaniu - `[x]` znaczy tu "zabramkowane", NIE "juz u Alexa": pojdzie w 1.0.26 (jedno wydanie: 2H + ETAP 3 + sprzatanie podwojnego zapisu, FILIP 10:49;
 importu wolno uzyc dopiero, gdy kazda stacja ma wersje z CAS 3-1). Kroki:
 3-1 `564f419` CAS w `profile:set`; 3-2 `0d7b397` + `b21b6b5` walidator; 3-3 `0bebbab` export/import
 w main; 3-4 `3d51d3f` sekcja Shop Profile (reczny test FILIPA OK, ODP 29); 3-5 `627fab6` fikstura
@@ -1257,57 +1263,77 @@ Korekty zapisu ponizej, zmierzone przy rekonesansie (3-rekon, sekcja 2):
 - `schemaVersion` starszy niz 3 = ODMOWA, nie migracja w gore (FILIP ODP 25): plikow v1/v2 nie ma,
   a migracja wzielaby liczby klas z seeda tej bazy, czyli liczby Alexa.
 Pozycje dodane w trakcie (regula 5 - nowe linie zamiast rozszerzania istniejacych):
-- [ ] `profile:set` jako compare-and-swap (3-1): stacja bez restartu nadpisywala po cichu profil zapisany
+- [x] `profile:set` jako compare-and-swap (3-1): stacja bez restartu nadpisywala po cichu profil zapisany
+      **ZROBIONE (`564f419`), bramka FILIPA 2026-09-28 10:49.**
       gdzie indziej (FabricsView zapisuje CALY wiersz ze swojego cache); `PROFILE_CHANGED` = Warning
-- [ ] walidator: `materialClasses` = dokladnie Cottons + Polyesters; `productTypes` = dokladnie
+- [x] walidator: `materialClasses` = dokladnie Cottons + Polyesters; `productTypes` = dokladnie
+      **ZROBIONE (`0d7b397`, `b21b6b5`), bramka FILIPA 2026-09-28 10:49.**
       SAMPLE / FQ / TEA_TOWEL, wszystkie trzy; `ripErrors` => `folders.ripError`, `customOrders` =>
       `folders.customOrder`; `storeHandle` w ksztalcie URL; nieznane klucze = odmowa (3-2)
-- [ ] podglad importu mowi `stationStale` PRZED kliknieciem (3-4)
-- [ ] instalator bez `*.test.js` (`build.files`), grep na rozpakowanym `app.asar` (3-7)
-- [ ] lint odrzuca niewidoczne znaki: BOM, zero-width, bidi "Trojan Source" (3-8, FILIP ODP 28)
+- [x] podglad importu mowi `stationStale` PRZED kliknieciem (3-4)
+      **ZROBIONE (`3d51d3f`), bramka FILIPA 2026-09-28 10:49.**
+- [x] instalator bez `*.test.js` (`build.files`), grep na rozpakowanym `app.asar` (3-7)
+      **ZROBIONE (`b0e9933`), bramka FILIPA 2026-09-28 10:49.**
+- [x] lint odrzuca niewidoczne znaki: BOM, zero-width, bidi "Trojan Source" (3-8, FILIP ODP 28)
+      **ZROBIONE (`0d0f2d8`), bramka FILIPA 2026-09-28 10:49.**
 
-- [ ] Nowa sekcja `Shop Profile` w Settings (podglad read-only + Import/Export)
+- [x] Nowa sekcja `Shop Profile` w Settings (podglad read-only + Import/Export)
+      **ZROBIONE (`3d51d3f` (po imporcie `loadShopProfile` = jeden `set()`; reczny test ODP 29)), bramka FILIPA 2026-09-28 10:49.**
   - **Edytor profilu MUSI zapisywac `shopProfile` i `shopProfileStatus` RAZEM, jednym
     `set()`.** Dzis zgodnosc tych dwoch pol gwarantuje wylacznie fakt, ze pisze je jedna
     funkcja (`loadShopProfile`, dwa `set()`, kazdy z obiema wartosciami) - nic tego nie
     wymusza, ani test, ani lint. Drugie wejscie zapisujace tylko `shopProfile` przywroci
     dokladnie ten rodzaj dlugu, ktory 2c-null-b usunal: jedna prawda w dwoch miejscach,
     ktore moga sie rozjechac.
-- [ ] Handler `dialog:showSaveDialog` (dzis brak - sa tylko select-folder i confirm)
-- [ ] Export profilu do pliku `.json`
-- [ ] Import + walidacja w kolejnosci:
-  - [ ] `schemaVersion` (nowszy niz build -> odmowa; starszy -> migracja w gore)
+- [x] Handler `dialog:showSaveDialog` (dzis brak - sa tylko select-folder i confirm)
+      **ZROBIONE (`0bebbab` (`dialog.showSaveDialog` wewnatrz `profile:export`, nie osobny handler)), bramka FILIPA 2026-09-28 10:49.**
+- [x] Export profilu do pliku `.json`
+      **ZROBIONE (`0bebbab` (z wiersza BAZY, nie z cache)), bramka FILIPA 2026-09-28 10:49.**
+- [x] Import + walidacja w kolejnosci:
+      **ZROBIONE (`0d7b397`, `b21b6b5` (walidator), `0bebbab` (import w main)), bramka FILIPA 2026-09-28 10:49.**
+  - [x] `schemaVersion` (nowszy niz build -> odmowa; starszy -> migracja w gore)
+        **ZROBIONE (`0d7b397` (starszy niz 3 = ODMOWA, ODP 25)), bramka FILIPA 2026-09-28 10:49.**
         **POLOWA JUZ ZROBIONA w P1 (`7937508`).** "Nowszy niz build -> odmowa" zyje
         i jest otestowane w `migrateShopProfile`, bo tam jest potrzebne. "Starszy ->
         migracja w gore" to `STEPS` w tym samym module - import ma je WYWOLAC, nie
         napisac drugi raz. Do zrobienia zostaje wylacznie strona pliku.
-  - [ ] ksztalt: wymagane klucze, typy, `printers` niepuste
-  - [ ] kody drukarek `^[A-Z0-9_]+$` (myslnik rozwala parsowanie nazwy folderu batcha)
-  - [ ] spojnosc: `printer.materialClass` w `materialClasses`; `scanRules.from/to` w `stages`
-  - [ ] spojnosc: `features.shopify === true` wymaga NIEPUSTEGO
+  - [x] ksztalt: wymagane klucze, typy, `printers` niepuste
+        **ZROBIONE (`0d7b397`), bramka FILIPA 2026-09-28 10:49.**
+  - [x] kody drukarek `^[A-Z0-9_]+$` (myslnik rozwala parsowanie nazwy folderu batcha)
+        **ZROBIONE (`0d7b397` (jako `^[A-Z0-9]+$` - korekta w bloku STAN)), bramka FILIPA 2026-09-28 10:49.**
+  - [x] spojnosc: `printer.materialClass` w `materialClasses`; `scanRules.from/to` w `stages`
+        **ZROBIONE (`0d7b397` (etapy = `PRODUCTION_STAGE`)), bramka FILIPA 2026-09-28 10:49.**
+  - [x] spojnosc: `features.shopify === true` wymaga NIEPUSTEGO
+        **ZROBIONE (`0d7b397`), bramka FILIPA 2026-09-28 10:49.**
         `integrations.shopify.storeHandle`. Bez tej reguly import przechodzi, a klient
         dostaje pozycje menu, ktora przy KAZDYM kliknieciu zwraca `MISSING_STORE_HANDLE`.
         Po cieciu `bc68fbe` istnieja DWA rozne "off" i tylko pierwszy jest poprawny:
         flaga off (pozycji nie ma) oraz flaga on + pusty handle (pozycja jest i zawsze
         zawodzi). Walidacja importu jest jedynym miejscem, ktore moze ten drugi stan
         wylapac, zanim zobaczy go operator.
-  - [ ] spojnosc: `features.sewing === true` wymaga NIEPUSTEJ `sewingCompanies`. Bez
+  - [x] spojnosc: `features.sewing === true` wymaga NIEPUSTEJ `sewingCompanies`. Bez
+        **ZROBIONE (`0d7b397`), bramka FILIPA 2026-09-28 10:49.**
         tej reguly import przechodzi, a klient nie ma jak wyslac niczego do szwalni.
         Ta sama klasa co `storeHandle` wyzej, ale skutek jest INNY: tam pozycja menu
         istnieje i zawodzi przy kazdym kliknieciu, tu `canSew` wymaga niepustej listy,
         wiec pozycja w ogole nie powstaje - operator nie dostaje nawet bledu do
         zgloszenia, po prostu nie ma funkcji. Walidacja importu jest jedynym miejscem,
         ktore ten stan wylapie.
-  - [ ] `sewingCompanies` bez DUPLIKATOW i z rozsadnym limitem dlugosci nazwy.
+  - [x] `sewingCompanies` bez DUPLIKATOW i z rozsadnym limitem dlugosci nazwy.
+        **ZROBIONE (`0d7b397` (limit 40 znakow)), bramka FILIPA 2026-09-28 10:49.**
         `getSewingCompanies` filtruje smieci (nie-stringi, puste, same spacje) i
         przycina `trim()`, ale NIE normalizuje semantyki: dwa razy "Olya" da dwie
         identyczne pozycje w podmenu (rozne `id`, ten sam efekt), a bardzo dluga nazwa
         rozwali layout karty - nazwa trafia do `file_stages.sewing_company` jako wolny
         tekst i jest renderowana (`ProductionCard.jsx`, chipy w `SewingReceive.jsx`).
-  - [ ] ostrzezenie o niezgodnosci z danymi na dysku (ile rekordow zniknie z widoku)
-  - [ ] `showConfirm()` + `backupDb(true)` przed nadpisaniem
-- [ ] Import NIE dotyka `fabrics` (katalog ma wlasny `setAllFabrics`)
-- [ ] Seed vs migracja - **ROZSTRZYGNIETE przez FILIPA 2026-09-21: PUSTY PROFIL-SZKIELET
+  - [x] ostrzezenie o niezgodnosci z danymi na dysku (ile rekordow zniknie z widoku)
+        **ZROBIONE (`0bebbab` (diff + skutki z `file_stages`), `3d51d3f` (okno)), bramka FILIPA 2026-09-28 10:49.**
+  - [x] `showConfirm()` + `backupDb(true)` przed nadpisaniem
+        **ZROBIONE (`0bebbab`, `3d51d3f` (plus zrzut wiersza jako warunek twardy)), bramka FILIPA 2026-09-28 10:49.**
+- [x] Import NIE dotyka `fabrics` (katalog ma wlasny `setAllFabrics`)
+      **ZROBIONE (`0bebbab`), bramka FILIPA 2026-09-28 10:49.**
+- [x] Seed vs migracja - **ROZSTRZYGNIETE przez FILIPA 2026-09-21: PUSTY PROFIL-SZKIELET
+      **ZROBIONE (`ab9bb35`, `a128fac` (fikstura Alexa `627fab6`; reczny test swiezej bazy ODP 30)), bramka FILIPA 2026-09-28 10:49.**
       do konfiguracji.** Wariant "FF jako demo do nadpisania importem" odrzucony.
       `DEFAULT_PROFILE` (`defaultProfile.js`) przestaje niesc dane Alexa i staje sie
       szkieletem z pustymi wartosciami; `initDb` zasiewa ten szkielet.
