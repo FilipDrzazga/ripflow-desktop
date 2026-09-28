@@ -1504,7 +1504,7 @@ const Production = () => {
         label: "Send to Sewing",
         icon: <LuScissors size={14} />,
         // The index is part of the id, not the name alone: ContextMenu keys its children
-        // by id, and two profile entries that slug the same ("Olya" / "olya") would
+        // by id, and two profile entries that slug the same ("Stitch" / "stitch") would
         // otherwise collide.
         children: sewingCompanies.map((company, index) => ({
           id: `sewing-${index}-${company}`,

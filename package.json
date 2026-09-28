@@ -24,7 +24,8 @@
       "dist/**/*",
       "src/electron/**/*",
       "src/shared/**/*",
-      "package.json"
+      "package.json",
+      "!**/*.test.js"
     ],
     "win": {
       "target": "nsis",

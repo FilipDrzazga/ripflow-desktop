@@ -381,7 +381,7 @@ const MaterialsCard = () => {
       <div className={styles.card_header}>
         <p className={styles.card_title}>Materials</p>
         <p className={styles.card_desc}>
-          Controls printer routing (Cottons → DGEN, Polyesters → YOKO/YUMI), XML width, roll width, and special flags.
+          Controls printer routing (by material class, to the printers of that class in the shop profile), XML width, roll width, and special flags.
         </p>
       </div>
 

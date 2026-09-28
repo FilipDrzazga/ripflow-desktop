@@ -3,7 +3,7 @@ import { toIpcError } from "../helpers/ipcError.js";
 import { getProfile, getFeature } from "../helpers/shopProfile.js";
 
 // The shop-wide profile is the ONLY source of the store handle. There is deliberately
-// no DEFAULT_PROFILE fallback any more: it resolved to "fashionformulauk", so a client
+// no DEFAULT_PROFILE fallback any more: it resolved to another shop's handle, so a client
 // with features.shopify on and no handle of their own - or any station whose profile
 // could not be read - was sent to the admin panel of ANOTHER shop. Not an error page,
 // not a blank one: someone else's orders. Dead today because Alex is the only client
