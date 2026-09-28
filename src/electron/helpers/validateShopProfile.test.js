@@ -181,9 +181,29 @@ describe("validateShopProfile - materialClasses and productTypes", () => {
   it("a class listed twice is refused", () => {
     expect(errorsOf((p) => (p.materialClasses[1].name = "Cottons"))).toEqual([
       'materialClasses[1].name: "Cottons" is listed twice.',
+      "materialClasses: no entry for Polyesters.",
       // EPSON pointed at Polyesters, which no longer exists
       'printers[1].materialClass: "Polyesters" is not in materialClasses.',
     ]);
+  });
+
+  it("a class the app does not know is refused (it would carry no numbers and route nothing)", () => {
+    for (const name of ["Cotton", "Silks", "cottons"]) {
+      expect(
+        errorsOf((p) => {
+          p.materialClasses.push({ name, margin: 5, defaultRollWidth: 1500 });
+        }),
+      ).toEqual([`materialClasses[2].name: must be one of Cottons, Polyesters (got "${name}").`]);
+    }
+  });
+
+  it("both known classes are required", () => {
+    expect(
+      errorsOf((p) => {
+        p.materialClasses = p.materialClasses.filter((c) => c.name !== "Cottons");
+        p.printers = p.printers.filter((pr) => pr.materialClass !== "Cottons");
+      }),
+    ).toEqual(["materialClasses: no entry for Cottons."]);
   });
 
   it("a product code the parser does not read is refused", () => {

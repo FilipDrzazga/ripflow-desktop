@@ -157,8 +157,10 @@ place (`printers[1].code: ...`). `schemaVersion` first and alone: newer than the
 than `MIN_IMPORT_SCHEMA_VERSION` (3, the first exported version - an older file is refused, never
 migrated: its class numbers would come from this DB's seed), and the caller passes the build's
 version. Then: unknown or missing keys (top level and in records) refused - a dead field is rule
-24; printer codes `^[A-Z0-9]+$` (they end up in batch folder names) and unique; `materialClass`
-in `materialClasses`; hotfolders and `folders.*` through `isFolderName`; `productTypes` exactly
+24; printer codes `^[A-Z0-9]+$` (they end up in batch folder names) and unique; `materialClasses`
+exactly the classes the app knows, both present (`MATERIAL_CLASS_NAMES` from
+`src/shared/classGlobals.js` - Cottons, Polyesters; relax it together with `getMaterialType`
+reading classes from the profile); `materialClass` in `materialClasses`; hotfolders and `folders.*` through `isFolderName`; `productTypes` exactly
 the codes the parser reads (`PRODUCT_TYPE_CODES`), all present - a missing one falls back to
 another shop's built-in dimensions; scan rule stages from `PRODUCTION_STAGE` (the profile has no
 stage list), one rule per role, `notifyWhenEmpty` boolean; sewing companies trimmed, unique

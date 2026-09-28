@@ -14,6 +14,11 @@ const CLASS_KEYS = {
   Polyesters: { margin: "marginPoly", defaultRollWidth: "defaultRollWidthPoly" },
 };
 
+// The material classes the app knows: the class of a fabric is one of these two (fabrics.type),
+// and only these carry class numbers. validateShopProfile refuses a profile class outside this
+// list (ETAP 3-2) - relax both together once getMaterialType reads the classes from the profile.
+export const MATERIAL_CLASS_NAMES = Object.keys(CLASS_KEYS);
+
 // The four keys, in editor order: marginCotton, defaultRollWidthCotton, marginPoly, defaultRollWidthPoly.
 export const CLASS_NUMBER_KEYS = Object.values(CLASS_KEYS).flatMap((keys) => Object.values(keys));
 

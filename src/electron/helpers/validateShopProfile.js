@@ -1,6 +1,7 @@
 import { PRODUCTION_STAGE } from "../../shared/constants.js";
 import { isFolderName } from "../../shared/folderName.js";
 import { isHexColor } from "../../shared/hexColor.js";
+import { MATERIAL_CLASS_NAMES } from "../../shared/classGlobals.js";
 
 // Validates a shop profile before it may replace the stored one (ETAP 3-2, used by the import in
 // 3-3). Pure, and it imports only from src/shared: the import orchestrator can then be tested
@@ -52,7 +53,7 @@ const TOP_LEVEL_KEYS = [
   "features",
 ];
 const PRINTER_KEYS = ["code", "materialClass", "hotfolder", "color"];
-const CLASS_KEYS = ["name", "margin", "defaultRollWidth"];
+const CLASS_RECORD_KEYS = ["name", "margin", "defaultRollWidth"];
 const PRODUCT_TYPE_KEYS = ["code", "width", "height"];
 const FOLDER_KEYS = ["printed", "ripError", "customOrder"];
 const SCAN_RULE_KEYS = ["role", "from", "to", "notifyWhenEmpty"];
@@ -108,15 +109,23 @@ export const validateShopProfile = (profile, { schemaVersion } = {}) => {
     profile.materialClasses.forEach((c, i) => {
       const at = `materialClasses[${i}]`;
       if (!isPlainObject(c)) return err(`${at}: must be an object.`);
-      onlyKeys(c, CLASS_KEYS, at);
-      if (!isText(c.name)) err(`${at}.name: must be a non-empty text.`);
-      else if (classNames.has(c.name)) err(`${at}.name: "${c.name}" is listed twice.`);
+      onlyKeys(c, CLASS_RECORD_KEYS, at);
+      // Only the classes the app knows (MATERIAL_CLASS_NAMES): a fabric's class is one of them
+      // (fabrics.type), and only they carry class numbers. "Cotton" or "Silk" would pass here and
+      // then fail quietly - the estimator back on the printWidths.js constants (Alex's numbers),
+      // FabricsView answering missing-class, a printer of that class never getting a file.
+      if (!MATERIAL_CLASS_NAMES.includes(c.name)) {
+        err(`${at}.name: must be one of ${MATERIAL_CLASS_NAMES.join(", ")} (got ${show(c.name)}).`);
+      } else if (classNames.has(c.name)) err(`${at}.name: "${c.name}" is listed twice.`);
       else classNames.add(c.name);
       if (!Number.isFinite(c.margin) || c.margin < 0) err(`${at}.margin: must be a number >= 0 (got ${show(c.margin)}).`);
       if (!Number.isFinite(c.defaultRollWidth) || c.defaultRollWidth <= 0) {
         err(`${at}.defaultRollWidth: must be a number > 0 (got ${show(c.defaultRollWidth)}).`);
       }
     });
+    // Both required: a class the profile lacks has no numbers to edit (FabricsView refuses the
+    // save with missing-class) and its estimates silently use the printWidths.js constants.
+    for (const name of MATERIAL_CLASS_NAMES) if (!classNames.has(name)) err(`materialClasses: no entry for ${name}.`);
   }
 
   // ── printers ─────────────────────────────────────────────────────────────
