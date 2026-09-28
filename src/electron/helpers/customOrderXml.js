@@ -16,7 +16,13 @@ const escapeXml = (value) => {
     .replaceAll("'", "&apos;");
 };
 
-export const buildCustomOrderXML = (group, batchId, { customOrderFolderPath, nestingId }) => {
+// materialClass (ETAP 4, 4-types-c): the shop's custom-order class, customOrders.materialClass -
+// the literal "Polyesters" until then. The handler refuses before calling this when it is not set,
+// so the builder has no default: a missing class is a wiring error, and it throws.
+export const buildCustomOrderXML = (group, batchId, { customOrderFolderPath, nestingId, materialClass }) => {
+  if (typeof materialClass !== "string" || materialClass.trim() === "") {
+    throw new Error("buildCustomOrderXML: materialClass is required (customOrders.materialClass).");
+  }
   const { poNumber, materialName, printer, files } = group;
   const foundFiles = files.filter((f) => f.found);
   const totalMeters = foundFiles.reduce((sum, f) => sum + f.metersToprint, 0).toFixed(1);
@@ -32,7 +38,7 @@ export const buildCustomOrderXML = (group, batchId, { customOrderFolderPath, nes
       <Width>${LM_XML_POLY}</Width>
       <Height>${Math.round(f.metersToprint * 1000)}</Height>
       <Material>${escapeXml(materialName)}</Material>
-      <MaterialType>Polyesters</MaterialType>
+      <MaterialType>${escapeXml(materialClass)}</MaterialType>
       <OrderId>${escapeXml(poNumber)}</OrderId>
       <PrintTypeCode>LM</PrintTypeCode>
       <IsVelvet>false</IsVelvet>

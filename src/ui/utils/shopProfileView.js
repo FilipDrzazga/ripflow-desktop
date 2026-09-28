@@ -6,7 +6,7 @@
 
 import { PROFILE_CHANGED, STAGE_LABEL, STAGE_COLOR } from "../../shared/constants";
 import { PROFILE_STATUS } from "./profileStatus";
-import { getPrinterColor, isProfileUnconfigured } from "./shopProfileData";
+import { getPrinterColor, isProfileUnconfigured, getCustomOrderClass } from "./shopProfileData";
 
 const FEATURE_LABELS = {
   customOrders: "Custom orders",
@@ -71,6 +71,8 @@ export const profileOverview = (profile) => {
     })),
     sewingCompanies: list(profile.sewingCompanies).map(text),
     storeHandle: handle ? String(handle) : null,
+    // profile v4 (4-types-c): the class custom orders are printed in; null = not configured
+    customOrderClass: getCustomOrderClass(profile),
     features: Object.keys(FEATURE_LABELS).map((flag) => ({ flag, label: featureLabel(flag), on: features[flag] === true })),
   };
 };

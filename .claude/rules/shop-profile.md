@@ -143,8 +143,10 @@ process cache, reloaded after every `profile:set`), never the store's copy.
 `loadShopProfile()` — injected, because `createXML.js` must stay importable without `db.js`
 (template tests, golden harness). Unwired, or a printer/profile it cannot find, or a
 hotfolder that is not one plain folder name → `ERR_INVALID_PRINTER`, fail-closed.
-`customOrderHandlers.js` accepts a printer whose `materialClass` is `Polyesters` (custom
-orders are polyester-only). Since step 3, `createBatch.js` runs the same
+`customOrderHandlers.js` accepts a printer whose `materialClass` is the profile's
+`customOrders.materialClass` (`getCustomOrderClass`; not set -> `CUSTOM_ORDER_CLASS_MISSING` before
+anything is written; the class goes to the XML's `<MaterialType>` - ETAP 4 4-types-c, it was the
+literal `Polyesters`). Since step 3, `createBatch.js` runs the same
 `getWorkflowFolderName` in its VALIDATE stage, BEFORE any file moves. Renderer printer
 LISTS come from the profile since step 3 (`getPrinters` below) and badge COLOURS since
 step 4 (`getPrinterColor`, `getMaterialClassColor`); `PRINTER_COLORS` no longer exists.

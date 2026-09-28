@@ -148,6 +148,14 @@ export const getMaterialClassColor = (profile, materialClass) => {
   return first ? getPrinterColor(profile, first.code) : null;
 };
 
+// The material class custom orders are printed in (profile v4, customOrders.materialClass - ETAP
+// 4 4-types-c), or null: no profile, the field missing, or not a non-empty string. The same rule
+// as getCustomOrderClass in main, so the card offers exactly the printers main accepts.
+export const getCustomOrderClass = (profile) => {
+  const value = profile?.customOrders?.materialClass;
+  return typeof value === "string" && value.trim() !== "" ? value : null;
+};
+
 // The printer the print view pre-selects for a material class: the ONLY printer of that
 // class, or null when there are none or several (the operator chooses). For Alex's seed
 // that is exactly the old hardcoded rule - Cottons -> DGEN, Polyesters -> no default.

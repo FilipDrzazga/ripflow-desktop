@@ -58,6 +58,14 @@ export const getFolder = (name) => {
   return isFolderName(value) ? value : null;
 };
 
+// The material class custom orders are printed in (profile v4, ETAP 4 4-types-c:
+// customOrders.materialClass), or null - profile unreadable, the field missing or not a
+// non-empty string. No stand-in (rule 24): the caller refuses (CUSTOM_ORDER_CLASS_MISSING).
+export const getCustomOrderClass = () => {
+  const value = cachedProfile?.customOrders?.materialClass;
+  return typeof value === "string" && value.trim() !== "" ? value : null;
+};
+
 // Fail-closed: no profile means no feature. A dark button is a worse experience;
 // a live button wired to a config we could not read is a wrong link or a wrong path.
 // Strict === true, so a missing key or a truthy-but-not-boolean value stays off.

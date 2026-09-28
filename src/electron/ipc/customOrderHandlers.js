@@ -8,7 +8,7 @@ import { parseCSVContent } from "../helpers/parseCustomOrderCSV.js";
 import { scanCustomOrderFolder, matchFiles } from "../helpers/customOrderMatcher.js";
 import { insertCustomOrder, getAllCustomOrders, clearCustomOrders, deleteCustomOrder } from "../helpers/db.js";
 import { CUSTOM_ORDER_STATUS } from "../../shared/constants.js";
-import { getPrinterByCode, getFolder } from "../helpers/shopProfile.js";
+import { getPrinterByCode, getFolder, getCustomOrderClass } from "../helpers/shopProfile.js";
 import { buildCustomOrderXML } from "../helpers/customOrderXml.js";
 
 let cachedFileNames = [];
@@ -54,13 +54,23 @@ export function registerCustomOrderHandlers() {
     try {
       const { poNumber, printer, files, totalMeters } = group;
 
-      // Custom orders are polyester-only: this XML hardcodes <MaterialType>Polyesters</MaterialType>
-      // (the hotfolder comes from the profile, see below). Which printers print polyester is profile data (ETAP 2e
-      // step 2); it used to be a YOKO/YUMI check. No profile = no printer qualifies (rule 24).
-      if (getPrinterByCode(printer)?.materialClass !== "Polyesters") {
+      // The class custom orders are printed in is profile data since ETAP 4 (4-types-c,
+      // customOrders.materialClass) - it was the literal "Polyesters" here, in the XML and in the
+      // card. It goes to PrintFactory as <MaterialType> and only a printer of that class may take
+      // the job. Not configured (or no profile) = a VISIBLE refusal before anything is created or
+      // written - never another shop's class (rule 24; the same pattern as the folder below).
+      const materialClass = getCustomOrderClass();
+      if (materialClass === null) {
         return {
           success: false,
-          error: `Printer "${printer ?? ""}" is not a polyester printer in this shop's configuration, or the configuration could not be read.`,
+          code: "CUSTOM_ORDER_CLASS_MISSING",
+          error: "This shop's configuration does not say which material class custom orders use (customOrders.materialClass), or the configuration could not be read. Nothing was written.",
+        };
+      }
+      if (getPrinterByCode(printer)?.materialClass !== materialClass) {
+        return {
+          success: false,
+          error: `Printer "${printer ?? ""}" is not a ${materialClass} printer in this shop's configuration, or the configuration could not be read.`,
         };
       }
 
@@ -91,6 +101,7 @@ export function registerCustomOrderHandlers() {
       const xml = buildCustomOrderXML(group, batchId, {
         customOrderFolderPath: getSettings().customOrderFolderPath,
         nestingId: randomUUID(),
+        materialClass,
       });
       await fs.promises.writeFile(tempPath, xml, "utf8");
       await fs.promises.rename(tempPath, finalPath);

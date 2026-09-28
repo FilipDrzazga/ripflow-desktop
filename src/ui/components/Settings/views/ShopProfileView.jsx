@@ -289,7 +289,7 @@ const ProfileCards = ({ overview }) => (
       )}
     </Card>
 
-    <Card title="Sewing & Shopify">
+    <Card title="Sewing, Shopify & custom orders">
       <div className={own.kv}>
         <span className={own.kv_key}>Sewing companies</span>
         {overview.sewingCompanies.length === 0 ? (
@@ -305,6 +305,12 @@ const ProfileCards = ({ overview }) => (
         )}
         <span className={own.kv_key}>Shopify store</span>
         {overview.storeHandle === null ? <span className={own.not_set}>not set</span> : <span className={own.mono}>{overview.storeHandle}</span>}
+        <span className={own.kv_key}>Custom orders class</span>
+        {overview.customOrderClass === null ? (
+          <span className={own.not_set}>not set</span>
+        ) : (
+          <span className={own.chip}>{overview.customOrderClass}</span>
+        )}
       </div>
     </Card>
 

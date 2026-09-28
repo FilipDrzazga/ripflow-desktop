@@ -27,6 +27,7 @@ vi.mock("../helpers/db.js", () => ({
 vi.mock("../helpers/shopProfile.js", () => ({
   getPrinterByCode: (code) => ({ code, materialClass: printerClass }),
   getFolder: (name) => (name === "customOrder" ? folder : null),
+  getCustomOrderClass: () => "Polyesters",
 }));
 vi.mock("../helpers/getRootPath.js", () => ({ getStorageRootPath: () => storageRoot }));
 vi.mock("../helpers/getSettings.js", () => ({ getSettings: () => ({ customOrderFolderPath: "C:\\Art" }) }));
@@ -77,7 +78,7 @@ describe("customOrder:generateXML - hotfolder from the shop profile (ETAP 2d-4)"
     const [{ name, text }] = writtenXml("AUTOMATION_WORKFLOW_MINERVA");
     const batchId = name.replace(/\.xml$/, "");
     const nestingId = text.match(/<NestingGroup>([^<]+)<\/NestingGroup>/)[1];
-    expect(text).toBe(buildCustomOrderXML(GROUP, batchId, { customOrderFolderPath: "C:\\Art", nestingId }));
+    expect(text).toBe(buildCustomOrderXML(GROUP, batchId, { customOrderFolderPath: "C:\\Art", nestingId, materialClass: "Polyesters" }));
   });
 
   it("no folder in the profile -> CUSTOM_ORDER_FOLDER_MISSING, nothing created, nothing recorded", async () => {

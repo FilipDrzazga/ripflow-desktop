@@ -68,6 +68,7 @@ describe("buildCustomOrderXML (custom-order XML baseline, ETAP 2d-1)", () => {
     const xml = buildCustomOrderXML(group, "CUSTOM_ORDER_PO_7___x__20260924_abcd1234", {
       customOrderFolderPath: FOLDER,
       nestingId: NESTING,
+      materialClass: "Polyesters",
     });
     expect(xml).toBe(expected);
   });
@@ -76,7 +77,7 @@ describe("buildCustomOrderXML (custom-order XML baseline, ETAP 2d-1)", () => {
     const xml = buildCustomOrderXML(
       { poNumber: "P1", materialName: "M", printer: "YUMI", files: [{ fileName: "a", found: false, metersToprint: 2 }] },
       "B1",
-      { customOrderFolderPath: FOLDER, nestingId: NESTING },
+      { customOrderFolderPath: FOLDER, nestingId: NESTING, materialClass: "Polyesters" },
     );
     expect(xml).toContain(`<LogisticGroup>${NESTING}_0.0m</LogisticGroup>`);
     expect(xml).toContain("  <Documents>\n\n  </Documents>");

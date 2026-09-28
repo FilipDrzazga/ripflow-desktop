@@ -4,7 +4,7 @@ import { LuChevronRight, LuCheck, LuPlay, LuTrash2, LuScanLine, LuFileText, LuLa
 import styles from "./CustomOrderCard.module.css";
 import { generateCustomOrderXML } from "../../services/customOrderService";
 import { useStore } from "../../store/useStore";
-import { getPrinters, getPrinterColor } from "../../utils/shopProfileData";
+import { getPrinters, getPrinterColor, getCustomOrderClass } from "../../utils/shopProfileData";
 
 // A printer whose colours the profile does not carry (or carries as non-hex).
 const FALLBACK_COLORS = { bg: "#f0f0f0", color: "#616161" };
@@ -17,11 +17,13 @@ const CustomOrderCard = ({ group, onGenerated, onRefresh, onRemove }) => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState(() => new Set());
   const shopProfile = useStore((state) => state.shopProfile);
-  // Custom orders are polyester-only (the XML hardcodes the class): the profile's polyester
-  // printers, the same set customOrderHandlers.js accepts (ETAP 2e steps 2-3).
+  // The printers of the shop's custom-order class (profile v4, customOrders.materialClass - ETAP 4
+  // 4-types-c; the literal "Polyesters" until then), the same set customOrderHandlers.js accepts.
+  // No class configured -> no printer, and the card says why.
+  const customOrderClass = getCustomOrderClass(shopProfile);
   const printers = useMemo(
-    () => getPrinters(shopProfile).filter((p) => p.materialClass === "Polyesters").map((p) => p.code),
-    [shopProfile],
+    () => (customOrderClass ? getPrinters(shopProfile).filter((p) => p.materialClass === customOrderClass).map((p) => p.code) : []),
+    [shopProfile, customOrderClass],
   );
 
   // Default-select every file exactly once, the moment CSV parsing finishes
@@ -148,6 +150,9 @@ const CustomOrderCard = ({ group, onGenerated, onRefresh, onRemove }) => {
           </span>
         </div>
         <div className={styles.printer_toggles} onClick={(e) => e.stopPropagation()}>
+          {customOrderClass === null && (
+            <span className={styles.header_count}>No custom-order material class in the shop profile</span>
+          )}
           {printers.map((p) => {
             const isActive = selectedPrinter === p;
             const colors = getPrinterColor(shopProfile, p) ?? FALLBACK_COLORS;
