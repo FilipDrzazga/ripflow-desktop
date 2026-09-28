@@ -39,6 +39,12 @@ describe("withSlotLooks / materialClassSlot", () => {
     expect(withSlotLooks({ materialClasses: [{ name: "Cotton" }] }, LOOKS)).toEqual([{ name: "Cotton", slot: 0, icon: "leaf" }]);
   });
 
+  it("the slot follows PROFILE order, not the alphabet", () => {
+    const p = { materialClasses: [{ name: "Poly" }, { name: "Cotton" }] };
+    expect(materialClassSlot(p, "Poly")).toBe(0);
+    expect(materialClassSlot(p, "Cotton")).toBe(1);
+  });
+
   it("slot of a name, -1 for a name outside the profile", () => {
     expect(materialClassSlot(ALEX, "Polyesters")).toBe(1);
     expect(materialClassSlot(ALEX, "Unknown")).toBe(-1);
