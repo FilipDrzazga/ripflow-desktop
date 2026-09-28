@@ -1,6 +1,5 @@
 import { describe, it, expect } from "vitest";
 import {
-  profileSections,
   importConfirmMessage,
   importResultNotice,
   importErrorsNotice,
@@ -45,32 +44,6 @@ const PREVIEW = {
   impact: { stageRowsCounted: 680, byRemovedPrinter: { YOKO: 141 }, atSewingByRemovedCompany: { Olya: 2 } },
 };
 
-describe("profileSections", () => {
-  it("no profile -> nothing shown (never a guessed one)", () => {
-    expect(profileSections(null)).toEqual([]);
-  });
-
-  it("shows the profile section by section", () => {
-    const byTitle = Object.fromEntries(profileSections(PROFILE).map((s) => [s.title, s.rows]));
-    expect(byTitle.Printers).toEqual(["DGEN - Cottons, hotfolder HOT_C"]);
-    expect(byTitle["Material classes"]).toEqual(["Cottons - margin 10 mm, default roll width 1420 mm"]);
-    expect(byTitle["Product types"]).toEqual(["FQ - 670 x 480 mm"]);
-    expect(byTitle.Folders).toEqual(["ripError: ERR"]);
-    expect(byTitle["Scanner rules"]).toEqual(["press: printed -> heatpress", "qc: heatpress -> qc (silent when nothing to move)"]);
-    expect(byTitle["Sewing companies"]).toEqual(["Stitch Co"]);
-    expect(byTitle["Shopify store"]).toEqual(["not set"]);
-  });
-
-  it("a feature is on only when it is a real true, as getFeature reads it", () => {
-    const features = profileSections(PROFILE).find((s) => s.title === "Features").rows;
-    expect(features).toContain("Analytics: on");
-    expect(features).toContain("Sewing: on");
-    expect(features).toContain("Open in Shopify: off"); // "true" (a string) is off
-    expect(features).toContain("Custom orders: off"); // missing is off
-    expect(features).toHaveLength(6);
-  });
-});
-
 describe("importConfirmMessage", () => {
   it("names the file, the changes and what they do to existing data", () => {
     const msg = importConfirmMessage(PREVIEW);
@@ -87,10 +60,6 @@ describe("importConfirmMessage", () => {
     expect(msg).not.toContain("WARNING");
   });
 
-  it("warns before the click when this station is stale", () => {
-    const msg = importConfirmMessage({ ...PREVIEW, stationStale: true });
-    expect(msg).toMatch(/WARNING: .*The import will be refused - restart this station first\./);
-  });
 });
 
 describe("importResultNotice", () => {

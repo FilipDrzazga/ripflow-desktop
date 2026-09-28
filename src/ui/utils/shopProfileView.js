@@ -4,7 +4,9 @@
 // is the only cut of the view that can carry a test. The view itself only wires them to the store,
 // the services and notify.
 
-import { PROFILE_CHANGED } from "../../shared/constants";
+import { PROFILE_CHANGED, STAGE_LABEL, STAGE_COLOR } from "../../shared/constants";
+import { PROFILE_STATUS } from "./profileStatus";
+import { getPrinterColor, isProfileUnconfigured } from "./shopProfileData";
 
 const FEATURE_LABELS = {
   customOrders: "Custom orders",
@@ -19,40 +21,68 @@ export const featureLabel = (flag) => FEATURE_LABELS[flag] ?? flag;
 const list = (v) => (Array.isArray(v) ? v : []);
 const text = (v) => (v === undefined || v === null || v === "" ? "-" : String(v));
 
-// profile -> [{ title, rows: string[] }], in the order the view shows them. null -> [] (the view
-// says the profile could not be read; it never shows a guessed one). Shows what is THERE, even a
-// malformed row - this is a window onto the stored profile, not a validator.
-export const profileSections = (profile) => {
-  if (!profile || typeof profile !== "object") return [];
+const FOLDER_LABELS = {
+  ripError: "RIP errors",
+  customOrder: "Custom orders",
+  printed: "Printed",
+};
+
+// A stage of a scanner rule as a chip: its label and colours from the shared constants; a stage
+// the app does not know is shown as it is stored, in grey (colour null - the view's fallback).
+const stageChip = (stage) => ({
+  stage: text(stage),
+  label: STAGE_LABEL[stage] ?? text(stage),
+  color: STAGE_COLOR[stage] ?? null,
+});
+
+// profile -> the cards of Settings -> Shop Profile (ETAP 4, 4-ui-profile; it replaced the text
+// rows of profileSections). null -> null: the view says the profile could not be read and never
+// shows a guessed one. Shows what is THERE, even a malformed row - this is a window onto the
+// stored profile, not a validator: a missing value reads "-", a printer whose colours are not
+// valid hex gets color null (getPrinterColor), a feature is on only for a real `true`.
+export const profileOverview = (profile) => {
+  if (!profile || typeof profile !== "object") return null;
   const features = profile.features && typeof profile.features === "object" ? profile.features : {};
   const folders = profile.folders && typeof profile.folders === "object" ? profile.folders : {};
   const handle = profile.integrations?.shopify?.storeHandle;
-  return [
-    {
-      title: "Printers",
-      rows: list(profile.printers).map((p) => `${text(p?.code)} - ${text(p?.materialClass)}, hotfolder ${text(p?.hotfolder)}`),
-    },
-    {
-      title: "Material classes",
-      rows: list(profile.materialClasses).map(
-        (c) => `${text(c?.name)} - margin ${text(c?.margin)} mm, default roll width ${text(c?.defaultRollWidth)} mm`,
-      ),
-    },
-    {
-      title: "Product types",
-      rows: list(profile.productTypes).map((t) => `${text(t?.code)} - ${text(t?.width)} x ${text(t?.height)} mm`),
-    },
-    { title: "Folders", rows: Object.entries(folders).map(([k, v]) => `${k}: ${text(v)}`) },
-    {
-      title: "Scanner rules",
-      rows: list(profile.scanRules).map(
-        (r) => `${text(r?.role)}: ${text(r?.from)} -> ${text(r?.to)}${r?.notifyWhenEmpty === false ? " (silent when nothing to move)" : ""}`,
-      ),
-    },
-    { title: "Sewing companies", rows: list(profile.sewingCompanies).map(text) },
-    { title: "Shopify store", rows: [handle ? String(handle) : "not set"] },
-    { title: "Features", rows: Object.keys(FEATURE_LABELS).map((f) => `${featureLabel(f)}: ${features[f] === true ? "on" : "off"}`) },
-  ];
+  return {
+    printers: list(profile.printers).map((p) => ({
+      code: text(p?.code),
+      materialClass: text(p?.materialClass),
+      hotfolder: text(p?.hotfolder),
+      color: getPrinterColor(profile, p?.code),
+    })),
+    materialClasses: list(profile.materialClasses).map((c) => ({
+      name: text(c?.name),
+      margin: text(c?.margin),
+      defaultRollWidth: text(c?.defaultRollWidth),
+    })),
+    productTypes: list(profile.productTypes).map((t) => ({ code: text(t?.code), width: text(t?.width), height: text(t?.height) })),
+    folders: Object.entries(folders).map(([key, value]) => ({
+      key,
+      label: FOLDER_LABELS[key] ?? key,
+      value: value === undefined || value === null || value === "" ? null : String(value),
+    })),
+    scanRules: list(profile.scanRules).map((r) => ({
+      role: text(r?.role),
+      from: stageChip(r?.from),
+      to: stageChip(r?.to),
+      silent: r?.notifyWhenEmpty === false,
+    })),
+    sewingCompanies: list(profile.sewingCompanies).map(text),
+    storeHandle: handle ? String(handle) : null,
+    features: Object.keys(FEATURE_LABELS).map((flag) => ({ flag, label: featureLabel(flag), on: features[flag] === true })),
+  };
+};
+
+// The status badge in the view's header, from the store's load status and the profile. The three
+// states are the ones App.jsx already tells apart: failed (the banner about the database), loaded
+// with no usable printer (the "not configured" banner, isProfileUnconfigured), and loaded.
+export const profileStatusBadge = (status, profile) => {
+  if (status === PROFILE_STATUS.FAILED) return { tone: "error", label: "Unreadable" };
+  if (status !== PROFILE_STATUS.LOADED || !profile) return { tone: "muted", label: "Loading" };
+  if (isProfileUnconfigured(profile)) return { tone: "warning", label: "Not configured" };
+  return { tone: "ok", label: "Configured" };
 };
 
 // The native confirm text for a VALID preview (profile:importPreview). Plain text - showConfirm
@@ -60,13 +90,8 @@ export const profileSections = (profile) => {
 export const importConfirmMessage = (preview) => {
   const d = preview?.diff ?? {};
   const impact = preview?.impact ?? {};
+  // A stale preview never reaches the confirm (staleImportNotice, 4-stale), so no warning here.
   const lines = [`Import the shop profile from "${preview?.fileName ?? "the file"}"?`, ""];
-  if (preview?.stationStale) {
-    lines.push(
-      "WARNING: the profile on this station is older than the one in the database (another station saved it). The import will be refused - restart this station first.",
-      "",
-    );
-  }
   lines.push(`Changed: ${list(d.changedSections).join(", ") || "nothing"}`);
   if (list(d.printersAdded).length) lines.push(`Printers added: ${d.printersAdded.join(", ")}`);
   for (const code of list(d.printersRemoved)) {
@@ -96,7 +121,7 @@ export const importConfirmMessage = (preview) => {
 export const staleImportNotice = (preview) => ({
   type: "Warning",
   title: "Import not possible on this station",
-  message: `The shop profile was changed on another station after this one loaded it. Restart this station, then import "${preview?.fileName ?? "the file"}" again. Nothing was changed.`,
+  message: `This station is not running the shop profile the database holds - another station saved it after this one started, or it could not be read at startup. Restart this station, then import "${preview?.fileName ?? "the file"}" again. Nothing was changed.`,
 });
 
 // The notice after profile:importApply. PROFILE_CHANGED is a Warning of its own - nothing was

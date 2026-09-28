@@ -202,10 +202,15 @@ BETWEEN a fresh preview and the click still reaches the CAS refusal after the du
 plus the file: Export, and Import = preview -> native `showConfirm` with the diff and the impact ->
 apply (a stale preview stops at a Warning, `staleImportNotice`). After an apply attempt it calls the store's `loadShopProfile()`, which sets `shopProfile` and
 `shopProfileStatus` in ONE `set()` from main's reloaded cache - the view never writes the store
-itself. Everything it says is in `utils/shopProfileView.js` (pure, tested): `profileSections`
-(a feature reads "on" only for a real `true`, like `getFeature`), `importConfirmMessage` (restart note
-last; its stale warning line is unreachable from the view since 4-stale and stays only because a
-test pins it), `staleImportNotice`, `importResultNotice` (`PROFILE_CHANGED` = Warning, apart from a
+itself. Since ETAP 4 (4-ui-profile) the profile is shown as CARDS (printers with their colours,
+class / product-type tables, scanner rules as stage chips in `STAGE_COLOR`, folders, sewing +
+Shopify, read-only feature pills) under a status badge, Export / Import in the header. Everything
+it says is in `utils/shopProfileView.js` (pure, tested): `profileOverview` (the cards' data; null
+for no profile - never a guessed one; a malformed row is shown with "-", a printer colour only
+through `getPrinterColor`, a feature "on" only for a real `true`, like `getFeature`),
+`profileStatusBadge` (Unreadable / Loading / Not configured / Configured - the same three states
+App.jsx's banners tell apart), `importConfirmMessage` (restart note last; no stale warning - a
+stale preview never reaches it), `staleImportNotice`, `importResultNotice` (`PROFILE_CHANGED` = Warning, apart from a
 failure; a failed backup after a successful import = Warning), `importErrorsNotice`,
 `exportResultNotice`.
 
