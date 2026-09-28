@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { getPrinterColor, getMaterialClassColor, getPrinters } from "./shopProfileData.js";
-import { DEFAULT_PROFILE } from "../../electron/helpers/defaultProfile.js";
+import DEFAULT_PROFILE from "../../../profiles/fashion-formula-profile.json";
 
 // ETAP 2e step 4: printer badge colours come from printers[].color instead of the
 // PRINTER_COLORS constant (src/ui/constants/printerColors.js, removed in this step).

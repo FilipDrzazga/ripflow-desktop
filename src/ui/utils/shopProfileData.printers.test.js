@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { getPrinters, defaultPrinterFor } from "./shopProfileData.js";
-import { DEFAULT_PROFILE } from "../../electron/helpers/defaultProfile.js";
+import DEFAULT_PROFILE from "../../../profiles/fashion-formula-profile.json";
 
 // ETAP 2e step 3: the renderer's printer lists (print view, BatchHistory and Analytics
 // filters, custom-order card) come from profile.printers through this reader.

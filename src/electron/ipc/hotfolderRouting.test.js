@@ -12,7 +12,7 @@ vi.mock("../../shared/estimatePrintLength.js", () => ({ estimatePrintLength: () 
 vi.mock("../helpers/getSettings.js", () => ({ getSettings: () => ({}) }));
 
 import { getWorkflowFolderName, setPrinterResolver } from "./createXML.js";
-import { DEFAULT_PROFILE } from "../helpers/defaultProfile.js";
+import DEFAULT_PROFILE from "../../../profiles/fashion-formula-profile.json";
 
 // the same lookup getPrinterByCode performs, over a given printers[]
 const resolverOver = (printers) => (code) =>
