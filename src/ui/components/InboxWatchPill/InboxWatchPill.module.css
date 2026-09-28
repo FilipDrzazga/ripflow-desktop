@@ -1,0 +1,47 @@
+/* ETAP 4 (4-inbox): "N new files - click to refresh" at the top of the Print list */
+.wrap {
+  display: flex;
+  justify-content: center;
+  margin: -4px 0 10px;
+  position: sticky;
+  top: 0;
+  z-index: 5;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 999px;
+  border: none;
+  background-color: #2e7fd6;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  box-shadow: 0 4px 14px rgba(46, 127, 214, 0.35);
+  cursor: pointer;
+  animation: pill-in 0.25s ease-out;
+}
+
+.pill:hover {
+  background-color: #2570c2;
+}
+
+.pill_error {
+  background-color: var(--bg-grey);
+  color: var(--text-secondary);
+  box-shadow: none;
+  cursor: default;
+}
+
+@keyframes pill-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

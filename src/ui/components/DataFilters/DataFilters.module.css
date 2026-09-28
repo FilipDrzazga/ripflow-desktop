@@ -210,6 +210,24 @@
 .refresh_button {
   height: 36px;
   padding: 0 12px;
+  position: relative;
+}
+
+/* 4-inbox: how many new files the last looks found - a click refreshes */
+.refresh_dot {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background-color: #2e7fd6;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 18px;
+  text-align: center;
 }
 
 .refresh_button:hover:not(:disabled) {

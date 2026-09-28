@@ -2,6 +2,7 @@ import { app, ipcMain, dialog, BrowserWindow } from "electron";
 import fs from "fs";
 import path from "path";
 import { readFolders } from "./readFolders.js";
+import { peekInbox } from "./peekInbox.js";
 import { submitBatch } from "./submitBatch.js";
 import { openPreview } from "./openPreview.js";
 import { openInFolder } from "./openInFolder.js";
@@ -235,6 +236,9 @@ export async function registerIpcHandlers() {
     const res = pruneOrphanHeldFiles(liveIds);
     return { success: res.success, removed: res.removed };
   });
+
+  // ETAP 4 (4-inbox): which PDF names are in the inbox now - names only, cheap (peekInbox.js).
+  ipcMain.handle("inbox:peek", () => peekInbox());
 
   ipcMain.handle("read-folders", async (event) => {
     try {

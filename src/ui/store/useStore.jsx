@@ -3,7 +3,20 @@ import { subscribeWithSelector } from "zustand/middleware";
 import { estimatePrintLength } from "../../shared/estimatePrintLength";
 import { BATCH_STATUS, FILE_STATUS } from "../../shared/constants";
 import { ROLLBACK_REASONS } from "../constants/rollbackReasons";
-import { readFolders } from "../services/fileService";
+import { readFolders, peekInbox as peekInboxApi } from "../services/fileService";
+import { inboxDiff, loadedInboxIds } from "../utils/inboxWatch";
+
+// The baseline of the inbox watch (4-inbox): the PDF names in the inbox right before a scan.
+// A failed look gives [] - the watch then may call a never-listed file "new" once, which a
+// refresh clears; it never hides a file that really arrived.
+const takeInboxBaseline = async () => {
+  try {
+    const res = await peekInboxApi();
+    return res?.success ? res.ids : [];
+  } catch {
+    return [];
+  }
+};
 import { readPrintedDays, readPrintedDay } from "../services/batchService";
 import { getLogs, clearLogs as clearLogsApi, getHeldFiles, holdFile as holdFileApi, unholdFile as unholdFileApi, pruneOrphanHolds, getDbDegraded, getPrintedRootUnreachable } from "../services/systemService";
 import { getRollbackReasonsForFiles as getRollbackReasonsForFilesApi } from "../services/analyticsService";
@@ -564,6 +577,41 @@ export const useStore = create(
       }
       set({ selectedIds: new Set() });
     },
+    // ETAP 4 (4-inbox): the light look at the inbox every 30 s (App.jsx) - "N new files - click to
+    // refresh", the files that left, or "Can't check the inbox". It never refreshes the list
+    // itself: a refresh clears the selection and moves rows under the operator's hands.
+    inboxWatch: { baseline: [], previous: [], added: [], removed: [], error: false },
+    checkInbox: async () => {
+      if (get().isRefreshingFiles) return;
+      let res;
+      try {
+        res = await peekInboxApi();
+      } catch {
+        res = { success: false };
+      }
+      // a refresh may have started while the look was on its way - its baseline wins
+      if (get().isRefreshingFiles) return;
+      if (!res?.success) {
+        set((state) => ({ inboxWatch: { ...state.inboxWatch, error: true } }));
+        return;
+      }
+      set((state) => {
+        const w = state.inboxWatch;
+        const { added, removed } = inboxDiff({
+          loaded: loadedInboxIds(state.files),
+          baseline: w.baseline,
+          previous: w.previous,
+          current: res.ids,
+        });
+        return { inboxWatch: { ...w, previous: res.ids, added, removed, error: false } };
+      });
+    },
+    // The operator's refresh - the Refresh button and a click on the inbox pill (4-inbox): the
+    // holds first (DataFilters / App order), then the list, with the selection cleared.
+    refreshInbox: async () => {
+      await get().loadHeldFiles();
+      await get().refreshFiles({ clearSelection: true });
+    },
     refreshFiles: async ({
       successTitle = "Folders reloaded",
       successMessage = "The folder data has been refreshed.",
@@ -577,6 +625,9 @@ export const useStore = create(
       set({ isRefreshingFiles: true });
 
       try {
+        // The inbox watch's baseline (4-inbox, utils/inboxWatch.js) - taken BEFORE the scan, so a
+        // file that lands during the scan and is not in it still shows up as new afterwards.
+        const baseline = await takeInboxBaseline();
         const res = await readFolders();
 
         if (res.success) {
@@ -588,6 +639,7 @@ export const useStore = create(
             filteredFiles: applyFilters(res.data, state.activeTab, state.searchQuery, state.sortOrder, state.printTypeFilter, state.fabricConfig),
             selectedIds: clearSelection ? new Set() : state.selectedIds,
             lastFilesRefreshAt: new Date().toISOString(),
+            inboxWatch: { baseline, previous: baseline, added: [], removed: [], error: false },
           }));
 
           // Prune orphaned holds (DB cleanup) off the FRESH res.data — never store.files,

@@ -21,12 +21,14 @@ import { onDbError, onDbRecovered, onPrintedRootUnreachable, onPrintedRootReacha
 import { isFeatureEnabled, isViewEnabled } from "./utils/featureVisibility";
 import { isProfileUnconfigured } from "./utils/shopProfileData";
 import { reloadResultNotice } from "./utils/shopProfileView";
+import InboxWatchPill from "./components/InboxWatchPill/InboxWatchPill";
 import { PROFILE_STATUS } from "./utils/profileStatus";
 import { notify } from "./utils/notify";
 import { getSettings } from "./services/settingsService";
 import { missingRequiredPaths, PATHS_NOT_SET_MESSAGE, PATHS_NOT_SET_TITLE } from "../shared/requiredPaths";
 
 const RIP_ERROR_POLL_INTERVAL = 30_000;
+const INBOX_WATCH_INTERVAL = 30_000;
 
 const App = () => {
   const refreshFiles = useStore((state) => state.refreshFiles);
@@ -50,6 +52,8 @@ const App = () => {
   const setPrintedRootUnreachable = useStore((state) => state.setPrintedRootUnreachable);
   const checkPrintedRoot = useStore((state) => state.checkPrintedRoot);
   const reloadShopData = useStore((state) => state.reloadShopData);
+  const checkInbox = useStore((state) => state.checkInbox);
+  const inboxNewCount = useStore((state) => state.inboxWatch.added.length);
   const [shopDataReloading, setShopDataReloading] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [activeView, setActiveView] = useState("print");
@@ -166,6 +170,13 @@ const App = () => {
     return () => clearInterval(id);
   }, [loadStagesAfter, loadOpenReprints]);
 
+  // ETAP 4 (4-inbox): the light look at the inbox every 30 s, session-wide (the NavBar counter
+  // works from any view). Names only - it tells, it never refreshes the list (store.checkInbox).
+  useEffect(() => {
+    const id = setInterval(() => checkInbox(), INBOX_WATCH_INTERVAL);
+    return () => clearInterval(id);
+  }, [checkInbox]);
+
   // DB degraded banner: main emits db:error/db:recovered only on state transition.
   useEffect(() => {
     const offError = onDbError(() => setDbDegraded(true));
@@ -245,12 +256,13 @@ const App = () => {
       {isLoading && <StartupLoader onDone={finishStartup} />}
       {!isLoading && (
         <div className={styles.body}>
-          <NavBar activeView={activeView} onViewChange={setActiveView} shopProfile={shopProfile} />
+          <NavBar activeView={activeView} onViewChange={setActiveView} shopProfile={shopProfile} badges={{ print: inboxNewCount }} />
           <main className={styles.content}>
             {activeView === "print" && (
               <>
                 <DataOverviewSection onNavigate={setActiveView} />
                 <DataFilters />
+                <InboxWatchPill />
                 <ErrorBoundary>
                   <DataList />
                 </ErrorBoundary>

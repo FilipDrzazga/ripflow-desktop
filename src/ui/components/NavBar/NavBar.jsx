@@ -20,7 +20,9 @@ const TOP_ITEMS = [
 // Presentational on purpose: the profile arrives as a prop, the component never reaches
 // into the store. shopProfile === null hides every gated view (fail-closed) — see
 // utils/featureVisibility.js.
-const NavBar = ({ activeView, onViewChange, shopProfile }) => {
+// badges: { [viewId]: number } - a count on a tab the operator is NOT on (4-inbox: new files
+// for Print); 0 or the active tab shows none.
+const NavBar = ({ activeView, onViewChange, shopProfile, badges = {} }) => {
   return (
     <nav className={styles.navbar}>
       <div className={styles.nav_top}>
@@ -35,6 +37,11 @@ const NavBar = ({ activeView, onViewChange, shopProfile }) => {
             >
               <TabIcon className={styles.nav_icon} />
               <span className={styles.nav_label}>{label}</span>
+              {!isActive && badges[id] > 0 && (
+                <span className={styles.nav_badge} title={`${badges[id]} new`}>
+                  {badges[id] > 99 ? "99+" : badges[id]}
+                </span>
+              )}
             </button>
           );
         })}

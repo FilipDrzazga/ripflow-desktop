@@ -72,6 +72,8 @@ const DataList = () => {
   // and the BatchHistory one, whose components already read the profile. Gated at the
   // call site below, fail-closed: a profile we could not read grants nothing.
   const shopProfile = useStore((state) => state.shopProfile);
+  const inboxRemoved = useStore((state) => state.inboxWatch.removed);
+  const goneIds = useMemo(() => new Set(inboxRemoved), [inboxRemoved]);
   const reasonDefinitions = useStore((state) => state.reasonDefinitions);
   const toggleGroupSelection = useStore((state) => state.toggleGroupSelection);
   const toggleItemSelection = useStore((state) => state.toggleItemSelection);
@@ -271,6 +273,9 @@ const DataList = () => {
                 const isWarning = item.status === FILE_STATUS.WARNING;
                 const isLocked = hasSelection && lockMaterial && item.materialType !== lockMaterial;
                 const isHeld = heldIds.has(item.id);
+                // 4-inbox: the last look no longer saw this file - marked at once, before a Submit
+                // of a selected one fails
+                const isGone = goneIds.has(item.id);
                 const rollbackReason = rollbackReasons.get(item.file.name.replace(/\.[^.]+$/, "")) ?? null;
 
                 let tooltip = null;
@@ -348,6 +353,14 @@ const DataList = () => {
                               </span>
                             );
                           })()}
+                        {isGone && (
+                          <span
+                            className={`${style.gone_badge} ${selectedIds.has(item.id) ? style.gone_badge_selected : ""}`}
+                            title="This file is no longer in the inbox (another station took it, or it was moved). Refresh the list."
+                          >
+                            Gone from the inbox
+                          </span>
+                        )}
                         {isHeld && <FiLock className={style.hold_icon} />}
                       </label>
                     </div>

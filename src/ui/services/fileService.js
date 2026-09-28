@@ -3,6 +3,8 @@ import { withTimeout, MUTATING_TIMEOUT_MS } from "@/utils/ipcWithTimeout";
 export const readFolders = () =>
   withTimeout(window.api.readFolders(), 15_000, "readFolders");
 export const onReadFoldersProgress = (cb) => window.api.onReadFoldersProgress(cb);
+// ETAP 4 (4-inbox): names only, every 30 s - a short deadline, a slow share just skips a round.
+export const peekInbox = () => withTimeout(window.api.peekInbox(), 10_000, "inbox:peek");
 export const submitBatch = (batch, overrides) => {
   // effectiveQty = manual override ?? reprintQty ?? parsed original.
   // Every overridden/reprinted item also carries provenance fields (_printed,

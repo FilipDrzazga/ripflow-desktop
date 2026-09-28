@@ -40,8 +40,8 @@ const DataFilters = () => {
   const isRefreshingFiles = useStore((state) => state.isRefreshingFiles);
   const setActiveTab = useStore((state) => state.setActiveTab);
   const clearSelection = useStore((state) => state.toggleClearSelection);
-  const refreshFiles = useStore((state) => state.refreshFiles);
-  const loadHeldFiles = useStore((state) => state.loadHeldFiles);
+  const refreshInbox = useStore((state) => state.refreshInbox);
+  const inboxNewCount = useStore((state) => state.inboxWatch.added.length);
   const searchQuery = useStore((state) => state.searchQuery);
   const setSearchQuery = useStore((state) => state.setSearchQuery);
   const sortOrder = useStore((state) => state.sortOrder);
@@ -82,10 +82,8 @@ const DataFilters = () => {
     clearSelection();
   };
 
-  const handleRefresh = async () => {
-    await loadHeldFiles();
-    await refreshFiles({ clearSelection: true });
-  };
+  // the same refresh as the inbox pill's click (store.refreshInbox, 4-inbox)
+  const handleRefresh = () => refreshInbox();
 
   const handleTypeToggle = (value) => {
     const next = printTypeFilter.includes(value)
@@ -244,6 +242,7 @@ const DataFilters = () => {
           className={`${styles.filter_button} ${styles.refresh_button}`}
         >
           {isRefreshingFiles ? <span className={styles.spinner} /> : <LuRefreshCw size={15} />}
+          {!isRefreshingFiles && inboxNewCount > 0 && <span className={styles.refresh_dot}>{inboxNewCount > 99 ? "99+" : inboxNewCount}</span>}
         </button>
       </div>
     </div>

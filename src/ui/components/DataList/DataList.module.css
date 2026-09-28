@@ -209,6 +209,26 @@
   white-space: nowrap;
 }
 
+/* 4-inbox: a file that left the inbox since the list was loaded; red when it is selected */
+.gone_badge {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  margin-left: 8px;
+  padding: 2px 7px;
+  border-radius: 6px;
+  background: var(--bg-grey);
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.gone_badge_selected {
+  background: #ffe7e5;
+  color: #e63641;
+  border: 1px solid rgba(230, 54, 65, 0.35);
+}
+
 .reprint_badge {
   display: inline-flex;
   align-items: center;
