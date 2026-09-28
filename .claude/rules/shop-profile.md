@@ -192,16 +192,20 @@ another station saved after this one loaded (`PROFILE_CHANGED`). The import neve
 `fabrics`. Other stations keep their startup cache until restart - except one whose own save is
 refused with `PROFILE_CHANGED`, which reloads then (see 3-1 above). The preview also answers
 `stationStale`: THIS station's loaded profile is not the stored row (or it holds no baseline -
-`null` or the `DEFAULT_PROFILE` stand-in, even when the row now equals it), so the apply can only
-end in `PROFILE_CHANGED` - the UI says so before the click.
+`null` or the `DEFAULT_PROFILE` stand-in, even when the row now equals it), so the apply could only
+end in `PROFILE_CHANGED`. Since ETAP 4 (4-stale) a stale preview gets NO token (`token: null`,
+nothing pending): the view shows `staleImportNotice` instead of the confirm, and no apply runs -
+before, the refusal came only after the dump and a full SMB backup. A station that goes stale
+BETWEEN a fresh preview and the click still reaches the CAS refusal after the dump (seconds wide).
 
 **Settings -> Shop Profile (`ShopProfileView.jsx`, ETAP 3-4)** - deployment level, so READ-ONLY
 plus the file: Export, and Import = preview -> native `showConfirm` with the diff and the impact ->
-apply. After an apply attempt it calls the store's `loadShopProfile()`, which sets `shopProfile` and
+apply (a stale preview stops at a Warning, `staleImportNotice`). After an apply attempt it calls the store's `loadShopProfile()`, which sets `shopProfile` and
 `shopProfileStatus` in ONE `set()` from main's reloaded cache - the view never writes the store
 itself. Everything it says is in `utils/shopProfileView.js` (pure, tested): `profileSections`
-(a feature reads "on" only for a real `true`, like `getFeature`), `importConfirmMessage` (stale
-warning first, restart note last), `importResultNotice` (`PROFILE_CHANGED` = Warning, apart from a
+(a feature reads "on" only for a real `true`, like `getFeature`), `importConfirmMessage` (restart note
+last; its stale warning line is unreachable from the view since 4-stale and stays only because a
+test pins it), `staleImportNotice`, `importResultNotice` (`PROFILE_CHANGED` = Warning, apart from a
 failure; a failed backup after a successful import = Warning), `importErrorsNotice`,
 `exportResultNotice`.
 

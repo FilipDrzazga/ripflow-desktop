@@ -155,8 +155,14 @@ export const previewShopProfileImport = async ({ chooseOpenPath, readFile, statS
   }
   const diff = diffProfiles(stored.profile, candidate);
   const impact = importImpact(diff, getAllFileStages());
-  const token = randomUUID();
-  pending = { token, candidate };
+  // The apply writes through the 3-1 CAS against what THIS station loaded at startup. When that
+  // is not the stored row (another station saved since, or nothing was loaded), the apply can
+  // only end in a refusal - said before the click, not after (S2 2026-09-28 09:43). Since ETAP 4
+  // (4-stale) such a preview holds NO token: the refusal used to come only after the pre-import
+  // dump and a full database backup over SMB, made for an import that could not happen.
+  const stationStale = stationIsStale(stored.profile);
+  const token = stationStale ? null : randomUUID();
+  pending = token ? { token, candidate } : null;
   return {
     success: true,
     canceled: false,
@@ -164,10 +170,7 @@ export const previewShopProfileImport = async ({ chooseOpenPath, readFile, statS
     token,
     fileName: filePath.split(/[/\\]/).pop(),
     unchanged: diff.changedSections.length === 0,
-    // The apply writes through the 3-1 CAS against what THIS station loaded at startup. When
-    // that is not the stored row (another station saved since, or nothing was loaded), the apply
-    // can only end in a refusal - said before the click, not after (S2 2026-09-28 09:43).
-    stationStale: stationIsStale(stored.profile),
+    stationStale,
     diff,
     impact,
   };

@@ -12,6 +12,7 @@ import { PROFILE_STATUS } from "@/utils/profileStatus";
 import {
   profileSections,
   importConfirmMessage,
+  staleImportNotice,
   importResultNotice,
   importErrorsNotice,
   exportResultNotice,
@@ -58,6 +59,10 @@ const ShopProfileView = () => {
       }
       if (preview.unchanged) {
         notify({ type: "Info", title: "Nothing to import", message: "The file holds the same profile as the database." });
+        return;
+      }
+      if (preview.stationStale) {
+        notify(staleImportNotice(preview));
         return;
       }
       if (!(await showConfirm(importConfirmMessage(preview)))) return;

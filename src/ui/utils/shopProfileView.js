@@ -90,6 +90,15 @@ export const importConfirmMessage = (preview) => {
   return lines.join("\n");
 };
 
+// A valid preview on a STALE station (another station saved the profile after this one loaded
+// it, or it loaded none): no confirm and no apply - main gave the preview no token (ETAP 4,
+// 4-stale). A Warning, not an Error: nothing failed, the import has to be made after a restart.
+export const staleImportNotice = (preview) => ({
+  type: "Warning",
+  title: "Import not possible on this station",
+  message: `The shop profile was changed on another station after this one loaded it. Restart this station, then import "${preview?.fileName ?? "the file"}" again. Nothing was changed.`,
+});
+
 // The notice after profile:importApply. PROFILE_CHANGED is a Warning of its own - nothing was
 // written on purpose - apart from a failure (the rule 18 split, as in FabricsView).
 export const importResultNotice = (res) => {
