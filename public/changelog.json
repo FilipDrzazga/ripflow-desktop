@@ -1,5 +1,35 @@
 [
   {
+    "version": "1.0.27",
+    "date": "2026-09-28",
+    "changes": [
+      {
+        "text": "Settings is easier to find your way around: Station (General, Paths) and Shop (Fabrics, Rollback Reasons, Shop Profile) at the top, System (Updates, Database, Maintenance) at the bottom, with this computer's name and the RipFlow version under the list",
+        "clients": [
+          "all"
+        ]
+      },
+      {
+        "text": "Settings > Shop Profile is now a set of cards: printers in their colours, tables of material classes and product sizes, scanner rules as coloured stages, folders, sewing companies and which features are on. A badge at the top says whether the profile is configured",
+        "clients": [
+          "all"
+        ]
+      },
+      {
+        "text": "No restart needed when the network comes back: if the shop profile could not be loaded, press Retry on the red banner or Reload shop data in Settings > Shop Profile. RipFlow reconnects to the database and reloads the shop setup and the fabric list. The \"Database unavailable\" banner goes away as soon as the database is reached again",
+        "clients": [
+          "all"
+        ]
+      },
+      {
+        "text": "Settings > Shop Profile, Import: on a computer that has not loaded the current profile, RipFlow now says so straight away and asks for a restart, instead of asking for confirmation and refusing afterwards",
+        "clients": [
+          "all"
+        ]
+      }
+    ]
+  },
+  {
     "version": "1.0.26",
     "date": "2026-09-28",
     "changes": [
