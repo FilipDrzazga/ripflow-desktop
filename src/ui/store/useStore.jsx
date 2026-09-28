@@ -15,7 +15,7 @@ import { estimateConfigFrom } from "../../shared/classGlobals";
 // null, like getEstimateConfig in main. No catalogue yet -> no field: fabricConfig stays null.
 const fabricConfigFor = (state, profile) =>
   state.fabricConfig ? { fabricConfig: estimateConfigFrom(state.fabricConfig.fabrics, profile) } : {};
-import { getShopProfile as getShopProfileApi } from "../services/profileService";
+import { getShopProfile as getShopProfileApi, reloadShopData as reloadShopDataApi } from "../services/profileService";
 import { PROFILE_STATUS, resolveProfileResult } from "../utils/profileStatus";
 import { latestRipErrorPerFile } from "../utils/ripErrorsByFile";
 import { getStagesByBatch as getStagesByBatchApi, getAllStages as getAllStagesApi, getStagesAfter as getStagesAfterApi, getAllStageHistory as getAllStageHistoryApi, clearAllProductionStages as clearAllProductionStagesApi, getOpenReprints as getOpenReprintsApi } from "../services/productionService";
@@ -222,6 +222,10 @@ export const useStore = create(
     shopProfile: null,
     shopProfileStatus: PROFILE_STATUS.LOADING,
     loadShopProfile: async () => {
+      // LOADING on entry (ETAP 4, 4-retry): with a retry, a status left at FAILED would keep the
+      // failure banner up for the whole attempt. Only the status moves - the profile stays until
+      // the answer, so no gated tab blinks out while it is re-read.
+      set({ shopProfileStatus: PROFILE_STATUS.LOADING });
       try {
         const res = await getShopProfileApi();
         // One set() for all three fields: a render that saw a loaded status next to a null
@@ -235,6 +239,20 @@ export const useStore = create(
         console.error("[store] loadShopProfile failed:", err);
         set({ shopProfile: null, shopProfileStatus: PROFILE_STATUS.FAILED, ...fabricConfigFor(get(), null) });
       }
+    },
+    // "Reload shop data" (Settings -> Shop Profile) and the Retry of the profile banner (ETAP 4,
+    // 4-retry): main reopens the database if startup could not and reloads ITS caches, then this
+    // store re-reads both of its own copies from main. The re-read runs whatever main answered -
+    // a failed reload still leaves the store showing what main holds now. Returns main's answer.
+    reloadShopData: async () => {
+      let res;
+      try {
+        res = await reloadShopDataApi();
+      } catch (err) {
+        res = { success: false, error: err?.message ?? "Unknown error." };
+      }
+      await Promise.all([get().loadShopProfile(), get().loadFabricConfig()]);
+      return res;
     },
     productionStages: {},
     loadStagesForBatch: async (batchPath) => {

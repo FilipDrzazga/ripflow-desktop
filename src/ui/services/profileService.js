@@ -1,7 +1,15 @@
 import { withTimeout } from "@/utils/ipcWithTimeout";
 
+// 30s, not 5s (ETAP 4, 4-retry): at startup main is busy with synchronous SQLite work over SMB
+// (sweepOrphanTemps, backupDb), and a 5s deadline marked a HEALTHY database's profile as failed
+// for the whole session - PRODUCTIZATION case (c). getDbDegraded got the same deadline instead of
+// none, so the two startup reads no longer disagree about how long to wait.
 export const getShopProfile = () =>
-  withTimeout(window.api.profile.get(), 5_000, "profile:get");
+  withTimeout(window.api.profile.get(), 30_000, "profile:get");
+// Reopens the database when startup could not, then reloads both caches in main (4-retry).
+// initDb on a share that is still gone can block for the SMB timeout, hence the long deadline.
+export const reloadShopData = () =>
+  withTimeout(window.api.shopData.reload(), 120_000, "shopData:reload");
 export const setShopProfile = (profile) =>
   withTimeout(window.api.profile.set(profile), 30_000, "profile:set");
 

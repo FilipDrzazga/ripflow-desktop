@@ -40,7 +40,7 @@ Tokenize by `_`, detect CUSHION/TEA_TOWEL by keyword, others by XWD hex token.
 
 ## Fabric Config (`fabricCache.js`)
 
-In-memory cache loaded at startup (`loadFabricCache()` called in `ipc/index.js` after `initDb()`).
+In-memory cache loaded at startup (`loadShopData()` in `ipc/index.js` after `initDb()`: the profile, then `loadFabricCache()`) and again by "Reload shop data" (`reloadShopData.js`, ETAP 4 4-retry - see `shop-profile.md`).
 Invalidated and reloaded after every `fabrics:save`, `fabrics:delete`, `fabrics:setAll`. The cache
 holds the catalogue only; the class numbers come from the profile, which `profile:set` reloads
 (`fabricGlobals:set` and its reload went in 1.0.26 with the pilot's dual write).

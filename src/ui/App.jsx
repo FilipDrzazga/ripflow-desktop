@@ -20,6 +20,7 @@ import Production from "./components/Production/Production";
 import { onDbError, onDbRecovered, onPrintedRootUnreachable, onPrintedRootReachable } from "./services/systemService";
 import { isFeatureEnabled, isViewEnabled } from "./utils/featureVisibility";
 import { isProfileUnconfigured } from "./utils/shopProfileData";
+import { reloadResultNotice } from "./utils/shopProfileView";
 import { PROFILE_STATUS } from "./utils/profileStatus";
 import { notify } from "./utils/notify";
 import { getSettings } from "./services/settingsService";
@@ -48,6 +49,8 @@ const App = () => {
   const printedRootUnreachable = useStore((state) => state.printedRootUnreachable);
   const setPrintedRootUnreachable = useStore((state) => state.setPrintedRootUnreachable);
   const checkPrintedRoot = useStore((state) => state.checkPrintedRoot);
+  const reloadShopData = useStore((state) => state.reloadShopData);
+  const [shopDataReloading, setShopDataReloading] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [activeView, setActiveView] = useState("print");
   // A profile that arrives late (or one that turns a feature off) can pull the view the
@@ -215,7 +218,22 @@ const App = () => {
           outright, and stays "loading" during startup instead of looking like failure. */}
       {shopProfileStatus === PROFILE_STATUS.FAILED && (
         <div className={styles.db_banner} role="alert">
-          Shop profile could not be loaded — some features are hidden. Restart the app to retry.
+          Shop profile could not be loaded — some features are hidden.
+          {/* ETAP 4 (4-retry): the same reload as Settings > Shop Profile, no restart needed. */}
+          <button
+            className={styles.banner_btn}
+            disabled={shopDataReloading}
+            onClick={async () => {
+              setShopDataReloading(true);
+              try {
+                notify(reloadResultNotice(await reloadShopData()));
+              } finally {
+                setShopDataReloading(false);
+              }
+            }}
+          >
+            {shopDataReloading ? "Retrying…" : "Retry"}
+          </button>
         </div>
       )}
       {/* ETAP 3-6: a fresh install seeds an empty profile - no printer, every feature off. */}

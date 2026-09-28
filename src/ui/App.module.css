@@ -39,6 +39,28 @@
   z-index: 50;
 }
 
+/* the Retry of the shop-profile banner (ETAP 4, 4-retry) */
+.banner_btn {
+  margin-left: 12px;
+  padding: 2px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  background: none;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.banner_btn:hover:not(:disabled) {
+  background-color: rgba(255, 255, 255, 0.15);
+}
+
+.banner_btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
 .placeholder {
   display: flex;
   flex-direction: column;

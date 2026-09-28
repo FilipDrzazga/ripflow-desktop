@@ -21,7 +21,10 @@ export const showConfirm = (message) => window.api.showConfirm(message);
 export const onDbError = (cb) => window.api.onDbError(cb);
 export const onDbRecovered = (cb) => window.api.onDbRecovered(cb);
 // Initial degraded snapshot on startup (covers a DB dead since boot) — returns { degraded }
-export const getDbDegraded = () => window.api.getDbDegraded();
+// 30s, the same deadline as profile:get (ETAP 4, 4-retry): it used to have none and wait forever
+// for a main process that profile:get gave up on after 5s.
+export const getDbDegraded = () =>
+  withTimeout(window.api.getDbDegraded(), 30_000, "getDbDegraded");
 // PRINTED root reachability — same shape as the DB pair above: two event subscriptions
 // returning an unsubscribe fn, plus a snapshot for a root already unreachable at startup.
 export const onPrintedRootUnreachable = (cb) => window.api.onPrintedRootUnreachable(cb);

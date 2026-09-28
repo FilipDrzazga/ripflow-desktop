@@ -1,5 +1,5 @@
 import { Fragment, useState } from "react";
-import { LuDownload, LuUpload } from "react-icons/lu";
+import { LuDownload, LuRefreshCw, LuUpload } from "react-icons/lu";
 import { useStore } from "../../../store/useStore";
 import {
   exportShopProfile,
@@ -14,6 +14,7 @@ import {
   profileStatusBadge,
   importConfirmMessage,
   staleImportNotice,
+  reloadResultNotice,
   importResultNotice,
   importErrorsNotice,
   exportResultNotice,
@@ -28,7 +29,8 @@ const ShopProfileView = () => {
   const shopProfile = useStore((s) => s.shopProfile);
   const shopProfileStatus = useStore((s) => s.shopProfileStatus);
   const loadShopProfile = useStore((s) => s.loadShopProfile);
-  const [busy, setBusy] = useState(null); // null | "export" | "import"
+  const reloadShopData = useStore((s) => s.reloadShopData);
+  const [busy, setBusy] = useState(null); // null | "reload" | "export" | "import"
   const [importErrors, setImportErrors] = useState([]);
 
   const handleExport = async () => {
@@ -83,6 +85,15 @@ const ShopProfileView = () => {
     }
   };
 
+  const handleReload = async () => {
+    setBusy("reload");
+    try {
+      notify(reloadResultNotice(await reloadShopData()));
+    } finally {
+      setBusy(null);
+    }
+  };
+
   const failed = shopProfileStatus === PROFILE_STATUS.FAILED;
   const overview = profileOverview(shopProfile);
   const badge = profileStatusBadge(shopProfileStatus, shopProfile);
@@ -103,6 +114,15 @@ const ShopProfileView = () => {
           </p>
         </div>
         <div className={own.actions}>
+          <button
+            className={styles.browse_btn}
+            onClick={handleReload}
+            disabled={busy !== null}
+            title="Re-read the shop profile and the fabric list from the shared database (reconnects it if needed)"
+          >
+            <LuRefreshCw size={15} />
+            {busy === "reload" ? "Reloading…" : "Reload shop data"}
+          </button>
           <button className={styles.browse_btn} onClick={handleExport} disabled={busy !== null || failed}>
             <LuDownload size={15} />
             {busy === "export" ? "Exporting…" : "Export"}
@@ -117,7 +137,8 @@ const ShopProfileView = () => {
         {failed && (
           <div className={own.alert}>
             <div className={own.alert_title}>The shop profile could not be read</div>
-            The database may be unreachable. Nothing below is shown until it is read.
+            The database may be unreachable. Nothing below is shown until it is read - use Reload shop data once the
+            network is back.
           </div>
         )}
         {importErrors.length > 0 && (

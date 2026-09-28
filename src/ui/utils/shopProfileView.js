@@ -124,6 +124,34 @@ export const staleImportNotice = (preview) => ({
   message: `This station is not running the shop profile the database holds - another station saved it after this one started, or it could not be read at startup. Restart this station, then import "${preview?.fileName ?? "the file"}" again. Nothing was changed.`,
 });
 
+// The notice after "Reload shop data" (ETAP 4, 4-retry) - main's answer from shopData:reload
+// (helpers/reloadShopData.js). Each cache reports "reloaded" or "missing" (the read failed; the
+// cache is empty now, also if it held data before - shop-profile.md).
+const CACHE_NAMES = { profile: "shop profile", fabrics: "fabric list" };
+export const reloadResultNotice = (res) => {
+  if (!res?.success) return { type: "Error", title: "Reload failed", message: res?.error || "Unknown error." };
+  if (res.dbOpen === false) {
+    return {
+      type: "Error",
+      title: "Database still unreachable",
+      message: "The shared database could not be opened. Check the network connection, then try again.",
+    };
+  }
+  const missing = Object.keys(CACHE_NAMES).filter((k) => res[k] !== "reloaded");
+  if (missing.length) {
+    return {
+      type: "Error",
+      title: "Shop data not loaded",
+      message: `Could not read the ${missing.map((k) => CACHE_NAMES[k]).join(" and ")}. Try again in a moment.`,
+    };
+  }
+  return {
+    type: "Success",
+    title: "Shop data reloaded",
+    message: res.reopened ? "The database was reconnected; the shop profile and the fabric list are up to date." : "The shop profile and the fabric list are up to date.",
+  };
+};
+
 // The notice after profile:importApply. PROFILE_CHANGED is a Warning of its own - nothing was
 // written on purpose - apart from a failure (the rule 18 split, as in FabricsView).
 export const importResultNotice = (res) => {

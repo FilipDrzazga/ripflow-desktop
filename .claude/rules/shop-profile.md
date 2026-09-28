@@ -33,7 +33,7 @@ source of truth next to `scanRules` — do not add one).
 load-on-startup / invalidate-on-write cycle, same sentinel discipline.
 
 ```js
-loadShopProfile(); // DB → memory; called in registerIpcHandlers BEFORE loadFabricCache
+loadShopProfile(); // DB → memory, returns true when loaded; called through loadShopData (reloadShopData.js) BEFORE loadFabricCache
 invalidateShopProfile(); // clear (call before reloading)
 getProfile(); // null | DEFAULT_PROFILE | the DB row
 getPrinters(); // profile.printers, or [] when not loaded / the field is not an array
@@ -89,6 +89,20 @@ profile, re-read this section against the code before trusting it.
 
 A failed RELOAD also drops a previously loaded profile — serving a stale one quietly is
 worse than admitting ignorance.
+
+**Reload without a restart (ETAP 4, 4-retry): `helpers/reloadShopData.js`.** ONE mechanism for
+both caches. `loadShopData()` = `loadShopProfile()` then `loadFabricCache()` - startup runs it,
+so startup and a reload cannot drift. `reloadShopData()` (IPC `shopData:reload`, the "Reload shop
+data" button in Settings -> Shop Profile and the Retry of the App.jsx failure banner) first
+REOPENS the database when `isDbOpen()` is false - a station whose NAS was down at startup had
+`db = null` for the whole session, so reloading the caches alone could never help - and runs
+the profile migration after it, in the startup order; a live handle is never replaced. Then
+`loadShopData()` with the contract above unchanged (a failed read drops to `null`). Answer:
+`{ success, dbOpen, reopened, profile: "reloaded"|"missing", fabrics: ... }`; one reload at a
+time (a second call gets the same promise). The renderer then re-reads both of its copies
+(`store.reloadShopData`), and `store.loadShopProfile` sets `LOADING` on entry so the failure
+banner does not stay up for the whole attempt. NOT automatic: a periodic retry would reopen a
+dead share on the main thread and freeze the window for the SMB timeout each time.
 
 **`loadShopProfile()` runs BEFORE `loadFabricCache()`** in `registerIpcHandlers`. Not
 style: the profile carries the class numbers the fabric layer reads (`getEstimateConfig` takes
@@ -189,8 +203,8 @@ whatever happens. **Apply**: `dumpShopProfileBlob(raw, "3-import")` is a HARD pr
 local copy of what is replaced = nothing replaced), then `backupDb(true)` best effort (reported,
 never blocking), then `saveShopProfile` - the 3-1 CAS, so an import cannot land on a profile
 another station saved after this one loaded (`PROFILE_CHANGED`). The import never touches
-`fabrics`. Other stations keep their startup cache until restart - except one whose own save is
-refused with `PROFILE_CHANGED`, which reloads then (see 3-1 above). The preview also answers
+`fabrics`. Other stations keep their startup cache until restart or "Reload shop data" (4-retry) -
+except one whose own save is refused with `PROFILE_CHANGED`, which reloads then (see 3-1 above). The preview also answers
 `stationStale`: THIS station's loaded profile is not the stored row (or it holds no baseline -
 `null` or the `DEFAULT_PROFILE` stand-in, even when the row now equals it), so the apply could only
 end in `PROFILE_CHANGED`. Since ETAP 4 (4-stale) a stale preview gets NO token (`token: null`,
@@ -226,7 +240,7 @@ by `loadShopProfile()` in the App startup effect via `services/profileService.js
 store sets `shopProfile` together with `shopProfileStatus` (`LOADING` → `LOADED` | `FAILED`)
 through `resolveProfileResult`: only `success === true` with a non-empty plain object is
 `LOADED`; a null, an empty object or anything else is `FAILED` with `shopProfile: null`,
-and a `profile:get` timeout (the store's catch) lands on the same failed pair. First renderer consumer (2c): the NavBar
+and a `profile:get` timeout (30s since 4-retry, was 5s - PRODUCTIZATION case (c); the store's catch) lands on the same failed pair. First renderer consumer (2c): the NavBar
 feature filter — `App.jsx` passes `shopProfile` down as a prop and `NavBar` gates Custom
 Orders and Analytics through `isViewEnabled` (`src/ui/utils/featureVisibility.js`), a
 deliberate fail-closed, strict `=== true` mirror of `getFeature`, because `getFeature`
