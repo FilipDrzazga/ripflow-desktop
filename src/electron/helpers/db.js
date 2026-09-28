@@ -424,8 +424,20 @@ export const initDb = () => {
       "INSERT OR IGNORE INTO rip_errors (id, job_guid, file_id, batch_id, nesting_group, failed_node, error_message, document_id, detected_at, created_at, resolved_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
     );
     stmtGetOpenRipErrors = db.prepare("SELECT * FROM rip_errors WHERE resolved_at IS NULL ORDER BY detected_at DESC");
+    // A database that opened: clear a degraded state left by a start without one (ETAP 4,
+    // 4-retry follow-up) - "Database unavailable" would otherwise stay up after a successful
+    // "Reload shop data" until the first write. At a normal startup nothing is degraded yet and
+    // this is a no-op.
+    signalRecovered();
   } catch (err) {
     console.error("[db] initDb failed:", err);
+    // The constructor may have opened the file before a later statement threw: close that
+    // handle, or every failed Retry of 4-retry leaves one more connection open on the share.
+    try {
+      db?.close();
+    } catch {
+      // closing a half-open handle is best effort
+    }
     db = null;
     stmtInsert = null;
     stmtGetAll = null;
