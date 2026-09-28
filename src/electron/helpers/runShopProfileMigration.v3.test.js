@@ -41,17 +41,17 @@ beforeEach(() => {
 });
 
 describe("runShopProfileMigration - v2 -> v3", () => {
-  it("writes v3 with the numbers read from fabric_globals, compare-and-swap on the raw text", async () => {
+  it("writes v4 with the numbers read from fabric_globals, compare-and-swap on the raw text", async () => {
     await runShopProfileMigration();
     expect(migrateShopProfileRow).toHaveBeenCalledTimes(1);
     const [expected, next, workstation] = migrateShopProfileRow.mock.calls[0];
     expect(expected).toBe(rawRow);
-    expect(workstation).toBe("migration:v3");
+    expect(workstation).toBe("migration:v4");
     expect(JSON.parse(next).materialClasses).toEqual([
       { name: "Cottons", margin: 11, defaultRollWidth: 1430 },
       { name: "Polyesters", margin: 6, defaultRollWidth: 1560 },
     ]);
-    expect(JSON.parse(next).schemaVersion).toBe(3);
+    expect(JSON.parse(next).schemaVersion).toBe(4);
   });
 
   it("fabric_globals unreadable (null): nothing written, the stop is logged", async () => {
@@ -74,8 +74,8 @@ describe("runShopProfileMigration - v2 -> v3", () => {
     expect(warn.mock.calls.some((c) => /another station migrated it/.test(c[0]))).toBe(true);
   });
 
-  it("a row already at v3: no read of fabric_globals is needed and nothing is written", async () => {
-    rawRow = JSON.stringify({ schemaVersion: 3, materialClasses: [] });
+  it("a row already at v4: no read of fabric_globals is needed and nothing is written", async () => {
+    rawRow = JSON.stringify({ schemaVersion: 4, materialClasses: [] });
     await runShopProfileMigration();
     expect(migrateShopProfileRow).not.toHaveBeenCalled();
   });

@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 3,
+  "schemaVersion": 4,
   "printers": [
     {
       "code": "DGEN",
@@ -67,6 +67,9 @@
     "Olya",
     "Vagabond"
   ],
+  "customOrders": {
+    "materialClass": "Polyesters"
+  },
   "integrations": {
     "shopify": {
       "storeHandle": "fashionformulauk"

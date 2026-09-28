@@ -13,7 +13,7 @@
 // shows a "not configured" banner until a profile with printers is imported.
 export const DEFAULT_PROFILE = {
   // The shape of the current schema: a seeded row must not look one migration behind.
-  schemaVersion: 3,
+  schemaVersion: 4,
   printers: [],
   materialClasses: [],
   productTypes: [],
@@ -22,6 +22,9 @@ export const DEFAULT_PROFILE = {
   folders: { printed: "PRINTED", ripError: null, customOrder: null },
   scanRules: [],
   sewingCompanies: [],
+  // v4 (4-types-c): the material class custom orders are printed in - null = not configured,
+  // custom orders refuse (CUSTOM_ORDER_CLASS_MISSING).
+  customOrders: { materialClass: null },
   integrations: { shopify: { storeHandle: "" } },
   features: {
     customOrders: false,

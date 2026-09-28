@@ -4,7 +4,7 @@ import { saveShopProfile } from "./saveShopProfile.js";
 import { getProfile } from "./shopProfile.js";
 import { DEFAULT_PROFILE } from "./defaultProfile.js";
 import { validateShopProfile } from "./validateShopProfile.js";
-import { PROFILE_SCHEMA_VERSION } from "./migrateShopProfile.js";
+import { PROFILE_SCHEMA_VERSION, migrateShopProfile } from "./migrateShopProfile.js";
 import { PRODUCTION_STAGE } from "../../shared/constants.js";
 
 // ETAP 3-3: the shop profile as a file ("the suitcase") - export, and import in two phases.
@@ -60,7 +60,11 @@ export const exportShopProfile = async ({ chooseSavePath, writeFile }) => {
     return { success: false, error: `Could not write the file: ${err?.message ?? err}` };
   }
   // Exported as it is, but said out loud when this file would not import back.
-  const { errors } = validateShopProfile(stored.profile, { schemaVersion: PROFILE_SCHEMA_VERSION });
+  // "Would it import back" answered the way the import would: migrated up first (4-types-c).
+  const migrated = migrateShopProfile(stored.profile, { fabricGlobals: null });
+  const { errors } = validateShopProfile(migrated.changed && migrated.profile ? migrated.profile : stored.profile, {
+    schemaVersion: PROFILE_SCHEMA_VERSION,
+  });
   return { success: true, canceled: false, path: filePath, warnings: errors };
 };
 
@@ -141,9 +145,15 @@ export const previewShopProfileImport = async ({ chooseOpenPath, readFile, statS
     return { success: true, canceled: false, valid: false, errors: [`The file is not valid JSON: ${err.message}`] };
   }
 
-  // A file older than this build but not older than the first exported version would be migrated
-  // up here (migrateShopProfile STEPS). With v3 the only exportable version there is nothing to
-  // run; the validator refuses every other version with its own message.
+  // A file older than this build but not older than the first exported version is migrated up
+  // here through the SAME steps the stored row takes at startup (migrateShopProfile) - since v4
+  // (4-types-c) a v3 file gets customOrders.materialClass exactly as the database row did. No
+  // fabric_globals are passed: the v2 -> v3 step blocks without them, the file stays below the
+  // import minimum, and the validator refuses it with its own message.
+  if (candidate && typeof candidate === "object" && !Array.isArray(candidate)) {
+    const migrated = migrateShopProfile(candidate, { fabricGlobals: null });
+    if (migrated.changed && migrated.profile) candidate = migrated.profile;
+  }
   const { ok, errors } = validateShopProfile(candidate, { schemaVersion: PROFILE_SCHEMA_VERSION });
   if (!ok) return { success: true, canceled: false, valid: false, errors };
 
@@ -153,7 +163,10 @@ export const previewShopProfileImport = async ({ chooseOpenPath, readFile, statS
   } catch (err) {
     return { success: false, error: `Could not read the current shop profile: ${err?.message ?? err}` };
   }
-  const diff = diffProfiles(stored.profile, candidate);
+  // Compared at the SAME version: a stored row one migration behind (a station that has not
+  // restarted since the upgrade) would otherwise report the migration's own fields as "changed".
+  const storedForDiff = migrateShopProfile(stored.profile, { fabricGlobals: null });
+  const diff = diffProfiles(storedForDiff.changed && storedForDiff.profile ? storedForDiff.profile : stored.profile, candidate);
   const impact = importImpact(diff, getAllFileStages());
   // The apply writes through the 3-1 CAS against what THIS station loaded at startup. When that
   // is not the stored row (another station saved since, or nothing was loaded), the apply can

@@ -14,7 +14,7 @@
 //
 // It deliberately does NOT read DEFAULT_PROFILE. See SCAN_RULES_2F below.
 
-export const PROFILE_SCHEMA_VERSION = 3;
+export const PROFILE_SCHEMA_VERSION = 4;
 
 // FROZEN COPY of the four scan rules as DEFAULT_PROFILE carried them at 2f. Do NOT
 // re-point this at DEFAULT_PROFILE, however tempting the duplication looks:
@@ -128,10 +128,36 @@ const stepToV3 = (profile, { fabricGlobals } = {}) => {
   return { profile: out, applied, skipped };
 };
 
+// v3 -> v4 (ETAP 4, 4-types-c): the material class of custom orders becomes profile data,
+// `customOrders.materialClass`. Up to v3 it was the literal "Polyesters" in three places of the
+// code (the XML's <MaterialType>, the printer check, the printer list), so every v3 row MEANT
+// "custom orders are Polyesters". The step writes that meaning down - but only when the row has
+// such a class: a row without it gets null, and custom orders then refuse visibly
+// (CUSTOM_ORDER_CLASS_MISSING) instead of printing into a class the shop does not have.
+// FROZEN like SCAN_RULES_2F: the class name as the code had it at 4-types-c.
+const CUSTOM_ORDER_CLASS_4C = "Polyesters";
+
+const stepToV4 = (profile) => {
+  const out = { ...profile };
+  if (isPlainObject(out.customOrders) && has(out.customOrders, "materialClass")) {
+    return { profile: out, applied: [], skipped: ["customOrders.materialClass already set - left as it is"] };
+  }
+  const hasClass =
+    Array.isArray(out.materialClasses) && out.materialClasses.some((c) => isPlainObject(c) && c.name === CUSTOM_ORDER_CLASS_4C);
+  const materialClass = hasClass ? CUSTOM_ORDER_CLASS_4C : null;
+  out.customOrders = { ...(isPlainObject(out.customOrders) ? out.customOrders : {}), materialClass };
+  return {
+    profile: out,
+    applied: [`customOrders.materialClass = ${materialClass === null ? "null (no Polyesters class)" : materialClass}`],
+    skipped: [],
+  };
+};
+
 // Ordered by the version each step takes the row TO.
 const STEPS = [
   { to: 2, apply: stepToV2 },
   { to: 3, apply: stepToV3 },
+  { to: 4, apply: stepToV4 },
 ];
 
 // row -> { profile, changed, applied, skipped }

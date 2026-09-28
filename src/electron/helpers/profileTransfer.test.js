@@ -208,10 +208,12 @@ describe("applyShopProfileImport", () => {
     const token = await previewed();
     const res = await applyShopProfileImport(token, { workstation: "PC-1" });
     expect(res).toMatchObject({ success: true, dumpPath: "C:/backups/dump.json", backup: { success: true } });
-    expect(h.calls).toEqual(["dump:3-import", "backup:true", "write"]);
+    expect(h.calls).toEqual(["dump:4-import", "backup:true", "write"]);
     expect(h.dumped).toBe(JSON.stringify(STORED));
-    expect(JSON.parse(h.row)).toEqual(CANDIDATE);
-    expect(getProfile()).toEqual(CANDIDATE);
+    // the v3 file is migrated to v4 before it is written (4-types-c): it has a Polyesters class
+    const written = { ...CANDIDATE, schemaVersion: 4, customOrders: { materialClass: "Polyesters" } };
+    expect(JSON.parse(h.row)).toEqual(written);
+    expect(getProfile()).toEqual(written);
   });
 
   it("no dump, no import: nothing is backed up or written", async () => {
@@ -220,7 +222,7 @@ describe("applyShopProfileImport", () => {
     const res = await applyShopProfileImport(token, { workstation: "PC-1" });
     expect(res.success).toBe(false);
     expect(res.error).toMatch(/disk full/);
-    expect(h.calls).toEqual(["dump:3-import"]);
+    expect(h.calls).toEqual(["dump:4-import"]);
     expect(h.row).toBe(JSON.stringify(STORED));
   });
 

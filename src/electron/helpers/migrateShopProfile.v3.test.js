@@ -22,15 +22,15 @@ const ALEX_GLOBALS = {
 };
 
 describe("migrateShopProfile v2 -> v3 (class numbers into materialClasses)", () => {
-  it("the build is at v3", () => {
-    expect(PROFILE_SCHEMA_VERSION).toBe(3);
+  it("the build is at v4", () => {
+    expect(PROFILE_SCHEMA_VERSION).toBe(4);
   });
 
   it("Alex's row: v3, the same numbers, defaultXmlWidth dropped, everything else untouched", () => {
     const { profile, changed, blocked } = migrateShopProfile(v2Row(), { fabricGlobals: ALEX_GLOBALS });
     expect(changed).toBe(true);
     expect(blocked).toBeNull();
-    expect(profile.schemaVersion).toBe(3);
+    expect(profile.schemaVersion).toBe(4);
     expect(profile.materialClasses).toEqual([
       { name: "Cottons", margin: 10, defaultRollWidth: 1420 },
       { name: "Polyesters", margin: 5, defaultRollWidth: 1550 },
@@ -76,12 +76,12 @@ describe("migrateShopProfile v2 -> v3 (class numbers into materialClasses)", () 
     expect(blocked).toMatch(/stays at v2/);
   });
 
-  it("a v1 row with fabric_globals goes all the way to v3", () => {
+  it("a v1 row with fabric_globals goes all the way to v4", () => {
     const { profile, applied } = migrateShopProfile(
       { schemaVersion: 1, workstationRoles: ["cotton"], materialClasses: v2Row().materialClasses },
       { fabricGlobals: ALEX_GLOBALS },
     );
-    expect(profile.schemaVersion).toBe(3);
+    expect(profile.schemaVersion).toBe(4);
     expect(applied).toEqual(expect.arrayContaining(["set schemaVersion 1 -> 2", "set schemaVersion 2 -> 3"]));
   });
 
@@ -108,9 +108,9 @@ describe("migrateShopProfile v2 -> v3 (class numbers into materialClasses)", () 
     expect(skipped).toContain("Linens: no counterpart in fabric_globals - numbers left as they are");
   });
 
-  it("no materialClasses: bumped to v3 with a note, nothing invented", () => {
+  it("no materialClasses: bumped to v4 with a note, nothing invented", () => {
     const { profile, skipped } = migrateShopProfile({ schemaVersion: 2, printers: [] }, { fabricGlobals: ALEX_GLOBALS });
-    expect(profile.schemaVersion).toBe(3);
+    expect(profile.schemaVersion).toBe(4);
     expect(profile.materialClasses).toBeUndefined();
     expect(skipped).toContain("materialClasses missing - no class to move numbers into");
   });
@@ -125,8 +125,8 @@ describe("migrateShopProfile v2 -> v3 (class numbers into materialClasses)", () 
     expect(twice.profile).toBe(once);
   });
 
-  it("DEFAULT_PROFILE (the seed) already has the v3 shape", () => {
-    expect(DEFAULT_PROFILE.schemaVersion).toBe(3);
+  it("DEFAULT_PROFILE (the seed) already has the v4 shape", () => {
+    expect(DEFAULT_PROFILE.schemaVersion).toBe(4);
     expect(DEFAULT_PROFILE.materialClasses.every((c) => !("defaultXmlWidth" in c))).toBe(true);
     expect(migrateShopProfile(structuredClone(DEFAULT_PROFILE), { fabricGlobals: ALEX_GLOBALS }).changed).toBe(false);
   });

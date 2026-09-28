@@ -120,6 +120,17 @@ failure) - never from `DEFAULT_PROFILE` or the fabric seed; the dead `defaultXml
 dropped. Unreadable `fabric_globals` BLOCKS the step (`blocked`, logged): the row stays at v2
 and the next start tries again. Since 2g-3b the estimator READS the class numbers from the
 profile (`estimateConfigFrom`, `src/shared/classGlobals.js`, main and renderer alike).
+**v3 -> v4 (ETAP 4, 4-types-c) - the current version:** `customOrders.materialClass`, the class
+custom orders are printed in (their `<MaterialType>`, and the printers of that class). Every v3
+row meant "Polyesters" (a literal in three places of the code); the step writes it only when the
+row HAS a Polyesters class, else `null` (frozen `CUSTOM_ORDER_CLASS_4C`; a field already there is
+kept). `null` = not configured: custom orders refuse (`CUSTOM_ORDER_CLASS_MISSING`). The import
+preview runs the SAME `migrateShopProfile` on an older file (without `fabric_globals`, so a v2
+file stays below the import minimum), and the diff / export warnings compare migrated copies. The
+validator allows the section as optional (null or a class of the profile). Mixed stations: an
+older build reads a v4 row normally, its own migration refuses the newer row, its Global
+Parameters save keeps the field (it writes the whole row it read); only a v4 FILE imported on an
+older build is refused.
 The 2G pilot ran two versions on one DB (variant A, FILIP 2026-09-25): FabricsView wrote the class
 numbers to the profile AND to `fabric_globals`, which older builds read. That dual write went in
 1.0.26, once every station ran 1.0.25 (FILIP 2026-09-28): `saveClassNumbers` writes the profile

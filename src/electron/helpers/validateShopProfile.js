@@ -52,6 +52,10 @@ const TOP_LEVEL_KEYS = [
   "integrations",
   "features",
 ];
+// Allowed but optional (v4, 4-types-c): an exported row always carries it (the migration writes
+// it), a hand-made file without it means "not configured" - an error only when the feature is on.
+const OPTIONAL_TOP_LEVEL_KEYS = ["customOrders"];
+const CUSTOM_ORDER_KEYS = ["materialClass"];
 const PRINTER_KEYS = ["code", "materialClass", "hotfolder", "color"];
 const CLASS_RECORD_KEYS = ["name", "margin", "defaultRollWidth"];
 const PRODUCT_TYPE_KEYS = ["code", "width", "height"];
@@ -98,7 +102,7 @@ export const validateShopProfile = (profile, { schemaVersion } = {}) => {
   const onlyKeys = (obj, allowed, where) => {
     for (const k of Object.keys(obj)) if (!allowed.includes(k)) err(`${where}: unknown key "${k}".`);
   };
-  onlyKeys(profile, TOP_LEVEL_KEYS, "profile");
+  onlyKeys(profile, [...TOP_LEVEL_KEYS, ...OPTIONAL_TOP_LEVEL_KEYS], "profile");
   for (const k of TOP_LEVEL_KEYS) if (!(k in profile)) err(`profile: missing key "${k}".`);
 
   // ── materialClasses (first: printers refer to them) ──────────────────────
@@ -272,6 +276,17 @@ export const validateShopProfile = (profile, { schemaVersion } = {}) => {
       err("features.customOrders is on, but folders.customOrder is not set.");
     }
   }
+
+  // ── customOrders (v4, 4-types-c): the class custom orders are printed in ──
+  // null = not configured (custom orders refuse); otherwise one of THIS profile's classes - it
+  // goes to PrintFactory as <MaterialType> and picks the printers of that class.
+  if (isPlainObject(profile.customOrders)) {
+    onlyKeys(profile.customOrders, CUSTOM_ORDER_KEYS, "customOrders");
+    const mc = profile.customOrders.materialClass;
+    if (mc !== null && !classNames.has(mc)) {
+      err(`customOrders.materialClass: must be null or one of the materialClasses names (got ${show(mc)}).`);
+    }
+  } else if ("customOrders" in profile) err("customOrders: must be an object.");
 
   return { ok: errors.length === 0, errors };
 };
