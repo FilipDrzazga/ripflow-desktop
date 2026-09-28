@@ -9,19 +9,24 @@
 // view passes the services in). Returns { outcome, error? }:
 //   "saved"           - the profile was written
 //   "no-profile"      - the profile could not be read; nothing written
-//   "missing-class"   - the profile lists no Cottons or no Polyesters class; nothing written
+//   "missing-class"   - the profile no longer lists a class the form shows; nothing written
 //   "profile-changed" - profile:set refused: another station saved the profile after this one
 //                       loaded it (ETAP 3-1); nothing written
 //   "profile-failed"  - profile:set failed or did not answer
 
-import { CLASS_NUMBER_KEYS, withClassNumbers } from "../../shared/classGlobals";
+import { withClassNumbersByName } from "../../shared/classGlobals";
 import { PROFILE_CHANGED } from "../../shared/constants";
 
 const errorOf = (res, err, fallback) => err?.message || res?.error || fallback;
 
+// values: { [className]: { margin, defaultRollWidth } } - BY CLASS NAME since ETAP 4
+// (4-types-b; before, four fixed keys that only knew Cottons and Polyesters). The form holds
+// strings (input values); they are converted here.
 export const saveClassNumbers = async (values, { getProfile, setProfile }) => {
   const numbers = {};
-  for (const key of CLASS_NUMBER_KEYS) numbers[key] = Number(values[key]);
+  for (const [name, v] of Object.entries(values || {})) {
+    numbers[name] = { margin: Number(v?.margin), defaultRollWidth: Number(v?.defaultRollWidth) };
+  }
 
   // A fresh read, not the store's copy: the write replaces the WHOLE profile row.
   let profile = null;
@@ -33,7 +38,7 @@ export const saveClassNumbers = async (values, { getProfile, setProfile }) => {
   }
   if (!profile) return { outcome: "no-profile", error: "The shop profile could not be read." };
 
-  const { profile: next, missing } = withClassNumbers(profile, numbers);
+  const { profile: next, missing } = withClassNumbersByName(profile, numbers);
   if (missing.length) {
     return { outcome: "missing-class", error: `The shop profile has no class: ${missing.join(", ")}.` };
   }

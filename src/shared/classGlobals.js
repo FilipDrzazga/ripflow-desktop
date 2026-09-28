@@ -3,57 +3,27 @@
 // Used by the main process (fabricCache.getEstimateConfig) and the renderer (store.fabricConfig),
 // so the two can never read the numbers from different places again (BUG 4, rule 23).
 //
-// Since ETAP 4 (4-types-a) estimatePrintLength reads the numbers BY CLASS NAME
-// (classNumbersFromProfile -> config.classes). The four keys below (marginCotton, marginPoly,
-// defaultRollWidthCotton, defaultRollWidthPoly) are what the Settings -> Fabrics editor still
-// shows and saves for the Cottons / Polyesters entries (classGlobalsFromProfile /
-// withClassNumbers); they no longer feed the estimator.
+// Everything here works BY CLASS NAME since ETAP 4: the estimator (4-types-a) and the Settings ->
+// Fabrics editor (4-types-b) - the four fixed keys (marginCotton, ...) and their helpers are gone.
 // Pure, zero imports: carries a test without Electron, the DB or the store.
 
-const CLASS_KEYS = {
-  Cottons: { margin: "marginCotton", defaultRollWidth: "defaultRollWidthCotton" },
-  Polyesters: { margin: "marginPoly", defaultRollWidth: "defaultRollWidthPoly" },
-};
+// The two class names validateShopProfile still requires in an imported profile (ETAP 3-2). Only
+// the import validator reads this; 4-types-d relaxes it to "one or two classes, any names".
+export const MATERIAL_CLASS_NAMES = ["Cottons", "Polyesters"];
 
-// The material classes the app knows: the class of a fabric is one of these two (fabrics.type),
-// and only these carry class numbers. validateShopProfile refuses a profile class outside this
-// list (ETAP 3-2) - relax both together once getMaterialType reads the classes from the profile.
-export const MATERIAL_CLASS_NAMES = Object.keys(CLASS_KEYS);
-
-// The four keys, in editor order: marginCotton, defaultRollWidthCotton, marginPoly, defaultRollWidthPoly.
-export const CLASS_NUMBER_KEYS = Object.values(CLASS_KEYS).flatMap((keys) => Object.values(keys));
-
-// profile -> { marginCotton?, marginPoly?, defaultRollWidthCotton?, defaultRollWidthPoly? }.
-// No profile, or no materialClasses -> {} : every number from the class constants - the same
-// numbers the seed carries, so an unreadable profile changes no estimate (the plan's condition).
-export const classGlobalsFromProfile = (profile) => {
-  const out = {};
-  if (!profile || !Array.isArray(profile.materialClasses)) return out;
-  for (const cls of profile.materialClasses) {
-    const keys = cls && CLASS_KEYS[cls.name];
-    if (!keys) continue;
-    for (const [field, key] of Object.entries(keys)) {
-      const value = cls[field];
-      if (typeof value === "number" && Number.isFinite(value)) out[key] = value;
-    }
-  }
-  return out;
-};
-
-// The inverse of classGlobalsFromProfile, for the Settings editor (ETAP 2g-3c): a NEW profile in
-// which the Cottons / Polyesters entries carry the numbers from `globals` (the same four keys).
-// Everything else - other classes, other fields, other profile sections - is copied untouched;
-// the input is never mutated. A class the profile does not list is NOT added (the class list is
-// the profile's own decision, 2g-4): it is reported in `missing` and the caller refuses to save.
-export const withClassNumbers = (profile, globals) => {
+// The editor's write (4-types-b): a NEW profile whose classes carry the numbers from `numbers` -
+// { [className]: { margin, defaultRollWidth } }. Everything else - other classes, other fields,
+// other profile sections - is copied untouched; the input is never mutated. A class the profile
+// does not list is NOT added (the class list is the profile's own decision): it is reported in
+// `missing` and the caller refuses to save.
+export const withClassNumbersByName = (profile, numbers) => {
+  const byName = numbers || {};
   const classes = Array.isArray(profile?.materialClasses) ? profile.materialClasses : [];
-  const missing = Object.keys(CLASS_KEYS).filter((name) => !classes.some((cls) => cls?.name === name));
+  const missing = Object.keys(byName).filter((name) => !classes.some((cls) => cls?.name === name));
   const materialClasses = classes.map((cls) => {
-    const keys = cls && CLASS_KEYS[cls.name];
-    if (!keys) return cls;
-    const next = { ...cls };
-    for (const [field, key] of Object.entries(keys)) next[field] = globals[key];
-    return next;
+    if (!cls || !Object.hasOwn(byName, cls.name)) return cls;
+    const own = byName[cls.name];
+    return { ...cls, margin: own.margin, defaultRollWidth: own.defaultRollWidth };
   });
   return { profile: { ...profile, materialClasses }, missing };
 };
@@ -83,6 +53,6 @@ export const classNumbersFromProfile = (profile) => {
 // answer is null - NEVER { fabrics: [] } (rule 23: an empty array is truthy and would drag the
 // estimator into its catalogue branch with an empty catalogue). A loaded catalogue, even an
 // empty one, gives { classes, fabrics } (4-types-a: `classes` by name replaced the four-key
-// `globals`, which classGlobalsFromProfile still builds for the Settings editor).
+// `globals`).
 export const estimateConfigFrom = (fabrics, profile) =>
   fabrics === null || fabrics === undefined ? null : { classes: classNumbersFromProfile(profile), fabrics };

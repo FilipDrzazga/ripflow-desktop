@@ -155,10 +155,13 @@ A Settings edit reaching the XML is therefore **intended**.
   "Cottons" took the Polyesters numbers. `fabric_globals` is neither read for estimates
   nor written since 1.0.26 (the pilot's dual write is gone). The store rebuilds `fabricConfig` when EITHER the catalogue or the profile finishes
   loading - in `loadShopProfile` in the SAME `set()` as the profile, a failed reload included.
-- **Class numbers editor (ETAP 2g-3c)**: Settings -> Fabrics "Global Parameters" shows and saves the
-  four numbers of the profile (a number the profile lacks shows the class constant).
-  `saveClassNumbers` (`src/ui/utils/`) writes ONE thing: `profile:set` (the profile via
-  `withClassNumbers`, patched from `profile:get`). Until 1.0.26 a second write copied the four keys
+- **Class numbers editor (ETAP 2g-3c; by class NAME since ETAP 4 4-types-b)**: Settings -> Fabrics
+  "Global Parameters" shows and saves a margin and a roll width for EACH class of the profile
+  (`utils/classNumberForm.js`: "Margin <class>" / "Roll Width <class>"; a number the profile lacks
+  shows the class constant for Cottons / Polyesters, an empty field for any other class; no classes
+  -> no fields and Save disabled). `saveClassNumbers` (`src/ui/utils/`) takes
+  `{ [className]: { margin, defaultRollWidth } }` and writes ONE thing: `profile:set` (the profile via
+  `withClassNumbersByName`, patched from `profile:get`). Until 1.0.26 a second write copied the numbers
   to `fabric_globals` for older stations - gone, with its "Saved only in part" outcome. Profile
   unreadable / a class missing -> nothing written; `profile:set` refused with `PROFILE_CHANGED`
   (another station saved since this one loaded, ETAP 3-1) -> a Warning, and the form reloads to the

@@ -12,30 +12,18 @@ import { notify } from "@/utils/notify";
 import { saveClassNumbers } from "@/utils/saveClassNumbers";
 import { PROFILE_STATUS } from "@/utils/profileStatus";
 import { materialClassNames, withSlotLooks } from "@/utils/materialClasses";
-import { classGlobalsFromProfile } from "../../../../shared/classGlobals";
-import { MARGIN_COTTON, MARGIN_POLY, LM_ROLL_COTTON_DEFAULT, LM_ROLL_POLY } from "../../../../shared/printWidths";
+import {
+  classNumberForm,
+  classNumberFields,
+  classNumberFormInvalid,
+  classNumberFormUnchanged,
+  isInvalidClassNumber,
+} from "@/utils/classNumberForm";
 import styles from "./FabricsView.module.css";
 
-// The class numbers (ETAP 2g-3c): owned by the shop profile's materialClasses, edited here.
-// The two "XML Width Cotton/Poly" fields are gone - no reader since 0bf8aa6, the editor lied.
-// Grid order: the grid has two columns, so Cotton sits left and Poly right on each row.
-const GLOBAL_FIELDS_GROUPED = [
-  { key: "marginCotton", label: "Margin Cotton", unit: "mm" },
-  { key: "marginPoly", label: "Margin Poly", unit: "mm" },
-  { key: "defaultRollWidthCotton", label: "Roll Width Cotton", unit: "mm" },
-  { key: "defaultRollWidthPoly", label: "Roll Width Poly", unit: "mm" },
-];
-
-// What the estimator uses for a number the profile does not carry - shown, so the field says
-// what is in effect rather than a blank.
-const CLASS_CONSTANTS = {
-  marginCotton: MARGIN_COTTON,
-  marginPoly: MARGIN_POLY,
-  defaultRollWidthCotton: LM_ROLL_COTTON_DEFAULT,
-  defaultRollWidthPoly: LM_ROLL_POLY,
-};
-
-const valuesFromProfile = (profile) => ({ ...CLASS_CONSTANTS, ...classGlobalsFromProfile(profile) });
+// The class numbers (ETAP 2g-3c): owned by the shop profile's materialClasses, edited here - by
+// class NAME since ETAP 4 (4-types-b, utils/classNumberForm.js). The two "XML Width Cotton/Poly"
+// fields are gone - no reader since 0bf8aa6, the editor lied.
 
 // The CSS of each material-class slot (4-types-b): slot 0 = what Cottons always had, slot 1 =
 // Polyesters. The class NAMES come from the shop profile (materialClasses.js).
@@ -70,12 +58,13 @@ const GlobalParamsCard = () => {
   // (loadShopProfile). Adjusting state during render instead of an effect -
   // react-hooks/set-state-in-effect.
   const [loadedFrom, setLoadedFrom] = useState(shopProfile);
-  const [values, setValues] = useState(() => valuesFromProfile(shopProfile));
+  const [values, setValues] = useState(() => classNumberForm(shopProfile));
   if (loadedFrom !== shopProfile) {
     setLoadedFrom(shopProfile);
-    setValues(valuesFromProfile(shopProfile));
+    setValues(classNumberForm(shopProfile));
   }
-  const initialValues = valuesFromProfile(shopProfile);
+  const initialValues = classNumberForm(shopProfile);
+  const fields = classNumberFields(shopProfile);
   const [isSaving, setIsSaving] = useState(false);
 
   const handleSave = async () => {
@@ -108,12 +97,9 @@ const GlobalParamsCard = () => {
     }
   };
 
-  const hasInvalid = GLOBAL_FIELDS_GROUPED.some(({ key }) => {
-    const v = Number(values[key]);
-    return !v || v <= 0;
-  });
-
-  const isUnchanged = GLOBAL_FIELDS_GROUPED.every(({ key }) => Number(values[key]) === Number(initialValues[key]));
+  const hasInvalid = classNumberFormInvalid(values);
+  const isUnchanged = classNumberFormUnchanged(values, initialValues);
+  const noClasses = !!shopProfile && fields.length === 0;
 
   return (
     <div className={`${styles.card} ${styles.card_globals}`}>
@@ -124,17 +110,18 @@ const GlobalParamsCard = () => {
         </p>
       </div>
       <div className={styles.globals_body}>
-        {GLOBAL_FIELDS_GROUPED.map(({ key, label, unit }) => {
-          const invalid = !Number(values[key]) || Number(values[key]) <= 0;
+        {fields.map(({ name, field, label, unit }) => {
+          const value = values[name]?.[field];
+          const invalid = isInvalidClassNumber(value);
           return (
-            <div key={key} className={styles.globals_field}>
+            <div key={`${name}-${field}`} className={styles.globals_field}>
               <span className={styles.globals_label}>{label}</span>
               <div className={styles.globals_input_wrap}>
                 <input
                   type="number"
                   className={`${styles.globals_input} ${invalid ? styles.globals_input_error : ""}`}
-                  value={values[key] ?? ""}
-                  onChange={(e) => setValues((v) => ({ ...v, [key]: e.target.value }))}
+                  value={value ?? ""}
+                  onChange={(e) => setValues((v) => ({ ...v, [name]: { ...v[name], [field]: e.target.value } }))}
                   spellCheck={false}
                 />
                 <span className={styles.globals_unit}>{unit}</span>
@@ -147,11 +134,14 @@ const GlobalParamsCard = () => {
         {profileFailed && (
           <p className={styles.globals_error_msg}>The shop profile could not be read — these numbers cannot be saved.</p>
         )}
+        {noClasses && (
+          <p className={styles.globals_error_msg}>The shop profile has no material classes - import it in Settings &gt; Shop Profile.</p>
+        )}
         {hasInvalid && <p className={styles.globals_error_msg}>All values must be greater than 0.</p>}
         <button
           className={styles.save_btn}
           onClick={handleSave}
-          disabled={isSaving || hasInvalid || isUnchanged || !shopProfile}
+          disabled={isSaving || hasInvalid || isUnchanged || !shopProfile || noClasses}
         >
           {isSaving ? "Saving…" : "Save"}
         </button>

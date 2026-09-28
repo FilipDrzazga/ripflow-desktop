@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { classGlobalsFromProfile, estimateConfigFrom } from "./classGlobals.js";
+import { estimateConfigFrom } from "./classGlobals.js";
 import { estimatePrintLength } from "./estimatePrintLength.js";
 
 // ETAP 2g-3b: the class numbers for the estimator come from profile.materialClasses - one
@@ -12,41 +12,6 @@ const PROFILE = {
   ],
 };
 const CATALOGUE = [{ name: "Poplin", type: "Cottons", rollWidth: 1420 }];
-
-describe("classGlobalsFromProfile", () => {
-  it("maps the two classes onto the four keys the estimator reads", () => {
-    expect(classGlobalsFromProfile(PROFILE)).toEqual({
-      marginCotton: 10, defaultRollWidthCotton: 1420, marginPoly: 5, defaultRollWidthPoly: 1550,
-    });
-  });
-
-  it("reads the profile's numbers, whatever they are", () => {
-    const p = { materialClasses: [{ name: "Cottons", margin: 13, defaultRollWidth: 1460 }] };
-    expect(classGlobalsFromProfile(p)).toEqual({ marginCotton: 13, defaultRollWidthCotton: 1460 });
-  });
-
-  it("no profile / no materialClasses -> {} (every number from the class constants)", () => {
-    expect(classGlobalsFromProfile(null)).toEqual({});
-    expect(classGlobalsFromProfile(undefined)).toEqual({});
-    expect(classGlobalsFromProfile({ printers: [] })).toEqual({});
-    expect(classGlobalsFromProfile({ materialClasses: "x" })).toEqual({});
-  });
-
-  it("a non-number, a third class and a broken entry add nothing", () => {
-    const p = { materialClasses: [
-      { name: "Cottons", margin: "10", defaultRollWidth: NaN },
-      { name: "Linens", margin: 8, defaultRollWidth: 1500 },
-      null,
-      { name: "Polyesters", margin: 5 },
-    ] };
-    expect(classGlobalsFromProfile(p)).toEqual({ marginPoly: 5 });
-  });
-
-  it("a v2 row (with the dead defaultXmlWidth) gives the same numbers - pilot stations mid-migration", () => {
-    const v2 = { materialClasses: [{ name: "Cottons", margin: 10, defaultXmlWidth: 1420, defaultRollWidth: 1420 }] };
-    expect(classGlobalsFromProfile(v2)).toEqual({ marginCotton: 10, defaultRollWidthCotton: 1420 });
-  });
-});
 
 describe("estimateConfigFrom - the sentinel matrix", () => {
   it("catalogue not loaded (null) -> null, with or without a profile - never { fabrics: [] } (rule 23)", () => {
