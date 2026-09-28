@@ -1,75 +1,48 @@
 import { useEffect, useMemo, useState } from "react";
 import style from "./ProductionOverviewCard.module.css";
 import { useStore } from "../../../store/useStore";
-import { estimateMaterialLengthByGroups } from "../../../../shared/estimatePrintLength";
 import { LuAlarmClock } from "react-icons/lu";
+import { inboxClassSplit } from "../../../utils/inboxClassSplit";
 
-const MATERIAL_COLORS = {
-  Cottons: {
+// The colours of each material-class SLOT (4-types-b part 2): slot 0 = the blues Cottons always
+// had, slot 1 = the violets of Polyesters. The row NAMES come from the shop profile
+// (utils/inboxClassSplit.js); on Alex's profile the card looks exactly as before.
+const SLOT_COLORS = [
+  {
     accent: "#3f8ee0",
     gradient: "linear-gradient(90deg, #3f8ee0, #63a9ec)",
     rowBackground: "#f6f9fd",
     mutedCount: "#8fb4dd",
   },
-  Polyesters: {
+  {
     accent: "#7c4ff0",
     gradient: "linear-gradient(90deg, #7c4ff0, #9b6bf5)",
     rowBackground: "#f8f6fd",
     mutedCount: "#b09ae2",
   },
-  // Files whose material couldn't be parsed (getMaterialType → "Unknown").
-  // Amber / gold accent.
-  Unknown: {
-    accent: "#E0A32E",
-    gradient: "linear-gradient(90deg, #E0A32E, #F2C55C)",
-    rowBackground: "#fdf9ef",
-    mutedCount: "#e6cb93",
-  },
+];
+// Files of no class of the profile ("Unknown" from getMaterialType, or a class the profile does
+// not list). Amber / gold accent.
+const UNKNOWN_COLORS = {
+  accent: "#E0A32E",
+  gradient: "linear-gradient(90deg, #E0A32E, #F2C55C)",
+  rowBackground: "#fdf9ef",
+  mutedCount: "#e6cb93",
 };
+const colorsOf = (row) => (row.slot >= 0 ? SLOT_COLORS[row.slot] : UNKNOWN_COLORS);
 
 const ProductionPrintCard = () => {
   const files = useStore((state) => state.files);
   const fabricConfig = useStore((state) => state.fabricConfig);
+  const shopProfile = useStore((state) => state.shopProfile);
   const lastFilesRefreshAt = useStore((state) => state.lastFilesRefreshAt);
   const [now, setNow] = useState(() => Date.now());
-  const allItems = useMemo(() => files.flatMap((group) => group.items), [files]);
 
-  const materialStats = useMemo(() => {
-    const materialCounts = allItems.reduce((acc, item) => {
-      const key = item.materialType || "Unknown";
-      acc[key] = (acc[key] || 0) + 1;
-      return acc;
-    }, {});
-
-    return Object.entries(materialCounts)
-      .map(([label, count]) => ({
-        label,
-        count,
-      }))
-      .sort((a, b) => b.count - a.count);
-  }, [allItems]);
-
-  const materialLengths = useMemo(() => {
-    return {
-      Cottons: estimateMaterialLengthByGroups(files, "Cottons", fabricConfig),
-      Polyesters: estimateMaterialLengthByGroups(files, "Polyesters", fabricConfig),
-      Unknown: estimateMaterialLengthByGroups(files, "Unknown", fabricConfig),
-    };
-  }, [files, fabricConfig]);
-
-  const cottonsLength = materialLengths.Cottons ?? 0;
-  const polyestersLength = materialLengths.Polyesters ?? 0;
-  const unknownLength = materialLengths.Unknown ?? 0;
-  const cottonsCount = materialStats.find((material) => material.label === "Cottons")?.count ?? 0;
-  const polyestersCount = materialStats.find((material) => material.label === "Polyesters")?.count ?? 0;
-  const unknownCount = materialStats.find((material) => material.label === "Unknown")?.count ?? 0;
-  const lengthTotal = cottonsLength + polyestersLength + unknownLength;
-  const totalLength = Number(lengthTotal.toFixed(2));
-
-  // Bar shares reflect each material's share of total printed LENGTH (meters), not file count.
-  const cottonsShare = lengthTotal ? (cottonsLength / lengthTotal) * 100 : 0;
-  const polyestersShare = lengthTotal ? (polyestersLength / lengthTotal) * 100 : 0;
-  const unknownShare = lengthTotal ? (unknownLength / lengthTotal) * 100 : 0;
+  // Bar shares reflect each class's share of total printed LENGTH (meters), not file count.
+  const { rows, totalLength, fileCount } = useMemo(
+    () => inboxClassSplit(files, shopProfile, fabricConfig),
+    [files, shopProfile, fabricConfig],
+  );
 
   useEffect(() => {
     if (!lastFilesRefreshAt) return undefined;
@@ -111,98 +84,49 @@ const ProductionPrintCard = () => {
         <div className={style.card_header_right}>
           <span className={style.card_total}>~{totalLength} m</span>
           <span className={style.card_total_sub}>
-            {allItems.length} {allItems.length === 1 ? "file" : "files"} total
+            {fileCount} {fileCount === 1 ? "file" : "files"} total
           </span>
         </div>
       </div>
 
       <div className={style.card_bar}>
-        <div
-          className={style.card_bar_segment}
-          style={{ width: `${cottonsShare}%`, background: MATERIAL_COLORS.Cottons.gradient }}
-          title={`Cottons · ~${cottonsLength} m`}
-        />
-        <div
-          className={style.card_bar_segment}
-          style={{ width: `${polyestersShare}%`, background: MATERIAL_COLORS.Polyesters.gradient }}
-          title={`Polyesters · ~${polyestersLength} m`}
-        />
-        {unknownCount > 0 && (
+        {rows.map((row) => (
           <div
+            key={row.name}
             className={style.card_bar_segment}
-            style={{ width: `${unknownShare}%`, background: MATERIAL_COLORS.Unknown.gradient }}
-            title={`Unknown · ~${unknownLength} m`}
+            style={{ width: `${row.share}%`, background: colorsOf(row).gradient }}
+            title={`${row.name} · ~${row.length} m`}
           />
-        )}
+        ))}
       </div>
       <div className={style.card_bar_labels}>
-        <span className={style.card_bar_label} style={{ width: `${cottonsShare}%`, color: MATERIAL_COLORS.Cottons.accent }}>
-          {Math.round(cottonsShare)}%
-        </span>
-        <span
-          className={style.card_bar_label}
-          style={{ width: `${polyestersShare}%`, color: MATERIAL_COLORS.Polyesters.accent }}
-        >
-          {Math.round(polyestersShare)}%
-        </span>
-        {unknownCount > 0 && (
-          <span
-            className={style.card_bar_label}
-            style={{ width: `${unknownShare}%`, color: MATERIAL_COLORS.Unknown.accent }}
-          >
-            {Math.round(unknownShare)}%
+        {rows.map((row) => (
+          <span key={row.name} className={style.card_bar_label} style={{ width: `${row.share}%`, color: colorsOf(row).accent }}>
+            {Math.round(row.share)}%
           </span>
-        )}
+        ))}
       </div>
 
       <div className={style.card_material_container}>
-        <div className={style.card_material_row} style={{ background: MATERIAL_COLORS.Cottons.rowBackground }}>
-          <div className={style.card_material_left}>
-            <span className={style.card_material_swatch} style={{ backgroundColor: MATERIAL_COLORS.Cottons.accent }} />
-            <span className={style.card_material_name}>Cottons</span>
-          </div>
-          <div className={style.card_material_right}>
-            <span className={style.card_material_count} style={{ color: MATERIAL_COLORS.Cottons.mutedCount }}>
-              {cottonsCount} {cottonsCount === 1 ? "file" : "files"}
-            </span>
-            <span className={style.card_material_value} style={{ color: MATERIAL_COLORS.Cottons.accent }}>
-              ~{cottonsLength} m
-            </span>
-          </div>
-        </div>
-        <div className={style.card_material_row} style={{ background: MATERIAL_COLORS.Polyesters.rowBackground }}>
-          <div className={style.card_material_left}>
-            <span
-              className={style.card_material_swatch}
-              style={{ backgroundColor: MATERIAL_COLORS.Polyesters.accent }}
-            />
-            <span className={style.card_material_name}>Polyesters</span>
-          </div>
-          <div className={style.card_material_right}>
-            <span className={style.card_material_count} style={{ color: MATERIAL_COLORS.Polyesters.mutedCount }}>
-              {polyestersCount} {polyestersCount === 1 ? "file" : "files"}
-            </span>
-            <span className={style.card_material_value} style={{ color: MATERIAL_COLORS.Polyesters.accent }}>
-              ~{polyestersLength} m
-            </span>
-          </div>
-        </div>
-        {unknownCount > 0 && (
-          <div className={style.card_material_row} style={{ background: MATERIAL_COLORS.Unknown.rowBackground }}>
-            <div className={style.card_material_left}>
-              <span className={style.card_material_swatch} style={{ backgroundColor: MATERIAL_COLORS.Unknown.accent }} />
-              <span className={style.card_material_name}>Unknown</span>
+        {rows.map((row) => {
+          const colors = colorsOf(row);
+          return (
+            <div key={row.name} className={style.card_material_row} style={{ background: colors.rowBackground }}>
+              <div className={style.card_material_left}>
+                <span className={style.card_material_swatch} style={{ backgroundColor: colors.accent }} />
+                <span className={style.card_material_name}>{row.name}</span>
+              </div>
+              <div className={style.card_material_right}>
+                <span className={style.card_material_count} style={{ color: colors.mutedCount }}>
+                  {row.count} {row.count === 1 ? "file" : "files"}
+                </span>
+                <span className={style.card_material_value} style={{ color: colors.accent }}>
+                  ~{row.length} m
+                </span>
+              </div>
             </div>
-            <div className={style.card_material_right}>
-              <span className={style.card_material_count} style={{ color: MATERIAL_COLORS.Unknown.mutedCount }}>
-                {unknownCount} {unknownCount === 1 ? "file" : "files"}
-              </span>
-              <span className={style.card_material_value} style={{ color: MATERIAL_COLORS.Unknown.accent }}>
-                ~{unknownLength} m
-              </span>
-            </div>
-          </div>
-        )}
+          );
+        })}
       </div>
 
       <div className={style.card_footer}>
