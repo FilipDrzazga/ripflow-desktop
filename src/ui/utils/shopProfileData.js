@@ -10,6 +10,8 @@
 // the only shape of this cut that can carry a test at all. Same reasoning as
 // featureVisibility.js.
 
+import { isHexColor } from "../../shared/hexColor";
+
 // The sewing companies this shop dispatches to, as a clean list of names.
 //
 // Mirrors getPrinters in electron/helpers/shopProfile.js, including its shape
@@ -123,15 +125,13 @@ export const getPrinters = (profile) =>
 // PRINTER_COLORS constant), in the shape the components use: { bg, color }. The profile
 // stores the text colour as `text`. null when the printer is unknown or its colours are
 // not both hex values - each component keeps its OWN grey fallback, so an unknown printer
-// looks exactly as it did before this step. Hex only: the value goes into a style object,
-// and a profile edited by hand must not be able to put anything else there.
-const HEX_COLOR_RE = /^#[0-9a-fA-F]{3,8}$/;
+// looks exactly as it did before this step. Hex only (isHexColor, src/shared/hexColor.js).
 export const getPrinterColor = (profile, code) => {
   if (typeof code !== "string" || code === "") return null;
   const want = code.trim().toUpperCase();
   const row = usablePrinterRows(profile).find((r) => r.code === want);
   const c = row?.color;
-  if (!c || typeof c !== "object" || !HEX_COLOR_RE.test(c.bg) || !HEX_COLOR_RE.test(c.text)) return null;
+  if (!c || typeof c !== "object" || !isHexColor(c.bg) || !isHexColor(c.text)) return null;
   return { bg: c.bg, color: c.text };
 };
 

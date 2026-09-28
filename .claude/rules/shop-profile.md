@@ -149,6 +149,24 @@ stand-in for a missing row - refuses without that code: there is nothing to comp
 a Warning, apart from a failed save (the rule 18 split). Any new writer (the ETAP 3 import)
 goes through `saveShopProfile`, never around it.
 
+**Import validator (`helpers/validateShopProfile.js`, ETAP 3-2).** The ONE strict reader: every
+other reader degrades on a bad row, this one refuses the file before it replaces the stored
+profile. Pure, imports only `src/shared/` (`PRODUCTION_STAGE`, `isFolderName`, `isHexColor` - the
+same hex rule `getPrinterColor` uses). Returns `{ ok, errors }` with ALL errors, each naming its
+place (`printers[1].code: ...`). `schemaVersion` first and alone: newer than the build, or older
+than `MIN_IMPORT_SCHEMA_VERSION` (3, the first exported version - an older file is refused, never
+migrated: its class numbers would come from this DB's seed), and the caller passes the build's
+version. Then: unknown or missing keys (top level and in records) refused - a dead field is rule
+24; printer codes `^[A-Z0-9]+$` (they end up in batch folder names) and unique; `materialClass`
+in `materialClasses`; hotfolders and `folders.*` through `isFolderName`; `productTypes` exactly
+the codes the parser reads (`PRODUCT_TYPE_CODES`), all present - a missing one falls back to
+another shop's built-in dimensions; scan rule stages from `PRODUCTION_STAGE` (the profile has no
+stage list), one rule per role, `notifyWhenEmpty` boolean; sewing companies trimmed, unique
+ignoring case, at most `MAX_SEWING_COMPANY_LENGTH`; feature flags strictly boolean; and a feature
+that is on must have what it needs (`shopify` -> `storeHandle`, `sewing` -> a company,
+`ripErrors` -> `folders.ripError`, `customOrders` -> `folders.customOrder`). A new profile field
+needs its rule here in the same change, or the import refuses every profile that carries it.
+
 **First consumer: `openInShopify.js`** — the store handle comes ONLY from
 `integrations.shopify.storeHandle`; there is **no `DEFAULT_PROFILE` fallback** (it would
 send another shop's operator into Alex's Shopify admin). The handler is gated fail-closed:
