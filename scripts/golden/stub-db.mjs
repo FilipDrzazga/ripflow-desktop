@@ -5,11 +5,11 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { DEFAULT_PROFILE } from "../../src/electron/helpers/defaultProfile.js";
-
 const here = path.dirname(fileURLToPath(import.meta.url));
 const profile = path.join(here, "..", "..", "profiles", "fashion-formula-fabrics.json");
 const fabrics = JSON.parse(fs.readFileSync(profile, "utf8"));
+const shopProfilePath = path.join(here, "..", "..", "profiles", "fashion-formula-profile.json");
+const shopProfile = JSON.parse(fs.readFileSync(shopProfilePath, "utf8"));
 
 // Alex's fabric_globals, read once from his DB and confirmed equal to
 // DEFAULT_FABRIC_GLOBALS. Spelled out here so the harness needs no database at all.
@@ -30,13 +30,13 @@ export const getFabricGlobals = () => ({ ...globals });
 // path reads the profile it takes its fail-closed branch and every batch diffs — a
 // failure of the harness, not of the code under test.
 //
-// Source is DEFAULT_PROFILE, not a copy: it IS what initDb seeds into a fresh
-// shop_profile row, so the harness sees exactly what Alex's station sees. Importing it
-// is safe from here — defaultProfile.js has zero imports of its own, so it pulls in
-// neither electron nor better-sqlite3, and loader.mjs only intercepts db.js and
-// getSettings.js, so this specifier passes through untouched.
+// Source is profiles/fashion-formula-profile.json (ETAP 3-5): Alex's LIVE shop_profile row,
+// exported from a copy of his database (2026-09-28) in the format profile:export writes. Until
+// 3-5 it was DEFAULT_PROFILE, which ETAP 3-6 empties into a skeleton - the net must keep
+// rendering Alex's batches against Alex's profile, not against the seed of a fresh install.
+// Like the fabric catalogue above, the baseline never reads the live database.
 //
 // Returns a deep copy. The real getShopProfile JSON.parses a column on every call, so
 // each caller owns its object; handing out the module-level constant would let one
 // consumer mutate the "database" for the next.
-export const getShopProfile = () => structuredClone(DEFAULT_PROFILE);
+export const getShopProfile = () => structuredClone(shopProfile);

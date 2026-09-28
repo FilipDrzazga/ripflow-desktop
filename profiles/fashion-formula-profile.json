@@ -1,0 +1,109 @@
+{
+  "schemaVersion": 3,
+  "printers": [
+    {
+      "code": "DGEN",
+      "materialClass": "Cottons",
+      "hotfolder": "AUTOMATION_WORKFLOW_COTTON",
+      "color": {
+        "bg": "#E6F1FB",
+        "text": "#0C447C"
+      }
+    },
+    {
+      "code": "YOKO",
+      "materialClass": "Polyesters",
+      "hotfolder": "AUTOMATION_WORKFLOW_POLY",
+      "color": {
+        "bg": "#EEEDFE",
+        "text": "#3C3489"
+      }
+    },
+    {
+      "code": "YUMI",
+      "materialClass": "Polyesters",
+      "hotfolder": "AUTOMATION_WORKFLOW_POLY",
+      "color": {
+        "bg": "#E1F5EE",
+        "text": "#085041"
+      }
+    }
+  ],
+  "materialClasses": [
+    {
+      "name": "Cottons",
+      "margin": 10,
+      "defaultRollWidth": 1420
+    },
+    {
+      "name": "Polyesters",
+      "margin": 5,
+      "defaultRollWidth": 1550
+    }
+  ],
+  "productTypes": [
+    {
+      "code": "SAMPLE",
+      "width": 220,
+      "height": 200
+    },
+    {
+      "code": "FQ",
+      "width": 670,
+      "height": 480
+    },
+    {
+      "code": "TEA_TOWEL",
+      "width": 700,
+      "height": 500
+    }
+  ],
+  "folders": {
+    "printed": "PRINTED",
+    "ripError": "AUTOMATION_WORKFLOW_ERROR",
+    "customOrder": "AUTOMATION_WORKFLOW_MINERVA"
+  },
+  "sewingCompanies": [
+    "Olya",
+    "Vagabond"
+  ],
+  "integrations": {
+    "shopify": {
+      "storeHandle": "fashionformulauk"
+    }
+  },
+  "features": {
+    "customOrders": true,
+    "analytics": true,
+    "ripErrors": true,
+    "labelPrinting": true,
+    "shopify": true,
+    "sewing": true
+  },
+  "scanRules": [
+    {
+      "role": "cotton",
+      "from": "printed",
+      "to": "heatpress",
+      "notifyWhenEmpty": true
+    },
+    {
+      "role": "polyester",
+      "from": "printed",
+      "to": "heatpress",
+      "notifyWhenEmpty": true
+    },
+    {
+      "role": "rollpress",
+      "from": "heatpress",
+      "to": "qc",
+      "notifyWhenEmpty": true
+    },
+    {
+      "role": "qc",
+      "from": "heatpress",
+      "to": "qc",
+      "notifyWhenEmpty": false
+    }
+  ]
+}

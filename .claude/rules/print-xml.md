@@ -191,7 +191,9 @@ ELECTRON_RUN_AS_NODE=1 ./node_modules/.bin/electron scripts/golden/compare-golde
 
 - Offline and reproducible: inputs come from `golden/_inputs.json`, and `scripts/golden/stub-db.mjs`
   feeds `fabricCache` from `profiles/fashion-formula-fabrics.json` and the shop profile from
-  `DEFAULT_PROFILE` — the harness NEVER opens the live `ripflow.db` (`initDb()` writes, and the
+  `profiles/fashion-formula-profile.json` (Alex's live row, exported from a DB copy 2026-09-28 in
+  the `profile:export` format - ETAP 3-5; before that `DEFAULT_PROFILE`, which 3-6 empties into a
+  skeleton) — the harness NEVER opens the live `ripflow.db` (`initDb()` writes, and the
   baseline must not depend on one machine). Because a profile is always present, the no-profile
   `BUILT_IN_DIMS` path runs zero times in the net, exactly like the `null`-cache path above (Degraded paths).
 - Customer names, order numbers and XWD ids are pseudonymised **at the source**; mappings are derived
