@@ -53,7 +53,7 @@ getFabricTypeFromCache(name); // → "Cottons" | "Polyesters" | "Unknown" | null
 getXmlWidthFromCache(name); // → fabric.xmlWidth | null — no class default, see below
 getAliasFromCache(name); // → short path-safe alias | null (null = no/unusable alias or cache not loaded)
 getCachedFabrics(); // → fabric[]
-getEstimateConfig(); // → { globals, fabrics } | null (null = cache not loaded — NEVER { fabrics: [] })
+getEstimateConfig(); // → { classes, fabrics } | null (null = cache not loaded — NEVER { fabrics: [] })
 ```
 
 **Material class (getMaterialType.js) — there is no fallback, and that is the point:**
@@ -147,9 +147,12 @@ A Settings edit reaching the XML is therefore **intended**.
   `PrintMaterialBreakdownCard`, `ProductionOverviewCard` — the last one passes it **third**, after
   `materialType`)
 - **Both are built by ONE function since ETAP 2g-3b**: `estimateConfigFrom(fabrics, profile)` in
-  `src/shared/classGlobals.js`. `globals` = the four class keys the estimator reads, from
-  `profile.materialClasses` (`classGlobalsFromProfile`; no profile or no valid number -> the key is
-  absent and the estimator uses the class constant). `fabric_globals` is neither read for estimates
+  `src/shared/classGlobals.js`. Since ETAP 4 (4-types-a) it is `{ classes, fabrics }`: `classes` =
+  the numbers BY CLASS NAME from `profile.materialClasses` (`classNumbersFromProfile`), so a client
+  that renames its classes gets its own numbers. No valid number -> the printWidths.js constant,
+  but ONLY for the two names it knows (Cottons, Polyesters); a class with no number anywhere
+  ("Unknown", a class without numbers) is LEFT OUT of the estimate - before, every name but
+  "Cottons" took the Polyesters numbers. `fabric_globals` is neither read for estimates
   nor written since 1.0.26 (the pilot's dual write is gone). The store rebuilds `fabricConfig` when EITHER the catalogue or the profile finishes
   loading - in `loadShopProfile` in the SAME `set()` as the profile, a failed reload included.
 - **Class numbers editor (ETAP 2g-3c)**: Settings -> Fabrics "Global Parameters" shows and saves the

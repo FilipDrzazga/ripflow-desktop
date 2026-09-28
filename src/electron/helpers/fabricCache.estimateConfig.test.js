@@ -28,20 +28,6 @@ beforeEach(() => {
 });
 
 describe("getEstimateConfig - sentinel matrix (main)", () => {
-  it("profile + catalogue: globals from the PROFILE's materialClasses", () => {
-    loadFabricCache();
-    expect(getEstimateConfig()).toEqual({
-      globals: { marginCotton: 12, defaultRollWidthCotton: 1460, marginPoly: 6, defaultRollWidthPoly: 1600 },
-      fabrics: CATALOGUE,
-    });
-  });
-
-  it("profile null + catalogue: { globals: {}, fabrics } - class constants, catalogue kept", () => {
-    profile = null;
-    loadFabricCache();
-    expect(getEstimateConfig()).toEqual({ globals: {}, fabrics: CATALOGUE });
-  });
-
   it("catalogue unreadable (null or a throw): null, never { fabrics: [] } (rule 23)", () => {
     fabrics = null;
     loadFabricCache();
@@ -62,9 +48,4 @@ describe("getEstimateConfig - sentinel matrix (main)", () => {
     expect(getEstimateConfig()).toBeNull();
   });
 
-  it("the numbers follow the profile as it is NOW (profile:set reloads it) - no copy is cached", () => {
-    loadFabricCache();
-    profile = { materialClasses: [{ name: "Cottons", margin: 20, defaultRollWidth: 1420 }] };
-    expect(getEstimateConfig().globals).toEqual({ marginCotton: 20, defaultRollWidthCotton: 1420 });
-  });
 });

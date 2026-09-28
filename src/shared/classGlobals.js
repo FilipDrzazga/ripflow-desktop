@@ -3,10 +3,11 @@
 // Used by the main process (fabricCache.getEstimateConfig) and the renderer (store.fabricConfig),
 // so the two can never read the numbers from different places again (BUG 4, rule 23).
 //
-// estimatePrintLength reads four keys whose names carry the class: marginCotton, marginPoly,
-// defaultRollWidthCotton, defaultRollWidthPoly. They are filled from the Cottons / Polyesters
-// entries; a key with no valid number is simply absent, so the estimator falls back to the
-// class constant of printWidths.js for THAT key (its `?? MARGIN_*` / `?? LM_ROLL_*`).
+// Since ETAP 4 (4-types-a) estimatePrintLength reads the numbers BY CLASS NAME
+// (classNumbersFromProfile -> config.classes). The four keys below (marginCotton, marginPoly,
+// defaultRollWidthCotton, defaultRollWidthPoly) are what the Settings -> Fabrics editor still
+// shows and saves for the Cottons / Polyesters entries (classGlobalsFromProfile /
+// withClassNumbers); they no longer feed the estimator.
 // Pure, zero imports: carries a test without Electron, the DB or the store.
 
 const CLASS_KEYS = {
@@ -57,9 +58,31 @@ export const withClassNumbers = (profile, globals) => {
   return { profile: { ...profile, materialClasses }, missing };
 };
 
+// The class numbers BY CLASS NAME (ETAP 4, 4-types-a): profile -> { [name]: { margin?,
+// defaultRollWidth? } } for every class the profile lists, whatever it is called - a client who
+// names its classes "Cotton" / "Poly" gets its own numbers, not the Polyesters branch the four
+// fixed keys above sent every non-"Cottons" name to. A field with no finite number is absent
+// (the estimator then falls back to the class constant, for the two names printWidths.js knows).
+// No profile / no materialClasses -> {}.
+export const classNumbersFromProfile = (profile) => {
+  const out = {};
+  if (!profile || !Array.isArray(profile.materialClasses)) return out;
+  for (const cls of profile.materialClasses) {
+    if (!cls || typeof cls !== "object" || typeof cls.name !== "string" || cls.name === "") continue;
+    if (Object.hasOwn(out, cls.name)) continue; // first entry of a name wins, like printers[]
+    const numbers = {};
+    for (const field of ["margin", "defaultRollWidth"]) {
+      if (typeof cls[field] === "number" && Number.isFinite(cls[field])) numbers[field] = cls[field];
+    }
+    out[cls.name] = numbers;
+  }
+  return out;
+};
+
 // The estimator config, or null. `fabrics` is the catalogue: null = not loaded, and then the
 // answer is null - NEVER { fabrics: [] } (rule 23: an empty array is truthy and would drag the
 // estimator into its catalogue branch with an empty catalogue). A loaded catalogue, even an
-// empty one, gives { globals, fabrics }.
+// empty one, gives { classes, fabrics } (4-types-a: `classes` by name replaced the four-key
+// `globals`, which classGlobalsFromProfile still builds for the Settings editor).
 export const estimateConfigFrom = (fabrics, profile) =>
-  fabrics === null || fabrics === undefined ? null : { globals: classGlobalsFromProfile(profile), fabrics };
+  fabrics === null || fabrics === undefined ? null : { classes: classNumbersFromProfile(profile), fabrics };

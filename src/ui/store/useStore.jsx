@@ -201,9 +201,9 @@ export const useStore = create(
       } catch (err) { console.error("[store] loadReasonDefinitions failed:", err); }
     },
 
-    // { globals, fabrics } for the estimator, built by estimateConfigFrom (src/shared/
-    // classGlobals.js) - the SAME function the main process uses. Since ETAP 2g-3b the class
-    // numbers (globals) come from the shop profile's materialClasses, not from fabric_globals;
+    // { classes, fabrics } for the estimator, built by estimateConfigFrom (src/shared/
+    // classGlobals.js) - the SAME function the main process uses. The class numbers come from
+    // the shop profile's materialClasses, by class name since ETAP 4 (4-types-a);
     // they are rebuilt when the profile arrives (loadShopProfile below), because the two loads
     // are independent and either may finish first. null until the catalogue answers.
     fabricConfig: null,

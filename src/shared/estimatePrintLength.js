@@ -5,33 +5,43 @@ import {
   MARGIN_POLY,
 } from "./printWidths.js";
 
+// The class constants of printWidths.js, for the two class names it knows. ETAP 4 (4-types-a):
+// the numbers of a class come from the profile BY NAME (config.classes, built by
+// estimateConfigFrom); these stand in only when the profile gives none, and only for these two
+// names. Before, every name that was not "Cottons" - "Unknown" and a renamed class included -
+// took the Polyesters numbers.
+const CLASS_CONSTANTS = {
+  Cottons: { margin: MARGIN_COTTON, defaultRollWidth: LM_ROLL_COTTON_DEFAULT },
+  Polyesters: { margin: MARGIN_POLY, defaultRollWidth: LM_ROLL_POLY },
+};
+
+// A class number: the profile's, else the constant of a known class, else null - and a file
+// whose class has no number is left out of the estimate instead of being measured with
+// another class's numbers.
+const classNumber = (classes, materialType, field) => {
+  const own = classes?.[materialType]?.[field];
+  if (Number.isFinite(own)) return own;
+  return CLASS_CONSTANTS[materialType]?.[field] ?? null;
+};
+
 export const estimatePrintLength = (files, config = null) => {
-  const globals = config?.globals ?? null;
+  const classes = config?.classes ?? null;
   const allFabrics = config?.fabrics ?? null;
 
-  const getMargin = (materialType) => {
-    if (globals) {
-      return materialType === "Cottons"
-        ? (globals.marginCotton ?? MARGIN_COTTON)
-        : (globals.marginPoly ?? MARGIN_POLY);
-    }
-    return materialType === "Cottons" ? MARGIN_COTTON : MARGIN_POLY;
-  };
+  const getMargin = (materialType) => classNumber(classes, materialType, "margin");
 
   const getRollWidth = (file) => {
     const material = (file.material ?? "").toString().trim();
     if (allFabrics) {
       const fabric = allFabrics.find((f) => f.name === material);
       if (fabric) return fabric.rollWidth;
-      return file.materialType !== "Cottons"
-        ? (globals?.defaultRollWidthPoly ?? LM_ROLL_POLY)
-        : (globals?.defaultRollWidthCotton ?? LM_ROLL_COTTON_DEFAULT);
     }
-    // Degraded path (no catalogue): the CLASS roll width. Until ETAP 2g-2 a cotton was looked
-    // up in LM_ROLL_COTTON, a per-fabric map keyed by Alex's fabric names - another shop's data
-    // standing in for a catalogue we could not read (same shape as 0bf8aa6 / bc68fbe).
-    // Pinned by estimatePrintLength.degraded.test.js; the golden net never runs this path.
-    return file.materialType !== "Cottons" ? LM_ROLL_POLY : LM_ROLL_COTTON_DEFAULT;
+    // Not in the catalogue, or no catalogue at all (the degraded path): the CLASS roll width.
+    // Until ETAP 2g-2 a cotton was looked up in LM_ROLL_COTTON, a per-fabric map keyed by Alex's
+    // fabric names - another shop's data standing in for a catalogue we could not read (same
+    // shape as 0bf8aa6 / bc68fbe). Pinned by estimatePrintLength.degraded.test.js; the golden
+    // net never runs the no-catalogue path.
+    return classNumber(classes, file.materialType, "defaultRollWidth");
   };
 
   const groupsByWidth = new Map();
@@ -48,6 +58,8 @@ export const estimatePrintLength = (files, config = null) => {
     if (!Number.isFinite(width) || !Number.isFinite(height) || !Number.isFinite(quantity) || quantity <= 0) {
       continue;
     }
+    // a class with no numbers (4-types-a): not measured with someone else's
+    if (margin === null || rollWidth === null || rollWidth === undefined) continue;
 
     if (!groupsByWidth.has(rollWidth)) groupsByWidth.set(rollWidth, []);
 

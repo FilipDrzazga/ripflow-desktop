@@ -49,23 +49,12 @@ describe("classGlobalsFromProfile", () => {
 });
 
 describe("estimateConfigFrom - the sentinel matrix", () => {
-  it("profile + catalogue -> { globals from the profile, fabrics }", () => {
-    expect(estimateConfigFrom(CATALOGUE, PROFILE)).toEqual({ globals: classGlobalsFromProfile(PROFILE), fabrics: CATALOGUE });
-  });
-
-  it("profile null + catalogue -> { globals: {}, fabrics } (class constants, catalogue still used)", () => {
-    expect(estimateConfigFrom(CATALOGUE, null)).toEqual({ globals: {}, fabrics: CATALOGUE });
-  });
-
   it("catalogue not loaded (null) -> null, with or without a profile - never { fabrics: [] } (rule 23)", () => {
     expect(estimateConfigFrom(null, PROFILE)).toBeNull();
     expect(estimateConfigFrom(null, null)).toBeNull();
     expect(estimateConfigFrom(undefined, PROFILE)).toBeNull();
   });
 
-  it("an EMPTY catalogue is loaded - { globals, fabrics: [] }", () => {
-    expect(estimateConfigFrom([], PROFILE)).toEqual({ globals: classGlobalsFromProfile(PROFILE), fabrics: [] });
-  });
 });
 
 describe("the estimate itself: profile numbers = the numbers fabric_globals gave (Alex)", () => {

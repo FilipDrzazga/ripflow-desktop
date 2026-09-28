@@ -29,8 +29,9 @@ export const getCachedFabrics = () => cachedFabrics ?? [];
 // catalog is not loaded (never { fabrics: [] } - rule 23). Since ETAP 2g-3b the class numbers
 // come from the shop profile's materialClasses (their owner since profile v3), not from
 // fabric_globals - estimateConfigFrom (src/shared/classGlobals.js), the SAME function the
-// renderer builds store.fabricConfig with. No profile -> no numbers -> the estimator uses the
-// class constants of printWidths.js for each of them (the seed's own values).
+// renderer builds store.fabricConfig with. { classes (by class name, 4-types-a), fabrics }. No
+// profile -> no numbers -> the estimator uses the printWidths.js constants of the two classes
+// it knows, and leaves a class with no number out of the estimate.
 export const getEstimateConfig = () => estimateConfigFrom(cachedFabrics, getProfile());
 
 export const getFabricByName = (name) => {
