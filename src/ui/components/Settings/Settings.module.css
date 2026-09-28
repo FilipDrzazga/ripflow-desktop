@@ -12,13 +12,61 @@
   border-radius: 20px;
   box-shadow: var(--card-shadow);
   padding: 12px;
-  align-self: flex-start;
+  /* the full height of the view: the everyday groups at the top, System at the bottom */
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .sidebar_nav {
   display: flex;
   flex-direction: column;
+  gap: 14px;
+}
+
+.sidebar_bottom {
+  margin-top: auto;
+  padding-top: 14px;
+}
+
+.sidebar_group {
+  display: flex;
+  flex-direction: column;
   gap: 2px;
+}
+
+.sidebar_group_title {
+  padding: 0 12px 4px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  opacity: 0.75;
+}
+
+.sidebar_footer {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 12px;
+  padding: 12px 12px 4px;
+  border-top: 1px solid var(--border-grey);
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.sidebar_footer_station {
+  font-weight: 600;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sidebar_footer_version {
+  font-variant-numeric: tabular-nums;
 }
 
 .sidebar_item {
