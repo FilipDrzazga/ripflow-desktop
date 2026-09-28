@@ -1,5 +1,35 @@
 [
   {
+    "version": "1.0.26",
+    "date": "2026-09-28",
+    "changes": [
+      {
+        "text": "New Settings > Shop Profile: shows how this shop is set up - printers, product sizes, folders, scanner rules, sewing companies and which features are on. Export saves it to a file, a copy of your setup. Import is for setting up a new installation: do not use it at a running shop unless asked to",
+        "clients": [
+          "all"
+        ]
+      },
+      {
+        "text": "Settings > Fabrics, Global Parameters: if another computer changed the shop setup after this one started, Save is refused with a warning and the form shows the current numbers - check them and save again. The numbers are now saved in one place only, so the \"Saved only in part\" message is gone",
+        "clients": [
+          "all"
+        ]
+      },
+      {
+        "text": "A fabric that is not in the fabric list no longer gets Velvet, Linen or Blossom guessed from its name: the batch is sent with those off and a warning naming the fabric. Add the fabric in Settings > Fabrics",
+        "clients": [
+          "all"
+        ]
+      },
+      {
+        "text": "New installations: if the network folders are not set, RipFlow opens Settings with \"Paths not set\" instead of using built-in addresses, and until a shop profile is imported it shows \"Shop profile not configured\". Computers that are already set up keep their folders and their profile",
+        "clients": [
+          "all"
+        ]
+      }
+    ]
+  },
+  {
     "version": "1.0.25",
     "date": "2026-09-25",
     "changes": [
