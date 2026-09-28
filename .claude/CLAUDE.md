@@ -106,6 +106,7 @@ Derived paths (hotfolders = printers[].hotfolder in the shop profile; Alex's val
 - `setSettings()` — spread the full settings first, then override (rule 4).
 - PDFs are read through `readFileBuffer` (base64), never a `file://` URI — blocked by contextIsolation.
 - `profile.get()` returns `data: null` when the DB was unreadable at startup — not a default profile.
+- `profile.set()` is a compare-and-swap: `code: PROFILE_CHANGED` when another station saved since this one loaded. The profile file import is two-phase — `profile.importPreview()` (main opens the dialog) then `profile.importApply(token)`: the renderer sends only the token (see `.claude/rules/shop-profile.md`).
 - `showConfirm(message)` is the native dialog; `window.prompt` returns null under contextIsolation.
 
 ## Zustand Store (`useStore.jsx`)

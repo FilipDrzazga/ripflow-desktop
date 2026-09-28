@@ -20,6 +20,7 @@ import { initDb, insertLog, getAllLogs, clearAllLogs, holdFile, unholdFile, getH
 import { loadFabricCache, invalidateFabricCache } from "../helpers/fabricCache.js";
 import { loadShopProfile, getProfile, getPrinterByCode } from "../helpers/shopProfile.js";
 import { saveShopProfile } from "../helpers/saveShopProfile.js";
+import { exportShopProfile, previewShopProfileImport, applyShopProfileImport } from "../helpers/profileTransfer.js";
 import { setPrinterResolver } from "./createXML.js";
 import { runShopProfileMigration } from "../helpers/runShopProfileMigration.js";
 import { describeRollbackFailure, buildRollbackBatchLog } from "../helpers/rollbackFailure.js";
@@ -506,6 +507,42 @@ export async function registerIpcHandlers() {
   // Compare-and-swap against the profile this station loaded; refuses with PROFILE_CHANGED when
   // another station saved in between, and reloads the cache either way (saveShopProfile.js).
   ipcMain.handle("profile:set", (_event, profile) => saveShopProfile(profile, getSettings().workstationName));
+
+  // The profile as a file (ETAP 3-3, helpers/profileTransfer.js). Main owns the dialogs and the
+  // file I/O; the renderer sends nothing but the preview's token back (rule 14). The paths are
+  // anywhere the operator picks, like the custom-order CSV - not files under storagePath.
+  ipcMain.handle("profile:export", async (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    return exportShopProfile({
+      chooseSavePath: async (defaultName) => {
+        const result = await dialog.showSaveDialog(win, {
+          defaultPath: defaultName,
+          filters: [{ name: "Shop profile", extensions: ["json"] }],
+        });
+        return result.canceled || !result.filePath ? null : result.filePath;
+      },
+      writeFile: (filePath, content) => fs.promises.writeFile(filePath, content, "utf8"),
+    });
+  });
+
+  ipcMain.handle("profile:importPreview", async (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    return previewShopProfileImport({
+      chooseOpenPath: async () => {
+        const result = await dialog.showOpenDialog(win, {
+          properties: ["openFile"],
+          filters: [{ name: "Shop profile", extensions: ["json"] }],
+        });
+        return result.canceled || result.filePaths.length === 0 ? null : result.filePaths[0];
+      },
+      statSize: async (filePath) => (await fs.promises.stat(filePath)).size,
+      readFile: (filePath) => fs.promises.readFile(filePath, "utf8"),
+    });
+  });
+
+  ipcMain.handle("profile:importApply", (_event, token) =>
+    applyShopProfileImport(token, { workstation: getSettings().workstationName }),
+  );
 
   ipcMain.handle("db:backup", async () => {
     return backupDb(true);

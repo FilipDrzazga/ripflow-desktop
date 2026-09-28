@@ -169,6 +169,24 @@ that is on must have what it needs (`shopify` -> `storeHandle`, `sewing` -> a co
 `ripErrors` -> `folders.ripError`, `customOrders` -> `folders.customOrder`). A new profile field
 needs its rule here in the same change, or the import refuses every profile that carries it.
 
+**Export / import (`helpers/profileTransfer.js`, ETAP 3-3; IPC `profile:export`,
+`profile:importPreview`, `profile:importApply(token)`).** Main owns the dialogs and the file I/O
+(injected, so the module tests with `db.js` mocked); the renderer sends back ONLY the preview's
+token (rule 14) - never a path or content. **Export** writes the DB ROW (`getShopProfileRaw`), not
+this station's startup cache, pretty-printed; a row that would not import back is still exported,
+with the validator's errors as `warnings`. **Preview** reads the file (1 MB cap, a UTF-8 BOM
+stripped), parses, validates; only a VALID file gets a token, `diff` against the stored row
+(sections, printers / sewing companies added and removed, features on/off, scan roles removed)
+and `impact` counted from `file_stages` (rows of a removed printer, files at `to_sewing` with a
+removed company; `stageRowsCounted` says over how many rows - `getAllFileStages` answers `[]` on
+a failed read). ONE pending import per process; a new preview replaces it and apply consumes it
+whatever happens. **Apply**: `dumpShopProfileBlob(raw, "3-import")` is a HARD precondition (no
+local copy of what is replaced = nothing replaced), then `backupDb(true)` best effort (reported,
+never blocking), then `saveShopProfile` - the 3-1 CAS, so an import cannot land on a profile
+another station saved after this one loaded (`PROFILE_CHANGED`). The import never touches
+`fabrics`. Other stations keep their startup cache until restart - except one whose own save is
+refused with `PROFILE_CHANGED`, which reloads then (see 3-1 above).
+
 **First consumer: `openInShopify.js`** — the store handle comes ONLY from
 `integrations.shopify.storeHandle`; there is **no `DEFAULT_PROFILE` fallback** (it would
 send another shop's operator into Alex's Shopify admin). The handler is gated fail-closed:

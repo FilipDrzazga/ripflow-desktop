@@ -151,6 +151,13 @@ const api = Object.freeze({
       if (!isPlainObject(profile)) throw new TypeError("Profile must be a plain object.");
       return ipcRenderer.invoke("profile:set", profile);
     },
+    // ETAP 3-3: main opens the dialogs and reads/writes the file; only the token comes back.
+    export: () => ipcRenderer.invoke("profile:export"),
+    importPreview: () => ipcRenderer.invoke("profile:importPreview"),
+    importApply: (token) => {
+      if (!isNonEmptyString(token)) throw new TypeError("Import token must be a non-empty string.");
+      return ipcRenderer.invoke("profile:importApply", token);
+    },
   },
   getSettings: () => ipcRenderer.invoke("settings:get"),
   setSettings: (settings) => {
