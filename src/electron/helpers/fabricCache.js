@@ -5,6 +5,8 @@ import { estimateConfigFrom } from "../../shared/classGlobals.js";
 // null = not loaded (DB unreadable); array = loaded (empty only when the table is empty)
 let cachedFabrics = null;
 
+// Returns true when the cache now holds a catalogue, false when not loaded (ETAP 4, 4-retry -
+// reloadShopData reports it). getAllFabrics answers null without a handle or on a failed read.
 export const loadFabricCache = () => {
   try {
     cachedFabrics = getAllFabrics();
@@ -12,7 +14,10 @@ export const loadFabricCache = () => {
     console.error("[fabricCache] loadFabricCache failed:", err);
     cachedFabrics = null;
   }
+  return isFabricCacheLoaded();
 };
+
+export const isFabricCacheLoaded = () => cachedFabrics !== null;
 
 export const invalidateFabricCache = () => {
   cachedFabrics = null;

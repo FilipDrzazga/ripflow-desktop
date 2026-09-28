@@ -7,6 +7,9 @@ import { isFolderName } from "../../shared/folderName.js";
 // are different answers and callers are allowed to tell them apart.
 let cachedProfile = null;
 
+// Returns true when the cache now holds THIS read, false when it failed (cache null) - the answer
+// reloadShopData reports (ETAP 4, 4-retry). A failed reload drops a profile loaded before, as it
+// always did: serving a stale one quietly is worse than admitting ignorance.
 export const loadShopProfile = () => {
   try {
     // db.getShopProfile returns null for "no row" and THROWS on a DB or JSON failure,
@@ -14,9 +17,11 @@ export const loadShopProfile = () => {
     // in-memory default stands in; a throw means we know nothing and must say so.
     const row = getShopProfile();
     cachedProfile = row ?? DEFAULT_PROFILE;
+    return true;
   } catch (err) {
     console.error("[shopProfile] loadShopProfile failed:", err);
     cachedProfile = null;
+    return false;
   }
 };
 

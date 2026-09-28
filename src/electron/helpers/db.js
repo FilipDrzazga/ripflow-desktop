@@ -111,6 +111,10 @@ const ensureFabricAliasColumn = () => {
   }
 };
 
+// Whether initDb left a handle. reloadShopData (ETAP 4, 4-retry) reopens the database only when
+// this is false - a station whose NAS was down at startup - and never replaces a live handle.
+export const isDbOpen = () => db !== null;
+
 export const initDb = () => {
   try {
     const dbPath = join(getStorageRootPath(), "ripflow.db");

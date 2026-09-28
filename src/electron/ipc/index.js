@@ -18,7 +18,8 @@ import { parsePrintFileName } from "../helpers/parseFileName.js";
 import { getSettings, setSettings, getRollbackDefinitions, clearRollbackDefinitions } from "../helpers/getSettings.js";
 import { initDb, insertLog, getAllLogs, clearAllLogs, holdFile, unholdFile, getHeldFiles, pruneOrphanHeldFiles, getRollbackReasonsByBatch, getRollbackReasonsByFile, getRollbackStats, getRollbackDetails, clearAllRollbackReasons, deleteRollbackReason, getLatestRollbackReasonsForFileIds, getReasonDefinitions, setReasonDefinitions as setReasonDefinitionsDb, migrateReasonDefinitions, getAllFabrics, saveFabric, deleteFabric as deleteFabricDb, setAllFabrics, backupDb, cleanupShippedStages, getDbDegraded } from "../helpers/db.js";
 import { loadFabricCache, invalidateFabricCache } from "../helpers/fabricCache.js";
-import { loadShopProfile, getProfile, getPrinterByCode } from "../helpers/shopProfile.js";
+import { getProfile, getPrinterByCode } from "../helpers/shopProfile.js";
+import { loadShopData, reloadShopData } from "../helpers/reloadShopData.js";
 import { saveShopProfile } from "../helpers/saveShopProfile.js";
 import { exportShopProfile, previewShopProfileImport, applyShopProfileImport } from "../helpers/profileTransfer.js";
 import { setPrinterResolver } from "./createXML.js";
@@ -188,10 +189,9 @@ export async function registerIpcHandlers() {
   // session - see the comment on runShopProfileMigration for the full ordering argument.
   await runShopProfileMigration();
 
-  // Before loadFabricCache: the profile carries the material classes and hotfolder
-  // names the fabric layer will read once those consumers land (ETAP 2).
-  loadShopProfile();
-  loadFabricCache();
+  // Both caches, the profile first (the fabric layer reads its material classes) - the same
+  // function the operator's "Reload shop data" runs (reloadShopData.js, ETAP 4 4-retry).
+  loadShopData();
   // createXML.js routes a job to printers[].hotfolder through this lookup (ETAP 2e step 2);
   // injected because createXML.js must stay importable without db.js. getPrinterByCode reads
   // the live cache on every call, so a profile:set on this station applies at once.
@@ -491,6 +491,11 @@ export async function registerIpcHandlers() {
     // handed a default that would look like a real profile.
     return { success: true, data: getProfile() };
   });
+
+  // ETAP 4 (4-retry): reopen the database if startup could not, then reload the profile and the
+  // fabric catalogue - one mechanism for both (helpers/reloadShopData.js). The renderer reloads
+  // its own copies from the answers of profile:get / fabrics:getAll afterwards.
+  ipcMain.handle("shopData:reload", () => reloadShopData());
 
   // Compare-and-swap against the profile this station loaded; refuses with PROFILE_CHANGED when
   // another station saved in between, and reloads the cache either way (saveShopProfile.js).

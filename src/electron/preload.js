@@ -154,6 +154,10 @@ const api = Object.freeze({
       return ipcRenderer.invoke("profile:importApply", token);
     },
   },
+  // ETAP 4 (4-retry): reopen the DB if needed and reload the profile + fabric caches in main.
+  shopData: {
+    reload: () => ipcRenderer.invoke("shopData:reload"),
+  },
   getSettings: () => ipcRenderer.invoke("settings:get"),
   setSettings: (settings) => {
     if (!isPlainObject(settings)) throw new TypeError("Settings must be a plain object.");
