@@ -212,6 +212,12 @@ ELECTRON_RUN_AS_NODE=1 ./node_modules/.bin/electron scripts/golden/compare-golde
 - **Never regenerate the baseline to make a diff go away.** A difference is a finding: decide
   fix-vs-regression first, with a manual calculation, then re-capture only if the new value is
   provably the correct one.
+- The golden net does NOT route jobs (hole (e), consciously closed in ETAP 4 4-golden-e): the
+  hotfolder is where the file is WRITTEN, not a byte of the XML, and `buildPFJobXML` is called
+  directly. Routing is pinned by `hotfolderRouting.test.js` (parity of Alex's three printers with
+  the removed if-chain, fail-closed refusals) and the production wiring
+  `setPrinterResolver(getPrinterByCode)` by `printerResolverWiring.test.js`; the 70 golden batches
+  were measured once through that chain, 70/70 as the if-chain (`chat/artefakty/4-golden-e`).
 - The golden net does NOT see the six non-XML consumers. For those, compare
   `estimatePrintLength(items)` against `estimatePrintLength(items, config)` over real rows at file,
   material-group and batch level — the shapes the different consumers actually use.

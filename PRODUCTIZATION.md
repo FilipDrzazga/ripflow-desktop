@@ -1369,6 +1369,14 @@ Pozycje dodane w trakcie (regula 5 - nowe linie zamiast rozszerzania istniejacyc
 - [ ] **Dziura siatki golden (e): trasowanie po drukarkach** (zmierzone przy 3-5) - harness wola
       `buildPFJobXML` wprost, wiec `printers[]` / hotfolder nie wplywaja na wynik (fikstura bez drukarek
       = 0/70). Pilnuje tego `hotfolderRouting.test.js`, nie golden.
+      ETAP 4 (4-golden-e, decyzja S2 2026-09-29: wariant A) - SWIADOMIE ZAMKNIETA notka, harness bez
+      zmian: hotfolder to katalog zapisu, nie bajt XML-a, a jedyna "prawda" dla baseline tras to
+      usuniety if-chain, ktorego juz pilnuje parity w `hotfolderRouting.test.js`. Pomiar: 70 batchy
+      golden przez prawdziwy lancuch (printerOfBatch -> getPrinterByCode na profilu Alexa ->
+      getWorkflowFolderName) = DGEN->COTTON 36, YOKO->POLY 25, YUMI->POLY 9, 0 niezgodnosci
+      (`chat/artefakty/4-golden-e/measure.out`). Ostatnia luka - samo podpiecie
+      `setPrinterResolver(getPrinterByCode)` w `ipc/index.js` - ma test `printerResolverWiring.test.js`
+      (skan zrodla, 2 mutacje zabite). [x] dopiero w 4-tick, po bramce FILIPA.
 
 - [ ] **`powerMonitor` + pauza pollingu na `suspend` / `lock-screen`.** Uzasadnione
       eksperymentem na stacji QC (zapis w `claude/DECYZJE-LOG.md`): uspienie
