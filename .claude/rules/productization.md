@@ -71,6 +71,36 @@ Rules:
      only a mock": the rule exists to stop an unintended behaviour change from being
      masked by an edited expectation. A comment cannot mask anything, because it does not
      execute. A mock can, so a mock is executable content and stays untouchable.
+   - PRE-APPROVED EDITS (USPR-B, FILIP 2026-09-29) - a CLOSED list of three mechanical
+     edits to executable content that the step may make without asking first. Each one
+     adapts a test to a change the step makes ON PURPOSE, and none can hide a behaviour
+     change, because the value the test checks stays the same:
+     1. A version literal the step itself bumps - e.g. `schemaVersion` 3 -> 4 when the step
+        raises `PROFILE_SCHEMA_VERSION`. Only that literal changes; the rest of the
+        assertion, and every other expected value, stays byte for byte.
+     2. A key added to a `vi.mock` factory for a NEW export that the module under test now
+        imports - an inert stub (`() => null`, `() => {}`, a constant). Existing keys,
+        their bodies and the mocked module path stay as they are.
+     3. A NEW required argument added to a call in a test, carrying what the old default
+        meant, with the SAME expected result - e.g. `shopConfig:` passed explicitly where
+        the call relied on it being absent.
+     Conditions, all of them:
+     - The artefact carries a table, one row per edited line: file:line | before | after |
+       class (1/2/3) | why. The report names the table; S2 checks it AFTER the fact and may
+       send any row back as if it had been asked for.
+     - Anything outside these three - a changed expected value, a removed or reworded
+       assertion, a deleted test, an edited fixture, a mock body changed - is still asked
+       for BEFORE the edit, with the blast-radius list (INSTRUKCJA.md, USPR-A U3).
+     - The list is closed: a fourth class is added here, by S2 or FILIP, never by
+       analogy in a report.
+     Why: 4-types-c (2026-09-28) spent four S1 <-> S2 rounds on permissions for exactly
+     these three kinds of edit; none of them could have masked a regression.
+
+     Table template (`chat/artefakty/<step>/test-edits.md`):
+
+     | file:line | before | after | class | why |
+     | --------- | ------ | ----- | ----- | --- |
+     | `src/.../x.test.js:42` | `expect(v).toBe(3)` | `expect(v).toBe(4)` | 1 | step raises the schema to v4 |
 8. Mutations belong in the file that WAS broken, not only in the new clean module.
    A round of 16 mutations against a freshly written pure helper, with zero against the
    producer, the handler and the UI, looks like proof and establishes nothing about the
