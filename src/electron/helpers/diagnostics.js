@@ -7,15 +7,19 @@ import path from "path";
 // What goes in (small, text only):
 //   summary.json     - app / Electron / Node version, OS, station name and role, the per-machine
 //                      settings (paths, not their contents), database state, profile version
-//   access.json      - can this station read and write the folders it works with: storage root,
-//                      XML path, PRINTED, every printer hotfolder, the RIP-error and custom-order
-//                      folders. fs.access only - NOTHING is written into a hotfolder: PrintFactory
-//                      watches them, and a probe file there could be picked up as a job.
+//   access.json      - can this station READ the folders it works with: storage root, XML path,
+//                      PRINTED, every printer hotfolder, the RIP-error and custom-order folders -
+//                      a real directory listing (readdir), which goes through the share's
+//                      permissions. Writing is reported as "not tested", honestly: fs.access(W_OK)
+//                      on Windows looks only at the read-only attribute, not at the SMB permissions
+//                      (Node docs), so it would say "ok" for a folder the station cannot write to;
+//                      and a probe file is out of the question - PrintFactory watches the
+//                      hotfolders and could pick one up as a job.
 //   logs.json        - the last 500 log rows (the logs table is capped at 500)
 //   shop-profile.json- the stored profile row as it is (the shop's own configuration)
 // What does NOT go in: file contents, PDFs, the database file, anything from other stations.
 //
-// Pure apart from the injected `access` - the handler in ipc/index.js passes fs, the test a fake.
+// Pure apart from the injected `readDir` - the handler in ipc/index.js passes fs, the test a fake.
 
 // The folders the station works with, each with where it comes from.
 export const diagnosticTargets = ({ storagePath, xmlPath }, profile) => {
@@ -42,16 +46,16 @@ export const diagnosticTargets = ({ storagePath, xmlPath }, profile) => {
   return targets;
 };
 
-// access(path) -> Promise that resolves when the folder can be read and written, rejects with the
-// OS error otherwise.
-export const checkAccess = async (targets, access) =>
+// readDir(path) -> Promise that resolves when the folder can be listed, rejects with the OS error
+// otherwise. Nothing is written: `write` is always "not tested" (see the header).
+export const checkAccess = async (targets, readDir) =>
   Promise.all(
     targets.map(async (t) => {
       try {
-        await access(t.path);
-        return { ...t, ok: true };
+        await readDir(t.path);
+        return { ...t, read: "ok", write: "not tested" };
       } catch (err) {
-        return { ...t, ok: false, error: err?.code || err?.message || String(err) };
+        return { ...t, read: err?.code || err?.message || String(err), write: "not tested" };
       }
     }),
   );
@@ -66,7 +70,7 @@ export const collectDiagnostics = async ({
   profileRaw,
   dbOpen,
   dbDegraded,
-  access,
+  readDir,
   now = new Date(),
 }) => {
   let profile = null;
@@ -75,7 +79,7 @@ export const collectDiagnostics = async ({
   } catch {
     profile = null; // shipped as it is in shop-profile.json - summary says it did not parse
   }
-  const accessResults = await checkAccess(diagnosticTargets(settings || {}, profile), access);
+  const accessResults = await checkAccess(diagnosticTargets(settings || {}, profile), readDir);
   const summary = {
     generatedAt: now.toISOString(),
     versions,
@@ -85,7 +89,7 @@ export const collectDiagnostics = async ({
     shopProfile: profileRaw
       ? { schemaVersion: profile?.schemaVersion ?? "unreadable", printers: Array.isArray(profile?.printers) ? profile.printers.length : null }
       : null,
-    folderProblems: accessResults.filter((r) => !r.ok).map((r) => `${r.label}: ${r.error}`),
+    folderProblems: accessResults.filter((r) => r.read !== "ok").map((r) => `${r.label}: cannot read (${r.read})`),
     logRows: Array.isArray(logs) ? logs.length : 0,
   };
   return [

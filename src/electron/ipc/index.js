@@ -581,7 +581,8 @@ export async function registerIpcHandlers() {
         profileRaw,
         dbOpen: isDbOpen(),
         dbDegraded: getDbDegraded(),
-        access: (p) => fs.promises.access(p, fs.constants.R_OK | fs.constants.W_OK),
+        // a real listing - fs.access(W_OK) on Windows ignores the share's permissions (4-diag round 2)
+        readDir: (p) => fs.promises.readdir(p),
         now,
       });
       await fs.promises.writeFile(choice.filePath, buildZip(entries, { now }));

@@ -65,8 +65,9 @@ const DatabaseView = () => {
           <div className={styles.action_info}>
             <span className={styles.label}>Export diagnostics</span>
             <p className={styles.hint}>
-              A zip with versions, this station&apos;s settings, folder access checks, the last 500 logs and the shop
-              profile - no file contents. Save it and send it to support.
+              A zip with versions, this station&apos;s settings, a check that its folders can be read, the last 500
+              logs and the shop profile - no file contents. The logs hold file names (customer names, order
+              numbers): send it only to your support.
             </p>
           </div>
           <button className={styles.browse_btn} onClick={handleExportDiagnostics} disabled={isExporting}>

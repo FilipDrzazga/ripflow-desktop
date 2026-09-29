@@ -2,7 +2,8 @@ import { describe, it, expect } from "vitest";
 import path from "path";
 import { diagnosticTargets, collectDiagnostics, diagnosticsFileName } from "./diagnostics.js";
 
-// ETAP 4 (4-diag): what "Export diagnostics" puts in the zip. Pure apart from the injected access.
+// ETAP 4 (4-diag): what "Export diagnostics" puts in the zip. Pure apart from the injected readDir
+// (round 2, S2: a real listing - fs.access(W_OK) on Windows ignores the share's permissions).
 
 const SETTINGS = { storagePath: "C:\\store", xmlPath: "C:\\xml", workstationName: "PC-1", workstationRole: "cotton" };
 const PROFILE = {
@@ -42,8 +43,9 @@ describe("collectDiagnostics", () => {
       profileRaw: JSON.stringify(PROFILE),
       dbOpen: true,
       dbDegraded: false,
-      access: async (p) => {
+      readDir: async (p) => {
         if (p.endsWith("HOT_P")) throw Object.assign(new Error("denied"), { code: "EACCES" });
+        return [];
       },
       now: new Date("2026-09-29T08:00:00Z"),
       ...over,
@@ -63,14 +65,21 @@ describe("collectDiagnostics", () => {
     expect(s.workstation).toEqual({ name: "PC-1", role: "cotton" });
     expect(s.database).toEqual({ open: true, degraded: false });
     expect(s.shopProfile).toEqual({ schemaVersion: 4, printers: 3 });
-    expect(s.folderProblems).toEqual(["hotfolder HOT_P (YOKO): EACCES"]);
+    expect(s.folderProblems).toEqual(["hotfolder HOT_P (YOKO): cannot read (EACCES)"]);
     expect(s.logRows).toBe(1);
   });
 
-  it("access.json: every target with ok / error", async () => {
+  it("access.json: every target with read ok / the error, and write honestly not tested", async () => {
     const a = JSON.parse((await byName())["access.json"]);
-    expect(a.filter((r) => r.ok).length).toBe(5);
-    expect(a.find((r) => !r.ok)).toMatchObject({ label: "hotfolder HOT_P (YOKO)", error: "EACCES" });
+    expect(a.filter((r) => r.read === "ok").length).toBe(5);
+    expect(a.find((r) => r.read !== "ok")).toMatchObject({ label: "hotfolder HOT_P (YOKO)", read: "EACCES" });
+    expect(a.every((r) => r.write === "not tested")).toBe(true);
+  });
+
+  it("the read check lists the folder (readDir is called for every target, nothing else)", async () => {
+    const seen = [];
+    await collect({ readDir: async (p) => { seen.push(p); return []; } });
+    expect(seen).toEqual(diagnosticTargets(SETTINGS, PROFILE).map((t) => t.path));
   });
 
   it("no database: profile null, the rest still exported", async () => {
