@@ -223,14 +223,15 @@ export async function registerIpcHandlers() {
     return { success: true, data: getHeldFiles() };
   });
 
+  // success = the write's own result (runWrite: false with no DB or on a failed write). Until the
+  // bulk Unhold it was always true, so a failed release looked done; the bulk path keeps the
+  // files that failed selected for another try.
   ipcMain.handle("hold:set", (_event, fileId, reason) => {
-    holdFile(fileId, reason ?? "");
-    return { success: true };
+    return { success: holdFile(fileId, reason ?? "") };
   });
 
   ipcMain.handle("hold:unset", (_event, fileId) => {
-    unholdFile(fileId);
-    return { success: true };
+    return { success: unholdFile(fileId) };
   });
 
   // Delete held_files rows whose file_id is no longer in the inbox. Caller passes the

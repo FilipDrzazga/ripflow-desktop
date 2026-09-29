@@ -31,6 +31,7 @@ const fabricConfigFor = (state, profile) =>
 import { getShopProfile as getShopProfileApi, reloadShopData as reloadShopDataApi } from "../services/profileService";
 import { PROFILE_STATUS, resolveProfileResult } from "../utils/profileStatus";
 import { latestRipErrorPerFile } from "../utils/ripErrorsByFile";
+import { toggleHeldId, visibleHeldIds, pruneHeldSelection, unholdMany } from "../utils/heldSelection";
 import { isToastHiddenByWizard } from "../utils/setupWizard";
 import { getStagesByBatch as getStagesByBatchApi, getAllStages as getAllStagesApi, getStagesAfter as getStagesAfterApi, getAllStageHistory as getAllStageHistoryApi, clearAllProductionStages as clearAllProductionStagesApi, getOpenReprints as getOpenReprintsApi } from "../services/productionService";
 import { scanRipErrors as scanRipErrorsApi, resolveRipError as resolveRipErrorApi } from "../services/ripErrorService";
@@ -214,6 +215,9 @@ export const useStore = create(
       })),
     heldIds: new Set(),
     heldReasons: new Map(),
+    // Held files picked for a bulk Unhold - a selection of its own, never mixed with selectedIds
+    // (see utils/heldSelection.js).
+    heldSelectedIds: new Set(),
     rollbackReasons: new Map(),
     reasonDefinitions: ROLLBACK_REASONS.map((r) => ({ code: r.code, label: r.label, iconName: r.iconName })),
     loadReasonDefinitions: async () => {
@@ -460,7 +464,7 @@ export const useStore = create(
             heldIds.add(r.file_id);
             if (r.reason) heldReasons.set(r.file_id, r.reason);
           }
-          set({ heldIds, heldReasons });
+          set((state) => ({ heldIds, heldReasons, heldSelectedIds: pruneHeldSelection(state.heldSelectedIds, heldIds) }));
         }
       } catch (err) { console.error("[store] loadHeldFiles failed:", err); }
     },
@@ -473,7 +477,7 @@ export const useStore = create(
           await unholdFileApi(fileId);
           newHeldIds.delete(fileId);
           newHeldReasons.delete(fileId);
-          set({ heldIds: newHeldIds, heldReasons: newHeldReasons });
+          set((state) => ({ heldIds: newHeldIds, heldReasons: newHeldReasons, heldSelectedIds: pruneHeldSelection(state.heldSelectedIds, newHeldIds) }));
         } catch (err) { console.error("[store] unholdFile failed:", err); }
       } else {
         try {
@@ -519,6 +523,7 @@ export const useStore = create(
 
         if (!clickedItem) return state;
         if (state.heldIds.has(id)) return state;
+        if (state.heldSelectedIds.size > 0) return state; // one selection at a time
 
         if (newSelectedIds.has(id)) {
           newSelectedIds.delete(id);
@@ -546,6 +551,7 @@ export const useStore = create(
 
     toggleGroupSelection: (groupItems) =>
       set((state) => {
+        if (state.heldSelectedIds.size > 0) return state; // one selection at a time
         const newSelectedIds = new Set(state.selectedIds);
 
         const validItems = groupItems.filter((item) => item.status !== FILE_STATUS.INVALID && !state.heldIds.has(item.id));
@@ -577,7 +583,28 @@ export const useStore = create(
         return { selectedIds: newSelectedIds };
       }),
 
-    toggleClearSelection: () => set(() => ({ selectedIds: new Set(), selectedOverrides: new Map() })),
+    toggleClearSelection: () => set(() => ({ selectedIds: new Set(), selectedOverrides: new Map(), heldSelectedIds: new Set() })),
+
+    toggleHeldSelection: (id) =>
+      set((state) => {
+        const next = toggleHeldId(state.heldSelectedIds, id, state);
+        return next === state.heldSelectedIds ? state : { heldSelectedIds: next };
+      }),
+    // "Select all held": every held file the list shows now (filters applied).
+    selectAllVisibleHeld: () =>
+      set((state) => (state.selectedIds.size > 0 ? state : { heldSelectedIds: visibleHeldIds(state.filteredFiles, state.heldIds) })),
+    // Bulk Unhold. The files that failed stay selected so the operator can simply try again;
+    // the caller reports the outcome (the store stays silent). heldIds is re-read from the DB
+    // afterwards - the truth, not the optimistic guess.
+    unholdSelectedFiles: async () => {
+      const { heldSelectedIds, heldIds } = get();
+      const ids = [...heldSelectedIds].filter((id) => heldIds.has(id));
+      if (ids.length === 0) return { done: [], failed: [] };
+      const result = await unholdMany(ids, unholdFileApi);
+      set({ heldSelectedIds: new Set(result.failed) });
+      await get().loadHeldFiles();
+      return result;
+    },
 
     holdSelectedFiles: async (reason = "") => {
       const { selectedIds, heldIds } = get();
@@ -649,6 +676,7 @@ export const useStore = create(
             files: res.data,
             filteredFiles: applyFilters(res.data, state.activeTab, state.searchQuery, state.sortOrder, state.printTypeFilter, state.fabricConfig),
             selectedIds: clearSelection ? new Set() : state.selectedIds,
+            heldSelectedIds: clearSelection ? new Set() : state.heldSelectedIds,
             lastFilesRefreshAt: new Date().toISOString(),
             inboxWatch: { baseline, previous: baseline, added: [], removed: [], error: false },
           }));

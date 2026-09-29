@@ -28,6 +28,7 @@ import {
 import { PiPolygon } from "react-icons/pi";
 import { PRINT_TYPE_MAP } from "@/constants/printTypeMap";
 import style from "./DataList.module.css";
+import { runBulkUnhold } from "../../utils/bulkUnhold";
 
 const formatFileSize = (bytes) => {
   if (bytes == null) return null;
@@ -67,6 +68,8 @@ const DataList = () => {
   const isBatchSubmitting = useStore((state) => state.isBatchSubmitting);
   const heldIds = useStore((state) => state.heldIds);
   const heldReasons = useStore((state) => state.heldReasons);
+  const heldSelectedIds = useStore((state) => state.heldSelectedIds);
+  const toggleHeldSelection = useStore((state) => state.toggleHeldSelection);
   const rollbackReasons = useStore((state) => state.rollbackReasons);
   // The inbox entry to Shopify; the others are the two Production context-menu items
   // and the BatchHistory one, whose components already read the profile. Gated at the
@@ -102,6 +105,8 @@ const DataList = () => {
   }, [filteredFiles, selectedIds]);
 
   const hasSelection = selectedIds.size > 0;
+  // Held files picked for a bulk Unhold: one selection at a time (utils/heldSelection.js).
+  const hasHeldSelection = heldSelectedIds.size > 0;
   const hasItems = filteredFiles.some((group) => group.items.length > 0);
 
   const handleGroupCheckboxChange = (e, group) => {
@@ -111,6 +116,10 @@ const DataList = () => {
   const handleItemCheckboxChange = (e, item) => {
     e.stopPropagation();
     toggleItemSelection(item.id);
+  };
+  const handleHeldCheckboxChange = (e, item) => {
+    e.stopPropagation();
+    toggleHeldSelection(item.id);
   };
   const closeContextMenu = () => setContextMenu(null);
 
@@ -257,7 +266,7 @@ const DataList = () => {
                 ref={(e) => {
                   if (e) e.indeterminate = isGroupIndeterminate;
                 }}
-                disabled={!groupHasSelectable || isBatchSubmitting}
+                disabled={!groupHasSelectable || isBatchSubmitting || hasHeldSelection}
                 id={unqGroupId}
                 type="checkbox"
                 className={style.checkbox}
@@ -283,7 +292,14 @@ const DataList = () => {
                 else if (isHeld) {
                   const detail = heldReasons.get(item.id);
                   tooltip = detail ? `On hold · ${detail}` : "File is on hold";
+                  if (hasSelection) tooltip += " - clear the print selection to select held files";
                 } else if (isLocked) tooltip = `Cannot mix ${lockMaterial} with ${item.materialType}`;
+                else if (hasHeldSelection) tooltip = "Held files are selected - clear that selection to pick files to print";
+                // A held row's checkbox picks it for a bulk Unhold (heldSelectedIds), never for print.
+                const isChecked = isHeld ? heldSelectedIds.has(item.id) : selectedIds.has(item.id);
+                const isCheckboxDisabled = isHeld
+                  ? hasSelection || isBatchSubmitting
+                  : isInvalid || isLocked || hasHeldSelection || isBatchSubmitting;
 
                 const age = item.diffDays;
                 const ageColor = age <= 1 ? "#3B6D11" : age === 2 ? "#D4860E" : age === 3 ? "#C05208" : "#A32D2D";
@@ -299,7 +315,7 @@ const DataList = () => {
                   isInvalid ? style.list_item_invalid : null,
                   isWarning ? style.list_item_warning : null,
                   activeContextItemId === item.id ? style.list_item_active : null,
-                  selectedIds.has(item.id) ? style.list_item_selected : null,
+                  isChecked ? style.list_item_selected : null,
                 ]
                   .filter(Boolean)
                   .join(" ");
@@ -314,12 +330,12 @@ const DataList = () => {
                     <div className={style.item_info}>
                       <label htmlFor={item.id} className={style.item_name} data-tooltip={tooltip}>
                         <input
-                          disabled={isInvalid || isLocked || isHeld || isBatchSubmitting}
+                          disabled={isCheckboxDisabled}
                           id={item.id}
                           type="checkbox"
                           className={style.checkbox}
-                          checked={selectedIds.has(item.id)}
-                          onChange={(e) => handleItemCheckboxChange(e, item)}
+                          checked={isChecked}
+                          onChange={(e) => (isHeld ? handleHeldCheckboxChange(e, item) : handleItemCheckboxChange(e, item))}
                         />
                         <LuFileText className={style.file_icon} />
                         <span className={style.file_name_text}>{item.file.name}</span>
@@ -458,6 +474,19 @@ const DataList = () => {
                 const bulkCount = [...selectedIds].filter((id) => !heldIds.has(id)).length;
                 const showBulkHold = !isItemHeld && isItemSelected && bulkCount > 1;
 
+                const heldBulkCount = heldSelectedIds.has(item.id) ? heldSelectedIds.size : 0;
+                if (isItemHeld && heldBulkCount > 1) {
+                  return {
+                    id: "hold",
+                    label: `Unhold ${heldBulkCount} selected`,
+                    icon: <FiUnlock />,
+                    danger: true,
+                    onClick: () => {
+                      closeContextMenu();
+                      runBulkUnhold();
+                    },
+                  };
+                }
                 if (isItemHeld) {
                   return {
                     id: "hold",

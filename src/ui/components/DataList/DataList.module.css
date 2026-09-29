@@ -437,3 +437,9 @@
   font-weight: 500;
   color: var(--text-secondary);
 }
+
+/* A held file picked for a bulk Unhold: stays red (it is still on hold), just stronger. */
+.list_item.list_item_held.list_item_selected {
+  background-color: rgba(239, 68, 68, 0.14);
+  border-color: rgba(239, 68, 68, 0.4);
+}
