@@ -606,3 +606,38 @@
   color: var(--text-primary);
   background-color: var(--bg-grey-light);
 }
+
+/* ── Preferred printer (fabrics.preferred_printer) ── */
+.printer_select {
+  height: 30px;
+  min-width: 110px;
+  padding: 0 8px;
+  border: 1px solid var(--border-grey);
+  border-radius: 8px;
+  background: var(--bg-white);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+  outline: none;
+}
+.printer_select:focus {
+  border-color: var(--text-primary);
+}
+.printer_select_stale {
+  border-color: #d97706;
+}
+.printer_stale_msg {
+  max-width: 220px;
+  font-size: 11px;
+  line-height: 1.3;
+  color: #92400e;
+}
+.mat_flag_printer {
+  background-color: #e0e7ff;
+  color: #3730a3;
+}
+.mat_flag_stale {
+  background-color: #fef3c7;
+  color: #92400e;
+  text-decoration: line-through;
+}

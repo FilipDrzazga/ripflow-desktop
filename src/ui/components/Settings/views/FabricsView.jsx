@@ -19,6 +19,8 @@ import {
   classNumberFormUnchanged,
   isInvalidClassNumber,
 } from "@/utils/classNumberForm";
+import { getPrinters } from "@/utils/shopProfileData";
+import { preferredPrinterOptions, preferredPrinterState, draftWithType, preferredPrinterToSend } from "@/utils/preferredPrinter";
 import styles from "./FabricsView.module.css";
 
 // The class numbers (ETAP 2g-3c): owned by the shop profile's materialClasses, edited here - by
@@ -39,6 +41,7 @@ const DEFAULT_NEW_FABRIC = {
   isLinen: false,
   isBlossom: false,
   alias: "",
+  preferredPrinter: null,
 };
 
 const FLAG_DEFS = [
@@ -158,6 +161,13 @@ const EditPanel = ({ fabric, title, onSave, onCancel, isSaving }) => {
   // a new fabric starts in the profile's FIRST class (4-types-b; was the literal "Cottons")
   const [draft, setDraft] = useState({ ...fabric, type: fabric.type || classes[0]?.name || "" });
   const set = (key, val) => setDraft((d) => ({ ...d, [key]: val }));
+  // The preferred printer (fabrics.preferred_printer): only printers of the draft's class; a class
+  // change clears it (draftWithType). A stored code that is no longer valid stays visible as
+  // "stale" so the operator can see and clear it - untouched, it does not block the save
+  // (preferredPrinterToSend).
+  const printers = getPrinters(shopProfile);
+  const printerOptions = preferredPrinterOptions(printers, draft.type);
+  const printerState = preferredPrinterState(draft.preferredPrinter, printers, draft.type);
 
   return (
     <div className={styles.edit_panel}>
@@ -195,7 +205,7 @@ const EditPanel = ({ fabric, title, onSave, onCancel, isSaving }) => {
                 key={name}
                 type="button"
                 className={`${styles.type_btn} ${draft.type === name ? styles[activeClass] : ""}`}
-                onClick={() => set("type", name)}
+                onClick={() => setDraft((d) => draftWithType(d, name))}
               >
                 {name}
               </button>
@@ -227,6 +237,29 @@ const EditPanel = ({ fabric, title, onSave, onCancel, isSaving }) => {
             />
             <span className={styles.width_unit}>mm</span>
           </div>
+        </div>
+
+        <div className={styles.width_field}>
+          <span className={styles.edit_field_label}>Preferred printer</span>
+          <select
+            className={`${styles.printer_select} ${printerState === "stale" ? styles.printer_select_stale : ""}`}
+            value={draft.preferredPrinter ?? ""}
+            onChange={(e) => set("preferredPrinter", e.target.value || null)}
+            title="Print pre-selects this printer for the fabric's files. A suggestion only - any printer of the class can still be chosen."
+          >
+            <option value="">None</option>
+            {printerOptions.map((p) => (
+              <option key={p.code} value={p.code}>
+                {p.code}
+              </option>
+            ))}
+            {printerState === "stale" && (
+              <option value={draft.preferredPrinter}>{draft.preferredPrinter} (not a {draft.type} printer now)</option>
+            )}
+          </select>
+          {printerState === "stale" && (
+            <span className={styles.printer_stale_msg}>Not a {draft.type} printer in the shop profile - ignored in Print. Choose another or None.</span>
+          )}
         </div>
 
         <div className={styles.flags_wrap}>
@@ -264,6 +297,7 @@ const MaterialsCard = () => {
   const loadFabricConfig = useStore((s) => s.loadFabricConfig);
   const shopProfile = useStore((s) => s.shopProfile);
   const classNames = useMemo(() => materialClassNames(shopProfile), [shopProfile]);
+  const printers = useMemo(() => getPrinters(shopProfile), [shopProfile]);
   const [fabrics, setFabrics] = useState([]);
   const [typeFilter, setTypeFilter] = useState("All");
   const [search, setSearch] = useState("");
@@ -301,8 +335,13 @@ const MaterialsCard = () => {
   const handleSave = async (oldName, fabric) => {
     setIsSaving(true);
     try {
+      const original = oldName ? fabrics.find((f) => f.name === oldName) : null;
+      const { preferredPrinter: _draftPrinter, ...rest } = fabric;
+      const preferredPrinter = preferredPrinterToSend(fabric, original, getPrinters(shopProfile));
       const res = await saveFabricApi(oldName, {
-        ...fabric,
+        ...rest,
+        // undefined = not sent: main keeps the stored (stale, untouched) value
+        ...(preferredPrinter === undefined ? {} : { preferredPrinter }),
         xmlWidth: Number(fabric.xmlWidth),
         rollWidth: Number(fabric.rollWidth),
         isVelvet: fabric.isVelvet ? 1 : 0,
@@ -415,6 +454,20 @@ const MaterialsCard = () => {
                           >
                             {fabric.type || "-"}
                           </span>
+                          {fabric.preferredPrinter ? (
+                            <span
+                              className={`${styles.mat_flag} ${
+                                preferredPrinterState(fabric.preferredPrinter, printers, fabric.type) === "stale" ? styles.mat_flag_stale : styles.mat_flag_printer
+                              }`}
+                              title={
+                                preferredPrinterState(fabric.preferredPrinter, printers, fabric.type) === "stale"
+                                  ? "Preferred printer - no longer a printer of this class in the shop profile, ignored in Print"
+                                  : "Preferred printer - pre-selected in Print"
+                              }
+                            >
+                              {fabric.preferredPrinter}
+                            </span>
+                          ) : null}
                           {activeFlags.map(({ key, label }) => (
                             <span key={key} className={styles.mat_flag}>
                               {label}
