@@ -109,6 +109,15 @@ const api = Object.freeze({
   getDbDegraded: () => ipcRenderer.invoke("db:get-degraded"),
   // ETAP 4 (4-diag): main opens the save dialog and writes the zip; nothing comes back but the path.
   exportDiagnostics: () => ipcRenderer.invoke("diagnostics:export"),
+  // ETAP 4 (4-power): { paused } on a transition - sleep / lock screen pause the polls.
+  onPowerPaused: (callback) => {
+    if (typeof callback !== "function") {
+      throw new TypeError("Power pause callback must be a function.");
+    }
+    const handler = (_event, payload) => callback(payload);
+    ipcRenderer.on("power:paused", handler);
+    return () => ipcRenderer.removeListener("power:paused", handler);
+  },
   // ETAP 4 (4-wizard): read-only folder check (readdir) and the closing restart.
   checkSetupFolders: () => ipcRenderer.invoke("setup:checkFolders"),
   relaunchApp: () => ipcRenderer.invoke("app:relaunch"),

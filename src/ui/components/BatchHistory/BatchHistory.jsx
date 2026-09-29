@@ -72,6 +72,7 @@ const BatchHistory = () => {
   const setBatchDays = useStore((state) => state.setBatchDays);
   const reasonDefinitions = useStore((state) => state.reasonDefinitions);
   const refreshFiles = useStore((state) => state.refreshFiles);
+  const pollingPaused = useStore((state) => state.pollingPaused);
   const removeStageFromStore = useStore((state) => state.removeStageFromStore);
   const removeRipError = useStore((state) => state.removeRipError);
   const clearRipErrorsForFiles = useStore((state) => state.clearRipErrorsForFiles);
@@ -337,6 +338,7 @@ const BatchHistory = () => {
   }, []);
 
   useEffect(() => {
+    if (pollingPaused) return; // ETAP 4 (4-power): the station sleeps or is locked
     const id = setInterval(tick, POLL_INTERVAL_MS);
     const onVisible = () => {
       if (document.visibilityState === "visible") tick(); // shouldTick still enforces MIN_GAP
@@ -346,7 +348,7 @@ const BatchHistory = () => {
       clearInterval(id);
       document.removeEventListener("visibilitychange", onVisible);
     };
-  }, [tick]);
+  }, [tick, pollingPaused]);
 
   const handleBatchUpdate = useCallback(async (payload) => {
     const { type, batch, batchPath, file } = payload;

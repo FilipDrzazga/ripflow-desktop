@@ -1,7 +1,7 @@
 // MUST stay the FIRST import: ES modules evaluate in import order, so sandboxBoot.js moves
 // userData into the local sandbox before getSettings.js (via ./ipc/index.js) builds its Store.
 import { SANDBOX_ROOT } from "./sandboxBoot.js";
-import { app, BrowserWindow, ipcMain, dialog } from "electron";
+import { app, BrowserWindow, ipcMain, dialog, powerMonitor } from "electron";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 import { createRequire } from "module";
@@ -11,6 +11,7 @@ import { setDbErrorSink } from "./helpers/db.js";
 import { setPrintedRootSink } from "./ipc/readPrintedFolder.js";
 import { getSettings } from "./helpers/getSettings.js";
 import { findUnsafeSettings } from "./helpers/sandboxGuard.js";
+import { createPowerPause } from "./helpers/powerPause.js";
 const require = createRequire(import.meta.url);
 const { autoUpdater } = require("electron-updater");
 
@@ -99,6 +100,18 @@ app.whenReady().then(async () => {
   setDbErrorSink((channel, payload) => win?.webContents.send(channel, payload));
   // Same bridge for PRINTED root reachability - one banner, emitted on transition only.
   setPrintedRootSink((channel, payload) => win?.webContents.send(channel, payload));
+  // ETAP 4 (4-power): the renderer's polls pause while the station sleeps or is locked
+  // (helpers/powerPause.js). Transition-only, like the two bridges above.
+  const powerPause = createPowerPause({
+    emit: (paused) => {
+      console.log(`[power] polling ${paused ? "paused" : "resumed"}`);
+      win?.webContents.send("power:paused", { paused });
+    },
+  });
+  powerMonitor.on("suspend", powerPause.suspend);
+  powerMonitor.on("resume", powerPause.resume);
+  powerMonitor.on("lock-screen", powerPause.lock);
+  powerMonitor.on("unlock-screen", powerPause.unlock);
 
   autoUpdater.autoDownload = true;
   autoUpdater.autoInstallOnAppQuit = true;

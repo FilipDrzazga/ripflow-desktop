@@ -218,6 +218,7 @@ const DayGroupHeader = ({ day, collapsed, onToggle, onFilter }) => {
 const Production = () => {
   const productionStages = useStore((s) => s.productionStages);
   const loadAllStages = useStore((s) => s.loadAllStages);
+  const pollingPaused = useStore((s) => s.pollingPaused);
   const loadStagesAfter = useStore((s) => s.loadStagesAfter);
   const removeStageFromStore = useStore((s) => s.removeStageFromStore);
   const refreshFiles = useStore((s) => s.refreshFiles);
@@ -372,6 +373,7 @@ const Production = () => {
 
   // Poll for changes — only advance lastPollAt on success so a network failure retries the same window
   useEffect(() => {
+    if (pollingPaused) return; // ETAP 4 (4-power): the station sleeps or is locked
     const id = setInterval(async () => {
       if (!lastPollAt.current) return;
       const since = lastPollAt.current;
@@ -381,7 +383,7 @@ const Production = () => {
       }
     }, POLL_INTERVAL);
     return () => clearInterval(id);
-  }, [loadStagesAfter]);
+  }, [pollingPaused, loadStagesAfter]);
 
   // ─── Action handlers ───────────────────────────────────────────────────────
 

@@ -17,7 +17,7 @@ import Analytics from "./components/Analytics/Analytics";
 import ErrorBoundary from "./components/ErrorBoundary/ErrorBoundary";
 import CustomOrder from "./components/CustomOrder/CustomOrder";
 import Production from "./components/Production/Production";
-import { onDbError, onDbRecovered, onPrintedRootUnreachable, onPrintedRootReachable } from "./services/systemService";
+import { onDbError, onDbRecovered, onPrintedRootUnreachable, onPrintedRootReachable, onPowerPaused } from "./services/systemService";
 import { isFeatureEnabled, isViewEnabled } from "./utils/featureVisibility";
 import { isProfileUnconfigured } from "./utils/shopProfileData";
 import { reloadResultNotice } from "./utils/shopProfileView";
@@ -48,6 +48,8 @@ const App = () => {
   const shopProfileStatus = useStore((state) => state.shopProfileStatus);
   const dbDegraded = useStore((state) => state.dbDegraded);
   const setDbDegraded = useStore((state) => state.setDbDegraded);
+  const pollingPaused = useStore((state) => state.pollingPaused);
+  const setPollingPaused = useStore((state) => state.setPollingPaused);
   const checkDbDegraded = useStore((state) => state.checkDbDegraded);
   const printedRootUnreachable = useStore((state) => state.printedRootUnreachable);
   const setPrintedRootUnreachable = useStore((state) => state.setPrintedRootUnreachable);
@@ -149,11 +151,13 @@ const App = () => {
   // own isFeatureEnabled("ripErrors", shopProfile) at its call site. The OverviewPanel pill
   // is the precedent for that, not an exception to it.
   useEffect(() => {
-    if (!ripErrorsEnabled) return;
+    // ETAP 4 (4-power): no poll while the station sleeps or is locked; the first load after
+    // the pause runs at once, like at startup.
+    if (!ripErrorsEnabled || pollingPaused) return;
     loadRipErrors();
     const id = setInterval(loadRipErrors, RIP_ERROR_POLL_INTERVAL);
     return () => clearInterval(id);
-  }, [ripErrorsEnabled, loadRipErrors]);
+  }, [ripErrorsEnabled, pollingPaused, loadRipErrors]);
 
   // Global 30s poll — keeps the print-view OverviewPanel counts fresh session-wide,
   // independent of activeView. Production stages fetch incrementally via loadStagesAfter
@@ -162,6 +166,7 @@ const App = () => {
   // startup failure and picks up mid-session rollbacks. Initial full loads fire in the
   // startup effect above.
   useEffect(() => {
+    if (pollingPaused) return; // ETAP 4 (4-power); the watermark catches up on the next tick
     const id = setInterval(async () => {
       loadOpenReprints();
       if (lastStagePollAt.current) {
@@ -171,14 +176,18 @@ const App = () => {
       }
     }, RIP_ERROR_POLL_INTERVAL);
     return () => clearInterval(id);
-  }, [loadStagesAfter, loadOpenReprints]);
+  }, [pollingPaused, loadStagesAfter, loadOpenReprints]);
 
   // ETAP 4 (4-inbox): the light look at the inbox every 30 s, session-wide (the NavBar counter
   // works from any view). Names only - it tells, it never refreshes the list (store.checkInbox).
   useEffect(() => {
+    if (pollingPaused) return; // ETAP 4 (4-power)
     const id = setInterval(() => checkInbox(), INBOX_WATCH_INTERVAL);
     return () => clearInterval(id);
-  }, [checkInbox]);
+  }, [pollingPaused, checkInbox]);
+
+  // ETAP 4 (4-power): main says when the station sleeps / locks and when it is back.
+  useEffect(() => onPowerPaused((payload) => setPollingPaused(payload?.paused === true)), [setPollingPaused]);
 
   // DB degraded banner: main emits db:error/db:recovered only on state transition.
   useEffect(() => {

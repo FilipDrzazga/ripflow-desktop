@@ -147,6 +147,11 @@ export const useStore = create(
     // banner. Separate from dbDegraded on purpose: a dead NAS raises both, a PRINTED
     // folder that is merely gone raises only this one, and the second case is invisible
     // in every other signal the app has.
+    // ETAP 4 (4-power): set by main's power:paused (sleep, lock screen, 10 s grace after a
+    // wake). Every periodic poll's effect depends on it and starts no interval while true.
+    pollingPaused: false,
+    setPollingPaused: (val) => set({ pollingPaused: val === true }),
+
     printedRootUnreachable: false,
     setPrintedRootUnreachable: (val) => set({ printedRootUnreachable: val }),
     // Snapshot twin of checkDbDegraded: only sets true, because a root unreachable at boot

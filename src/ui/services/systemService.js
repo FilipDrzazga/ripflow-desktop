@@ -27,6 +27,8 @@ export const getDbDegraded = () =>
   withTimeout(window.api.getDbDegraded(), 30_000, "getDbDegraded");
 // ETAP 4 (4-diag): no timeout - the operator drives the save dialog.
 export const exportDiagnostics = () => window.api.exportDiagnostics();
+// ETAP 4 (4-power): event subscription, returns an unsubscribe fn; payload { paused }.
+export const onPowerPaused = (cb) => window.api.onPowerPaused(cb);
 // ETAP 4 (4-wizard): 30s - a readdir on a dead share waits for the SMB timeout.
 export const checkSetupFolders = () =>
   withTimeout(window.api.checkSetupFolders(), 30_000, "setup:checkFolders");
