@@ -1,5 +1,53 @@
 [
   {
+    "version": "1.0.28",
+    "date": "2026-09-29",
+    "changes": [
+      {
+        "text": "New files in the inbox show up without a refresh: a \"3 new files - click to refresh\" pill floats at the top of the Print list and the Print icon shows a counter. Files that left the inbox are marked \"Gone from the inbox\" on the list. RipFlow looks every 30 seconds and never refreshes the list on its own",
+        "clients": [
+          "all"
+        ]
+      },
+      {
+        "text": "Settings > Database > Export diagnostics saves one zip for support: versions, this computer's settings, whether each shop folder can be read, the last 500 log lines and the shop profile. Nothing is sent anywhere - send the file only to your support, because the logs hold file names",
+        "clients": [
+          "all"
+        ]
+      },
+      {
+        "text": "A new computer is set up by a short wizard: the folder paths, the shop profile (imported once per shop) and a check that every shop folder can be read, then a restart",
+        "clients": [
+          "all"
+        ]
+      },
+      {
+        "text": "While the computer sleeps or sits at the lock screen RipFlow stops checking the network, and waits 10 seconds after waking before it starts again - no more \"Database unavailable\" just because the computer woke up",
+        "clients": [
+          "all"
+        ]
+      },
+      {
+        "text": "The names of the material classes and the product sizes now come from the shop profile everywhere: Fabrics, the Inbox overview card, the print-type filter and custom orders. A fabric can no longer be saved without a material class",
+        "clients": [
+          "all"
+        ]
+      },
+      {
+        "text": "A file whose product size the shop profile does not give is marked invalid instead of printed at a guessed size. If the shop profile cannot be read (network down), fixed-size files such as FQ, Sample or Tea Towel are marked invalid until it can",
+        "clients": [
+          "all"
+        ]
+      },
+      {
+        "text": "The first computer to start this version updates the shop profile once (a copy of the old one is kept) and clears four unused old tables out of the database",
+        "clients": [
+          "all"
+        ]
+      }
+    ]
+  },
+  {
     "version": "1.0.27",
     "date": "2026-09-28",
     "changes": [
