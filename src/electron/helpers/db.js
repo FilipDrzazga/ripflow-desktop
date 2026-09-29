@@ -111,6 +111,32 @@ const ensureFabricAliasColumn = () => {
   }
 };
 
+// ETAP 4 (4-drop): tables nothing in this build owns any more, dropped at every start (IF EXISTS,
+// so a second start is a no-op).
+//   counters, custom_clients, custom_order_files - orphans of ONE development run of the abandoned
+//     feature/custom-orders-unification branch against the shared DB; never read or written by main
+//   fabric_globals - the class numbers' old home; they live in profile.materialClasses since 2G and
+//     the last writer went in 1.0.26
+// Measured on Alex's DB first (2026-09-28: 1 / 1 / 11 / 6 rows, profile row v3) and exported to
+// JSON next to a copy of the file (chat/artefakty/4-drop). Dropped only once every station ran
+// 1.0.27 (FILIP 2026-09-29): an older build would recreate an empty fabric_globals - harmless.
+// With the table gone, getFabricGlobalsRaw answers null, so a v1/v2 profile row (none exists -
+// the live row is v3+) stays "blocked" by the v2 -> v3 step instead of migrating (S2 2026-09-28).
+// Each DROP on its own: one that fails (a locked share) is logged and the start goes on - the
+// ensureFabricAliasColumn pattern; the next start tries again.
+export const RETIRED_TABLES = Object.freeze(["counters", "custom_clients", "custom_order_files", "fabric_globals"]);
+
+const dropRetiredTables = () => {
+  if (!db) return;
+  for (const table of RETIRED_TABLES) {
+    try {
+      db.exec(`DROP TABLE IF EXISTS ${table}`);
+    } catch (err) {
+      console.error(`[db] dropping retired table ${table} failed:`, err);
+    }
+  }
+};
+
 // Whether initDb left a handle. reloadShopData (ETAP 4, 4-retry) reopens the database only when
 // this is false - a station whose NAS was down at startup - and never replaces a live handle.
 export const isDbOpen = () => db !== null;
@@ -259,16 +285,7 @@ export const initDb = () => {
       )
     `);
 
-    // ── fabric_globals ───────────────────────────────────────────────────────
-    db.exec(`
-      CREATE TABLE IF NOT EXISTS fabric_globals (
-        key   TEXT PRIMARY KEY,
-        value REAL NOT NULL
-      )
-    `);
-    // Not seeded any more (1.0.26, the cleanup after the 2G pilot): nothing reads the table but the
-    // profile migration v2 -> v3 (getFabricGlobalsRaw), and only for a row written before v3. A
-    // fresh install seeds its profile at v3. The table itself is dropped in ETAP 4.
+    // fabric_globals is no longer created - it is dropped below (dropRetiredTables, ETAP 4 4-drop).
 
     // ── fabrics ──────────────────────────────────────────────────────────────
     db.exec(`
@@ -424,6 +441,7 @@ export const initDb = () => {
       "INSERT OR IGNORE INTO rip_errors (id, job_guid, file_id, batch_id, nesting_group, failed_node, error_message, document_id, detected_at, created_at, resolved_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
     );
     stmtGetOpenRipErrors = db.prepare("SELECT * FROM rip_errors WHERE resolved_at IS NULL ORDER BY detected_at DESC");
+    dropRetiredTables();
     // A database that opened: clear a degraded state left by a start without one (ETAP 4,
     // 4-retry follow-up) - "Database unavailable" would otherwise stay up after a successful
     // "Reload shop data" until the first write. At a normal startup nothing is degraded yet and
@@ -776,6 +794,8 @@ export const migrateReasonDefinitions = (defs) => {
 // pilot's dual write, the seed and getFabricGlobals / setFabricGlobals): the profile migration
 // v2 -> v3 (ETAP 2g-3a), which moves THIS shop's numbers into the profile and must never fill
 // in a default - a default written into the shared profile would be another shop's numbers.
+// Since ETAP 4 (4-drop) initDb drops the table, so on an opened database the SELECT throws and
+// this answers null: the v2 -> v3 step is "blocked" (see dropRetiredTables).
 export const getFabricGlobalsRaw = () => {
   if (!db) return null;
   try {
@@ -783,7 +803,9 @@ export const getFabricGlobalsRaw = () => {
     for (const row of db.prepare("SELECT key, value FROM fabric_globals").all()) result[row.key] = row.value;
     return result;
   } catch (err) {
-    console.error("[db] getFabricGlobalsRaw failed:", err);
+    // The table dropped by dropRetiredTables is the normal state since 4-drop - the migration asks
+    // on every start, so only a DIFFERENT failure is worth an error line.
+    if (!/no such table/i.test(err?.message ?? "")) console.error("[db] getFabricGlobalsRaw failed:", err);
     return null;
   }
 };

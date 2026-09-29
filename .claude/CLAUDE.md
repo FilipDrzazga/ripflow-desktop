@@ -81,7 +81,7 @@ INBOX → PARSE FILENAME → UI → SELECT FILES+PRINTER → CREATE BATCH+XML �
 **ripflow.db** (shared across all PCs via network `storagePath`):
 
 - Operational: `logs`, `held_files`, `rollback_reasons`, `custom_order_history`
-- Shared config: `reason_definitions`, `fabrics`, `shop_profile` (`fabric_globals` is a leftover since 1.0.26 - read only by the profile migration, dropped in ETAP 4)
+- Shared config: `reason_definitions`, `fabrics`, `shop_profile`
 
 ```
 storagePath:     ""  (default since 2h-3; Alex's stations: \\FAS-LON-SRV01\... or O:\SPPrintReadyArtwork)
