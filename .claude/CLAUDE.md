@@ -117,6 +117,7 @@ Derived paths (hotfolders = printers[].hotfolder in the shop profile; Alex's val
 The state shape is in the file. What it does not say:
 
 - `selectedIds` enforces the material lock: Cottons and Polyesters cannot be mixed in one selection.
+- `selectedIds` never holds a HELD file. Held files picked for a bulk Unhold live in `heldSelectedIds`, a Set of their own (`utils/heldSelection.js`); only one of the two is non-empty at a time. Never merge them: Rip, the metres counter and overrides all read `selectedIds` as "printable".
 - `fabricConfig` and `shopProfile` are `null` until loaded — a sentinel, never an empty object.
 - `ripErrors` holds ONE row per file, the most recent (the DB may hold several open errors per file). It is FILLED only by `loadRipErrors`, called only from the effect in `App.jsx` gated on `isFeatureEnabled("ripErrors", shopProfile)`; the rollback paths only remove from it — an empty map therefore means "feature off", "profile unreadable" OR "no errors", so any UI that renders at zero needs its own feature check.
 - `resolveRipError(fileId)` writes to the DB FIRST and drops the badge only on `success`; it never notifies (the popover does).
