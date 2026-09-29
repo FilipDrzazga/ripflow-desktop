@@ -77,7 +77,12 @@ Rules:
      change, because the value the test checks stays the same:
      1. A version literal the step itself bumps - e.g. `schemaVersion` 3 -> 4 when the step
         raises `PROFILE_SCHEMA_VERSION`. Only that literal changes; the rest of the
-        assertion, and every other expected value, stays byte for byte.
+        assertion, and every other expected value, stays byte for byte. ONLY a literal that
+        means the build's CURRENT version (an expected result, `PROFILE_SCHEMA_VERSION` in an
+        assertion) is covered. The INPUT version of a row or file in a test - the old shape the
+        test migrates or refuses, e.g. `{ schemaVersion: 3 }` in a v3 -> v4 migration test - is
+        a fixture, not this class: moving it to 4 would silently stop testing the v3 -> v4
+        step. Ask before touching it (S2, 2026-09-29).
      2. A key added to a `vi.mock` factory for a NEW export that the module under test now
         imports - an inert stub (`() => null`, `() => {}`, a constant). Existing keys,
         their bodies and the mocked module path stay as they are.
