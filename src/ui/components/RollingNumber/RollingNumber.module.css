@@ -1,0 +1,27 @@
+.root {
+  display: inline-flex;
+  align-items: flex-start;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  transform-origin: center center;
+  will-change: transform;
+}
+
+.column {
+  display: inline-block;
+  height: 1em;
+  overflow: hidden;
+}
+
+.strip {
+  display: flex;
+  flex-direction: column;
+}
+
+.digit,
+.symbol {
+  display: block;
+  height: 1em;
+  line-height: 1;
+  text-align: center;
+}

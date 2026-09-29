@@ -8,6 +8,8 @@ import { runMutation } from "../../utils/runMutation";
 import style from "./DataPrintSelection.module.css";
 import { getPrinters, defaultPrinterFor } from "../../utils/shopProfileData";
 import { PROFILE_STATUS } from "../../utils/profileStatus";
+import { selectionPrintLength } from "../../utils/selectionPrintLength";
+import RollingNumber from "../RollingNumber/RollingNumber";
 
 gsap.registerPlugin(useGSAP);
 
@@ -34,6 +36,13 @@ const DataPrintSelection = () => {
   const printers = useMemo(() => getPrinters(shopProfile), [shopProfile]);
 
   const isSelectionMode = selectedIds.size > 0;
+
+  // The estimated print length of the selection - the same number the batch label prints
+  // after Rip (overrides and reprints included; see selectionPrintLength).
+  const printLength = useMemo(
+    () => selectionPrintLength(files, selectedIds, selectedOverrides, fabricConfig),
+    [files, selectedIds, selectedOverrides, fabricConfig],
+  );
 
   const materialType = useMemo(() => {
     const types = new Set();
@@ -239,6 +248,20 @@ const DataPrintSelection = () => {
     <div className={`${style.selection_container} ${isSelectionMode ? style.active : ""}`} ref={contentRef}>
       <div className={style.selection_items}>
         {selectedIds.size > 1 ? `${selectedIds.size} items selected` : `${selectedIds.size} item selected`}
+      </div>
+      <div
+        className={style.selection_length}
+        title="Estimated print length of the selection - the same estimate the batch label prints"
+      >
+        <span className={style.selection_length_value}>
+          <RollingNumber value={printLength.meters} decimals={2} />
+          <span className={style.selection_length_unit}>m</span>
+        </span>
+        {printLength.unmeasured > 0 && (
+          <span className={style.selection_length_note}>
+            {printLength.unmeasured === 1 ? "1 file not measured" : `${printLength.unmeasured} files not measured`}
+          </span>
+        )}
       </div>
       <div className={style.separator}></div>
       {blockedReason && (

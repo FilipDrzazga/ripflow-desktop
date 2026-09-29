@@ -170,3 +170,34 @@
   font-size: 12px;
   line-height: 1.35;
 }
+
+/* Estimated print length of the selection, right next to the item count. The number rolls
+ * and swells (RollingNumber); the box keeps a min-width so the bar does not jump as it does. */
+.selection_length {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 96px;
+  margin-right: 20px;
+  padding: 6px 12px;
+  border-radius: 10px;
+  background-color: var(--bg-grey);
+}
+.selection_length_value {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  font-size: 20px;
+  font-weight: 700;
+}
+.selection_length_unit {
+  font-size: 13px;
+  font-weight: 600;
+  opacity: 0.7;
+}
+.selection_length_note {
+  margin-top: 2px;
+  font-size: 11px;
+  color: #7C4A03;
+}
