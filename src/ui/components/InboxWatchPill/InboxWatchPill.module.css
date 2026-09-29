@@ -1,14 +1,29 @@
-/* ETAP 4 (4-inbox): "N new files - click to refresh" at the top of the Print list */
-.wrap {
+/* ETAP 4 (4-inbox): "N new files - click to refresh", floating over the top of the Print list.
+   The anchor has no height, so the pill never moves the list (FILIP 2026-09-29); sticky keeps it
+   in sight while the list scrolls. GSAP owns opacity / visibility / the slide (InboxWatchPill.jsx). */
+.anchor {
+  position: sticky;
+  top: 8px;
+  height: 0;
+  z-index: 20;
+}
+
+.float {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 4px;
   display: flex;
   justify-content: center;
-  margin: -4px 0 10px;
-  position: sticky;
-  top: 0;
-  z-index: 5;
+  pointer-events: none;
+  /* hidden until GSAP fades it in */
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-8px);
 }
 
 .pill {
+  pointer-events: auto;
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -21,7 +36,6 @@
   font-weight: 600;
   box-shadow: 0 4px 14px rgba(46, 127, 214, 0.35);
   cursor: pointer;
-  animation: pill-in 0.25s ease-out;
 }
 
 .pill:hover {
@@ -31,17 +45,6 @@
 .pill_error {
   background-color: var(--bg-grey);
   color: var(--text-secondary);
-  box-shadow: none;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
   cursor: default;
-}
-
-@keyframes pill-in {
-  from {
-    opacity: 0;
-    transform: translateY(-6px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
 }
