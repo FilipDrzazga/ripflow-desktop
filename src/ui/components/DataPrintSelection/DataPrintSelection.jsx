@@ -13,6 +13,7 @@ import RollingNumber from "../RollingNumber/RollingNumber";
 import { runBulkUnhold } from "../../utils/bulkUnhold";
 import { visibleHeldIds } from "../../utils/heldSelection";
 import { sharedPreferredPrinter } from "../../utils/preferredPrinter";
+import { nextSelectedPrinter } from "../../utils/printerSelection";
 
 gsap.registerPlugin(useGSAP);
 
@@ -116,11 +117,17 @@ const DataPrintSelection = () => {
   }, [files, selectedIds, fabricConfig, printers, materialType]);
 
   // Pre-select the preferred printer, else the only printer of the selected class; several (or
-  // none) = operator chooses. Re-runs only when one of these changes, so a printer the operator
-  // picked by hand stays picked while more files of the same preference are added.
+  // none) = operator chooses. A printer picked by hand is never overwritten while the class stays
+  // the same (utils/printerSelection.js); lastAutoRef remembers the bar's own previous pick.
+  const autoPrinter = preferredPrinter ?? defaultPrinterFor(printers, materialType);
+  const lastAutoRef = useRef({ auto: null, materialType: null });
   useEffect(() => {
-    setSelectedPrinter(preferredPrinter ?? defaultPrinterFor(printers, materialType));
-  }, [materialType, printers, preferredPrinter]);
+    const prev = lastAutoRef.current;
+    lastAutoRef.current = { auto: autoPrinter, materialType };
+    setSelectedPrinter((current) =>
+      nextSelectedPrinter({ current, lastAuto: prev.auto, auto: autoPrinter, classChanged: prev.materialType !== materialType }),
+    );
+  }, [autoPrinter, materialType]);
 
   useGSAP(
     () => {
