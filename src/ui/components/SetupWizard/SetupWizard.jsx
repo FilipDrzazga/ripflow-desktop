@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
-import { LuCheck, LuFolderOpen, LuRefreshCw, LuRotateCcw, LuTriangleAlert, LuUpload } from "react-icons/lu";
+import { LuCheck, LuCircleCheck, LuCircleX, LuFolderOpen, LuRefreshCw, LuRotateCcw, LuTriangleAlert, LuUpload } from "react-icons/lu";
 import { useStore } from "../../store/useStore";
 import { getSettings, setSettings, selectFolder } from "../../services/settingsService";
 import { checkSetupFolders, relaunchApp } from "../../services/systemService";
@@ -23,7 +23,7 @@ import styles from "./SetupWizard.module.css";
 // First-run wizard (ETAP 4, 4-wizard) - opened by App.jsx at startup when the storage or XML path is
 // blank, in place of the old "Paths not set" notice. What each step says is in utils/setupWizard.js.
 // "Set up later" closes it and leaves the operator in Settings, as before the wizard.
-const SetupWizard = ({ onClose }) => {
+const SetupWizard = ({ onClose, onPathsSaved }) => {
   const [step, setStep] = useState(0);
   const cardRef = useRef(null);
 
@@ -54,7 +54,7 @@ const SetupWizard = ({ onClose }) => {
           </ol>
         </header>
         <div className={styles.body}>
-          {stepKey === "paths" && <PathsStep onDone={() => setStep(1)} />}
+          {stepKey === "paths" && <PathsStep onSaved={onPathsSaved} onDone={() => setStep(1)} />}
           {stepKey === "profile" && <ProfileStep onBack={() => setStep(0)} onDone={() => setStep(2)} />}
           {stepKey === "folders" && <FoldersStep onBack={() => setStep(1)} />}
         </div>
@@ -71,7 +71,7 @@ const SetupWizard = ({ onClose }) => {
 
 // Step 1 - the two required paths, saved like Settings > Paths (full settings first, rule 4); then the
 // database is opened on the new storage path through "Reload shop data" (no restart needed for that).
-const PathsStep = ({ onDone }) => {
+const PathsStep = ({ onSaved, onDone }) => {
   const reloadShopData = useStore((s) => s.reloadShopData);
   const [allSettings, setAllSettings] = useState(null);
   const [storagePath, setStoragePath] = useState("");
@@ -82,7 +82,12 @@ const PathsStep = ({ onDone }) => {
   useEffect(() => {
     getSettings()
       .then((res) => {
-        if (!res?.success) return;
+        // Without the settings the save cannot keep the other fields (rule 4) - say so, never
+        // leave a silently disabled button.
+        if (!res?.success) {
+          setError(`${res?.error || "Could not read the settings."} Close the wizard and restart RipFlow.`);
+          return;
+        }
         setAllSettings(res.settings);
         setStoragePath(res.settings.storagePath ?? "");
         setXmlPath(res.settings.xmlPath ?? "");
@@ -104,6 +109,7 @@ const PathsStep = ({ onDone }) => {
         setError(res?.error || "Could not save the paths.");
         return;
       }
+      onSaved?.();
       const reload = await reloadShopData();
       if (!reload?.success || reload.dbOpen === false) notify(reloadResultNotice(reload));
       onDone();
@@ -290,13 +296,16 @@ const FoldersStep = ({ onBack }) => {
       {rows && (
         <ul className={styles.folders}>
           {rows.map((r) => (
+            // FILIP 2026-09-29 (ODP 41): the state is an icon; the cause is its tooltip, and its
+            // aria-label for a screen reader / keyboard focus (tabIndex) - never mouse-only.
             <li key={`${r.label}-${r.path}`} className={`${styles.folder} ${r.ok ? "" : styles.folder_bad}`}>
-              <span className={styles.folder_icon}>{r.ok ? <LuCheck size={14} /> : <LuTriangleAlert size={14} />}</span>
               <span className={styles.folder_label}>{r.label}</span>
               <span className={styles.mono} title={r.path}>
                 {r.path}
               </span>
-              <span className={styles.folder_msg}>{r.message}</span>
+              <span className={styles.folder_icon} title={r.message} aria-label={r.message} role="img" tabIndex={0}>
+                {r.ok ? <LuCircleCheck size={20} /> : <LuCircleX size={20} />}
+              </span>
             </li>
           ))}
         </ul>

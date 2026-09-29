@@ -61,6 +61,10 @@ const App = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [activeView, setActiveView] = useState("print");
   const [showSetup, setShowSetup] = useState(false);
+  // Bumped when the wizard saves the paths: Settings (open behind it) read the settings once
+  // on mount, so without a remount its views would keep the old, blank paths and their Save
+  // would answer "Both paths are required" after "Set up later".
+  const [settingsKey, setSettingsKey] = useState(0);
   // A profile that arrives late (or one that turns a feature off) can pull the view the
   // operator is standing on out from under them — send them back to "print" instead of
   // leaving a blank main area. Written during render, not in an effect: React re-runs
@@ -297,12 +301,14 @@ const App = () => {
             )}
             {activeView === "customOrder" && isViewEnabled("customOrder", shopProfile) && <CustomOrder />}
             {activeView === "logs" && <SessionLogs />}
-            {activeView === "settings" && <Settings />}
+            {activeView === "settings" && <Settings key={settingsKey} />}
           </main>
           <DataPrintSelection />
         </div>
       )}
-      {showSetup && <SetupWizard onClose={() => setShowSetup(false)} />}
+      {showSetup && (
+        <SetupWizard onClose={() => setShowSetup(false)} onPathsSaved={() => setSettingsKey((k) => k + 1)} />
+      )}
     </div>
   );
 };
