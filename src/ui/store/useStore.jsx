@@ -31,6 +31,7 @@ const fabricConfigFor = (state, profile) =>
 import { getShopProfile as getShopProfileApi, reloadShopData as reloadShopDataApi } from "../services/profileService";
 import { PROFILE_STATUS, resolveProfileResult } from "../utils/profileStatus";
 import { latestRipErrorPerFile } from "../utils/ripErrorsByFile";
+import { isToastHiddenByWizard } from "../utils/setupWizard";
 import { getStagesByBatch as getStagesByBatchApi, getAllStages as getAllStagesApi, getStagesAfter as getStagesAfterApi, getAllStageHistory as getAllStageHistoryApi, clearAllProductionStages as clearAllProductionStagesApi, getOpenReprints as getOpenReprintsApi } from "../services/productionService";
 import { scanRipErrors as scanRipErrorsApi, resolveRipError as resolveRipErrorApi } from "../services/ripErrorService";
 
@@ -142,6 +143,11 @@ export const useStore = create(
         if (res?.degraded) set({ dbDegraded: true });
       } catch (err) { console.error("[store] checkDbDegraded failed:", err); }
     },
+
+    // ETAP 4 (4-wizard-c): true while the first-run wizard is open (App.jsx) - refreshFiles
+    // then drops its "Paths not set" toast (isToastHiddenByWizard); the log entry stays.
+    setupWizardOpen: false,
+    setSetupWizardOpen: (val) => set({ setupWizardOpen: val === true }),
 
     // ETAP 4 (4-power): set by main's power:paused (sleep, lock screen, 10 s grace after a
     // wake). Every periodic poll's effect depends on it and starts no interval while true.
@@ -743,12 +749,14 @@ export const useStore = create(
         }
 
         const firstError = res.errors?.[0];
-        get().setAlert({
-          id: crypto.randomUUID(),
-          type: firstError?.type || "Error",
-          title: firstError?.title || errorTitle,
-          message: firstError?.message || errorMessage,
-        });
+        if (!isToastHiddenByWizard(firstError, get().setupWizardOpen)) {
+          get().setAlert({
+            id: crypto.randomUUID(),
+            type: firstError?.type || "Error",
+            title: firstError?.title || errorTitle,
+            message: firstError?.message || errorMessage,
+          });
+        }
         get().addLog({
           id: crypto.randomUUID(),
           timestamp: new Date().toISOString(),
@@ -761,12 +769,14 @@ export const useStore = create(
 
         return res;
       } catch (err) {
-        get().setAlert({
-          id: crypto.randomUUID(),
-          type: err?.type || "Error",
-          title: err?.title || errorTitle,
-          message: err?.message || errorMessage,
-        });
+        if (!isToastHiddenByWizard(err, get().setupWizardOpen)) {
+          get().setAlert({
+            id: crypto.randomUUID(),
+            type: err?.type || "Error",
+            title: err?.title || errorTitle,
+            message: err?.message || errorMessage,
+          });
+        }
         get().addLog({
           id: crypto.randomUUID(),
           timestamp: new Date().toISOString(),

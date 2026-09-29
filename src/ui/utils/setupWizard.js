@@ -14,6 +14,12 @@
 import { PROFILE_STATUS } from "./profileStatus";
 import { isProfileUnconfigured } from "./shopProfileData";
 
+// 4-wizard-c (S2 2026-09-29): the startup inbox scan fails with ERR_PATHS_NOT_SET on a first run
+// and its toast says "Set them in Settings, then restart" right over the wizard that is doing
+// exactly that. Only THAT toast is dropped, and only while the wizard is open - every other scan
+// error still shows; the log entry is written either way.
+export const isToastHiddenByWizard = (error, wizardOpen) => wizardOpen === true && error?.code === "ERR_PATHS_NOT_SET";
+
 export const WIZARD_STEPS = Object.freeze([
   { key: "paths", label: "Paths" },
   { key: "profile", label: "Shop profile" },

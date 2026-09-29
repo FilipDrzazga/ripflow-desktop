@@ -60,7 +60,10 @@ const App = () => {
   const [shopDataReloading, setShopDataReloading] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [activeView, setActiveView] = useState("print");
-  const [showSetup, setShowSetup] = useState(false);
+  // In the store, not local state (4-wizard-c): refreshFiles reads it to drop its own
+  // "Paths not set" toast while the wizard is open.
+  const showSetup = useStore((state) => state.setupWizardOpen);
+  const setShowSetup = useStore((state) => state.setSetupWizardOpen);
   // Bumped when the wizard saves the paths: Settings (open behind it) read the settings once
   // on mount, so without a remount its views would keep the old, blank paths and their Save
   // would answer "Both paths are required" after "Set up later".
@@ -102,7 +105,9 @@ const App = () => {
       // call (getRootPath.js) and opens no database. Since ETAP 4 (4-wizard) the first-run
       // wizard says why and walks through paths -> profile -> folders; Settings opens behind
       // it, so "Set up later" lands where the paths are set (src/shared/requiredPaths.js).
-      getSettings()
+      // Awaited before the inbox scan below (4-wizard-c), so the wizard flag is set before
+      // the scan's "Paths not set" error arrives; the loads in between still run in parallel.
+      const pathsCheck = getSettings()
         .then((res) => {
           if (res?.success && missingRequiredPaths(res.settings).length > 0) {
             setShowSetup(true);
@@ -127,6 +132,7 @@ const App = () => {
       lastStagePollAt.current = new Date().toISOString();
       checkDbDegraded();
       checkPrintedRoot();
+      await pathsCheck;
       await loadHeldFiles();
       await refreshFiles({
         successTitle: "Folders loaded",
@@ -137,7 +143,7 @@ const App = () => {
     fetchFolders();
 
     return () => clearTimeout(safetyTimerRef.current);
-  }, [refreshFiles, refreshBatchDays, loadLogsFromDb, loadHeldFiles, loadReasonDefinitions, loadFabricConfig, loadShopProfile, loadAllStages, loadAllStageHistory, loadOpenReprints, finishStartup, checkDbDegraded, checkPrintedRoot]);
+  }, [refreshFiles, refreshBatchDays, loadLogsFromDb, loadHeldFiles, loadReasonDefinitions, loadFabricConfig, loadShopProfile, loadAllStages, loadAllStageHistory, loadOpenReprints, finishStartup, checkDbDegraded, checkPrintedRoot, setShowSetup]);
 
   // RIP-error scan + poll, gated on features.ripErrors. It sits in its own effect keyed on
   // the resolved flag rather than in the startup sequence above: the profile answers after
