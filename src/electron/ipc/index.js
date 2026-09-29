@@ -22,7 +22,7 @@ import { initDb, insertLog, getAllLogs, clearAllLogs, holdFile, unholdFile, getH
 import { collectDiagnostics, diagnosticsFileName, diagnosticTargets, checkAccess } from "../helpers/diagnostics.js";
 import { buildZip } from "../helpers/zipWriter.js";
 import { loadFabricCache, invalidateFabricCache } from "../helpers/fabricCache.js";
-import { getProfile, getPrinterByCode } from "../helpers/shopProfile.js";
+import { getProfile, getPrinterByCode, getPrinters } from "../helpers/shopProfile.js";
 import { loadShopData, reloadShopData } from "../helpers/reloadShopData.js";
 import { fabricSaveError, fabricListError } from "../helpers/fabricInput.js";
 import { saveShopProfile } from "../helpers/saveShopProfile.js";
@@ -469,8 +469,9 @@ export async function registerIpcHandlers() {
   });
 
   ipcMain.handle("fabrics:save", (_event, { oldName, fabric }) => {
-    // name AND material class (helpers/fabricInput.js, 4-types-b)
-    const inputError = fabricSaveError(fabric);
+    // name AND material class (helpers/fabricInput.js, 4-types-b); a preferred printer must be a
+    // printer of the fabric's class in the shop profile
+    const inputError = fabricSaveError(fabric, getPrinters());
     if (inputError) return { success: false, error: inputError };
     const ok = saveFabric(oldName ?? fabric.name, fabric);
     invalidateFabricCache();
@@ -489,7 +490,7 @@ export async function registerIpcHandlers() {
   ipcMain.handle("fabrics:setAll", (_event, fabrics) => {
     // every row needs a name and a material class; the first bad row refuses the whole list
     // (helpers/fabricInput.js, 4-types-d)
-    const listError = fabricListError(fabrics);
+    const listError = fabricListError(fabrics, getPrinters());
     if (listError) return { success: false, error: listError };
     const ok = setAllFabrics(fabrics);
     invalidateFabricCache();

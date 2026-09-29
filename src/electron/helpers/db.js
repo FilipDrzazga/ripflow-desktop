@@ -6,6 +6,7 @@ import { getStorageRootPath } from "./getRootPath.js";
 import { DEFAULT_FABRICS } from "./defaultFabrics.js";
 import { DEFAULT_PROFILE } from "./defaultProfile.js";
 import { printerOfBatch } from "../../shared/batchFolderName.js";
+import { preferredPrinterToStore } from "./fabricInput.js";
 
 let db = null;
 let stmtInsert = null;
@@ -108,6 +109,25 @@ const ensureFabricAliasColumn = () => {
     }
   } catch (err) {
     console.error("[db] ensureFabricAliasColumn failed:", err);
+  }
+};
+
+// Idempotent, the alias pattern: the preferred printer of a fabric (a printers[].code of the shop
+// profile, or NULL). A suggestion only - the selection bar in Print pre-selects it, nothing routes
+// by it. A station on an older build writes fabrics without this column (INSERT OR REPLACE), which
+// clears the preference of the fabric it saves: roll out to every station before setting any.
+const ensureFabricPreferredPrinterColumn = () => {
+  if (!db) return;
+  try {
+    const has = db
+      .prepare("PRAGMA table_info(fabrics)")
+      .all()
+      .some((col) => col.name === "preferred_printer");
+    if (!has) {
+      db.exec("ALTER TABLE fabrics ADD COLUMN preferred_printer TEXT");
+    }
+  } catch (err) {
+    console.error("[db] ensureFabricPreferredPrinterColumn failed:", err);
   }
 };
 
@@ -297,11 +317,13 @@ export const initDb = () => {
         is_velvet  INTEGER NOT NULL DEFAULT 0,
         is_linen   INTEGER NOT NULL DEFAULT 0,
         is_blossom INTEGER NOT NULL DEFAULT 0,
-        alias      TEXT
+        alias      TEXT,
+        preferred_printer TEXT
       )
     `);
     // Backfill the alias column on existing DBs created before it was introduced.
     ensureFabricAliasColumn();
+    ensureFabricPreferredPrinterColumn();
     // Seed the default catalog on first run only — an existing catalog is the shop's own data,
     // so a fabric the operator deleted must not come back on the next startup.
     const fabricsCount = db.prepare("SELECT COUNT(*) AS c FROM fabrics").get().c;
@@ -819,7 +841,7 @@ export const getFabricGlobalsRaw = () => {
 export const getAllFabrics = () => {
   if (!db) return null;
   try {
-    return db.prepare("SELECT name, type, xml_width AS xmlWidth, roll_width AS rollWidth, is_velvet AS isVelvet, is_linen AS isLinen, is_blossom AS isBlossom, alias FROM fabrics ORDER BY type ASC, name ASC").all();
+    return db.prepare("SELECT name, type, xml_width AS xmlWidth, roll_width AS rollWidth, is_velvet AS isVelvet, is_linen AS isLinen, is_blossom AS isBlossom, alias, preferred_printer AS preferredPrinter FROM fabrics ORDER BY type ASC, name ASC").all();
   } catch (err) {
     console.error("[db] getAllFabrics failed:", err);
     return null;
@@ -831,12 +853,14 @@ export const saveFabric = (oldName, fabric) => {
   try {
     // delete (on rename) + insert run in one transaction — true only if all of it commits
     db.transaction(() => {
+      // read BEFORE the rename's delete: a save that does not send preferredPrinter keeps it
+      const existing = db.prepare("SELECT preferred_printer AS p FROM fabrics WHERE name = ?").get(oldName || fabric.name)?.p ?? null;
       if (oldName && oldName !== fabric.name) {
         db.prepare("DELETE FROM fabrics WHERE name = ?").run(oldName);
       }
       db.prepare(
-        "INSERT OR REPLACE INTO fabrics (name, type, xml_width, roll_width, is_velvet, is_linen, is_blossom, alias) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-      ).run(fabric.name, fabric.type, fabric.xmlWidth, fabric.rollWidth, fabric.isVelvet ? 1 : 0, fabric.isLinen ? 1 : 0, fabric.isBlossom ? 1 : 0, fabric.alias || null);
+        "INSERT OR REPLACE INTO fabrics (name, type, xml_width, roll_width, is_velvet, is_linen, is_blossom, alias, preferred_printer) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+      ).run(fabric.name, fabric.type, fabric.xmlWidth, fabric.rollWidth, fabric.isVelvet ? 1 : 0, fabric.isLinen ? 1 : 0, fabric.isBlossom ? 1 : 0, fabric.alias || null, preferredPrinterToStore(fabric.preferredPrinter, existing));
     })();
     return true;
   } catch (err) {
@@ -860,12 +884,14 @@ export const setAllFabrics = (fabrics) => {
   if (!db) return false;
   try {
     db.transaction(() => {
+      // by name, read before the DELETE: a row that does not send preferredPrinter keeps it
+      const existing = new Map(db.prepare("SELECT name, preferred_printer AS p FROM fabrics").all().map((r) => [r.name, r.p]));
       db.prepare("DELETE FROM fabrics").run();
       const stmt = db.prepare(
-        "INSERT INTO fabrics (name, type, xml_width, roll_width, is_velvet, is_linen, is_blossom, alias) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        "INSERT INTO fabrics (name, type, xml_width, roll_width, is_velvet, is_linen, is_blossom, alias, preferred_printer) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
       );
       for (const f of fabrics) {
-        stmt.run(f.name, f.type, f.xmlWidth, f.rollWidth, f.isVelvet ? 1 : 0, f.isLinen ? 1 : 0, f.isBlossom ? 1 : 0, f.alias || null);
+        stmt.run(f.name, f.type, f.xmlWidth, f.rollWidth, f.isVelvet ? 1 : 0, f.isLinen ? 1 : 0, f.isBlossom ? 1 : 0, f.alias || null, preferredPrinterToStore(f.preferredPrinter, existing.get(f.name)));
       }
     })();
     return true;
