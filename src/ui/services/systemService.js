@@ -25,6 +25,8 @@ export const onDbRecovered = (cb) => window.api.onDbRecovered(cb);
 // for a main process that profile:get gave up on after 5s.
 export const getDbDegraded = () =>
   withTimeout(window.api.getDbDegraded(), 30_000, "getDbDegraded");
+// ETAP 4 (4-diag): no timeout - the operator drives the save dialog.
+export const exportDiagnostics = () => window.api.exportDiagnostics();
 // PRINTED root reachability — same shape as the DB pair above: two event subscriptions
 // returning an unsubscribe fn, plus a snapshot for a root already unreachable at startup.
 export const onPrintedRootUnreachable = (cb) => window.api.onPrintedRootUnreachable(cb);

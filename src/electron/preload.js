@@ -107,6 +107,8 @@ const api = Object.freeze({
     return () => ipcRenderer.removeListener("db:recovered", handler);
   },
   getDbDegraded: () => ipcRenderer.invoke("db:get-degraded"),
+  // ETAP 4 (4-diag): main opens the save dialog and writes the zip; nothing comes back but the path.
+  exportDiagnostics: () => ipcRenderer.invoke("diagnostics:export"),
   onPrintedRootUnreachable: (callback) => {
     if (typeof callback !== "function") {
       throw new TypeError("PRINTED root callback must be a function.");

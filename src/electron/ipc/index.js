@@ -1,5 +1,6 @@
 import { app, ipcMain, dialog, BrowserWindow } from "electron";
 import fs from "fs";
+import os from "os";
 import path from "path";
 import { readFolders } from "./readFolders.js";
 import { peekInbox } from "./peekInbox.js";
@@ -17,7 +18,9 @@ import { getStorageRootPath } from "../helpers/getRootPath.js";
 import { assertStorageFilePath } from "../helpers/validateStoragePath.js";
 import { parsePrintFileName } from "../helpers/parseFileName.js";
 import { getSettings, setSettings, getRollbackDefinitions, clearRollbackDefinitions } from "../helpers/getSettings.js";
-import { initDb, insertLog, getAllLogs, clearAllLogs, holdFile, unholdFile, getHeldFiles, pruneOrphanHeldFiles, getRollbackReasonsByBatch, getRollbackReasonsByFile, getRollbackStats, getRollbackDetails, clearAllRollbackReasons, deleteRollbackReason, getLatestRollbackReasonsForFileIds, getReasonDefinitions, setReasonDefinitions as setReasonDefinitionsDb, migrateReasonDefinitions, getAllFabrics, saveFabric, deleteFabric as deleteFabricDb, setAllFabrics, backupDb, cleanupShippedStages, getDbDegraded } from "../helpers/db.js";
+import { initDb, insertLog, getAllLogs, clearAllLogs, holdFile, unholdFile, getHeldFiles, pruneOrphanHeldFiles, getRollbackReasonsByBatch, getRollbackReasonsByFile, getRollbackStats, getRollbackDetails, clearAllRollbackReasons, deleteRollbackReason, getLatestRollbackReasonsForFileIds, getReasonDefinitions, setReasonDefinitions as setReasonDefinitionsDb, migrateReasonDefinitions, getAllFabrics, saveFabric, deleteFabric as deleteFabricDb, setAllFabrics, backupDb, cleanupShippedStages, getDbDegraded, getShopProfileRaw, isDbOpen } from "../helpers/db.js";
+import { collectDiagnostics, diagnosticsFileName } from "../helpers/diagnostics.js";
+import { buildZip } from "../helpers/zipWriter.js";
 import { loadFabricCache, invalidateFabricCache } from "../helpers/fabricCache.js";
 import { getProfile, getPrinterByCode } from "../helpers/shopProfile.js";
 import { loadShopData, reloadShopData } from "../helpers/reloadShopData.js";
@@ -552,6 +555,41 @@ export async function registerIpcHandlers() {
   });
 
   ipcMain.handle("db:get-degraded", () => ({ degraded: getDbDegraded() }));
+
+  // ETAP 4 (4-diag): one zip for support - versions, settings (paths only), folder access, the last
+  // 500 logs, the stored profile. Saved where the operator chooses; nothing is sent anywhere.
+  ipcMain.handle("diagnostics:export", async (event) => {
+    try {
+      const settings = getSettings();
+      const now = new Date();
+      const win = BrowserWindow.fromWebContents(event.sender);
+      const choice = await dialog.showSaveDialog(win, {
+        defaultPath: diagnosticsFileName(settings.workstationName, now),
+        filters: [{ name: "Diagnostics", extensions: ["zip"] }],
+      });
+      if (choice.canceled || !choice.filePath) return { success: true, canceled: true };
+      let profileRaw = null;
+      try {
+        profileRaw = getShopProfileRaw();
+      } catch {
+        profileRaw = null; // no database - summary.json says so
+      }
+      const entries = await collectDiagnostics({
+        versions: { app: app.getVersion(), electron: process.versions.electron, node: process.versions.node, os: `${os.type()} ${os.release()}` },
+        settings,
+        logs: getAllLogs(),
+        profileRaw,
+        dbOpen: isDbOpen(),
+        dbDegraded: getDbDegraded(),
+        access: (p) => fs.promises.access(p, fs.constants.R_OK | fs.constants.W_OK),
+        now,
+      });
+      await fs.promises.writeFile(choice.filePath, buildZip(entries, { now }));
+      return { success: true, canceled: false, path: choice.filePath };
+    } catch (err) {
+      return { success: false, error: err?.message ?? String(err) };
+    }
+  });
 
   // Snapshot for the renderer, twin of db:get-degraded: a PRINTED root that was already
   // unreachable when the app started emits its transition before anyone is listening.
