@@ -29,6 +29,8 @@ import { PiPolygon } from "react-icons/pi";
 import { PRINT_TYPE_MAP } from "@/constants/printTypeMap";
 import style from "./DataList.module.css";
 import { runBulkUnhold } from "../../utils/bulkUnhold";
+import { getPrinters, getPrinterColor } from "../../utils/shopProfileData";
+import { sharedPreferredPrinter } from "../../utils/preferredPrinter";
 
 const formatFileSize = (bytes) => {
   if (bytes == null) return null;
@@ -105,6 +107,9 @@ const DataList = () => {
   }, [filteredFiles, selectedIds]);
 
   const hasSelection = selectedIds.size > 0;
+  // The preferred printer of each group's fabric (Settings > Fabrics) - a pill in the header,
+  // shown only when every file of the group shares one valid code (utils/preferredPrinter.js).
+  const printers = useMemo(() => getPrinters(shopProfile), [shopProfile]);
   // Held files picked for a bulk Unhold: one selection at a time (utils/heldSelection.js).
   const hasHeldSelection = heldSelectedIds.size > 0;
   const hasItems = filteredFiles.some((group) => group.items.length > 0);
@@ -275,6 +280,20 @@ const DataList = () => {
               />
               {group.printGroup}
               <div className={style.estimated_length}>{estimatePrintLength(group.items, fabricConfig).fixedTotalLengthM} m</div>
+              {(() => {
+                const preferred = sharedPreferredPrinter(group.items, fabricConfig?.fabrics, printers);
+                if (!preferred) return null;
+                const colors = getPrinterColor(shopProfile, preferred);
+                return (
+                  <span
+                    className={style.preferred_printer}
+                    style={colors ? { backgroundColor: colors.bg, color: colors.color } : undefined}
+                    title={`Preferred printer for this fabric: ${preferred} (Settings > Fabrics)`}
+                  >
+                    {preferred}
+                  </span>
+                );
+              })()}
             </label>
             <ul className={style.list_items}>
               {group.items.map((item) => {

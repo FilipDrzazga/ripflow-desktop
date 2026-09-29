@@ -12,6 +12,7 @@ import { selectionPrintLength } from "../../utils/selectionPrintLength";
 import RollingNumber from "../RollingNumber/RollingNumber";
 import { runBulkUnhold } from "../../utils/bulkUnhold";
 import { visibleHeldIds } from "../../utils/heldSelection";
+import { sharedPreferredPrinter } from "../../utils/preferredPrinter";
 
 gsap.registerPlugin(useGSAP);
 
@@ -105,11 +106,21 @@ const DataPrintSelection = () => {
     return `Not in the fabric catalogue: ${unknown.join(", ")}. Add it in Settings > Fabrics to choose a printer.`;
   }, [materialType, fabricConfig, filteredFiles, selectedIds, shopProfile, shopProfileStatus, printers]);
 
-  // Pre-select the only printer of the selected class; several (or none) = operator chooses.
-  // On Alex's profile this is the old rule exactly: Cottons -> DGEN, Polyesters -> none.
+  // The preferred printer shared by every selected file (Settings > Fabrics, FILIP 2026-09-29:
+  // pre-selected, never enforced). A stale code or mixed preferences give null.
+  const preferredPrinter = useMemo(() => {
+    const selected = files.flatMap((group) => group.items.filter((item) => selectedIds.has(item.id)));
+    const code = sharedPreferredPrinter(selected, fabricConfig?.fabrics, printers);
+    // belt and braces: only a printer the bar will enable for this class
+    return code && printers.some((p) => p.code === code && p.materialClass === materialType) ? code : null;
+  }, [files, selectedIds, fabricConfig, printers, materialType]);
+
+  // Pre-select the preferred printer, else the only printer of the selected class; several (or
+  // none) = operator chooses. Re-runs only when one of these changes, so a printer the operator
+  // picked by hand stays picked while more files of the same preference are added.
   useEffect(() => {
-    setSelectedPrinter(defaultPrinterFor(printers, materialType));
-  }, [materialType, printers]);
+    setSelectedPrinter(preferredPrinter ?? defaultPrinterFor(printers, materialType));
+  }, [materialType, printers, preferredPrinter]);
 
   useGSAP(
     () => {
@@ -333,6 +344,11 @@ const DataPrintSelection = () => {
               onChange={() => setSelectedPrinter(printer.code)}
             />
             {printer.code}
+            {printer.code === preferredPrinter && (
+              <span className={style.preferred_tag} title="Preferred printer for the selected fabric (Settings > Fabrics)">
+                preferred
+              </span>
+            )}
           </label>
         ))}
         <div className={style.separator}></div>

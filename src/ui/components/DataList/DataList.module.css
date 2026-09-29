@@ -443,3 +443,21 @@
   background-color: rgba(239, 68, 68, 0.14);
   border-color: rgba(239, 68, 68, 0.4);
 }
+
+/* The fabric's preferred printer (Settings > Fabrics), next to the metres. Colours come from the
+ * printer in the shop profile when it has them (inline style); these are the fallback. */
+.preferred_printer {
+  display: inline-flex;
+  align-items: center;
+  height: 28px;
+  padding: 0 12px;
+  margin-left: 6px;
+  border-radius: 10px;
+  background: #e0e7ff;
+  color: #3730a3;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  flex-shrink: 0;
+}

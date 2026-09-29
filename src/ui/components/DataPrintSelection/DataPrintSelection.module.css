@@ -245,3 +245,16 @@
   opacity: 0.6;
   cursor: wait;
 }
+
+/* "preferred" next to the printer pre-selected from the fabric's preferred printer. */
+.preferred_tag {
+  margin-left: 2px;
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: #e0e7ff;
+  color: #3730a3;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}

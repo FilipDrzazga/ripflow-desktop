@@ -33,3 +33,25 @@ export const preferredPrinterToSend = (draft, original) => {
   const stored = original?.preferredPrinter || null;
   return chosen === stored ? undefined : chosen;
 };
+
+// ── Print (step C) ──────────────────────────────────────────────────────────
+// The preferred printer Print acts on for ONE file: its fabric's code (by the file's material
+// name, the same lookup the estimator makes), and only when that code is "ok" for the fabric's
+// class - a stale code is ignored, the same rule Settings shows (preferredPrinterState).
+export const preferredPrinterForItem = (item, fabrics, printers) => {
+  const name = (item?.material ?? "").toString().trim();
+  const fabric = (Array.isArray(fabrics) ? fabrics : []).find((f) => f?.name === name);
+  if (!fabric?.preferredPrinter) return null;
+  return preferredPrinterState(fabric.preferredPrinter, printers, fabric.type) === "ok" ? fabric.preferredPrinter : null;
+};
+
+// The one preferred printer shared by EVERY given file, else null: files with different
+// preferences, or any file without one, give no suggestion at all - never a majority vote.
+// Used for the group header pill and for the pre-selection in the selection bar.
+export const sharedPreferredPrinter = (items, fabrics, printers) => {
+  const list = Array.isArray(items) ? items : [];
+  if (list.length === 0) return null;
+  const codes = new Set(list.map((item) => preferredPrinterForItem(item, fabrics, printers)));
+  if (codes.size !== 1) return null;
+  return [...codes][0];
+};

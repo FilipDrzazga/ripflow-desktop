@@ -1,5 +1,12 @@
 import { describe, it, expect } from "vitest";
-import { preferredPrinterOptions, preferredPrinterState, draftWithType, preferredPrinterToSend } from "./preferredPrinter";
+import {
+  preferredPrinterOptions,
+  preferredPrinterState,
+  draftWithType,
+  preferredPrinterToSend,
+  preferredPrinterForItem,
+  sharedPreferredPrinter,
+} from "./preferredPrinter";
 
 const printers = [
   { code: "DGEN", materialClass: "Cottons" },
@@ -54,5 +61,36 @@ describe("preferredPrinterToSend", () => {
   it("a new fabric (no original) sends a choice; none chosen is nothing to send", () => {
     expect(preferredPrinterToSend({ type: "Polyesters", preferredPrinter: "YOKO" }, null)).toBe("YOKO");
     expect(preferredPrinterToSend({ type: "Cottons" }, null)).toBeUndefined();
+  });
+});
+
+describe("Print: preferredPrinterForItem / sharedPreferredPrinter", () => {
+  const fabrics = [
+    { name: "Eco Satin Flow", type: "Polyesters", preferredPrinter: "YOKO" },
+    { name: "Chiffon", type: "Polyesters", preferredPrinter: "YUMI" },
+    { name: "Organza", type: "Polyesters", preferredPrinter: "YOKO" },
+    { name: "Voile", type: "Polyesters", preferredPrinter: "MIMAKI" }, // stale
+    { name: "Poplin", type: "Cottons", preferredPrinter: null },
+  ];
+  const item = (material) => ({ material });
+
+  it("a file gets its fabric's code, by material name (trimmed)", () => {
+    expect(preferredPrinterForItem(item("Eco Satin Flow"), fabrics, printers)).toBe("YOKO");
+    expect(preferredPrinterForItem(item(" Chiffon "), fabrics, printers)).toBe("YUMI");
+  });
+
+  it("no preference, an unknown fabric, a stale code, no catalogue: nothing", () => {
+    expect(preferredPrinterForItem(item("Poplin"), fabrics, printers)).toBeNull();
+    expect(preferredPrinterForItem(item("Unknown fabric"), fabrics, printers)).toBeNull();
+    expect(preferredPrinterForItem(item("Voile"), fabrics, printers)).toBeNull();
+    expect(preferredPrinterForItem(item("Eco Satin Flow"), null, printers)).toBeNull();
+    expect(preferredPrinterForItem(item("Eco Satin Flow"), fabrics, [])).toBeNull(); // profile unreadable
+  });
+
+  it("shared only when EVERY file has the same one", () => {
+    expect(sharedPreferredPrinter([item("Eco Satin Flow"), item("Organza")], fabrics, printers)).toBe("YOKO");
+    expect(sharedPreferredPrinter([item("Eco Satin Flow"), item("Chiffon")], fabrics, printers)).toBeNull(); // different
+    expect(sharedPreferredPrinter([item("Eco Satin Flow"), item("Voile")], fabrics, printers)).toBeNull(); // one without
+    expect(sharedPreferredPrinter([], fabrics, printers)).toBeNull();
   });
 });
