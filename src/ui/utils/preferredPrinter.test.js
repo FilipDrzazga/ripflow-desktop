@@ -38,19 +38,21 @@ describe("draftWithType", () => {
 describe("preferredPrinterToSend", () => {
   const original = (preferredPrinter) => ({ type: "Polyesters", preferredPrinter });
 
-  it("a valid choice and None are sent as they are", () => {
-    expect(preferredPrinterToSend({ type: "Polyesters", preferredPrinter: "YUMI" }, original("YOKO"), printers)).toBe("YUMI");
-    expect(preferredPrinterToSend({ type: "Polyesters", preferredPrinter: "" }, original("YOKO"), printers)).toBeNull();
-    expect(preferredPrinterToSend({ type: "Polyesters", preferredPrinter: null }, original("MIMAKI"), printers)).toBeNull();
+  it("a changed value is sent: another code, None, a class change's null", () => {
+    expect(preferredPrinterToSend({ type: "Polyesters", preferredPrinter: "YUMI" }, original("YOKO"))).toBe("YUMI");
+    expect(preferredPrinterToSend({ type: "Polyesters", preferredPrinter: "" }, original("YOKO"))).toBeNull();
+    expect(preferredPrinterToSend({ type: "Polyesters", preferredPrinter: null }, original("MIMAKI"))).toBeNull();
+    expect(preferredPrinterToSend(draftWithType({ type: "Polyesters", preferredPrinter: "YOKO" }, "Cottons"), original("YOKO"))).toBeNull();
   });
 
-  it("an UNTOUCHED stale code is not sent - it cannot block saving the other fields", () => {
-    expect(preferredPrinterToSend({ type: "Polyesters", preferredPrinter: "MIMAKI" }, original("MIMAKI"), printers)).toBeUndefined();
-    expect(preferredPrinterToSend({ type: "Polyesters", preferredPrinter: "YOKO" }, original("YOKO"), [])).toBeUndefined();
+  it("an UNCHANGED value is not sent - a stale one cannot block saving the other fields", () => {
+    expect(preferredPrinterToSend({ type: "Polyesters", preferredPrinter: "MIMAKI" }, original("MIMAKI"))).toBeUndefined();
+    expect(preferredPrinterToSend({ type: "Polyesters", preferredPrinter: "YOKO" }, original("YOKO"))).toBeUndefined();
+    expect(preferredPrinterToSend({ type: "Polyesters", preferredPrinter: null }, original(null))).toBeUndefined();
   });
 
-  it("a new fabric (no original) sends its choice", () => {
-    expect(preferredPrinterToSend({ type: "Polyesters", preferredPrinter: "YOKO" }, null, printers)).toBe("YOKO");
-    expect(preferredPrinterToSend({ type: "Cottons" }, null, printers)).toBeNull();
+  it("a new fabric (no original) sends a choice; none chosen is nothing to send", () => {
+    expect(preferredPrinterToSend({ type: "Polyesters", preferredPrinter: "YOKO" }, null)).toBe("YOKO");
+    expect(preferredPrinterToSend({ type: "Cottons" }, null)).toBeUndefined();
   });
 });

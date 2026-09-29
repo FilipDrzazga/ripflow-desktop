@@ -23,13 +23,13 @@ export const preferredPrinterState = (code, printers, materialClass) => {
 export const draftWithType = (draft, type) =>
   draft.type === type ? draft : { ...draft, type, preferredPrinter: null };
 
-// What the save sends. A stale code the operator did NOT touch is sent as "not sent" (undefined):
-// main then neither validates nor overwrites it (preferredPrinterToStore keeps the stored value),
-// so an old preference never blocks saving the other fields of the fabric. A code the operator
-// chose, or null (None), is sent as it is.
-export const preferredPrinterToSend = (draft, original, printers) => {
+// What the save sends. A value the operator did NOT change is not sent (undefined): main then
+// neither validates nor overwrites it (preferredPrinterToStore keeps the stored value), so a
+// stale preference never blocks saving the other fields of the fabric. A changed value - a code
+// chosen, None, or the null a class change leaves (draftWithType) - is sent as it is, and main
+// validates it.
+export const preferredPrinterToSend = (draft, original) => {
   const chosen = draft.preferredPrinter || null;
   const stored = original?.preferredPrinter || null;
-  if (chosen !== null && chosen === stored && preferredPrinterState(chosen, printers, draft.type) === "stale") return undefined;
-  return chosen;
+  return chosen === stored ? undefined : chosen;
 };

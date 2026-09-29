@@ -337,7 +337,7 @@ const MaterialsCard = () => {
     try {
       const original = oldName ? fabrics.find((f) => f.name === oldName) : null;
       const { preferredPrinter: _draftPrinter, ...rest } = fabric;
-      const preferredPrinter = preferredPrinterToSend(fabric, original, getPrinters(shopProfile));
+      const preferredPrinter = preferredPrinterToSend(fabric, original);
       const res = await saveFabricApi(oldName, {
         ...rest,
         // undefined = not sent: main keeps the stored (stale, untouched) value
