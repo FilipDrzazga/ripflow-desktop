@@ -146,7 +146,9 @@ A Settings edit reaching the XML is therefore **intended**.
   `readPrintedFolder.js`, `batchHistoryHandlers.js` ×2)
 - **renderer** → `store.fabricConfig` (`useStore.applySort`, `DataList`,
   `PrintMaterialBreakdownCard`, `ProductionOverviewCard` — the last one passes it **third**, after
-  `materialType`)
+  `materialType` — and `utils/selectionPrintLength.js`, the metres counter of the Print selection
+  bar: one estimate over the WHOLE selection after `applyPrintOverrides`, i.e. the batch label's
+  number, not the sum of the per-group DataList numbers)
 - **Both are built by ONE function since ETAP 2g-3b**: `estimateConfigFrom(fabrics, profile)` in
   `src/shared/classGlobals.js`. Since ETAP 4 (4-types-a) it is `{ classes, fabrics }`: `classes` =
   the numbers BY CLASS NAME from `profile.materialClasses` (`classNumbersFromProfile`), so a client
