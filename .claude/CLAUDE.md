@@ -89,7 +89,10 @@ xmlPath:         ""  (default since 2h-3)
 workstationName: os.hostname()               (set on first run)
 
 A blank storagePath / xmlPath is REFUSED by getRootPath.js (ERR_PATHS_NOT_SET) - no database,
-no scan, no XML - and App.jsx opens Settings with a "Paths not set" error (src/shared/requiredPaths.js).
+no scan, no XML - and App.jsx opens the first-run wizard (components/SetupWizard, ETAP 4 4-wizard:
+paths -> shop profile -> read check of the folders -> restart) over Settings (src/shared/requiredPaths.js).
+xmlPath is NOT where the job files go (they go to {storagePath}\<hotfolder>): it is the root written
+INTO the XML, the storage folder as PrintFactory sees it.
 Never hand "" to path.join: it yields a RELATIVE path (the process's working directory).
 
 Derived paths (hotfolders = printers[].hotfolder in the shop profile; Alex's values):

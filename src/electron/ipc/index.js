@@ -19,7 +19,7 @@ import { assertStorageFilePath } from "../helpers/validateStoragePath.js";
 import { parsePrintFileName } from "../helpers/parseFileName.js";
 import { getSettings, setSettings, getRollbackDefinitions, clearRollbackDefinitions } from "../helpers/getSettings.js";
 import { initDb, insertLog, getAllLogs, clearAllLogs, holdFile, unholdFile, getHeldFiles, pruneOrphanHeldFiles, getRollbackReasonsByBatch, getRollbackReasonsByFile, getRollbackStats, getRollbackDetails, clearAllRollbackReasons, deleteRollbackReason, getLatestRollbackReasonsForFileIds, getReasonDefinitions, setReasonDefinitions as setReasonDefinitionsDb, migrateReasonDefinitions, getAllFabrics, saveFabric, deleteFabric as deleteFabricDb, setAllFabrics, backupDb, cleanupShippedStages, getDbDegraded, getShopProfileRaw, isDbOpen } from "../helpers/db.js";
-import { collectDiagnostics, diagnosticsFileName } from "../helpers/diagnostics.js";
+import { collectDiagnostics, diagnosticsFileName, diagnosticTargets, checkAccess } from "../helpers/diagnostics.js";
 import { buildZip } from "../helpers/zipWriter.js";
 import { loadFabricCache, invalidateFabricCache } from "../helpers/fabricCache.js";
 import { getProfile, getPrinterByCode } from "../helpers/shopProfile.js";
@@ -590,6 +590,27 @@ export async function registerIpcHandlers() {
     } catch (err) {
       return { success: false, error: err?.message ?? String(err) };
     }
+  });
+
+  // ETAP 4 (4-wizard): the first-run wizard's folder check - the same folder list and the same
+  // real read (readdir) as the diagnostics zip, so the two can never disagree. Nothing is written.
+  ipcMain.handle("setup:checkFolders", async () => {
+    try {
+      const folders = await checkAccess(diagnosticTargets(getSettings(), getProfile()), (p) => fs.promises.readdir(p));
+      return { success: true, folders };
+    } catch (err) {
+      return { success: false, error: err?.message ?? String(err) };
+    }
+  });
+
+  // ETAP 4 (4-wizard): the wizard ends with a restart - the database, the watchers and the polls
+  // start with the paths only at startup. Run from the repo, `npm run dev` (concurrently -k) would
+  // take Vite down with this process, so the sandbox answers "restart by hand" like update:check.
+  ipcMain.handle("app:relaunch", () => {
+    if (!app.isPackaged) return { success: false, reason: "sandbox" };
+    app.relaunch();
+    app.exit(0);
+    return { success: true };
   });
 
   // Snapshot for the renderer, twin of db:get-degraded: a PRINTED root that was already

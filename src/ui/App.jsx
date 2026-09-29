@@ -25,7 +25,8 @@ import InboxWatchPill from "./components/InboxWatchPill/InboxWatchPill";
 import { PROFILE_STATUS } from "./utils/profileStatus";
 import { notify } from "./utils/notify";
 import { getSettings } from "./services/settingsService";
-import { missingRequiredPaths, PATHS_NOT_SET_MESSAGE, PATHS_NOT_SET_TITLE } from "../shared/requiredPaths";
+import { missingRequiredPaths } from "../shared/requiredPaths";
+import SetupWizard from "./components/SetupWizard/SetupWizard";
 
 const RIP_ERROR_POLL_INTERVAL = 30_000;
 const INBOX_WATCH_INTERVAL = 30_000;
@@ -57,6 +58,7 @@ const App = () => {
   const [shopDataReloading, setShopDataReloading] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [activeView, setActiveView] = useState("print");
+  const [showSetup, setShowSetup] = useState(false);
   // A profile that arrives late (or one that turns a feature off) can pull the view the
   // operator is standing on out from under them — send them back to "print" instead of
   // leaving a blank main area. Written during render, not in an effect: React re-runs
@@ -91,12 +93,13 @@ const App = () => {
 
     const fetchFolders = async () => {
       // ETAP 2h-3: with no storage or XML path the main process refuses every path-based
-      // call (getRootPath.js) and opens no database. Say why once, and open Settings,
-      // where the paths are set (src/shared/requiredPaths.js).
+      // call (getRootPath.js) and opens no database. Since ETAP 4 (4-wizard) the first-run
+      // wizard says why and walks through paths -> profile -> folders; Settings opens behind
+      // it, so "Set up later" lands where the paths are set (src/shared/requiredPaths.js).
       getSettings()
         .then((res) => {
           if (res?.success && missingRequiredPaths(res.settings).length > 0) {
-            notify({ type: "Error", title: PATHS_NOT_SET_TITLE, message: PATHS_NOT_SET_MESSAGE });
+            setShowSetup(true);
             setActiveView("settings");
           }
         })
@@ -290,6 +293,7 @@ const App = () => {
           <DataPrintSelection />
         </div>
       )}
+      {showSetup && <SetupWizard onClose={() => setShowSetup(false)} />}
     </div>
   );
 };

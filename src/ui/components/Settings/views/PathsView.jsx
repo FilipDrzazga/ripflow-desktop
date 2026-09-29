@@ -110,7 +110,7 @@ const PathsView = () => {
           </div>
           {xmlEmpty
             ? <p className={styles.field_error}>XML workflow path is required.</p>
-            : <p className={styles.hint}>Network path where PrintFactory XML files are written.</p>
+            : <p className={styles.hint}>The storage folder as PrintFactory sees it - written into every job file (the job files themselves go to the printer hotfolders in the storage path).</p>
           }
         </div>
 

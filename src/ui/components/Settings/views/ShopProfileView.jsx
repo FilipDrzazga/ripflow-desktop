@@ -1,37 +1,25 @@
 import { Fragment, useState } from "react";
 import { LuDownload, LuRefreshCw, LuUpload } from "react-icons/lu";
 import { useStore } from "../../../store/useStore";
-import {
-  exportShopProfile,
-  previewShopProfileImport,
-  applyShopProfileImport,
-} from "../../../services/profileService";
-import { showConfirm } from "../../../services/systemService";
+import { exportShopProfile } from "../../../services/profileService";
 import { notify } from "@/utils/notify";
 import { PROFILE_STATUS } from "@/utils/profileStatus";
-import {
-  profileOverview,
-  profileStatusBadge,
-  importConfirmMessage,
-  staleImportNotice,
-  reloadResultNotice,
-  importResultNotice,
-  importErrorsNotice,
-  exportResultNotice,
-} from "@/utils/shopProfileView";
+import { profileOverview, profileStatusBadge, reloadResultNotice, exportResultNotice } from "@/utils/shopProfileView";
+import { useProfileImport } from "../../../hooks/useProfileImport";
 import styles from "./SettingsView.module.css";
 import own from "./ShopProfileView.module.css";
 
 // Settings -> Shop Profile (ETAP 3-4). The deployment-level configuration (PRODUCTIZATION: set by
 // import, not edited here): a read-only view of what this station runs on, plus the profile file -
-// Export and a two-phase Import (main previews, the operator confirms the diff, main applies).
+// Export and a two-phase Import (main previews, the operator confirms the diff, main applies). The
+// import lives in useProfileImport since 4-wizard - the first-run wizard runs the same one.
 const ShopProfileView = () => {
   const shopProfile = useStore((s) => s.shopProfile);
   const shopProfileStatus = useStore((s) => s.shopProfileStatus);
-  const loadShopProfile = useStore((s) => s.loadShopProfile);
   const reloadShopData = useStore((s) => s.reloadShopData);
-  const [busy, setBusy] = useState(null); // null | "reload" | "export" | "import"
-  const [importErrors, setImportErrors] = useState([]);
+  const [busyAction, setBusy] = useState(null); // null | "reload" | "export"
+  const { importing, importErrors, runImport } = useProfileImport();
+  const busy = importing ? "import" : busyAction;
 
   const handleExport = async () => {
     setBusy("export");
@@ -46,44 +34,7 @@ const ShopProfileView = () => {
     }
   };
 
-  const handleImport = async () => {
-    setBusy("import");
-    setImportErrors([]);
-    try {
-      const preview = await previewShopProfileImport();
-      if (preview?.canceled) return;
-      if (!preview?.success) {
-        notify({ type: "Error", title: "Import failed", message: preview?.error || "Unknown error." });
-        return;
-      }
-      if (!preview.valid) {
-        setImportErrors(preview.errors ?? []);
-        notify(importErrorsNotice(preview.errors));
-        return;
-      }
-      if (preview.unchanged) {
-        notify({ type: "Info", title: "Nothing to import", message: "The file holds the same profile as the database." });
-        return;
-      }
-      if (preview.stationStale) {
-        notify(staleImportNotice(preview));
-        return;
-      }
-      if (!(await showConfirm(importConfirmMessage(preview)))) return;
-
-      const res = await applyShopProfileImport(preview.token);
-      // Main reloaded its cache whatever happened (the new profile, or the one that refused it);
-      // loadShopProfile sets shopProfile + shopProfileStatus in ONE set() from that cache.
-      await loadShopProfile();
-      notify(importResultNotice(res));
-    } catch (err) {
-      // a timeout on apply: the write may or may not have landed - show what is there now
-      await loadShopProfile();
-      notify({ type: "Error", title: "Import failed", message: `${err?.message || "Unknown error."} The view now shows what the database holds.` });
-    } finally {
-      setBusy(null);
-    }
-  };
+  const handleImport = runImport;
 
   const handleReload = async () => {
     setBusy("reload");

@@ -1,0 +1,253 @@
+/* First-run wizard (ETAP 4, 4-wizard). Fields and buttons come from SettingsView.module.css. */
+
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 3200;
+  background: rgba(0, 0, 0, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+}
+
+.card {
+  position: relative;
+  width: min(640px, calc(100vw - 32px));
+  max-height: calc(100vh - 48px);
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-white);
+  border-radius: 20px;
+  box-shadow: var(--card-shadow);
+  visibility: hidden; /* GSAP fades it in */
+}
+
+.header {
+  padding: 28px 28px 16px;
+  border-bottom: 1px solid var(--border-grey);
+}
+
+.title {
+  margin: 0 0 4px;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.subtitle {
+  margin: 0 0 18px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.stepper {
+  display: flex;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.step {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: var(--bg-grey-light);
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.step_dot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--bg-grey);
+  font-size: 12px;
+}
+
+.step_active {
+  background: var(--bg-black);
+  color: var(--text-white);
+}
+
+.step_active .step_dot {
+  background: var(--bg-white);
+  color: var(--text-primary);
+}
+
+.step_done .step_dot {
+  background: #d4edda;
+  color: #155724;
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px 28px;
+  overflow-y: auto;
+}
+
+.text {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text-primary);
+}
+
+.actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.actions_right {
+  display: flex;
+  gap: 8px;
+}
+
+.footer {
+  display: flex;
+  justify-content: flex-end;
+  padding: 12px 28px 16px;
+  border-top: 1px solid var(--border-grey);
+}
+
+.later_btn {
+  border: none;
+  background: none;
+  padding: 4px 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.alert {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  border-radius: 12px;
+  padding: 12px 16px;
+  background-color: #fff5f5;
+  border: 1px solid #fca5a5;
+  color: #b91c1c;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.alert ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.printers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.printer_chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border-grey);
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+.mono {
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 12px;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.folders {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.folder {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr) auto;
+  grid-template-areas:
+    "icon label msg"
+    "icon path path";
+  column-gap: 8px;
+  row-gap: 2px;
+  align-items: center;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: var(--bg-grey-light);
+  font-size: 13px;
+}
+
+.folder .mono {
+  grid-area: path;
+}
+
+.folder_icon {
+  grid-area: icon;
+  display: inline-flex;
+  color: #155724;
+}
+
+.folder_label {
+  grid-area: label;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.folder_msg {
+  grid-area: msg;
+  font-size: 12px;
+  color: #155724;
+}
+
+.folder_bad {
+  background: #fff5f5;
+}
+
+.folder_bad .folder_icon,
+.folder_bad .folder_msg {
+  color: #b91c1c;
+}
+
+.summary {
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.summary_ok {
+  background-color: #d4edda;
+  color: #155724;
+}
+
+.summary_error {
+  background-color: #ffe7e5;
+  color: #b91c1c;
+}

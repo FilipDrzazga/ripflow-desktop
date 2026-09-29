@@ -109,6 +109,9 @@ const api = Object.freeze({
   getDbDegraded: () => ipcRenderer.invoke("db:get-degraded"),
   // ETAP 4 (4-diag): main opens the save dialog and writes the zip; nothing comes back but the path.
   exportDiagnostics: () => ipcRenderer.invoke("diagnostics:export"),
+  // ETAP 4 (4-wizard): read-only folder check (readdir) and the closing restart.
+  checkSetupFolders: () => ipcRenderer.invoke("setup:checkFolders"),
+  relaunchApp: () => ipcRenderer.invoke("app:relaunch"),
   onPrintedRootUnreachable: (callback) => {
     if (typeof callback !== "function") {
       throw new TypeError("PRINTED root callback must be a function.");

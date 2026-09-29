@@ -230,7 +230,9 @@ BETWEEN a fresh preview and the click still reaches the CAS refusal after the du
 
 **Settings -> Shop Profile (`ShopProfileView.jsx`, ETAP 3-4)** - deployment level, so READ-ONLY
 plus the file: Export, and Import = preview -> native `showConfirm` with the diff and the impact ->
-apply (a stale preview stops at a Warning, `staleImportNotice`). After an apply attempt it calls the store's `loadShopProfile()`, which sets `shopProfile` and
+apply (a stale preview stops at a Warning, `staleImportNotice`). The import itself lives in
+`hooks/useProfileImport.js` since ETAP 4 (4-wizard) - the first-run wizard runs the SAME one; never
+a second copy. After an apply attempt it calls the store's `loadShopProfile()`, which sets `shopProfile` and
 `shopProfileStatus` in ONE `set()` from main's reloaded cache - the view never writes the store
 itself. Since ETAP 4 (4-ui-profile) the profile is shown as CARDS (printers with their colours,
 class / product-type tables, scanner rules as stage chips in `STAGE_COLOR`, folders, sewing +

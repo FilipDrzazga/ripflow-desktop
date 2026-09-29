@@ -27,6 +27,11 @@ export const getDbDegraded = () =>
   withTimeout(window.api.getDbDegraded(), 30_000, "getDbDegraded");
 // ETAP 4 (4-diag): no timeout - the operator drives the save dialog.
 export const exportDiagnostics = () => window.api.exportDiagnostics();
+// ETAP 4 (4-wizard): 30s - a readdir on a dead share waits for the SMB timeout.
+export const checkSetupFolders = () =>
+  withTimeout(window.api.checkSetupFolders(), 30_000, "setup:checkFolders");
+// { success: false, reason: "sandbox" } when run from the repo - restart by hand there.
+export const relaunchApp = () => window.api.relaunchApp();
 // PRINTED root reachability — same shape as the DB pair above: two event subscriptions
 // returning an unsubscribe fn, plus a snapshot for a root already unreachable at startup.
 export const onPrintedRootUnreachable = (cb) => window.api.onPrintedRootUnreachable(cb);
