@@ -1355,18 +1355,27 @@ Pozycje dodane w trakcie (regula 5 - nowe linie zamiast rozszerzania istniejacyc
 
 ## ETAP 4 - Produktyzacja (moze isc rownolegle z Etapem 2)
 
-- [ ] **Typy produktow i klasy materialow z profilu** (FILIP ODP 27, 2026-09-28): klient ma sam
+- [x] **Typy produktow i klasy materialow z profilu** (FILIP ODP 27, 2026-09-28): klient ma sam
       definiowac swoje typy produktow. Dzis kody SAMPLE / FQ / TEA_TOWEL zna parser
       (`parseFileName.js`), a klasy Cottons / Polyesters - `getMaterialType` i `classGlobals.js`,
       wiec walidator importu (3-2) jest scisly i wymaga dokladnie tych list. Poluzowac RAZEM z
       parserem czytajacym kody z profilu i `getMaterialType` czytajacym klasy z profilu - inaczej
       brakujacy typ po cichu dostaje wymiary Alexa (`BUILT_IN_DIMS`), a nieznana klasa - stale.
-- [ ] **Seed profilu przy dwoch stacjach startujacych naraz na PUSTEJ bazie** (S2 przy 3-6): `initDb`
+      **ZROBIONE w zakresie z pomiaru 4-types (S2 2026-09-28): klient nazywa swoje 1-2 klasy i wybiera
+      PODZBIOR istniejacych typow; nowe kody typow = parser klienta #2 (ETAP 5), trzecia klasa
+      zamrozona.** e `6d0a04e` (brak rozmiaru w profilu = odmowa UNKNOWN_PRODUCT_SIZE, nigdy
+      BUILT_IN_DIMS), a `85066e8` (estymator po nazwie klasy), b `0881535` + `9a10520` + `e892e01` +
+      `2d3c3ad` + `8f72e1b` (nazwy klas w UI z profilu), f `2649a2a` (filtr typow z profilu), c
+      `9a14605` + `7fc1338` (profil v4, klasa custom orders), d `94239ed` (walidator importu).
+      Wydane w 1.0.28 (`914b31a`), bramka FILIPA 2026-09-29 09:58.
+- [x] **Seed profilu przy dwoch stacjach startujacych naraz na PUSTEJ bazie** (S2 przy 3-6): `initDb`
       robi COUNT, potem INSERT - druga stacja dostanie wyjatek w `initDb` (db = null). Tylko pierwszy
       start nowego klienta. Naprawa: `INSERT OR IGNORE`.
-- [ ] **Import przy `stationStale`: zamiast okna potwierdzenia sam komunikat** (S2 przy 3-4) - dzis
+      **ZROBIONE `df1bf62` (4-seed, `ON CONFLICT(id) DO NOTHING`), wydane w 1.0.27 (`4ba078e`).**
+- [x] **Import przy `stationStale`: zamiast okna potwierdzenia sam komunikat** (S2 przy 3-4) - dzis
       okno pozwala kliknac OK, apply robi zrzut + backup i dopiero wtedy odmawia `PROFILE_CHANGED`.
-- [ ] **Dziura siatki golden (e): trasowanie po drukarkach** (zmierzone przy 3-5) - harness wola
+      **ZROBIONE `7752395` (4-stale: stale podglad bez tokenu, Warning zamiast okna), wydane w 1.0.27.**
+- [x] **Dziura siatki golden (e): trasowanie po drukarkach** (zmierzone przy 3-5) - harness wola
       `buildPFJobXML` wprost, wiec `printers[]` / hotfolder nie wplywaja na wynik (fikstura bez drukarek
       = 0/70). Pilnuje tego `hotfolderRouting.test.js`, nie golden.
       ETAP 4 (4-golden-e, decyzja S2 2026-09-29: wariant A) - SWIADOMIE ZAMKNIETA notka, harness bez
@@ -1376,12 +1385,14 @@ Pozycje dodane w trakcie (regula 5 - nowe linie zamiast rozszerzania istniejacyc
       getWorkflowFolderName) = DGEN->COTTON 36, YOKO->POLY 25, YUMI->POLY 9, 0 niezgodnosci
       (`chat/artefakty/4-golden-e/measure.out`). Ostatnia luka - samo podpiecie
       `setPrinterResolver(getPrinterByCode)` w `ipc/index.js` - ma test `printerResolverWiring.test.js`
-      (skan zrodla, 2 mutacje zabite). [x] dopiero w 4-tick, po bramce FILIPA.
+      (skan zrodla, 2 mutacje zabite). **ODHACZONE w 4-tick (`04a9c62`), bramka FILIPA 2026-09-29.**
 
-- [ ] **`powerMonitor` + pauza pollingu na `suspend` / `lock-screen`.** Uzasadnione
+- [x] **`powerMonitor` + pauza pollingu na `suspend` / `lock-screen`.** Uzasadnione
       eksperymentem na stacji QC (zapis w `claude/DECYZJE-LOG.md`): uspienie
       zrywa SMB do `O:`, aplikacja tego nie zauwaza i sie zawiesza. NIE jest warunkiem
       wydania `v1.0.22` - wylaczone uspienie jest dzialajacym obejsciem
+      **ZROBIONE `54e3791` + docs `2f3fd52` (4-power): pauza = uspienie LUB blokada LUB 10 s po
+      wybudzeniu; 5 okresowych odczytow nie startuje w pauzie. Wydane w 1.0.28 (`914b31a`).**
 - [=] **`storagePath` na stacji QC z litery dysku na UNC** - ZAMROZONE decyzja FILIPA
       z 2026-09-21: "poki co jest dobrze jak jest - zostawiamy". Litera dysku jest
       mapowaniem per sesja uzytkownika, a UNC nie jest, wiec argument techniczny stoi
@@ -1390,38 +1401,49 @@ Pozycje dodane w trakcie (regula 5 - nowe linie zamiast rozszerzania istniejacyc
       `[=]`, nie `[ ]`: to nie jest zalegla robota, tylko swiadomie odlozona.
 - [ ] **Podpis kodu** - certyfikat OV (~300-400 EUR/rok). Bez tego SmartScreen
       "Nieznany wydawca" przy kazdej instalacji i aktualizacji
+      Po ETAPIE 4, decyzja FILIPA (2026-09-28 14:13 / ODP 33): do pierwszego klienta.
 - [ ] **Kanaly wydan** - `autoUpdater.channel = clientId` -> `latest-<klient>.yml`;
       ten sam `.exe`, osobne pliki kanalow; promocja = skopiowanie yml
+      Po ETAPIE 4, decyzja FILIPA (2026-09-28 14:13 / ODP 33): do pierwszego klienta.
   - [ ] naprawa gubienia `clientId` (BUG 1) to warunek wstepny
   - [ ] kolejnosc promocji: kanal testowy -> jeden pilot -> reszta
 - [ ] **Semver serio:** patch = tylko fix; minor = nowa funkcja za flaga (domyslnie false
       u pozostalych); major = zmiana danych/pipeline
+      Po ETAPIE 4, decyzja FILIPA (2026-09-28 14:13 / ODP 33): do pierwszego klienta.
 - [ ] **Licencja** - `license.json` (Ed25519, klucz publiczny w buildzie), walidacja
       OFFLINE. Klucz prywatny nigdy w repo/buildzie
+      Po ETAPIE 4, decyzja FILIPA (2026-09-28 14:13 / ODP 33): do pierwszego klienta.
 - [ ] **Lagodna degradacja** po `validUntil`: produkcja dziala dalej (druk/batche/XML/
       rollback); gasnie tylko Analytics/auto-update + baner. Karencja przed wylaczeniem
-- [ ] Cache nie wstaje po odzyskaniu bazy: shopProfile i fabricCache laduja sie
+      Po ETAPIE 4, decyzja FILIPA (2026-09-28 14:13 / ODP 33): razem z licencja, do pierwszego klienta.
+- [x] Cache nie wstaje po odzyskaniu bazy: shopProfile i fabricCache laduja sie
       raz na starcie; jesli baza byla nieosiagalna, oba zostaja na sentinelu null
       do restartu aplikacji, nawet gdy NAS wroci minute pozniej. Dzis maskowane
       fallbackami (literal Shopify, printWidths.js), ale przy rosnacej liczbie
       konsumentow profilu roznica miedzy "profil z bazy" a "fallback z kodu"
       bedzie coraz wieksza. Rozwazyc lazy retry przy odczycie albo ponowna probe
       przy odzyskaniu polaczenia. Jeden mechanizm dla obu cache, nie dwa.
-  - [ ] Przycisk ponownego wczytania ma odswiezac `shopProfile` I `fabricCache` JEDNYM
+      **ZROBIONE `8eacfb3` + `b2e8f3d` (4-retry) + `2eed9fe` (baner znika po reopen, nieudany initDb
+      zamyka uchwyt), wydane w 1.0.27 (`4ba078e`): `reloadShopData` otwiera baze utracona przy
+      starcie i przeladowuje OBA cache jednym mechanizmem; "Reload shop data" w Shop Profile i Retry
+      na banerze. Swiadomie BEZ automatycznego ponawiania (martwy udzial zamrozilby okno na timeout
+      SMB przy kazdej probie).**
+  - [x] Przycisk ponownego wczytania ma odswiezac `shopProfile` I `fabricCache` JEDNYM
         mechanizmem. Swiadomie pominiety w 2c - tam byloby to drugie, konkurencyjne
-        rozwiazanie tego samego problemu.
-  - [ ] Razem z tym przyciskiem, nie wczesniej: `loadShopProfile` nie ustawia
+        rozwiazanie tego samego problemu. **`8eacfb3` + `b2e8f3d`.**
+  - [x] Razem z tym przyciskiem, nie wczesniej: `loadShopProfile` nie ustawia
         `PROFILE_STATUS.LOADING` na wejsciu. Dzis bez znaczenia - jest wolany raz przy
         starcie, a stan poczatkowy w storze jest juz poprawny. Przy retry status
         zostalby na `FAILED` przez caly czas trwania proby, wiec baner nie zniknalby do
-        chwili odpowiedzi. Jedna linia do dodania.
-  - [ ] Przypadek (c) z pomiaru przy 2c: `withTimeout(profile:get, 5s)` odrzuca przy
+        chwili odpowiedzi. Jedna linia do dodania. **`b2e8f3d` (LOADING na wejsciu).**
+  - [x] Przypadek (c) z pomiaru przy 2c: `withTimeout(profile:get, 5s)` odrzuca przy
         ZDROWEJ bazie (main zablokowany synchronicznym better-sqlite3 + `sweepOrphanTemps`
         + `backupDb` na SMB). `dbDegraded` zostaje wtedy `false`, wiec baner o bazie nie
         leci, a `shopProfile` jest `null` do konca sesji. Dzis nie ma z tego innego
         wyjscia niz restart aplikacji. Asymetria do naprawy przy okazji: `getDbDegraded`
         (`systemService.js`) nie ma `withTimeout` i doczeka sie odpowiedzi, `profile:get`
-        ma 5s i sie poddaje.
+        ma 5s i sie poddaje. **`b2e8f3d`: oba po 30 s (asymetria zniesiona), a nieudany odczyt
+        daje baner z Retry zamiast sesji bez profilu do restartu.**
     - **Koszt przypadku (c) urosl przy 2c-bis (ripErrors).** Do tej pory nieodczytany
       profil kosztowal ukryte zakladki i literalowy fallback Shopify - rzeczy widoczne
       od razu. Teraz `shopProfile === null` znaczy takze: skan bledow RIP nie odpala sie
@@ -1478,10 +1500,17 @@ Pozycje dodane w trakcie (regula 5 - nowe linie zamiast rozszerzania istniejacyc
       Nie zmniejsza to jednak dlugu: lazy retry dalej jest potrzebny, bo komunikat mowi
       "profil nieodczytany", a nie "sprobuje ponownie" - stacja zostaje bez regul do
       restartu aplikacji.
-- [ ] **Export diagnostics** - zip: ostatnie 500 logow, `shop_profile`, wersja, sciezki
+- [x] **Export diagnostics** - zip: ostatnie 500 logow, `shop_profile`, wersja, sciezki
       (bez zawartosci plikow), wynik testu dostepu do hotfolderow. Bez telemetrii
-- [ ] **Kreator pierwszego uruchomienia** (sciezki -> import profilu -> test zapisu do hotfoldera)
+      **ZROBIONE `014ef0b` + `f80a34d` (4-diag), wydane w 1.0.28 (`914b31a`): Settings > Database.
+      Dostep = prawdziwy ODCZYT (readdir) kazdego folderu, zapis uczciwie "not tested" -
+      fs.access(W_OK) na Windows nie widzi uprawnien SMB, a plik probny w hotfolderze odpada.**
+- [x] **Kreator pierwszego uruchomienia** (sciezki -> import profilu -> test zapisu do hotfoldera)
+      **ZROBIONE `0e0884c` + `e42b00f` + `bfe1fd4` (4-wizard), wydane w 1.0.28 (`914b31a`), wyglad
+      zaakceptowany przez FILIPA (ODP 43). Test ZAPISU do hotfoldera swiadomie NIE (FILIP ODP 40,
+      2026-09-29: tylko odczyt) - zapis sprawdza pierwsze zlecenie.**
 - [ ] `changelog.json` - uzywac pola `clients` per wpis zamiast "all"
+      Po ETAPIE 4, decyzja FILIPA (2026-09-28 14:13 / ODP 33): do pierwszego klienta.
 - [x] Konce linii zaleza od MASZYNY, nie od repo. Nie ma `.gitattributes`, a
       **ZROBIONE `8cd2fd6` (2026-09-24, plan NOC), bramka potwierdzona przez FILIPA
       2026-09-25 07:30.** `* text=auto eol=lf`, .bat/.cmd eol=crlf, binarne jako binary.
@@ -1512,7 +1541,7 @@ Pozycje dodane w trakcie (regula 5 - nowe linie zamiast rozszerzania istniejacyc
       `package-lock.json` faktycznie zdjal wpis; trafienia `fuse`, ktore w nim
       zostaly, to `@electron/fuses`, niepowiazana zaleznosc przechodnia electron-buildera.
       Bramki: 412 passed / 31 files (przed cieciami z tego dnia), lint exit 0, build ok.
-- [ ] **Migracja kasujaca trzy osierocone tabele w bazie klienta** - `counters`,
+- [x] **Migracja kasujaca trzy osierocone tabele w bazie klienta** - `counters`,
       `custom_clients`, `custom_order_files`. ZATWIERDZONE przez FILIPA 2026-09-21 jako
       OSOBNA pozycja, zaraz po rezygnacji z `feature/custom-orders-unification`.
       Dopoki galaz czekala na decyzje, tabele byly osierocone DO CZASU; od dzis sa
@@ -1521,19 +1550,34 @@ Pozycje dodane w trakcie (regula 5 - nowe linie zamiast rozszerzania istniejacyc
       -- src/ scripts/` daje JEDNO trafienie i jest nim niepowiazany komentarz o
       licznikach w `useStageTransition.js`.
       Ksztalt jest ustalony tutaj, zeby nie byl wymyslany w dniu wykonania:
-      - [ ] **NAJPIERW pomiar na zywej bazie** - ile wierszy niesie kazda z trzech tabel.
+      - [x] **NAJPIERW pomiar na zywej bazie** - ile wierszy niesie kazda z trzech tabel.
             To jedyna rzecz, ktorej NIE DA SIE ustalic z repo, a rozstrzyga, czy `DROP`
             jest sprzataniem, czy kasowaniem danych, ktorych nikt nigdy nie obejrzal.
             Tabela niepusta ma byc najpierw wyeksportowana do JSON obok kopii bazy.
-      - [ ] **Dopiero potem `DROP TABLE IF EXISTS` w `initDb`**, idempotentnie i w
+            **2026-09-28 (4-drop cz.1, `2eed9fe` + `measure.cjs`): counters 1, custom_clients 1,
+            custom_order_files 11, fabric_globals 6 wierszy, profil v3; wszystkie 4 wyeksportowane
+            do JSON obok kopii (`chat/artefakty/4-drop/`).**
+      - [x] **Dopiero potem `DROP TABLE IF EXISTS` w `initDb`**, idempotentnie i w
             try/catch - tym samym wzorcem co `ensureFabricAliasColumn`, bo kilka stacji
             startuje przeciw WSPOLDZIELONEJ bazie i migracja musi to przetrwac.
-      - [ ] **Warunek twardy, ten sam co przy P1:** przed migracja idzie RECZNY zrzut
+            **`1d2a0c4` (4-drop cz.2) - razem z `fabric_globals`, po rolloucie 1.0.27 na wszystkie
+            stacje; sprawdzone na kopii bazy Alexa (15 -> 11 tabel, drugi start czysty).**
+      - [x] **Warunek twardy, ten sam co przy P1:** przed migracja idzie RECZNY zrzut
             pliku bazy. `backupDb` jest best effort i nie moze byc jedynym "przed"
             migracji, ktora kasuje.
-      - [ ] Osobny commit, nie doklejany do zadnego ciecia ETAPU 2. Po nim notatka
+            **Kopia `%APPDATA%\ripflow-desktop\backups\ripflow-before-4-drop-2026-09-28.db`
+            (backup z 2026-09-28 09:18 wyjety z rotacji 7 dni, z JSON-ami 4 tabel) - przyjeta przez
+            S2 jako zrzut "przed" (plan 4-drop, krok c).**
+      - [x] Osobny commit, nie doklejany do zadnego ciecia ETAPU 2. Po nim notatka
             o trzech tabelach w `.claude/CLAUDE.md` przestaje byc prawdziwa i znika
             w tym samym commicie - dzis opisuje wiersze, ktore istnieja.
+            **`1d2a0c4` (notka w CLAUDE.md i database.md w tym samym commicie), wydane w 1.0.28
+            (`914b31a`), bramka FILIPA 2026-09-29 09:58.**
+- [x] **Dopisane w trakcie ETAPU 4 na prosbe FILIPA (2026-09-28 12:30 i ODP 36), spoza listy:**
+      Settings w grupach Station / Shop / System `f9dde75` + `f5e98a1` i Shop Profile jako karty
+      `ff2e98a` + `a310dfc` (oba w 1.0.27); powiadomienie o nowych / zniknietych plikach w Print
+      (pigulka, licznik przy Print, GSAP) `91baa7d` + `7d8760b` (1.0.28). UI obejrzane przez FILIPA na
+      zywo; bramka FILIPA 2026-09-29 09:58.
 
 ---
 
