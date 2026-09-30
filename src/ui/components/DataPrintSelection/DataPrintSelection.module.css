@@ -182,7 +182,6 @@
   margin-right: 20px;
   padding: 6px 12px;
   border-radius: 10px;
-  background-color: var(--bg-grey);
 }
 .selection_length_value {
   display: inline-flex;
@@ -200,50 +199,6 @@
   margin-top: 2px;
   font-size: 11px;
   color: #7C4A03;
-}
-
-/* Held mode: held files picked for a bulk Unhold. Same bar, red accent like a held row. */
-.selection_container.held_mode {
-  box-shadow: var(--card-shadow), 0 0 0 1px rgba(239, 68, 68, 0.3);
-}
-.held_mode .selection_items {
-  border-color: rgba(239, 68, 68, 0.35);
-}
-.unhold_button,
-.select_all_button {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 5px;
-  min-width: 96px;
-  padding: 8px 20px;
-  border-radius: 10px;
-  font-size: 14px;
-  font-weight: 600;
-  transition: background-color 0.2s ease;
-}
-.unhold_button {
-  background-color: #fef3c7;
-  color: #b45309;
-}
-.unhold_button:hover:not(:disabled) {
-  background-color: #fde68a;
-}
-.unhold_button .spinner {
-  border-color: #b45309;
-  border-top-color: transparent;
-}
-.select_all_button {
-  background-color: var(--bg-grey);
-  color: inherit;
-}
-.select_all_button:hover:not(:disabled) {
-  filter: brightness(0.95);
-}
-.unhold_button:disabled,
-.select_all_button:disabled {
-  opacity: 0.6;
-  cursor: wait;
 }
 
 /* "preferred" next to the printer pre-selected from the fabric's preferred printer. */

@@ -1,9 +1,9 @@
 import { useStore } from "../store/useStore";
 import { notify } from "./notify";
 
-// The bulk Unhold as the operator starts it - from the selection bar or from the context menu of
-// a selected held file. One place, so both report the same way: Success for the released files,
-// Warning for the ones that failed (they stay selected - "try again" is one click away).
+// The bulk Unhold as the operator starts it - from the context menu of a selected held file.
+// Success for the released files, Warning for the ones that failed (they stay selected - "try
+// again" is one click away).
 export const runBulkUnhold = async () => {
   const { done, failed } = await useStore.getState().unholdSelectedFiles();
   const plural = (n) => (n === 1 ? "1 file" : `${n} files`);

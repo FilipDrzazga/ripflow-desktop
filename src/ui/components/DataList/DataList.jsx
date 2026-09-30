@@ -313,7 +313,7 @@ const DataList = () => {
                   tooltip = detail ? `On hold · ${detail}` : "File is on hold";
                   if (hasSelection) tooltip += " - clear the print selection to select held files";
                 } else if (isLocked) tooltip = `Cannot mix ${lockMaterial} with ${item.materialType}`;
-                else if (hasHeldSelection) tooltip = "Held files are selected - clear that selection to pick files to print";
+                else if (hasHeldSelection) tooltip = "Held files are selected - uncheck them to pick files to print";
                 // A held row's checkbox picks it for a bulk Unhold (heldSelectedIds), never for print.
                 const isChecked = isHeld ? heldSelectedIds.has(item.id) : selectedIds.has(item.id);
                 const isCheckboxDisabled = isHeld

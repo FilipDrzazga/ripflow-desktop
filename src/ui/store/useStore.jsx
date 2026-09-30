@@ -31,7 +31,7 @@ const fabricConfigFor = (state, profile) =>
 import { getShopProfile as getShopProfileApi, reloadShopData as reloadShopDataApi } from "../services/profileService";
 import { PROFILE_STATUS, resolveProfileResult } from "../utils/profileStatus";
 import { latestRipErrorPerFile } from "../utils/ripErrorsByFile";
-import { toggleHeldId, visibleHeldIds, pruneHeldSelection, unholdMany } from "../utils/heldSelection";
+import { toggleHeldId, pruneHeldSelection, unholdMany } from "../utils/heldSelection";
 import { isToastHiddenByWizard } from "../utils/setupWizard";
 import { getStagesByBatch as getStagesByBatchApi, getAllStages as getAllStagesApi, getStagesAfter as getStagesAfterApi, getAllStageHistory as getAllStageHistoryApi, clearAllProductionStages as clearAllProductionStagesApi, getOpenReprints as getOpenReprintsApi } from "../services/productionService";
 import { scanRipErrors as scanRipErrorsApi, resolveRipError as resolveRipErrorApi } from "../services/ripErrorService";
@@ -590,9 +590,6 @@ export const useStore = create(
         const next = toggleHeldId(state.heldSelectedIds, id, state);
         return next === state.heldSelectedIds ? state : { heldSelectedIds: next };
       }),
-    // "Select all held": every held file the list shows now (filters applied).
-    selectAllVisibleHeld: () =>
-      set((state) => (state.selectedIds.size > 0 ? state : { heldSelectedIds: visibleHeldIds(state.filteredFiles, state.heldIds) })),
     // Bulk Unhold. The files that failed stay selected so the operator can simply try again;
     // the caller reports the outcome (the store stays silent). heldIds is re-read from the DB
     // afterwards - the truth, not the optimistic guess.

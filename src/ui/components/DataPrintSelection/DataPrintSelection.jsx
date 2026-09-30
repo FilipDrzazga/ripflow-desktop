@@ -10,8 +10,6 @@ import { getPrinters, defaultPrinterFor } from "../../utils/shopProfileData";
 import { PROFILE_STATUS } from "../../utils/profileStatus";
 import { selectionPrintLength } from "../../utils/selectionPrintLength";
 import RollingNumber from "../RollingNumber/RollingNumber";
-import { runBulkUnhold } from "../../utils/bulkUnhold";
-import { visibleHeldIds } from "../../utils/heldSelection";
 import { sharedPreferredPrinter } from "../../utils/preferredPrinter";
 import { nextSelectedPrinter } from "../../utils/printerSelection";
 
@@ -32,10 +30,6 @@ const DataPrintSelection = () => {
   const clearAllOverrides = useStore((state) => state.clearAllOverrides);
   const shopProfile = useStore((state) => state.shopProfile);
   const shopProfileStatus = useStore((state) => state.shopProfileStatus);
-  const heldIds = useStore((state) => state.heldIds);
-  const heldSelectedIds = useStore((state) => state.heldSelectedIds);
-  const selectAllVisibleHeld = useStore((state) => state.selectAllVisibleHeld);
-  const [isUnholding, setIsUnholding] = useState(false);
   const contentRef = useRef(null);
 
   // The printers come from the shop profile (ETAP 2e step 3), each locked to its material
@@ -43,11 +37,9 @@ const DataPrintSelection = () => {
   // refuse the job anyway, and it would do so AFTER moving the files.
   const printers = useMemo(() => getPrinters(shopProfile), [shopProfile]);
 
-  // Held mode: held files are picked for a bulk Unhold (heldSelectedIds) - the bar offers
-  // Unhold instead of printers. The two selections never coexist (utils/heldSelection.js).
-  const isHeldMode = heldSelectedIds.size > 0;
-  const isSelectionMode = selectedIds.size > 0 || isHeldMode;
-  const visibleHeldCount = useMemo(() => visibleHeldIds(filteredFiles, heldIds).size, [filteredFiles, heldIds]);
+  // The bar is for printing only. Held files picked for a bulk Unhold (heldSelectedIds) have no
+  // bar: the operator releases them from the context menu ("Unhold N selected", DataList).
+  const isSelectionMode = selectedIds.size > 0;
 
   // The estimated print length of the selection - the same number the batch label prints
   // after Rip (overrides and reprints included; see selectionPrintLength).
@@ -267,47 +259,10 @@ const DataPrintSelection = () => {
     return handleCreateBatch();
   };
 
-  const handleUnhold = async () => {
-    setIsUnholding(true);
-    try {
-      await runBulkUnhold();
-    } finally {
-      setIsUnholding(false);
-    }
-  };
-
   const handleClearBtn = () => {
     setSelectedPrinter(null);
     clearSelection();
   };
-
-  if (isHeldMode) {
-    const count = heldSelectedIds.size;
-    return (
-      <div className={`${style.selection_container} ${style.active} ${style.held_mode}`} ref={contentRef}>
-        <div className={style.selection_items}>{count === 1 ? "1 held file selected" : `${count} held files selected`}</div>
-        <div className={style.separator}></div>
-        <div className={style.selection_form}>
-          {visibleHeldCount > count && (
-            <button className={style.select_all_button} type="button" onClick={selectAllVisibleHeld} disabled={isUnholding}>
-              Select all held ({visibleHeldCount})
-            </button>
-          )}
-          <button
-            className={style.unhold_button}
-            type="button"
-            onClick={handleUnhold}
-            disabled={isUnholding}
-          >
-            {isUnholding ? <span className={style.spinner} /> : `Unhold ${count}`}
-          </button>
-          <button className={style.clear_button} type="button" onClick={handleClearBtn} disabled={isUnholding}>
-            Clear Selection
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className={`${style.selection_container} ${isSelectionMode ? style.active : ""}`} ref={contentRef}>
