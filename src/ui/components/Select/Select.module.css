@@ -65,7 +65,6 @@
 .option {
   display: flex;
   align-items: center;
-  gap: 6px;
   width: 100%;
   padding: 9px 10px;
   border: none;
@@ -87,12 +86,4 @@
 .option_selected {
   font-weight: 600;
   color: var(--text-black);
-}
-.option_check {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  width: 16px;
-  font-size: 13px;
 }

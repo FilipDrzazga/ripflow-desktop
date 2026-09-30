@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { HiChevronDown, HiCheck } from "react-icons/hi2";
+import { HiChevronDown } from "react-icons/hi2";
 import styles from "./Select.module.css";
 
 const OPTION_HEIGHT = 38; // px, one row of the menu - only used to decide whether it fits below
@@ -93,7 +93,6 @@ const Select = ({ value, options, onChange, title, warn = false, disabled = fals
                   className={`${styles.option} ${isSelected ? styles.option_selected : ""}`}
                   onClick={() => pick(option)}
                 >
-                  <span className={styles.option_check}>{isSelected && <HiCheck />}</span>
                   {option.label}
                 </button>
               );
