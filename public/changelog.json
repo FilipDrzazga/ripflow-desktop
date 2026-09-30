@@ -1,5 +1,27 @@
 [
   {
+    "version": "1.0.29",
+    "date": "2026-09-30",
+    "changes": [
+      {
+        "text": "The bar at the bottom of the Print list now shows the estimated print length of the selected files, in metres, next to the item count. It is the same estimate the batch label prints, with quantity changes and reprints included; files that cannot be measured are counted below it",
+        "clients": ["all"]
+      },
+      {
+        "text": "Files on hold can be ticked and released together: tick the held files, right-click one of them and choose \"Unhold N selected\". Held files and files to print cannot be ticked at the same time",
+        "clients": ["all"]
+      },
+      {
+        "text": "Settings > Fabrics has a Preferred printer for each fabric. In Print the group shows the printer as a small tag and the bar picks it for you when every selected file agrees. It is only a suggestion - any printer of the right material class can still be chosen, and a printer you picked by hand is kept",
+        "clients": ["all"]
+      },
+      {
+        "text": "The first computer to start this version adds one column to the fabrics table. Set preferred printers only after every computer has this version: a computer still on 1.0.28 forgets them when it saves a fabric",
+        "clients": ["all"]
+      }
+    ]
+  },
+  {
     "version": "1.0.28",
     "date": "2026-09-29",
     "changes": [
