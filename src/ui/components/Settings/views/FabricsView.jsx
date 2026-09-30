@@ -21,6 +21,7 @@ import {
 } from "@/utils/classNumberForm";
 import { getPrinters } from "@/utils/shopProfileData";
 import { preferredPrinterOptions, preferredPrinterState, draftWithType, preferredPrinterToSend } from "@/utils/preferredPrinter";
+import Select from "../../Select/Select";
 import styles from "./FabricsView.module.css";
 
 // The class numbers (ETAP 2g-3c): owned by the shop profile's materialClasses, edited here - by
@@ -241,22 +242,20 @@ const EditPanel = ({ fabric, title, onSave, onCancel, isSaving }) => {
 
         <div className={styles.width_field}>
           <span className={styles.edit_field_label}>Preferred printer</span>
-          <select
-            className={`${styles.printer_select} ${printerState === "stale" ? styles.printer_select_stale : ""}`}
+          <Select
             value={draft.preferredPrinter ?? ""}
-            onChange={(e) => set("preferredPrinter", e.target.value || null)}
+            options={[
+              { value: "", label: "None" },
+              ...printerOptions.map((p) => ({ value: p.code, label: p.code })),
+              ...(printerState === "stale"
+                ? [{ value: draft.preferredPrinter, label: `${draft.preferredPrinter} (not a ${draft.type} printer now)`, short: draft.preferredPrinter }]
+                : []),
+            ]}
+            onChange={(code) => set("preferredPrinter", code || null)}
+            warn={printerState === "stale"}
+            ariaLabel="Preferred printer"
             title="Print pre-selects this printer for the fabric's files. A suggestion only - any printer of the class can still be chosen."
-          >
-            <option value="">None</option>
-            {printerOptions.map((p) => (
-              <option key={p.code} value={p.code}>
-                {p.code}
-              </option>
-            ))}
-            {printerState === "stale" && (
-              <option value={draft.preferredPrinter}>{draft.preferredPrinter} (not a {draft.type} printer now)</option>
-            )}
-          </select>
+          />
           {printerState === "stale" && (
             <span className={styles.printer_stale_msg}>Not a {draft.type} printer in the shop profile - ignored in Print. Choose another or None.</span>
           )}

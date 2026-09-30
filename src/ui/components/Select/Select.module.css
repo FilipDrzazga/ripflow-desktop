@@ -1,0 +1,98 @@
+/* The closed button: the same box as the number inputs of the Fabrics edit panel. */
+.button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  height: 30px;
+  min-width: 110px;
+  max-width: 220px;
+  padding: 0 8px 0 10px;
+  border: 1px solid var(--border-grey);
+  border-radius: 8px;
+  background: var(--bg-white);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    background-color 0.15s ease;
+}
+.button:hover:not(:disabled) {
+  background-color: var(--bg-grey-light);
+}
+.button:focus-visible,
+.button_open {
+  border-color: var(--border-black);
+  outline: none;
+}
+.button_warn {
+  border-color: #d97706;
+}
+.button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.button_label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.chevron {
+  flex-shrink: 0;
+  font-size: 14px;
+  color: var(--text-secondary);
+  transition: transform 0.15s ease;
+}
+.chevron_open {
+  transform: rotate(180deg);
+}
+
+/* The menu: same card as the sort / type menus in Print (DataFilters). */
+.menu {
+  position: fixed;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  max-width: 280px;
+  padding: 6px;
+  border: 1px solid rgba(34, 51, 84, 0.08);
+  border-radius: 14px;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+  box-shadow: 0 20px 40px rgba(27, 39, 94, 0.14);
+}
+.option {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 9px 10px;
+  border: none;
+  border-radius: 10px;
+  background: none;
+  text-align: left;
+  font-size: 13px;
+  font-weight: 400;
+  white-space: nowrap;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: background-color 0.16s ease;
+}
+.option:hover,
+.option:focus-visible {
+  background-color: var(--bg-grey-light);
+  outline: none;
+}
+.option_selected {
+  font-weight: 600;
+  color: var(--text-black);
+}
+.option_check {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 16px;
+  font-size: 13px;
+}

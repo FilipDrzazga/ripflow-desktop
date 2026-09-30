@@ -608,24 +608,6 @@
 }
 
 /* ── Preferred printer (fabrics.preferred_printer) ── */
-.printer_select {
-  height: 30px;
-  min-width: 110px;
-  padding: 0 8px;
-  border: 1px solid var(--border-grey);
-  border-radius: 8px;
-  background: var(--bg-white);
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--text-primary);
-  outline: none;
-}
-.printer_select:focus {
-  border-color: var(--text-primary);
-}
-.printer_select_stale {
-  border-color: #d97706;
-}
 .printer_stale_msg {
   max-width: 220px;
   font-size: 11px;
