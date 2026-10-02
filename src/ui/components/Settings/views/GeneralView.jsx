@@ -1,8 +1,8 @@
-import { useState, useEffect, useRef } from "react";
-import { createPortal } from "react-dom";
+import { useState, useEffect } from "react";
 import { getSettings, setSettings } from "../../../services/settingsService";
 import { notify } from "@/utils/notify";
-import { LuSave, LuChevronDown } from "react-icons/lu";
+import { LuSave } from "react-icons/lu";
+import Select from "../../Select/Select";
 import styles from "./SettingsView.module.css";
 
 const ROLE_OPTIONS = [
@@ -12,79 +12,6 @@ const ROLE_OPTIONS = [
   { value: "rollpress",  label: "Rollpress" },
   { value: "qc",         label: "QC" },
 ];
-
-const RoleDropdown = ({ value, onChange }) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const triggerRef = useRef(null);
-  const panelRef = useRef(null);
-  const [panelPos, setPanelPos] = useState({ top: 0, left: 0, minWidth: 0 });
-
-  const selected = ROLE_OPTIONS.find((o) => o.value === value) ?? ROLE_OPTIONS[0];
-
-  const openDropdown = () => {
-    if (triggerRef.current) {
-      const rect = triggerRef.current.getBoundingClientRect();
-      setPanelPos({ top: rect.bottom + 6, left: rect.left, minWidth: rect.width });
-    }
-    setIsOpen(true);
-  };
-
-  useEffect(() => {
-    if (!isOpen) return;
-    const handleClick = (e) => {
-      if (!triggerRef.current?.contains(e.target) && !panelRef.current?.contains(e.target)) {
-        setIsOpen(false);
-      }
-    };
-    document.addEventListener("pointerdown", handleClick);
-    return () => document.removeEventListener("pointerdown", handleClick);
-  }, [isOpen]);
-
-  return (
-    <>
-      <button
-        ref={triggerRef}
-        type="button"
-        className={`${styles.input} ${styles.select_trigger}`}
-        onClick={() => (isOpen ? setIsOpen(false) : openDropdown())}
-        aria-haspopup="listbox"
-        aria-expanded={isOpen}
-      >
-        <span>{selected.label}</span>
-        <LuChevronDown
-          size={14}
-          className={`${styles.select_chevron} ${isOpen ? styles.select_chevron_open : ""}`}
-        />
-      </button>
-      {isOpen &&
-        createPortal(
-          <div
-            ref={panelRef}
-            className={styles.select_panel}
-            style={{ top: panelPos.top, left: panelPos.left, minWidth: panelPos.minWidth }}
-            role="listbox"
-          >
-            {ROLE_OPTIONS.map((opt) => (
-              <button
-                key={opt.value}
-                type="button"
-                className={`${styles.select_option} ${opt.value === value ? styles.select_option_active : ""}`}
-                onClick={() => {
-                  onChange(opt.value);
-                  setIsOpen(false);
-                }}
-                role="option"
-                aria-selected={opt.value === value}
-              >
-                {opt.label}
-              </button>
-            ))}
-          </div>,
-          document.body
-        )}
-    </>
-  );
-};
 
 const GeneralView = () => {
   const [allSettings, setAllSettings] = useState(null);
@@ -145,7 +72,7 @@ const GeneralView = () => {
         <div className={styles.field}>
           <label className={styles.label}>Workstation Role</label>
           <div className={styles.input_row}>
-            <RoleDropdown value={workstationRole} onChange={setWorkstationRole} />
+            <Select value={workstationRole} options={ROLE_OPTIONS} onChange={setWorkstationRole} ariaLabel="Workstation Role" />
           </div>
           <p className={styles.hint}>Controls scanner behaviour in the Production view on this PC.</p>
         </div>
