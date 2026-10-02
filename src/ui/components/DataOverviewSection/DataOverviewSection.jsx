@@ -1,15 +1,15 @@
-import ProductionOverviewCard from "./ProductionOverviewCard/ProductionOverviewCard";
-import PrintMaterialBreakdownCard from "./PrintMaterialBreakdownCard/PrintMaterialBreakdownCard";
-import OverviewPanel from "../OverviewPanel/OverviewPanel";
+import InboxBar from "../OverviewBars/InboxBar";
+import PipelineBar from "../OverviewBars/PipelineBar";
+import AlertsBar from "../OverviewBars/AlertsBar";
 
 import styles from "./DataOverviewSection.module.css";
 
 const DataOverviewSection = ({ onNavigate }) => {
   return (
     <div className={styles.carts_container}>
-      <ProductionOverviewCard />
-      <PrintMaterialBreakdownCard />
-      <OverviewPanel onNavigate={onNavigate} />
+      <InboxBar />
+      <PipelineBar onNavigate={onNavigate} />
+      <AlertsBar onNavigate={onNavigate} />
     </div>
   );
 };

@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { subscribeWithSelector } from "zustand/middleware";
 import { estimatePrintLength } from "../../shared/estimatePrintLength";
-import { BATCH_STATUS, FILE_STATUS } from "../../shared/constants";
+import { FILE_STATUS } from "../../shared/constants";
 import { ROLLBACK_REASONS } from "../constants/rollbackReasons";
 import { readFolders, peekInbox as peekInboxApi } from "../services/fileService";
 import { inboxDiff, loadedInboxIds } from "../utils/inboxWatch";
@@ -17,7 +17,7 @@ const takeInboxBaseline = async () => {
     return [];
   }
 };
-import { readPrintedDays, readPrintedDay } from "../services/batchService";
+import { readPrintedDays } from "../services/batchService";
 import { getLogs, clearLogs as clearLogsApi, getHeldFiles, holdFile as holdFileApi, unholdFile as unholdFileApi, pruneOrphanHolds, getDbDegraded, getPrintedRootUnreachable } from "../services/systemService";
 import { getRollbackReasonsForFiles as getRollbackReasonsForFilesApi } from "../services/analyticsService";
 import { getRollbackDefinitions as getRollbackDefinitionsApi } from "../services/reasonDefsService";
@@ -75,21 +75,6 @@ const applyFilters = (files, activeTab, searchQuery, sortOrder, printTypeFilter,
     .filter((group) => group.items.length > 0);
 
   return applySort(filtered, sortOrder, config);
-};
-
-export const getLastBatch = (batchDays) => {
-  if (!batchDays || batchDays.length === 0) return null;
-  for (const day of batchDays) {
-    if (!day.batches || day.batches.length === 0) continue;
-    // readdir returns PRINTED_HHMMSS-... folders alphabetically → oldest-first,
-    // so iterate in reverse to find the newest active batch
-    for (let i = day.batches.length - 1; i >= 0; i--) {
-      if (day.batches[i].status === BATCH_STATUS.ACTIVE) return { batch: day.batches[i], day };
-    }
-    // All rolled back — still show the newest one
-    return { batch: day.batches[day.batches.length - 1], day };
-  }
-  return null;
 };
 
 export const useStore = create(
@@ -170,21 +155,13 @@ export const useStore = create(
       } catch (err) { console.error("[store] checkPrintedRoot failed:", err); }
     },
 
-    batchDays: [],
-    setBatchDays: (days) => set({ batchDays: days }),
-    // Lazy: load ONLY the newest day's content (the sole consumer of batchDays
-    // outside BatchHistory is OverviewPanel/getLastBatch, which reads only the
-    // newest active batch). Avoids the full PRINTED scan at startup + after submit.
-    refreshBatchDays: async () => {
+    // The PRINTED probe (startup + after submit): enumeration only, the result is thrown away.
+    // The read itself is the point - it raises the `printed:unreachable` signal when the root
+    // is gone (printedRootSignal.test.js). Nothing in the store keeps the days any more.
+    probePrintedRoot: async () => {
       try {
-        const daysRes = await readPrintedDays();
-        if (!daysRes.success || daysRes.data.length === 0) {
-          set({ batchDays: [] });
-          return;
-        }
-        const dayRes = await readPrintedDay(daysRes.data[0].dayFolder);
-        set({ batchDays: dayRes.success && dayRes.data ? [dayRes.data] : [] });
-      } catch (err) { console.error("[store] refreshBatchDays failed:", err); }
+        await readPrintedDays();
+      } catch (err) { console.error("[store] probePrintedRoot failed:", err); }
     },
 
     logs: [],
@@ -367,7 +344,7 @@ export const useStore = create(
     },
 
     // Open reprint requests (fulfilled_at IS NULL AND superseded_at IS NULL) across all
-    // files. Used by the print-view OverviewPanel for a global "Reprints" count
+    // files. Used by the print-view Attention bar for a global "Reprints" count
     // (count = openReprints.length). Loaded once at startup (App.jsx). This is the DB's
     // authoritative open set — NOT derivable from productionStages, since a reprint whose
     // file was rolled back to the inbox has no file_stages row.

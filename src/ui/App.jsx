@@ -33,7 +33,7 @@ const INBOX_WATCH_INTERVAL = 30_000;
 
 const App = () => {
   const refreshFiles = useStore((state) => state.refreshFiles);
-  const refreshBatchDays = useStore((state) => state.refreshBatchDays);
+  const probePrintedRoot = useStore((state) => state.probePrintedRoot);
   const loadLogsFromDb = useStore((state) => state.loadLogsFromDb);
   const loadHeldFiles = useStore((state) => state.loadHeldFiles);
   const loadReasonDefinitions = useStore((state) => state.loadReasonDefinitions);
@@ -76,7 +76,7 @@ const App = () => {
   if (!isViewEnabled(activeView, shopProfile)) setActiveView("print");
   // RIP errors have no NavBar tab to filter out — their entries are the per-file badge in
   // Production and BatchHistory, the batch-header counter, the popover behind those badges
-  // and the print-view status pill. Read the WARNING on the gated effect below before
+  // and the print-view Attention chip. Read the WARNING on the gated effect below before
   // adding another one: an empty store.ripErrors is not a gate.
   const ripErrorsEnabled = isFeatureEnabled("ripErrors", shopProfile);
   const startupFinishedRef = useRef(false);
@@ -122,10 +122,10 @@ const App = () => {
       // loadRipErrors() is deliberately NOT here — see the gated effect below. At this
       // point loadShopProfile() has not resolved, so the flag would read fail-closed and
       // the scan would be skipped for the whole session.
-      // Full base load of production data so the print-view OverviewPanel has real
+      // Full base load of production data so the print-view overview bars have real
       // counts immediately (cheap SQLite reads, NOT SMB scans). The 30s poll below only
       // fetches incremental changes, so this initial full load is required — without it
-      // the panel would show zeros until the first tick / a Production visit.
+      // the bars would show zeros until the first tick / a Production visit.
       loadAllStages();
       loadAllStageHistory();
       loadOpenReprints();
@@ -138,12 +138,12 @@ const App = () => {
         successTitle: "Folders loaded",
         successMessage: "The folder data has been successfully loaded.",
       });
-      refreshBatchDays();
+      probePrintedRoot();
     };
     fetchFolders();
 
     return () => clearTimeout(safetyTimerRef.current);
-  }, [refreshFiles, refreshBatchDays, loadLogsFromDb, loadHeldFiles, loadReasonDefinitions, loadFabricConfig, loadShopProfile, loadAllStages, loadAllStageHistory, loadOpenReprints, finishStartup, checkDbDegraded, checkPrintedRoot, setShowSetup]);
+  }, [refreshFiles, probePrintedRoot, loadLogsFromDb, loadHeldFiles, loadReasonDefinitions, loadFabricConfig, loadShopProfile, loadAllStages, loadAllStageHistory, loadOpenReprints, finishStartup, checkDbDegraded, checkPrintedRoot, setShowSetup]);
 
   // RIP-error scan + poll, gated on features.ripErrors. It sits in its own effect keyed on
   // the resolved flag rather than in the startup sequence above: the profile answers after
@@ -158,8 +158,8 @@ const App = () => {
   // It hides an entry only because every current consumer renders NOTHING at zero. Any new
   // UI entry that renders at zero — a counter, a tile, a dimmed pill, a filter tab, an
   // empty-state line — is visible to a client who did not buy the feature and MUST take its
-  // own isFeatureEnabled("ripErrors", shopProfile) at its call site. The OverviewPanel pill
-  // is the precedent for that, not an exception to it.
+  // own isFeatureEnabled("ripErrors", shopProfile) at its call site. The Attention chip
+  // (utils/overviewBars.js alertsBarData) is the precedent for that, not an exception to it.
   useEffect(() => {
     // ETAP 4 (4-power): no poll while the station sleeps or is locked; the first load after
     // the pause runs at once, like at startup.
@@ -169,7 +169,7 @@ const App = () => {
     return () => clearInterval(id);
   }, [ripErrorsEnabled, pollingPaused, loadRipErrors]);
 
-  // Global 30s poll — keeps the print-view OverviewPanel counts fresh session-wide,
+  // Global 30s poll — keeps the print-view overview bar counts fresh session-wide,
   // independent of activeView. Production stages fetch incrementally via loadStagesAfter
   // (watermark advanced only on success, so a network failure retries the same window);
   // open reprints re-load in full (small set) so the count self-heals after a transient

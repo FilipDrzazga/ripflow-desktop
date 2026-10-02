@@ -38,7 +38,7 @@ A full PRINTED scan (35 days / ~580 batches → ~2050 SMB roundtrips) is too slo
 - `readPrintedDays()` — enumeration only (`readdir` root + each day, ZERO `readFile`/DB); returns sorted-desc skeletons `{ dayFolder, date, label, totalBatches, totalFiles:null, batches:[], loaded:false }`. Each per-day `readdir` is wrapped in try/catch → a bad day (ENOENT/EPERM/…) becomes a `totalBatches:0` skeleton instead of sinking the whole enumeration.
 - `readPrintedDay(dayFolder)` — one day's full content via `buildDayGroup` (`loaded:true`).
 
-**`refreshBatchDays` (store; startup + after submit)** — loads ONLY the newest day (`readPrintedDays` → `readPrintedDay(days[0])`), sets `batchDays = [newestDay]`. Sole consumer outside BatchHistory's mirror is `OverviewPanel`/`getLastBatch`, which only needs the newest active batch. `getLastBatch` returns `null` gracefully when the newest day has no batches (option a — empty card, never descends to older days). No more full scan here.
+**`probePrintedRoot` (store; startup + after submit)** — the PRINTED probe: `readPrintedDays()` and nothing else; the result is discarded, the read is the point (it raises `printed:unreachable`, see below). The store keeps no batch days any more (`batchDays`, `setBatchDays`, `getLastBatch` and the Last batch card went with the 3-bar overview); BatchHistory owns its `dayGroups`. No full scan here.
 
 **`loadData`** — `readPrintedDays()` → skeletons; eager-loads the most-recent N days (`batchHistoryEagerDays`, default 7) via `readPrintedDay` → `attachReasonsToDay`; older days stay as skeletons. `attachReasonsToDay(day)` is the second-pass reasons fetch extracted from `loadData` (`needsReasons` = batch `ROLLED_BACK` or any file `ROLLED_BACK` → `getRollbackReasonsByBatch`), reused in `loadData`, `loadDayContent` and the poll tick.
 
@@ -87,7 +87,7 @@ VALUES are unchanged** — the signal sits beside the read (pinned by
 `access()` answers `ENOENT` the same way for "the share is gone" and for "nothing has been
 printed on this installation yet", and nothing creates `PRINTED` before the first
 BatchHistory mount (`startWatcher`) or the first submit (`createBatch`) — while
-`refreshBatchDays` reads at startup. So it fires on a FRESH INSTALL. Creating the folder at
+`probePrintedRoot` reads at startup. So it fires on a FRESH INSTALL. Creating the folder at
 startup to silence it was **rejected**: the folder would come back empty, the batches would
 still be invisible, and `access()` would stop failing — silence in the one case the banner
 exists for. So the wording changes, not the condition: it deliberately does not tell anyone
