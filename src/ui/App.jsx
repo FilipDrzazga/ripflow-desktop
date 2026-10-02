@@ -51,6 +51,7 @@ const App = () => {
   const pollingPaused = useStore((state) => state.pollingPaused);
   const setPollingPaused = useStore((state) => state.setPollingPaused);
   const checkDbDegraded = useStore((state) => state.checkDbDegraded);
+  const checkPowerPaused = useStore((state) => state.checkPowerPaused);
   const printedRootUnreachable = useStore((state) => state.printedRootUnreachable);
   const setPrintedRootUnreachable = useStore((state) => state.setPrintedRootUnreachable);
   const checkPrintedRoot = useStore((state) => state.checkPrintedRoot);
@@ -132,6 +133,7 @@ const App = () => {
       lastStagePollAt.current = new Date().toISOString();
       checkDbDegraded();
       checkPrintedRoot();
+      checkPowerPaused();
       await pathsCheck;
       await loadHeldFiles();
       await refreshFiles({
@@ -143,7 +145,7 @@ const App = () => {
     fetchFolders();
 
     return () => clearTimeout(safetyTimerRef.current);
-  }, [refreshFiles, refreshBatchDays, loadLogsFromDb, loadHeldFiles, loadReasonDefinitions, loadFabricConfig, loadShopProfile, loadAllStages, loadAllStageHistory, loadOpenReprints, finishStartup, checkDbDegraded, checkPrintedRoot, setShowSetup]);
+  }, [refreshFiles, refreshBatchDays, loadLogsFromDb, loadHeldFiles, loadReasonDefinitions, loadFabricConfig, loadShopProfile, loadAllStages, loadAllStageHistory, loadOpenReprints, finishStartup, checkDbDegraded, checkPrintedRoot, checkPowerPaused, setShowSetup]);
 
   // RIP-error scan + poll, gated on features.ripErrors. It sits in its own effect keyed on
   // the resolved flag rather than in the startup sequence above: the profile answers after

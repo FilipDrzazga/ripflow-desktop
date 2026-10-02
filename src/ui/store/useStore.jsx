@@ -18,7 +18,7 @@ const takeInboxBaseline = async () => {
   }
 };
 import { readPrintedDays, readPrintedDay } from "../services/batchService";
-import { getLogs, clearLogs as clearLogsApi, getHeldFiles, holdFile as holdFileApi, unholdFile as unholdFileApi, pruneOrphanHolds, getDbDegraded, getPrintedRootUnreachable } from "../services/systemService";
+import { getLogs, clearLogs as clearLogsApi, getHeldFiles, holdFile as holdFileApi, unholdFile as unholdFileApi, pruneOrphanHolds, getDbDegraded, getPrintedRootUnreachable, getPowerPaused } from "../services/systemService";
 import { getRollbackReasonsForFiles as getRollbackReasonsForFilesApi } from "../services/analyticsService";
 import { getRollbackDefinitions as getRollbackDefinitionsApi } from "../services/reasonDefsService";
 import { getFabrics as getFabricsApi } from "../services/fabricService";
@@ -154,6 +154,14 @@ export const useStore = create(
     // wake). Every periodic poll's effect depends on it and starts no interval while true.
     pollingPaused: false,
     setPollingPaused: (val) => set({ pollingPaused: val === true }),
+    // Startup snapshot: a window reloaded while the station is locked missed the transition event.
+    // Only sets true, like the two twins above; the end of the pause arrives as an event.
+    checkPowerPaused: async () => {
+      try {
+        const res = await getPowerPaused();
+        if (res?.paused === true) set({ pollingPaused: true });
+      } catch (err) { console.error("[store] checkPowerPaused failed:", err); }
+    },
 
     // Set by main-process printed:unreachable / printed:reachable — drives the PRINTED
     // banner. Separate from dbDegraded on purpose: a dead NAS raises both, a PRINTED

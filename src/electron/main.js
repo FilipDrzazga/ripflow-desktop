@@ -112,6 +112,9 @@ app.whenReady().then(async () => {
   powerMonitor.on("resume", powerPause.resume);
   powerMonitor.on("lock-screen", powerPause.lock);
   powerMonitor.on("unlock-screen", powerPause.unlock);
+  // Snapshot twin of db:get-degraded: a window that reloads (or loads) while the station is locked
+  // or in the wake grace never saw the transition event.
+  ipcMain.handle("power:get-paused", () => powerPause.snapshot());
 
   autoUpdater.autoDownload = true;
   autoUpdater.autoInstallOnAppQuit = true;

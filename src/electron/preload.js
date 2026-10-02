@@ -118,6 +118,8 @@ const api = Object.freeze({
     ipcRenderer.on("power:paused", handler);
     return () => ipcRenderer.removeListener("power:paused", handler);
   },
+  // Snapshot for a window that loaded after the transition: { paused }.
+  getPowerPaused: () => ipcRenderer.invoke("power:get-paused"),
   // ETAP 4 (4-wizard): read-only folder check (readdir) and the closing restart.
   checkSetupFolders: () => ipcRenderer.invoke("setup:checkFolders"),
   relaunchApp: () => ipcRenderer.invoke("app:relaunch"),

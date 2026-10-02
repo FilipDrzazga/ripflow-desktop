@@ -34,6 +34,9 @@ export const createPowerPause = ({ emit, graceMs = RESUME_GRACE_MS, setTimer = s
 
   return {
     isPaused: () => paused,
+    // The answer to the renderer's startup question (power:get-paused): a window that loads or
+    // reloads while the station is locked missed the transition event, so it asks once.
+    snapshot: () => ({ paused }),
     suspend: () => {
       cancelGrace();
       suspended = true;
