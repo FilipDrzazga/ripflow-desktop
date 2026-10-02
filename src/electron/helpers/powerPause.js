@@ -14,6 +14,23 @@
 
 export const RESUME_GRACE_MS = 10000;
 
+// powerMonitor announces a lock only as an event, so a launch that happens while the screen is
+// ALREADY locked (a relaunch after an update install) would poll until the first unlock/lock. Ask
+// once at startup instead. A failing probe must never stop the app: it is a no-op plus a log line.
+// Returns true when it locked the pause.
+export const applyStartupLock = (powerPause, getState, log = console.warn) => {
+  let state;
+  try {
+    state = getState();
+  } catch (err) {
+    log(`[power] startup idle-state probe failed: ${err?.message ?? err}`);
+    return false;
+  }
+  if (state !== "locked") return false;
+  powerPause.lock();
+  return true;
+};
+
 export const createPowerPause = ({ emit, graceMs = RESUME_GRACE_MS, setTimer = setTimeout, clearTimer = clearTimeout }) => {
   let suspended = false;
   let locked = false;

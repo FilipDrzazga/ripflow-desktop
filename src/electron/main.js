@@ -11,7 +11,7 @@ import { setDbErrorSink } from "./helpers/db.js";
 import { setPrintedRootSink } from "./ipc/readPrintedFolder.js";
 import { getSettings } from "./helpers/getSettings.js";
 import { findUnsafeSettings } from "./helpers/sandboxGuard.js";
-import { createPowerPause } from "./helpers/powerPause.js";
+import { createPowerPause, applyStartupLock } from "./helpers/powerPause.js";
 const require = createRequire(import.meta.url);
 const { autoUpdater } = require("electron-updater");
 
@@ -112,6 +112,8 @@ app.whenReady().then(async () => {
   powerMonitor.on("resume", powerPause.resume);
   powerMonitor.on("lock-screen", powerPause.lock);
   powerMonitor.on("unlock-screen", powerPause.unlock);
+  // A launch while the screen is already locked gets no lock-screen event (D21).
+  applyStartupLock(powerPause, () => powerMonitor.getSystemIdleState(0));
   // Snapshot twin of db:get-degraded: a window that reloads (or loads) while the station is locked
   // or in the wake grace never saw the transition event.
   ipcMain.handle("power:get-paused", () => powerPause.snapshot());
