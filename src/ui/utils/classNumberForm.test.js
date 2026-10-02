@@ -4,6 +4,7 @@ import {
   classNumberFields,
   classNumberFormInvalid,
   classNumberFormUnchanged,
+  isInvalidClassNumber,
 } from "./classNumberForm.js";
 
 // ETAP 4 (4-types-b part 2): the Global Parameters form, by class name.
@@ -59,11 +60,33 @@ describe("classNumberFields", () => {
 });
 
 describe("invalid / unchanged", () => {
-  it("any empty, zero or negative number makes the form invalid", () => {
+  it("any empty or negative number, and a zero roll width, makes the form invalid", () => {
     expect(classNumberFormInvalid(classNumberForm(ALEX))).toBe(false);
-    for (const bad of ["", "0", "-3", "abc"]) {
+    for (const bad of ["", "-3", "abc"]) {
       expect(classNumberFormInvalid({ Cottons: { margin: bad, defaultRollWidth: 1420 } })).toBe(true);
     }
+  });
+
+  // D1 (dlug-1): a margin of 0 is valid - the import validator already allows it.
+  it("a margin of 0 is valid, a blank or negative margin is not", () => {
+    expect(classNumberFormInvalid({ Cottons: { margin: "0", defaultRollWidth: 1420 } })).toBe(false);
+    expect(classNumberFormInvalid({ Cottons: { margin: 0, defaultRollWidth: 1420 } })).toBe(false);
+    for (const bad of ["", " ", "-1", "-0.5", "abc", null, undefined]) {
+      expect(classNumberFormInvalid({ Cottons: { margin: bad, defaultRollWidth: 1420 } })).toBe(true);
+    }
+  });
+
+  it("a roll width of 0 or a negative one is invalid", () => {
+    for (const bad of ["0", 0, "-1420", "", "abc"]) {
+      expect(classNumberFormInvalid({ Cottons: { margin: 10, defaultRollWidth: bad } })).toBe(true);
+    }
+  });
+
+  it("isInvalidClassNumber follows the field: margin allows 0, roll width does not", () => {
+    expect(isInvalidClassNumber("0", "margin")).toBe(false);
+    expect(isInvalidClassNumber("0", "defaultRollWidth")).toBe(true);
+    expect(isInvalidClassNumber("", "margin")).toBe(true);
+    expect(isInvalidClassNumber("-1", "margin")).toBe(true);
   });
 
   it("unchanged compares numbers, not strings", () => {

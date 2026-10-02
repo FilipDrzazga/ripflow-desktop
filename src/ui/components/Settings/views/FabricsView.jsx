@@ -116,7 +116,7 @@ const GlobalParamsCard = () => {
       <div className={styles.globals_body}>
         {fields.map(({ name, field, label, unit }) => {
           const value = values[name]?.[field];
-          const invalid = isInvalidClassNumber(value);
+          const invalid = isInvalidClassNumber(value, field);
           return (
             <div key={`${name}-${field}`} className={styles.globals_field}>
               <span className={styles.globals_label}>{label}</span>

@@ -15,9 +15,11 @@ const CONSTANTS = {
   Polyesters: { margin: MARGIN_POLY, defaultRollWidth: LM_ROLL_POLY },
 };
 
+// allowZero: a margin of 0 is a real setting (no extra length per job) and the profile validator
+// accepts it (validateShopProfile: margin >= 0); a roll width of 0 would be no roll at all (> 0).
 const FIELDS = [
-  { field: "margin", label: "Margin" },
-  { field: "defaultRollWidth", label: "Roll Width" },
+  { field: "margin", label: "Margin", allowZero: true },
+  { field: "defaultRollWidth", label: "Roll Width", allowZero: false },
 ];
 
 // profile -> { [className]: { margin, defaultRollWidth } } for the classes of the profile.
@@ -39,14 +41,21 @@ export const classNumberFields = (profile) => {
   return FIELDS.flatMap(({ field, label }) => names.map((name) => ({ name, field, label: `${label} ${name}`, unit: "mm" })));
 };
 
-const invalidNumber = (v) => !Number(v) || Number(v) <= 0;
+// A blank field is invalid whatever the minimum: Number("") is 0, which would pass as a margin.
+const invalidNumber = (v, allowZero) => {
+  if (v === null || v === undefined || String(v).trim() === "") return true;
+  const n = Number(v);
+  return !Number.isFinite(n) || (allowZero ? n < 0 : n <= 0);
+};
 
 export const classNumberFormInvalid = (values) =>
-  Object.values(values || {}).some((v) => FIELDS.some(({ field }) => invalidNumber(v?.[field])));
+  Object.values(values || {}).some((v) => FIELDS.some(({ field, allowZero }) => invalidNumber(v?.[field], allowZero)));
 
 export const classNumberFormUnchanged = (values, initial) =>
   Object.keys(initial || {}).every((name) =>
     FIELDS.every(({ field }) => Number(values?.[name]?.[field]) === Number(initial[name][field])),
   );
 
-export const isInvalidClassNumber = invalidNumber;
+// For one input: `field` is "margin" or "defaultRollWidth".
+export const isInvalidClassNumber = (value, field) =>
+  invalidNumber(value, FIELDS.find((f) => f.field === field)?.allowZero === true);
