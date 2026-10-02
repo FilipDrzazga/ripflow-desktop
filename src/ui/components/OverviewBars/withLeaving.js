@@ -11,3 +11,20 @@ export const withLeaving = (rendered, segments) => {
   });
   return merged;
 };
+
+// True when two segment lists draw the same bar. A poll hands GooBar a NEW array with the same
+// content every 30 s; without this check each one re-runs the effect and records one more tween
+// in the GSAP context, which keeps every tween until the view unmounts.
+export const sameSegments = (a, b) =>
+  a.length === b.length &&
+  a.every((segment, i) => {
+    const other = b[i];
+    return (
+      segment.key === other.key &&
+      segment.weight === other.weight &&
+      segment.value === other.value &&
+      segment.color === other.color &&
+      segment.title === other.title &&
+      !!segment.breakBefore === !!other.breakBefore
+    );
+  });

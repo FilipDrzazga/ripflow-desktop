@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
-import { withLeaving } from "./withLeaving";
+import { sameSegments, withLeaving } from "./withLeaving";
 import style from "./OverviewBars.module.css";
 
 gsap.registerPlugin(useGSAP);
@@ -50,6 +50,7 @@ const GooBar = ({ segments, label }) => {
   const barRef = useRef(null);
   const previousRef = useRef(null); // key -> last value; null until the first run
   const leavingRef = useRef(new Set()); // keys whose shrink-out tween is already running
+  const targetsRef = useRef(new Map()); // key -> last width/margin target, so an unchanged one is not tweened again
   const filterId = `goo-${useId().replace(/[^a-zA-Z0-9_-]/g, "")}`;
 
   // A remount (React StrictMode runs the effects twice in dev) starts the bar from scratch.
@@ -57,6 +58,7 @@ const GooBar = ({ segments, label }) => {
     () => () => {
       previousRef.current = null;
       leavingRef.current.clear();
+      targetsRef.current.clear();
     },
     [],
   );
@@ -65,7 +67,9 @@ const GooBar = ({ segments, label }) => {
   // left is kept at weight 0 until its tween ends - unless the user asked for no motion.
   const [source, setSource] = useState(segments);
   const [rendered, setRendered] = useState(segments);
-  if (source !== segments) {
+  // An identical list in a new array (every poll makes one) changes nothing: no state, no render,
+  // no effect run.
+  if (source !== segments && !sameSegments(source, segments)) {
     setSource(segments);
     setRendered(prefersReducedMotion() ? segments : withLeaving(rendered, segments));
   }
@@ -90,6 +94,7 @@ const GooBar = ({ segments, label }) => {
         if (segment.leaving) {
           if (leavingRef.current.has(segment.key)) return;
           leavingRef.current.add(segment.key);
+          targetsRef.current.delete(segment.key);
           gsap.to(el, {
             flexGrow: 0,
             minWidth: 0,
@@ -109,8 +114,11 @@ const GooBar = ({ segments, label }) => {
         const marginLeft = live.length === 0 ? 0 : segment.breakBefore ? CLASS_GAP : SEGMENT_GAP;
         const target = { flexGrow: segment.weight, minWidth: MIN_WIDTH, marginLeft };
         const before = previous?.get(segment.key);
+        const targetKey = `${segment.weight}|${marginLeft}`;
+        const unchanged = targetsRef.current.get(segment.key) === targetKey;
+        targetsRef.current.set(segment.key, targetKey);
         if (reduced) {
-          gsap.set(el, target);
+          if (!unchanged) gsap.set(el, target);
         } else if (before === undefined) {
           // First paint: grow in one after another. A newcomer on a bar that is already showing
           // something springs out instead.
@@ -126,7 +134,8 @@ const GooBar = ({ segments, label }) => {
             },
           );
         } else {
-          gsap.to(el, { ...target, duration: 0.6, ease: "power3.out", overwrite: "auto" });
+          // Same target as last time: nothing to tween (and nothing to record in the GSAP context).
+          if (!unchanged) gsap.to(el, { ...target, duration: 0.6, ease: "power3.out", overwrite: "auto" });
           if (before > 0 && segment.value > before) grown.push(live.length);
         }
         live.push(el);

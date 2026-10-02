@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { withLeaving } from "./withLeaving";
+import { sameSegments, withLeaving } from "./withLeaving";
 
 const seg = (key, weight = 10) => ({ key, weight, value: weight });
 const keys = (list) => list.map((s) => s.key);
@@ -35,5 +35,36 @@ describe("withLeaving", () => {
     const revived = back.find((s) => s.key === "b");
     expect(revived.weight).toBe(5);
     expect(revived.leaving).toBeUndefined();
+  });
+});
+
+describe("sameSegments", () => {
+  const full = (over = {}) => ({ key: "a", weight: 10, value: 3, color: "#111", title: "A", breakBefore: false, ...over });
+
+  it("is true for equal content in different arrays and objects", () => {
+    expect(sameSegments([full(), full({ key: "b" })], [full(), full({ key: "b" })])).toBe(true);
+  });
+
+  it("is true for an empty list against an empty list", () => {
+    expect(sameSegments([], [])).toBe(true);
+  });
+
+  it("treats a missing breakBefore like false", () => {
+    expect(sameSegments([full({ breakBefore: undefined })], [full({ breakBefore: false })])).toBe(true);
+  });
+
+  it.each([
+    ["key", { key: "z" }],
+    ["weight", { weight: 11 }],
+    ["value", { value: 4 }],
+    ["color", { color: "#222" }],
+    ["title", { title: "B" }],
+    ["breakBefore", { breakBefore: true }],
+  ])("is false when only %s differs", (_name, over) => {
+    expect(sameSegments([full()], [full(over)])).toBe(false);
+  });
+
+  it("is false when the lengths differ", () => {
+    expect(sameSegments([full()], [full(), full({ key: "b" })])).toBe(false);
   });
 });
