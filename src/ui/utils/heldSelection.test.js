@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { toggleHeldId, visibleHeldIds, pruneHeldSelection, unholdMany } from "./heldSelection";
+import { toggleHeldId, pruneHeldSelection, unholdMany } from "./heldSelection";
 
 const heldIds = new Set(["h1", "h2", "h3"]);
 const none = new Set();
@@ -18,16 +18,6 @@ describe("toggleHeldId", () => {
 
   it("refuses while files are selected for print", () => {
     expect(toggleHeldId(none, "h1", { heldIds, selectedIds: new Set(["p1"]) })).toBe(none);
-  });
-});
-
-describe("visibleHeldIds", () => {
-  it("collects the held files of the shown groups only", () => {
-    const groups = [
-      { items: [{ id: "h1" }, { id: "p1" }] },
-      { items: [{ id: "h3" }] },
-    ];
-    expect([...visibleHeldIds(groups, heldIds)]).toEqual(["h1", "h3"]);
   });
 });
 

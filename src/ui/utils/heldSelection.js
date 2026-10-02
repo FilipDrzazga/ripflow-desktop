@@ -15,10 +15,6 @@ export const toggleHeldId = (heldSelectedIds, id, { heldIds, selectedIds }) => {
   return next;
 };
 
-// Every held file the list shows now (filters applied) - "Select all held".
-export const visibleHeldIds = (filteredFiles, heldIds) =>
-  new Set((filteredFiles || []).flatMap((group) => group.items.filter((item) => heldIds.has(item.id)).map((item) => item.id)));
-
 // Keep only ids that are still held - another station may have unheld some since (the 30 s poll
 // reloads heldIds), and a stale id would make "Unhold N" count a file that is no longer on hold.
 export const pruneHeldSelection = (heldSelectedIds, heldIds) => {
