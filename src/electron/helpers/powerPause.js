@@ -13,10 +13,17 @@
 // Pure apart from the injected emit and timers - main.js wires it to powerMonitor, the test fakes.
 
 export const RESUME_GRACE_MS = 10000;
+export const STARTUP_PROBE_MS = 20000;
 
 // powerMonitor announces a lock only as an event, so a launch that happens while the screen is
 // ALREADY locked (a relaunch after an update install) would poll until the first unlock/lock. Ask
 // once at startup instead. A failing probe must never stop the app: it is a no-op plus a log line.
+//
+// On Windows getSystemIdleState reports "locked" for a locked workstation OR a running screensaver
+// (Chromium idle_win.cc: IsWorkstationLocked() || IsScreensaverRunning()), and ending a screensaver
+// sends no unlock-screen event. So a lock seen at startup has no event that is guaranteed to end it:
+// it is re-probed (watchStartupLock) until the state is no longer "locked". Any lock-screen /
+// unlock-screen event stops that probe - from then on the events rule.
 // Returns true when it locked the pause.
 export const applyStartupLock = (powerPause, getState, log = console.warn) => {
   let state;
@@ -28,13 +35,21 @@ export const applyStartupLock = (powerPause, getState, log = console.warn) => {
   }
   if (state !== "locked") return false;
   powerPause.lock();
+  powerPause.watchStartupLock(getState, log);
   return true;
 };
 
-export const createPowerPause = ({ emit, graceMs = RESUME_GRACE_MS, setTimer = setTimeout, clearTimer = clearTimeout }) => {
+export const createPowerPause = ({
+  emit,
+  graceMs = RESUME_GRACE_MS,
+  probeMs = STARTUP_PROBE_MS,
+  setTimer = setTimeout,
+  clearTimer = clearTimeout,
+}) => {
   let suspended = false;
   let locked = false;
   let graceTimer = null;
+  let probeTimer = null;
   let paused = false;
 
   const update = () => {
@@ -49,8 +64,35 @@ export const createPowerPause = ({ emit, graceMs = RESUME_GRACE_MS, setTimer = s
     graceTimer = null;
   };
 
+  const stopProbe = () => {
+    if (probeTimer !== null) clearTimer(probeTimer);
+    probeTimer = null;
+  };
+
   return {
     isPaused: () => paused,
+    // Re-asks until the system is no longer "locked", then ends the pause (see applyStartupLock).
+    // A throwing probe also ends it: fail open = the behaviour from before the startup lock existed.
+    watchStartupLock: (getState, log = console.warn) => {
+      stopProbe();
+      const tick = () => {
+        probeTimer = null;
+        let state;
+        try {
+          state = getState();
+        } catch (err) {
+          log(`[power] startup lock re-probe failed, ending the pause: ${err?.message ?? err}`);
+          state = null;
+        }
+        if (state === "locked") {
+          probeTimer = setTimer(tick, probeMs);
+          return;
+        }
+        locked = false;
+        update();
+      };
+      probeTimer = setTimer(tick, probeMs);
+    },
     // The answer to the renderer's startup question (power:get-paused): a window that loads or
     // reloads while the station is locked missed the transition event, so it asks once.
     snapshot: () => ({ paused }),
@@ -70,10 +112,12 @@ export const createPowerPause = ({ emit, graceMs = RESUME_GRACE_MS, setTimer = s
       update();
     },
     lock: () => {
+      stopProbe();
       locked = true;
       update();
     },
     unlock: () => {
+      stopProbe();
       locked = false;
       update();
     },
