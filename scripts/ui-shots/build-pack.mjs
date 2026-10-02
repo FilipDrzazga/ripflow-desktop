@@ -3,16 +3,18 @@
 //   node scripts/ui-shots/build-pack.mjs --denylist=<file> [--dir=agents/chat/artefakty/ui-dostawa] [--demo-home=C:\ripflow-demo] [--no-zip]
 //
 // Inputs (in <dir>): katalog.md (the approved catalogue), opisy.md (descriptions, "- **ID** - text"), shots/manifest-*.json.
-// The leak check: PNGs cannot be searched for text, so the INPUTS of the demo are searched instead - the generator,
-// the demo database, the demo config, the manifests and the texts that go into the pack - for every line of the
-// denylist (real client / shop / server names). The denylist file lives only in the artefact folder: not in the
-// repo and not in the ZIP. Any hit stops the build.
+// The leak check (lib/leakCheck.mjs): PNGs cannot be searched for text, so the INPUTS of the demo are searched instead -
+// every file of scripts/ui-shots (generator, scenarios, lib), the demo database, the demo config, the manifests and the
+// texts that go into the pack - for every line of the denylist (real client / shop / server names). The denylist file
+// lives only in the artefact folder: not in the repo and not in the ZIP. Any hit stops the build (exit 3), and so does
+// a missing input (exit 4).
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { DEMO_SHOP } from "./demoData.mjs";
 import { demoLayout, resolveDemoHome } from "./lib/demoPaths.mjs";
+import { runLeakCheck } from "./lib/leakCheck.mjs";
 import { folderOf } from "./lib/shotFolders.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -79,23 +81,19 @@ if (missingDescriptions.length > 0) {
 const deny = fs.readFileSync(denylistFile, "utf8").split(/\r?\n/).map((l) => l.trim()).filter((l) => l && !l.startsWith("#"));
 const demoHome = resolveDemoHome(arg("demo-home"));
 const layout = demoLayout(demoHome);
-const inputs = [
-  path.join(here, "demoData.mjs"),
-  path.join(here, "demoPaths.mjs"),
-  path.join(here, "seed-main.mjs"),
-  path.join(dir, "opisy.md"),
-  path.join(dir, "katalog.md"),
-  layout.configPath,
-  path.join(layout.storagePath, "ripflow.db"),
-  // the isolation-*.json proofs name the real home folder on purpose and do not go into the pack
-  ...fs.readdirSync(shotsDir).filter((f) => /^manifest-.*\.json$/.test(f)).map((f) => path.join(shotsDir, f)),
-].filter((f) => fs.existsSync(f));
-const hits = [];
-for (const file of inputs) {
-  const text = fs.readFileSync(file).toString("latin1").toLowerCase();
-  for (const word of deny) if (text.includes(word.toLowerCase())) hits.push(`${path.basename(file)}: "${word}"`);
+// The whole scripts/ui-shots tree (generator, scenarios, lib) plus the demo inputs below; a missing demo input fails the build.
+// The isolation-*.json proofs name the real home folder on purpose and do not go into the pack, so only manifests are read.
+const { inputs, missing, hits } = runLeakCheck({
+  treeRoot: here,
+  explicit: [path.join(dir, "opisy.md"), path.join(dir, "katalog.md"), layout.configPath, path.join(layout.storagePath, "ripflow.db")],
+  manifestsDir: shotsDir,
+  deny,
+});
+console.log(`leak check: ${inputs.length} inputs, ${deny.length} denylist entries, ${missing.length} missing, ${hits.length} hits`);
+if (missing.length > 0) {
+  console.error(`leak check input missing: ${missing.join(", ")}`);
+  process.exit(4);
 }
-console.log(`leak check: ${inputs.length} inputs, ${deny.length} denylist entries, ${hits.length} hits`);
 if (hits.length > 0) {
   console.error(hits.join("\n"));
   process.exit(3);
