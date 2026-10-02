@@ -168,7 +168,7 @@ A Settings edit reaching the XML is therefore **intended**.
   to `fabric_globals` for older stations - gone, with its "Saved only in part" outcome. Profile
   unreadable / a class missing -> nothing written; `profile:set` refused with `PROFILE_CHANGED`
   (another station saved since this one loaded, ETAP 3-1) -> a Warning, and the form reloads to the
-  current numbers; `profile:set` failed -> an Error. The dead "XML Width Cotton/Poly" fields are gone
+  current numbers; `profile:set` failed -> an Error. Validity (D1): a margin may be 0 (>= 0, like the import validator and the estimator, which uses a finite 0 as is), a roll width must be > 0, a blank field is invalid either way. The dead "XML Width Cotton/Poly" fields are gone
   from the editor.
 
 **`getEstimateConfig()` returns `null`, never `{ fabrics: [] }`, when the cache is not loaded.** An
