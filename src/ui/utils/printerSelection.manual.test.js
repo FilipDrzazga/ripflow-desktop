@@ -5,13 +5,13 @@ import { NO_PRINTER, nextPrinterSelection, nextSelectedPrinter, pickPrinterByHan
 const step = (current, auto, classChanged = false) => nextPrinterSelection({ current, auto, classChanged });
 
 describe("nextSelectedPrinter with the explicit manual flag", () => {
-  it("manual true keeps the printer even when it equals lastAuto (the D10 convergence)", () => {
-    // manual YOKO, the shared preference became YOKO (lastAuto := YOKO), then it goes away
-    expect(nextSelectedPrinter({ current: "YOKO", lastAuto: "YOKO", manual: true, auto: null, classChanged: false })).toBe("YOKO");
+  it("manual true keeps the printer after the preference it converged with goes away (the D10 convergence)", () => {
+    // manual YOKO, the shared preference became YOKO, then it goes away (auto is null again)
+    expect(nextSelectedPrinter({ current: "YOKO", manual: true, auto: null, classChanged: false })).toBe("YOKO");
   });
 
-  it("manual false follows auto even when the printer differs from lastAuto", () => {
-    expect(nextSelectedPrinter({ current: "YOKO", lastAuto: null, manual: false, auto: "YUMI", classChanged: false })).toBe("YUMI");
+  it("manual false follows auto whatever the current printer is", () => {
+    expect(nextSelectedPrinter({ current: "YOKO", manual: false, auto: "YUMI", classChanged: false })).toBe("YUMI");
   });
 
   it("a class change resets even a manual pick", () => {
