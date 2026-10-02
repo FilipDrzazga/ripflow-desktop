@@ -11,12 +11,14 @@ import { PROFILE_STATUS } from "../../utils/profileStatus";
 import { selectionPrintLength } from "../../utils/selectionPrintLength";
 import RollingNumber from "../RollingNumber/RollingNumber";
 import { sharedPreferredPrinter } from "../../utils/preferredPrinter";
-import { nextSelectedPrinter } from "../../utils/printerSelection";
+import { NO_PRINTER, nextPrinterSelection, pickPrinterByHand } from "../../utils/printerSelection";
 
 gsap.registerPlugin(useGSAP);
 
 const DataPrintSelection = () => {
-  const [selectedPrinter, setSelectedPrinter] = useState(null);
+  // { printer, manual }: manual is set only by a click on a radio (utils/printerSelection.js, D10)
+  const [printerSelection, setPrinterSelection] = useState(NO_PRINTER);
+  const selectedPrinter = printerSelection.printer;
   const [isSubmitting, setIsSubmitting] = useState(false);
   const files = useStore((state) => state.files);
   const filteredFiles = useStore((state) => state.filteredFiles);
@@ -110,15 +112,13 @@ const DataPrintSelection = () => {
 
   // Pre-select the preferred printer, else the only printer of the selected class; several (or
   // none) = operator chooses. A printer picked by hand is never overwritten while the class stays
-  // the same (utils/printerSelection.js); lastAutoRef remembers the bar's own previous pick.
+  // the same (utils/printerSelection.js); lastClassRef remembers the class of the previous run.
   const autoPrinter = preferredPrinter ?? defaultPrinterFor(printers, materialType);
-  const lastAutoRef = useRef({ auto: null, materialType: null });
+  const lastClassRef = useRef(null);
   useEffect(() => {
-    const prev = lastAutoRef.current;
-    lastAutoRef.current = { auto: autoPrinter, materialType };
-    setSelectedPrinter((current) =>
-      nextSelectedPrinter({ current, lastAuto: prev.auto, auto: autoPrinter, classChanged: prev.materialType !== materialType }),
-    );
+    const classChanged = lastClassRef.current !== materialType;
+    lastClassRef.current = materialType;
+    setPrinterSelection((current) => nextPrinterSelection({ current, auto: autoPrinter, classChanged }));
   }, [autoPrinter, materialType]);
 
   useGSAP(
@@ -240,7 +240,7 @@ const DataPrintSelection = () => {
         clearAllOverrides();
         await refreshFiles({ clearSelection: true });
         await refreshBatchDays();
-        setSelectedPrinter(null);
+        setPrinterSelection(NO_PRINTER);
       } catch (err) {
         notify(
           {
@@ -260,7 +260,7 @@ const DataPrintSelection = () => {
   };
 
   const handleClearBtn = () => {
-    setSelectedPrinter(null);
+    setPrinterSelection(NO_PRINTER);
     clearSelection();
   };
 
@@ -303,7 +303,7 @@ const DataPrintSelection = () => {
               value={printer.code}
               disabled={materialType !== printer.materialClass || isSubmitting}
               checked={selectedPrinter === printer.code}
-              onChange={() => setSelectedPrinter(printer.code)}
+              onChange={() => setPrinterSelection(pickPrinterByHand(printer.code))}
             />
             {printer.code}
             {printer.code === preferredPrinter && (
