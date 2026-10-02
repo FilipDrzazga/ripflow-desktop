@@ -18,13 +18,13 @@ import { getStorageRootPath } from "../helpers/getRootPath.js";
 import { assertStorageFilePath } from "../helpers/validateStoragePath.js";
 import { parsePrintFileName } from "../helpers/parseFileName.js";
 import { getSettings, setSettings, getRollbackDefinitions, clearRollbackDefinitions } from "../helpers/getSettings.js";
-import { initDb, insertLog, getAllLogs, clearAllLogs, holdFile, unholdFile, getHeldFiles, pruneOrphanHeldFiles, getRollbackReasonsByBatch, getRollbackReasonsByFile, getRollbackStats, getRollbackDetails, clearAllRollbackReasons, deleteRollbackReason, getLatestRollbackReasonsForFileIds, getReasonDefinitions, setReasonDefinitions as setReasonDefinitionsDb, migrateReasonDefinitions, getAllFabrics, saveFabric, deleteFabric as deleteFabricDb, setAllFabrics, backupDb, cleanupShippedStages, getDbDegraded, getShopProfileRaw, isDbOpen } from "../helpers/db.js";
+import { initDb, insertLog, getAllLogs, clearAllLogs, holdFile, unholdFile, getHeldFiles, pruneOrphanHeldFiles, getRollbackReasonsByBatch, getRollbackReasonsByFile, getRollbackStats, getRollbackDetails, clearAllRollbackReasons, deleteRollbackReason, getLatestRollbackReasonsForFileIds, getReasonDefinitions, setReasonDefinitions as setReasonDefinitionsDb, migrateReasonDefinitions, getAllFabrics, saveFabric, ensureFabricPreferredPrinter, deleteFabric as deleteFabricDb, setAllFabrics, backupDb, cleanupShippedStages, getDbDegraded, getShopProfileRaw, isDbOpen } from "../helpers/db.js";
 import { collectDiagnostics, diagnosticsFileName, diagnosticTargets, checkAccess } from "../helpers/diagnostics.js";
 import { buildZip } from "../helpers/zipWriter.js";
 import { loadFabricCache, invalidateFabricCache } from "../helpers/fabricCache.js";
 import { getProfile, getPrinterByCode, getPrinters } from "../helpers/shopProfile.js";
 import { loadShopData, reloadShopData } from "../helpers/reloadShopData.js";
-import { fabricSaveError, fabricListError, fabricAddError, withProfilePrinterCode } from "../helpers/fabricInput.js";
+import { fabricSaveError, fabricListError, fabricAddError, preferredPrinterColumnError, withProfilePrinterCode } from "../helpers/fabricInput.js";
 import { saveShopProfile } from "../helpers/saveShopProfile.js";
 import { exportShopProfile, previewShopProfileImport, applyShopProfileImport } from "../helpers/profileTransfer.js";
 import { setPrinterResolver } from "./createXML.js";
@@ -477,6 +477,9 @@ export async function registerIpcHandlers() {
     // overwrite that row (D9, D20)
     const addError = fabricAddError(oldName, fabric, getAllFabrics());
     if (addError) return { success: false, error: addError };
+    // a DB whose start could not add the preferred_printer column refuses only a preference (D8)
+    const columnError = preferredPrinterColumnError([fabric], ensureFabricPreferredPrinter);
+    if (columnError) return { success: false, error: columnError };
     // the preferred printer is stored the way the profile spells it (D7)
     const ok = saveFabric(oldName ?? fabric.name, withProfilePrinterCode(fabric, getPrinters()));
     invalidateFabricCache();
@@ -497,6 +500,8 @@ export async function registerIpcHandlers() {
     // (helpers/fabricInput.js, 4-types-d)
     const listError = fabricListError(fabrics, getPrinters());
     if (listError) return { success: false, error: listError };
+    const columnError = preferredPrinterColumnError(fabrics, ensureFabricPreferredPrinter);
+    if (columnError) return { success: false, error: columnError };
     const ok = setAllFabrics(fabrics.map((f) => withProfilePrinterCode(f, getPrinters())));
     invalidateFabricCache();
     loadFabricCache();

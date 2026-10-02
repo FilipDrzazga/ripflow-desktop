@@ -6,7 +6,7 @@ import { getStorageRootPath } from "./getRootPath.js";
 import { DEFAULT_FABRICS } from "./defaultFabrics.js";
 import { DEFAULT_PROFILE } from "./defaultProfile.js";
 import { printerOfBatch } from "../../shared/batchFolderName.js";
-import { preferredPrinterToStore } from "./fabricInput.js";
+import { preferredPrinterToStore, storesPreferredPrinter } from "./fabricInput.js";
 
 let db = null;
 let stmtInsert = null;
@@ -118,6 +118,7 @@ const ensureFabricAliasColumn = () => {
 // clears the preference of the fabric it saves: roll out to every station before setting any.
 const ensureFabricPreferredPrinterColumn = () => {
   if (!db) return;
+  hasPreferredPrinterColumn = false;
   try {
     const has = db
       .prepare("PRAGMA table_info(fabrics)")
@@ -126,9 +127,38 @@ const ensureFabricPreferredPrinterColumn = () => {
     if (!has) {
       db.exec("ALTER TABLE fabrics ADD COLUMN preferred_printer TEXT");
     }
+    hasPreferredPrinterColumn = true;
   } catch (err) {
     console.error("[db] ensureFabricPreferredPrinterColumn failed:", err);
   }
+};
+
+// D8: the ALTER above can fail (SQLITE_BUSY past busy_timeout on the first start of a new build), and
+// the column is then missing until a later start adds it. The fabrics reads and writes go through
+// this: true once the column was found or added; while false, every call asks the table again, so a
+// column another station's start added in the meantime is used at once. Throws like any statement -
+// the callers' try/catch handles it.
+let hasPreferredPrinterColumn = false;
+const fabricsHavePreferredPrinter = () => {
+  if (!hasPreferredPrinterColumn) {
+    hasPreferredPrinterColumn = db.prepare("PRAGMA table_info(fabrics)").all().some((col) => col.name === "preferred_printer");
+  }
+  return hasPreferredPrinterColumn;
+};
+
+// For fabrics:save / fabrics:setAll, ONLY when a write carries a preference (fabricInput.js
+// preferredPrinterColumnError): whether the column is there, with one more try of the start's ALTER
+// when it is not - the moment the column is needed is the moment to retry it. No handle answers true:
+// the write fails by itself then, with the DB banner, and "the column is missing" would be the wrong
+// reason.
+export const ensureFabricPreferredPrinter = () => {
+  if (!db) return true;
+  try {
+    if (!fabricsHavePreferredPrinter()) ensureFabricPreferredPrinterColumn();
+  } catch (err) {
+    console.error("[db] ensureFabricPreferredPrinter failed:", err);
+  }
+  return hasPreferredPrinterColumn;
 };
 
 // ETAP 4 (4-drop): tables nothing in this build owns any more, dropped at every start (IF EXISTS,
@@ -838,29 +868,45 @@ export const getFabricGlobalsRaw = () => {
 // [] = the table is genuinely empty. loadFabricCache needs that distinction to tell a
 // degraded start (fall back to static typing) apart from a fresh install (no materials
 // yet). Callers that need a plain array normalize with `?? []` at the call site.
+// Without the preferred_printer column (a failed ALTER, D8) the catalogue is still read - every row
+// with preferredPrinter null - instead of a SELECT on a missing column turning it into null, which
+// left the station without materials (every job refused) until a restart.
 export const getAllFabrics = () => {
   if (!db) return null;
   try {
-    return db.prepare("SELECT name, type, xml_width AS xmlWidth, roll_width AS rollWidth, is_velvet AS isVelvet, is_linen AS isLinen, is_blossom AS isBlossom, alias, preferred_printer AS preferredPrinter FROM fabrics ORDER BY type ASC, name ASC").all();
+    const preferred = fabricsHavePreferredPrinter() ? "preferred_printer" : "NULL";
+    return db.prepare(`SELECT name, type, xml_width AS xmlWidth, roll_width AS rollWidth, is_velvet AS isVelvet, is_linen AS isLinen, is_blossom AS isBlossom, alias, ${preferred} AS preferredPrinter FROM fabrics ORDER BY type ASC, name ASC`).all();
   } catch (err) {
     console.error("[db] getAllFabrics failed:", err);
     return null;
   }
 };
 
+// Without the preferred_printer column (D8) a write that carries no preference goes through without
+// it (there is nothing stored to keep), and one that carries a preference is refused - the handlers
+// already refused it with a readable reason (preferredPrinterColumnError), this is the floor.
 export const saveFabric = (oldName, fabric) => {
   if (!db) return false;
   try {
     // delete (on rename) + insert run in one transaction — true only if all of it commits
     db.transaction(() => {
+      const withPreferred = fabricsHavePreferredPrinter();
+      if (!withPreferred && storesPreferredPrinter(fabric)) throw new Error("no preferred_printer column for a preferred printer");
       // read BEFORE the rename's delete: a save that does not send preferredPrinter keeps it
-      const existing = db.prepare("SELECT preferred_printer AS p FROM fabrics WHERE name = ?").get(oldName || fabric.name)?.p ?? null;
+      const existing = withPreferred ? db.prepare("SELECT preferred_printer AS p FROM fabrics WHERE name = ?").get(oldName || fabric.name)?.p ?? null : null;
       if (oldName && oldName !== fabric.name) {
         db.prepare("DELETE FROM fabrics WHERE name = ?").run(oldName);
       }
-      db.prepare(
-        "INSERT OR REPLACE INTO fabrics (name, type, xml_width, roll_width, is_velvet, is_linen, is_blossom, alias, preferred_printer) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-      ).run(fabric.name, fabric.type, fabric.xmlWidth, fabric.rollWidth, fabric.isVelvet ? 1 : 0, fabric.isLinen ? 1 : 0, fabric.isBlossom ? 1 : 0, fabric.alias || null, preferredPrinterToStore(fabric.preferredPrinter, existing));
+      const values = [fabric.name, fabric.type, fabric.xmlWidth, fabric.rollWidth, fabric.isVelvet ? 1 : 0, fabric.isLinen ? 1 : 0, fabric.isBlossom ? 1 : 0, fabric.alias || null];
+      if (withPreferred) {
+        db.prepare(
+          "INSERT OR REPLACE INTO fabrics (name, type, xml_width, roll_width, is_velvet, is_linen, is_blossom, alias, preferred_printer) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        ).run(...values, preferredPrinterToStore(fabric.preferredPrinter, existing));
+      } else {
+        db.prepare(
+          "INSERT OR REPLACE INTO fabrics (name, type, xml_width, roll_width, is_velvet, is_linen, is_blossom, alias) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        ).run(...values);
+      }
     })();
     return true;
   } catch (err) {
@@ -884,14 +930,19 @@ export const setAllFabrics = (fabrics) => {
   if (!db) return false;
   try {
     db.transaction(() => {
+      // without the column (D8): the same floor as saveFabric
+      const withPreferred = fabricsHavePreferredPrinter();
+      if (!withPreferred && fabrics.some(storesPreferredPrinter)) throw new Error("no preferred_printer column for a preferred printer");
       // by name, read before the DELETE: a row that does not send preferredPrinter keeps it
-      const existing = new Map(db.prepare("SELECT name, preferred_printer AS p FROM fabrics").all().map((r) => [r.name, r.p]));
+      const existing = withPreferred ? new Map(db.prepare("SELECT name, preferred_printer AS p FROM fabrics").all().map((r) => [r.name, r.p])) : new Map();
       db.prepare("DELETE FROM fabrics").run();
-      const stmt = db.prepare(
-        "INSERT INTO fabrics (name, type, xml_width, roll_width, is_velvet, is_linen, is_blossom, alias, preferred_printer) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-      );
+      const stmt = withPreferred
+        ? db.prepare("INSERT INTO fabrics (name, type, xml_width, roll_width, is_velvet, is_linen, is_blossom, alias, preferred_printer) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")
+        : db.prepare("INSERT INTO fabrics (name, type, xml_width, roll_width, is_velvet, is_linen, is_blossom, alias) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
       for (const f of fabrics) {
-        stmt.run(f.name, f.type, f.xmlWidth, f.rollWidth, f.isVelvet ? 1 : 0, f.isLinen ? 1 : 0, f.isBlossom ? 1 : 0, f.alias || null, preferredPrinterToStore(f.preferredPrinter, existing.get(f.name)));
+        const values = [f.name, f.type, f.xmlWidth, f.rollWidth, f.isVelvet ? 1 : 0, f.isLinen ? 1 : 0, f.isBlossom ? 1 : 0, f.alias || null];
+        if (withPreferred) stmt.run(...values, preferredPrinterToStore(f.preferredPrinter, existing.get(f.name)));
+        else stmt.run(...values);
       }
     })();
     return true;

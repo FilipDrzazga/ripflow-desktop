@@ -83,3 +83,16 @@ export const preferredPrinterToStore = (given, existing) => {
   if (given === undefined) return existing ?? null;
   return given || null;
 };
+
+// A write that would STORE a preference: a code sent. Not sent (keep) and null/"" (clear) store none.
+export const storesPreferredPrinter = (fabric) => preferredPrinterToStore(fabric?.preferredPrinter, null) !== null;
+
+// fabrics:save / fabrics:setAll on a DB whose start could not add the preferred_printer column (D8).
+// The catalogue still reads and saves without it; only a write that sets a preference is refused,
+// here with the reason instead of a bare failure. `hasColumn` (db.js ensureFabricPreferredPrinter)
+// retries the ALTER, so it is called only when a row really sets a preference.
+export const preferredPrinterColumnError = (fabrics, hasColumn) => {
+  const first = fabrics.find(storesPreferredPrinter);
+  if (!first || hasColumn()) return null;
+  return `The preferred printer of "${first.name}" cannot be saved: the database could not be updated to hold preferred printers yet. Save it without one, or restart RipFlow and try again.`;
+};
