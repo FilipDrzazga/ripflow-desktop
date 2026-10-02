@@ -24,7 +24,7 @@ import { buildZip } from "../helpers/zipWriter.js";
 import { loadFabricCache, invalidateFabricCache } from "../helpers/fabricCache.js";
 import { getProfile, getPrinterByCode, getPrinters } from "../helpers/shopProfile.js";
 import { loadShopData, reloadShopData } from "../helpers/reloadShopData.js";
-import { fabricSaveError, fabricListError } from "../helpers/fabricInput.js";
+import { fabricSaveError, fabricListError, fabricAddError, withProfilePrinterCode } from "../helpers/fabricInput.js";
 import { saveShopProfile } from "../helpers/saveShopProfile.js";
 import { exportShopProfile, previewShopProfileImport, applyShopProfileImport } from "../helpers/profileTransfer.js";
 import { setPrinterResolver } from "./createXML.js";
@@ -473,7 +473,11 @@ export async function registerIpcHandlers() {
     // printer of the fabric's class in the shop profile
     const inputError = fabricSaveError(fabric, getPrinters());
     if (inputError) return { success: false, error: inputError };
-    const ok = saveFabric(oldName ?? fabric.name, fabric);
+    // an ADD (no oldName) of a name that has a row would silently overwrite it (D9)
+    const addError = fabricAddError(oldName, fabric, getAllFabrics());
+    if (addError) return { success: false, error: addError };
+    // the preferred printer is stored the way the profile spells it (D7)
+    const ok = saveFabric(oldName ?? fabric.name, withProfilePrinterCode(fabric, getPrinters()));
     invalidateFabricCache();
     loadFabricCache();
     return { success: ok };
@@ -492,7 +496,7 @@ export async function registerIpcHandlers() {
     // (helpers/fabricInput.js, 4-types-d)
     const listError = fabricListError(fabrics, getPrinters());
     if (listError) return { success: false, error: listError };
-    const ok = setAllFabrics(fabrics);
+    const ok = setAllFabrics(fabrics.map((f) => withProfilePrinterCode(f, getPrinters())));
     invalidateFabricCache();
     loadFabricCache();
     return { success: ok };

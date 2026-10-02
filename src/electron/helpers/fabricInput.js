@@ -21,6 +21,14 @@ export const fabricListError = (fabrics, printers) => {
   return null;
 };
 
+// The printer of the profile a code names, ignoring case - the way getPrinterByCode (shopProfile.js)
+// reads a code, so a code that routes a job is also a code a fabric may prefer. `printers` is passed
+// in (not read from the cache) for the same reason as in fabricSaveError.
+const printerByCode = (printers, code) => {
+  const wanted = code.toUpperCase();
+  return (Array.isArray(printers) ? printers : []).find((pr) => typeof pr?.code === "string" && pr.code.toUpperCase() === wanted);
+};
+
 // null when the fabric may be saved, else the message for the operator.
 // `printers` = the shop profile's printers[] (getPrinters(): [] with no readable profile). Only
 // read when the fabric names a preferred printer, which must be a printer of the fabric's OWN
@@ -34,14 +42,36 @@ export const fabricSaveError = (fabric, printers) => {
   const preferred = fabric.preferredPrinter;
   if (preferred === undefined || preferred === null || preferred === "") return null;
   if (typeof preferred !== "string") return "Preferred printer must be a printer code.";
-  const printer = (Array.isArray(printers) ? printers : []).find((pr) => pr?.code === preferred);
+  const printer = printerByCode(printers, preferred);
   if (!printer) {
     return `Preferred printer "${preferred}" is not a printer in the shop profile. Choose another one, or none.`;
   }
   if (printer.materialClass !== fabric.type) {
-    return `Preferred printer ${preferred} prints ${printer.materialClass}, not ${fabric.type}. Choose a printer of the fabric's class, or none.`;
+    return `Preferred printer ${printer.code} prints ${printer.materialClass}, not ${fabric.type}. Choose a printer of the fabric's class, or none.`;
   }
   return null;
+};
+
+// The fabric as it is STORED: a preferred printer written the way the profile spells it ("yoko" ->
+// "YOKO"). fabricSaveError accepts any case, but Print and Settings compare the stored code with
+// the profile's own (preferredPrinterState, preferredPrinterForItem), so a "yoko" kept as typed
+// would be read as stale. Call it after fabricSaveError passed; a fabric with no code to fix
+// (none, cleared, not sent) comes back as the same object.
+export const withProfilePrinterCode = (fabric, printers) => {
+  const preferred = fabric?.preferredPrinter;
+  if (typeof preferred !== "string" || preferred === "") return fabric;
+  const printer = printerByCode(printers, preferred);
+  return printer && printer.code !== preferred ? { ...fabric, preferredPrinter: printer.code } : fabric;
+};
+
+// fabrics:save as an ADD (D9): the Add form sends no oldName, and a name that already has a row
+// would overwrite it (INSERT OR REPLACE) - every field of the old material gone, silently. An edit
+// (oldName) is not checked here. `existing` = the catalogue (getAllFabrics: null when it cannot be
+// read - the write fails by itself then). Names compare exactly, like the primary key.
+export const fabricAddError = (oldName, fabric, existing) => {
+  if (oldName) return null;
+  if (!Array.isArray(existing) || !existing.some((f) => f?.name === fabric?.name)) return null;
+  return `A material named "${fabric.name}" already exists. Edit that one instead, or choose another name.`;
 };
 
 // The preferred printer a write stores. undefined = the caller did not send the field (a JSON
