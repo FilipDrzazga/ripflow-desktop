@@ -9,7 +9,7 @@
 //
 // `manual` is the explicit flag (D10): true once the operator clicked a radio, whatever the printer
 // happens to equal later - a hand pick that converges with the auto pick (manual YOKO, then the
-// shared preference becomes YOKO) must stay a hand pick. Undefined counts as not manual.
+// shared preference becomes YOKO) must stay a hand pick.
 export const nextSelectedPrinter = ({ current, manual, auto, classChanged }) => {
   if (classChanged) return auto;
   if (current === null || current === undefined) return auto;
