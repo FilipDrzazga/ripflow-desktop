@@ -473,7 +473,8 @@ export async function registerIpcHandlers() {
     // printer of the fabric's class in the shop profile
     const inputError = fabricSaveError(fabric, getPrinters());
     if (inputError) return { success: false, error: inputError };
-    // an ADD (no oldName) of a name that has a row would silently overwrite it (D9)
+    // an ADD (no oldName) or a RENAME (oldName !== name) onto a name that has a row would silently
+    // overwrite that row (D9, D20)
     const addError = fabricAddError(oldName, fabric, getAllFabrics());
     if (addError) return { success: false, error: addError };
     // the preferred printer is stored the way the profile spells it (D7)

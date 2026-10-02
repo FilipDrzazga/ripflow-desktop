@@ -64,12 +64,14 @@ export const withProfilePrinterCode = (fabric, printers) => {
   return printer && printer.code !== preferred ? { ...fabric, preferredPrinter: printer.code } : fabric;
 };
 
-// fabrics:save as an ADD (D9): the Add form sends no oldName, and a name that already has a row
-// would overwrite it (INSERT OR REPLACE) - every field of the old material gone, silently. An edit
-// (oldName) is not checked here. `existing` = the catalogue (getAllFabrics: null when it cannot be
-// read - the write fails by itself then). Names compare exactly, like the primary key.
+// fabrics:save onto a name that is not the row's own (D9, D20): the Add form sends no oldName, and a
+// RENAME in an edit sends oldName !== fabric.name; if the target name already has a row, the write
+// would overwrite it (INSERT OR REPLACE) - every field of the other material gone, silently. An
+// edit that keeps its name (oldName === fabric.name) is the row's own and is not checked here.
+// `existing` = the catalogue (getAllFabrics: null when it cannot be read - the write fails by
+// itself then). Names compare exactly, like the primary key.
 export const fabricAddError = (oldName, fabric, existing) => {
-  if (oldName) return null;
+  if (oldName && oldName === fabric?.name) return null;
   if (!Array.isArray(existing) || !existing.some((f) => f?.name === fabric?.name)) return null;
   return `A material named "${fabric.name}" already exists. Edit that one instead, or choose another name.`;
 };
