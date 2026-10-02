@@ -6,13 +6,16 @@ import { toIpcError } from "../helpers/ipcError.js";
 import { insertFileStage } from "../helpers/db.js";
 import { getSettings } from "../helpers/getSettings.js";
 import { printBatchLabel } from "../helpers/labelPrinter.js";
-import { getFeature } from "../helpers/shopProfile.js";
+import { getFeature, getProfile } from "../helpers/shopProfile.js";
 import { getMaterialType } from "../helpers/getMaterialType.js";
 import { getEstimateConfig } from "../helpers/fabricCache.js";
 import { estimatePrintLength } from "../../shared/estimatePrintLength.js";
 import { printerOfBatch } from "../../shared/batchFolderName.js";
 
-const toSubmitBatchError = (error, stage, fallbackTitle = "Batch submission failed") =>
+export const LABEL_SKIPPED_PROFILE_UNREADABLE =
+  "Label not printed - the shop profile could not be read.";
+
+const toSubmitBatchError =(error, stage, fallbackTitle = "Batch submission failed") =>
   toIpcError(error, stage, fallbackTitle);
 
 const cleanupXmlFile = async (xmlPath) => {
@@ -90,7 +93,15 @@ export const submitBatch = async (batch) => {
     // so an ungated auto-print lands on the station's DEFAULT system printer. A shop
     // without features.labelPrinting would get a label per batch it never asked for.
     // getFeature is fail-closed, so an unreadable profile prints nothing.
-    if (getFeature("labelPrinting") && getSettings().labelPrintMode !== "manual") {
+    const autoLabel = getSettings().labelPrintMode !== "manual";
+    // The one skip the operator must hear about: an unreadable profile (getProfile() null) is
+    // neither "the shop has no label feature" nor "this station prints by hand", and the batch
+    // is already printed, so it is a warning and not a failure. A feature that is off or
+    // manual mode stay silent - the operator asked for neither label.
+    const labelSkippedWarnings = autoLabel && getProfile() === null
+      ? [LABEL_SKIPPED_PROFILE_UNREADABLE]
+      : [];
+    if (getFeature("labelPrinting") && autoLabel) {
       const batchPrinter = printerOfBatch(batchName) ?? "UNKNOWN";
       const parsedForLength = batch.map((item) => ({ ...item, materialType: getMaterialType(item.material) }));
       const { fixedTotalLengthM } = estimatePrintLength(parsedForLength, getEstimateConfig());
@@ -142,7 +153,7 @@ export const submitBatch = async (batch) => {
       batchId: createdBatchResult.batchId,
       finalXmlPath: xmlResult.finalXmlPath,
       localXmlPath: xmlResult.localXmlPath,
-      warnings: [...createdBatchResult.warnings, ...(xmlResult.warnings || []), ...trackingWarnings],
+      warnings: [...createdBatchResult.warnings, ...(xmlResult.warnings || []), ...labelSkippedWarnings, ...trackingWarnings],
     };
   } catch (error) {
     result.errors = [toSubmitBatchError(error, "submit")];

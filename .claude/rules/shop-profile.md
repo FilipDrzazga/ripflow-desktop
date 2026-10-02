@@ -156,6 +156,13 @@ boolean `true` counts — a flag written as `1` or `"true"` by a sloppy import s
 dark button is a worse experience; a live button wired to a config we could not read is a
 wrong link or a wrong path.
 
+**The one fail-closed skip that talks: the auto-label.** `submitBatch.js` prints the label only when
+`getFeature("labelPrinting")` and `labelPrintMode !== "manual"`. When that is skipped because
+`getProfile() === null` (profile unreadable - not "feature off", not manual mode) it adds
+`LABEL_SKIPPED_PROFILE_UNREADABLE` to the response `warnings`, which `DataPrintSelection` already shows
+as "Batch printed with warnings" (D3). The batch still succeeds; a feature that is off and manual mode
+stay silent. Pinned by `submitBatchLabelWarning.test.js`.
+
 **`DEFAULT_PROFILE` lives in `defaultProfile.js`, not in `db.js`** — same split as
 `defaultFabrics.js`. `db.js` is the edge these tests mock (`vi.mock("./db.js")` replaces
 the WHOLE module), so a constant imported from there would have to be faked too, and

@@ -21,6 +21,7 @@ const h = vi.hoisted(() => ({
 vi.mock("../helpers/labelPrinter.js", () => ({ printBatchLabel: h.printBatchLabel }));
 vi.mock("../helpers/shopProfile.js", () => ({
   getFeature: h.getFeature.mockImplementation((name) => (name === "labelPrinting" ? h.feature : false)),
+  getProfile: () => ({}),
 }));
 vi.mock("../helpers/getSettings.js", () => ({
   getSettings: () => ({ workstationName: "TEST-PC", labelPrintMode: h.labelPrintMode }),
