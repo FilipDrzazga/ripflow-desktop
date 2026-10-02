@@ -15,7 +15,7 @@ import { printerOfBatch } from "../../shared/batchFolderName.js";
 export const LABEL_SKIPPED_PROFILE_UNREADABLE =
   "Label not printed - the shop profile could not be read.";
 
-const toSubmitBatchError =(error, stage, fallbackTitle = "Batch submission failed") =>
+const toSubmitBatchError = (error, stage, fallbackTitle = "Batch submission failed") =>
   toIpcError(error, stage, fallbackTitle);
 
 const cleanupXmlFile = async (xmlPath) => {
