@@ -28,6 +28,7 @@ const AlertsBar = ({ onNavigate }) => {
       segments.map((segment) => ({
         key: segment.key,
         weight: segment.share,
+        value: segment.count,
         color: ALERT_LOOK[segment.key].bar,
         title: `${segment.label} · ${segment.count}`,
       })),

@@ -20,6 +20,7 @@ const PipelineBar = ({ onNavigate }) => {
       segments.map((segment) => ({
         key: segment.key,
         weight: segment.share,
+        value: segment.count,
         color: STAGE_COLOR[segment.key].color,
         title: `${segment.label} · ${segment.count}`,
       })),

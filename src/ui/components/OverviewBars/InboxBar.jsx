@@ -33,6 +33,7 @@ const InboxBar = () => {
         return cls.segments.map((segment, i) => ({
           key: segment.key,
           weight: segment.share,
+          value: segment.length,
           color: segment.isOthers ? look.othersColor : look.palette[segment.rank % look.palette.length],
           title: `${cls.name} · ${segment.label} · ~${segment.length} m`,
           breakBefore: i === 0,
