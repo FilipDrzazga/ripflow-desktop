@@ -4,7 +4,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 // like alias, and a save or an import that does not SEND the field keeps what the row has. The
 // REAL db.js with a fake driver holding a tiny fabrics table (the same edge as
 // db.dropRetired.test.js). That SQLite accepts the statements on a real file is the live check
-// (chat/artefakty/preferred-printer, a sandbox copy of the DB).
+// (agents/chat/artefakty/preferred-printer, a sandbox copy of the DB).
 
 vi.mock("electron", () => ({
   app: { getPath: () => "C:/tmp", getAppPath: () => "C:/tmp" },

@@ -138,7 +138,7 @@ const ensureFabricPreferredPrinterColumn = () => {
 //   fabric_globals - the class numbers' old home; they live in profile.materialClasses since 2G and
 //     the last writer went in 1.0.26
 // Measured on Alex's DB first (2026-09-28: 1 / 1 / 11 / 6 rows, profile row v3) and exported to
-// JSON next to a copy of the file (chat/artefakty/4-drop). Dropped only once every station ran
+// JSON next to a copy of the file (agents/chat/artefakty/4-drop). Dropped only once every station ran
 // 1.0.27 (FILIP 2026-09-29): an older build would recreate an empty fabric_globals - harmless.
 // With the table gone, getFabricGlobalsRaw answers null, so a v1/v2 profile row (none exists -
 // the live row is v3+) stays "blocked" by the v2 -> v3 step instead of migrating (S2 2026-09-28).

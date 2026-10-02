@@ -95,13 +95,13 @@ Rules:
        send any row back as if it had been asked for.
      - Anything outside these three - a changed expected value, a removed or reworded
        assertion, a deleted test, an edited fixture, a mock body changed - is still asked
-       for BEFORE the edit, with the blast-radius list (INSTRUKCJA.md, USPR-A U3).
+       for BEFORE the edit, with the blast-radius list (agents/INSTRUKCJA.md, USPR-A U3).
      - The list is closed: a fourth class is added here, by S2 or FILIP, never by
        analogy in a report.
      Why: 4-types-c (2026-09-28) spent four S1 <-> S2 rounds on permissions for exactly
      these three kinds of edit; none of them could have masked a regression.
 
-     Table template (`chat/artefakty/<step>/test-edits.md`):
+     Table template (`agents/chat/artefakty/<step>/test-edits.md`):
 
      | file:line | before | after | class | why |
      | --------- | ------ | ----- | ----- | --- |

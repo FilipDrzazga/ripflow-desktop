@@ -73,7 +73,7 @@ const stepToV2 = (profile) => {
   return { profile: out, applied, skipped };
 };
 
-// v2 -> v3 (ETAP 2g-3a, FILIP 2026-09-25 09:31, design chat/artefakty/2g-3/projekt.md):
+// v2 -> v3 (ETAP 2g-3a, FILIP 2026-09-25 09:31, design agents/chat/artefakty/2g-3/projekt.md):
 // profile.materialClasses[] becomes the owner of the class NUMBERS, which until now lived in
 // fabric_globals under keys that carry the class name. The numbers come from THIS shop's
 // fabric_globals, passed in by the caller - never from DEFAULT_PROFILE or the fabric seed:

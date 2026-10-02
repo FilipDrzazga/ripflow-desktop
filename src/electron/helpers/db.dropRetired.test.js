@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 // ETAP 4 (4-drop part 2): initDb drops the four retired tables, each on its own, and no longer
 // creates fabric_globals. The REAL db.js with a fake driver that records every exec() (the same
 // edge as db.fabricGlobalsRaw.test.js). What this does not prove - that SQLite accepts the
-// statements on a real file - the live check does (chat/artefakty/4-drop, a copy of Alex's DB).
+// statements on a real file - the live check does (agents/chat/artefakty/4-drop, a copy of Alex's DB).
 
 vi.mock("electron", () => ({
   app: { getPath: () => "C:/tmp", getAppPath: () => "C:/tmp" },

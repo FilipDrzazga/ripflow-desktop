@@ -27,8 +27,5 @@ dist-ssr
 *.sw?
 
 # Agent harness (S1/S2 loop tooling) - local only, never pushed
-agents-kit/
-INSTRUKCJA.md
-agents.config.json
-chat/
+agents/
 CLAUDE.local.md

@@ -37,7 +37,7 @@ udowadniamy golden-diff (XML bajt w bajt) na kopii jego bazy, nie na oko.
 Pomiary wdrozeniowe i obalone tezy z 2026-09-10/11 NIE STOJA JUZ TUTAJ. Byly logiem
 w pliku, ktory jest stanem: 206 linii historii przed pierwszym etapem roadmapy,
 w ktorych nie dalo sie odroznic planu od wrzesnia. Przeniesione 2026-09-21 do
-`claude/DECYZJE-LOG.md` (poza repo - niosa dane wdrozeniowe klienta).
+`agents/docs/DECYZJE-LOG.md` (poza repo - niosa dane wdrozeniowe klienta).
 
 Co tam poszlo, zeby nie szukac na slepo:
 
@@ -56,7 +56,7 @@ Co tam poszlo, zeby nie szukac na slepo:
 - **Eksperyment ze stacja QC** - uspienie zrywa SMB, hipoteza potwierdzona. Zasila
   pozycje `powerMonitor` w ETAPIE 4; nie jest warunkiem zadnego wydania.
 
-Stan wdrozenia NA DZIS i procedura: `claude/RUNBOOK-WDROZENIE.md` sekcja 0.
+Stan wdrozenia NA DZIS i procedura: `agents/docs/RUNBOOK-WDROZENIE.md` sekcja 0.
 
 Jedna rzecz z tamtego bloku ZOSTALA tutaj, bo nie jest historia, tylko otwarta praca:
 lista pozycji do changeloga pierwszego wydania z aktualnego `main`.
@@ -66,7 +66,7 @@ lista pozycji do changeloga pierwszego wydania z aktualnego `main`.
 To nie jest dlug do splacenia, tylko lista tego, co operator zobaczy. Kolejnosc wg ryzyka:
 
 1. ~~**`scanRules` - BLOKUJACE.**~~ **ZAMKNIETE przez P1 (`7937508`)** - opis migracji
-   w `claude/DECYZJE-LOG.md`.
+   w `agents/docs/DECYZJE-LOG.md`.
    Zapis oryginalny: bez migracji P1 skan przestanie ruszac etapy na kazdej
    stacji z niepusta rola i pokaze "Role not in scan rules". Zainstalowany `1.0.21`
    powstal PRZED `2eeaa26` (2026-09-04), wiec dzis skaner dziala na starych, zaszytych
@@ -76,7 +76,7 @@ To nie jest dlug do splacenia, tylko lista tego, co operator zobaczy. Kolejnosc 
    dostawala domyslna szerokosc klasy; teraz operator zobaczy blokade w widoku druku.
    Dla dzisiejszych danych no-op (wszystkie 121 usunietych nazw sa w katalogu), ale
    katalog zyje - patrz "Rozjazd snapshotu katalogu"
-   w `claude/DECYZJE-LOG.md`.
+   w `agents/docs/DECYZJE-LOG.md`.
 3. **XML z nieznanym wymiarem nie powstaje** (`b06d57d`, komunikat rozdzielony w
    `8543364`). Wczesniej powstawal plik z pustym `<Width></Width>`, ktory PrintFactory
    brala. Nowa blokada, ktorej operator wczesniej nie widzial.
@@ -550,7 +550,7 @@ a nie w porzadku wierszy.
     `680c637`) folder bledow RIP z `folders.ripError` (bez nazwy: skan pominiety, badge
     zostaja), `e78c839` folder custom order z `folders.customOrder` (bez nazwy: widoczna
     odmowa `CUSTOM_ORDER_FOLDER_MISSING` przed zapisem). Bramka: 515 testow, golden 0/70,
-    zero zmian w istniejacych testach, mutacje 6+6+5+5. Dowody: `chat/artefakty/2d-1/`
+    zero zmian w istniejacych testach, mutacje 6+6+5+5. Dowody: `agents/chat/artefakty/2d-1/`
     ... `2d-4/`. Swiadomie POZA 2d: `folders.printed` - "PRINTED" siedzi w zapisanych
     `batch_path` (regula 22), zmiana nazwy odcina historie (P19).
   - DRUGI w kolejnosci. Zawiera `customOrderHandlers.js`, czyli plik objety dziura (b)
@@ -567,7 +567,7 @@ a nie w porzadku wierszy.
     `defaultProfile.js` (ETAP 3) i tekst pomocy `FabricsView.jsx` (2h). Bramka: 475
     testow, golden 0/70, zero zmian w istniejacych testach poza jedna asercja w
     `readPrintedFolder.diag.test.js` za zgoda FILIPA (12:26). Dowody:
-    `chat/artefakty/2e-pomiar/`, `2e-krok1/` ... `2e-krok5/`.
+    `agents/chat/artefakty/2e-pomiar/`, `2e-krok1/` ... `2e-krok5/`.
   - **PIERWSZY w kolejnosci, decyzja FILIPA z 2026-09-21.** Argument, ktory ja niesie,
     stoi nizej w sekcji "Przy 2e (drukarki jako dane)" (KROK A): kody `DGEN|YOKO|YUMI`
     siedza w `BATCH_FOLDER_RE` w `ipc/readPrintedFolder.js`, ktory jest TWARDA bramka
@@ -1248,13 +1248,13 @@ i `reason_definitions`. Odrebne od edytora profilu z ETAPU 3, ktory jest WDROZEN
 Baza pozostaje jedynym zywym zrodlem prawdy; JSON to tylko transport na wdrozenie.
 
 **STAN 2026-09-28: ETAP 3 ZROBIONY I ZABRAMKOWANY (FILIP 10:49 "gate passed"), odhaczony w 3-tick.**
-Plan i uzasadnienia: `chat/artefakty/3-rekon/projekt.md`; dowody per krok: `chat/artefakty/3-0` .. `3-8`.
+Plan i uzasadnienia: `agents/chat/artefakty/3-rekon/projekt.md`; dowody per krok: `agents/chat/artefakty/3-0` .. `3-8`.
 Kod w `main`, NIE w wydaniu - `[x]` znaczy tu "zabramkowane", NIE "juz u Alexa": pojdzie w 1.0.26 (jedno wydanie: 2H + ETAP 3 + sprzatanie podwojnego zapisu, FILIP 10:49;
 importu wolno uzyc dopiero, gdy kazda stacja ma wersje z CAS 3-1). Kroki:
 3-1 `564f419` CAS w `profile:set`; 3-2 `0d7b397` + `b21b6b5` walidator; 3-3 `0bebbab` export/import
 w main; 3-4 `3d51d3f` sekcja Shop Profile (reczny test FILIPA OK, ODP 29); 3-5 `627fab6` fikstura
 profilu Alexa + stub golden; 3-6 `ab9bb35` + `a128fac` pusty szkielet + baner (reczny test na swiezej
-bazie: `chat/artefakty/3-6/reczny-test.md`, u FILIPA); 3-7 `b0e9933` instalator bez testow i nazw;
+bazie: `agents/chat/artefakty/3-6/reczny-test.md`, u FILIPA); 3-7 `b0e9933` instalator bez testow i nazw;
 3-8 `0d0f2d8` lint na niewidoczne znaki.
 Korekty zapisu ponizej, zmierzone przy rekonesansie (3-rekon, sekcja 2):
 - kod drukarki `^[A-Z0-9]+$`, NIE `^[A-Z0-9_]+$` - `BATCH_FOLDER_RE` czyta `_<cyfry>` na koncu jako
@@ -1383,12 +1383,12 @@ Pozycje dodane w trakcie (regula 5 - nowe linie zamiast rozszerzania istniejacyc
       usuniety if-chain, ktorego juz pilnuje parity w `hotfolderRouting.test.js`. Pomiar: 70 batchy
       golden przez prawdziwy lancuch (printerOfBatch -> getPrinterByCode na profilu Alexa ->
       getWorkflowFolderName) = DGEN->COTTON 36, YOKO->POLY 25, YUMI->POLY 9, 0 niezgodnosci
-      (`chat/artefakty/4-golden-e/measure.out`). Ostatnia luka - samo podpiecie
+      (`agents/chat/artefakty/4-golden-e/measure.out`). Ostatnia luka - samo podpiecie
       `setPrinterResolver(getPrinterByCode)` w `ipc/index.js` - ma test `printerResolverWiring.test.js`
       (skan zrodla, 2 mutacje zabite). **ODHACZONE w 4-tick (`04a9c62`), bramka FILIPA 2026-09-29.**
 
 - [x] **`powerMonitor` + pauza pollingu na `suspend` / `lock-screen`.** Uzasadnione
-      eksperymentem na stacji QC (zapis w `claude/DECYZJE-LOG.md`): uspienie
+      eksperymentem na stacji QC (zapis w `agents/docs/DECYZJE-LOG.md`): uspienie
       zrywa SMB do `O:`, aplikacja tego nie zauwaza i sie zawiesza. NIE jest warunkiem
       wydania `v1.0.22` - wylaczone uspienie jest dzialajacym obejsciem
       **ZROBIONE `54e3791` + docs `2f3fd52` (4-power): pauza = uspienie LUB blokada LUB 10 s po
@@ -1515,7 +1515,7 @@ Pozycje dodane w trakcie (regula 5 - nowe linie zamiast rozszerzania istniejacyc
       **ZROBIONE `8cd2fd6` (2026-09-24, plan NOC), bramka potwierdzona przez FILIPA
       2026-09-25 07:30.** `* text=auto eol=lf`, .bat/.cmd eol=crlf, binarne jako binary.
       Pomiar przed: indeks juz w calosci LF, wiec `git add --renormalize .` nic nie
-      zmienil - osobny commit mechaniczny okazal sie zbedny. Dowody: `chat/artefakty/noc-2/`.
+      zmienil - osobny commit mechaniczny okazal sie zbedny. Dowody: `agents/chat/artefakty/noc-2/`.
       Opis problemu ponizej zostaje jako historia:
       `core.autocrlf=true` pochodzi z SYSTEMOWEGO gitconfiga Git for Windows
       (`C:/Program Files/Git/etc/gitconfig`) - w `.git/config` tego wpisu NIE MA,
@@ -1556,7 +1556,7 @@ Pozycje dodane w trakcie (regula 5 - nowe linie zamiast rozszerzania istniejacyc
             Tabela niepusta ma byc najpierw wyeksportowana do JSON obok kopii bazy.
             **2026-09-28 (4-drop cz.1, `2eed9fe` + `measure.cjs`): counters 1, custom_clients 1,
             custom_order_files 11, fabric_globals 6 wierszy, profil v3; wszystkie 4 wyeksportowane
-            do JSON obok kopii (`chat/artefakty/4-drop/`).**
+            do JSON obok kopii (`agents/chat/artefakty/4-drop/`).**
       - [x] **Dopiero potem `DROP TABLE IF EXISTS` w `initDb`**, idempotentnie i w
             try/catch - tym samym wzorcem co `ensureFabricAliasColumn`, bo kilka stacji
             startuje przeciw WSPOLDZIELONEJ bazie i migracja musi to przetrwac.

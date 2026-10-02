@@ -6,7 +6,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 // session with no database. Fake driver, same convention as db.seedProfile.test.js: it models
 // only what SQLite does with the seed statement - a plain INSERT on an existing id throws,
 // one that states ON CONFLICT(id) DO NOTHING changes nothing. The real SQLite behaviour of the
-// statement is proven separately (chat/artefakty/4-seed/).
+// statement is proven separately (agents/chat/artefakty/4-seed/).
 
 vi.mock("electron", () => ({
   app: { getPath: () => "C:/tmp", getAppPath: () => "C:/tmp" },

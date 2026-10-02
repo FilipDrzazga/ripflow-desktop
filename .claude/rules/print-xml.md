@@ -219,7 +219,7 @@ ELECTRON_RUN_AS_NODE=1 ./node_modules/.bin/electron scripts/golden/compare-golde
   directly. Routing is pinned by `hotfolderRouting.test.js` (parity of Alex's three printers with
   the removed if-chain, fail-closed refusals) and the production wiring
   `setPrinterResolver(getPrinterByCode)` by `printerResolverWiring.test.js`; the 70 golden batches
-  were measured once through that chain, 70/70 as the if-chain (`chat/artefakty/4-golden-e`).
+  were measured once through that chain, 70/70 as the if-chain (`agents/chat/artefakty/4-golden-e`).
 - The golden net does NOT see the six non-XML consumers. For those, compare
   `estimatePrintLength(items)` against `estimatePrintLength(items, config)` over real rows at file,
   material-group and batch level — the shapes the different consumers actually use.
