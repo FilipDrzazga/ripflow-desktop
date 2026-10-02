@@ -48,7 +48,8 @@ const fabric = (name, type, extra = {}) => ({
 export const DEMO_FABRICS = [
   fabric("Natural Canvas", "Cottons", { preferredPrinter: "ARCA" }),
   fabric("Linen Blend Natural", "Cottons", { xmlWidth: 1370, isLinen: 1 }),
-  fabric("Organic Twill", "Cottons"),
+  // A Cottons fabric whose preferred printer serves another class: Settings > Fabrics shows it as stale (ST-14).
+  fabric("Organic Twill", "Cottons", { preferredPrinter: "BOREAL" }),
   fabric("Cotton Drill", "Cottons", { alias: "Drill" }),
   fabric("Satin Gloss", "Polyesters", { preferredPrinter: "BOREAL" }),
   fabric("Velvet Soft", "Polyesters", { isVelvet: 1 }),
@@ -141,7 +142,30 @@ export const BATCH_PLAN = [
   { daysAgo: 1, time: "153540", material: "Velvet Soft", printer: "CIRRUS", kinds: ["LM", "SAMPLE"], stages: ["to_sewing", "to_sewing", "from_sewing"] },
   { daysAgo: 2, time: "101100", material: "Linen Blend Natural", printer: "ARCA", kinds: ["LM", "SAMPLE"], stages: ["packed", "shipped", "shipped"] },
   { daysAgo: 3, time: "163000", material: "Stretch Jersey", printer: "BOREAL", kinds: ["LM", "FQ"], stages: ["shipped", "shipped", "packed", "qc"] },
+  // Added for the designer pack (UI-3): a second parcel at sewing (company A - the batch above goes to B) ...
+  { daysAgo: 2, time: "142200", material: "Chiffon Light", printer: "CIRRUS", kinds: ["LM", "SAMPLE"], stages: ["to_sewing", "to_sewing"] },
+  // ... and an old unfinished batch: the red "N days in production" pill and the Stuck tab.
+  { daysAgo: 8, time: "110000", material: "Cotton Drill", printer: "ARCA", kinds: ["LM", "FQ", "SAMPLE"], stages: ["printed", "heatpress", "qc"] },
 ];
+
+// Age of the inbox files in days (their creation time is set to it), cycled over the files.
+export const INBOX_AGES = [0, 0, 1, 2, 3, 4, 6];
+
+// Switches every feature flag off (variant V1: a shop that bought none of the optional modules).
+export const withAllFeaturesOff = (shop) => ({
+  ...shop,
+  features: Object.fromEntries(Object.keys(shop.features).map((key) => [key, false])),
+});
+
+// A custom-order CSV the Custom Orders scenarios drop on the page (supplier column = "<material>, <file name>").
+export const buildDemoCsv = ({ po, material, rows }) =>
+  ["Supplier Stock ID,Quantity to Print,PO Number", ...rows.map((r) => `"${material}, ${r.file}",${r.meters},${po}`)].join(String.fromCharCode(10));
+
+// Artwork names of the two demo custom orders; the ones listed in `present` get a .tif in the custom folder.
+export const DEMO_CUSTOM_ART = {
+  complete: { po: "PO-DEMO-3001", material: "Satin Gloss", files: ["DEMO-A101", "DEMO-A102", "DEMO-A103"], present: ["DEMO-A101", "DEMO-A102", "DEMO-A103"] },
+  partial: { po: "PO-DEMO-3002", material: "Velvet Soft", files: ["DEMO-B201", "DEMO-B202", "DEMO-B203", "DEMO-B204"], present: ["DEMO-B201", "DEMO-B202", "DEMO-B203"] },
+};
 
 // Stage chain a file walks from "printed" to reach each final stage.
 export const STAGE_CHAIN = {

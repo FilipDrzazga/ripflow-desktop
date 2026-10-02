@@ -41,8 +41,14 @@ export const demoLayout = (demoHome) => {
     storagePath: win.join(root, "storage"),
     xmlPath: win.join(root, "xml"),
     customOrderFolderPath: win.join(root, "custom"),
+    // Variant V3 (first run): two more storage folders the wizard is pointed at by hand.
+    storageEmptyPath: win.join(root, "storage-empty"),
+    storageNoHotPath: win.join(root, "storage-nohot"),
+    storageCorruptPath: win.join(root, "storage-corrupt"),
   };
 };
+
+export const VARIANTS = ["v0", "v1", "v2", "v3", "v4"];
 
 // true when `target` is `base` or lies under it (case-insensitive, like Windows).
 export const isUnder = (target, base) => {
@@ -88,11 +94,12 @@ export const writeDemoConfig = (demoHome, overrides = {}) => {
     xmlPath: layout.xmlPath,
     customOrderFolderPath: layout.customOrderFolderPath,
     labelPrintMode: "manual",
-    labelPrinterName: "",
+    labelPrinterName: "Demo Label Printer",
     workstationName: "DEMO-STATION-1",
     workstationRole: "cotton",
     shippedRetentionDays: 30,
-    batchHistoryEagerDays: 7,
+    // 2 days eager: the older days of the demo history show as lazy "skeleton" days.
+    batchHistoryEagerDays: 2,
     clientId: "all",
     ...overrides,
   };

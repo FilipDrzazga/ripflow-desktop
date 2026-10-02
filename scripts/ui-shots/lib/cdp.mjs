@@ -126,9 +126,85 @@ export const connectPage = async (port, { urlPrefix = "http://localhost:5173" } 
       await page.mouseMove(at.x, at.y);
     },
     pressKey: async (key) => {
-      await send("Input.dispatchKeyEvent", { type: "keyDown", key });
-      await send("Input.dispatchKeyEvent", { type: "keyUp", key });
+      const codes = { Enter: 13, Escape: 27, Tab: 9, ArrowLeft: 37, ArrowRight: 39 };
+      const vk = codes[key];
+      const text = key === "Enter" ? String.fromCharCode(13) : undefined;
+      await send("Input.dispatchKeyEvent", { type: "keyDown", key, code: key, windowsVirtualKeyCode: vk, nativeVirtualKeyCode: vk, ...(text ? { text } : {}) });
+      await send("Input.dispatchKeyEvent", { type: "keyUp", key, code: key, windowsVirtualKeyCode: vk, nativeVirtualKeyCode: vk });
     },
+
+    // Centre of the first visible element matching a CSS selector (scrolled into view). nth picks another match.
+    findSelector: (selector, { nth = 0 } = {}) =>
+      evaluate(
+        (selector, nth) => {
+          const els = [...document.querySelectorAll(selector)].filter((el) => {
+            const r = el.getBoundingClientRect();
+            const st = getComputedStyle(el);
+            return r.width > 0 && r.height > 0 && st.visibility !== "hidden" && st.display !== "none";
+          });
+          const el = els[nth];
+          if (!el) return null;
+          el.scrollIntoView({ block: "center", inline: "nearest", behavior: "instant" });
+          const r = el.getBoundingClientRect();
+          return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+        },
+        selector,
+        nth,
+      ),
+    clickSelector: async (selector, opts = {}) => {
+      const at = await waitFor(() => page.findSelector(selector, opts), { what: `selector ${selector}`, timeoutMs: 15000 });
+      await page.sleep(150);
+      const again = (await page.findSelector(selector, opts)) ?? at;
+      await page.mouseClickAt(again.x, again.y, { button: opts.button ?? "left" });
+    },
+    hoverSelector: async (selector, opts = {}) => {
+      const at = await waitFor(() => page.findSelector(selector, opts), { what: `selector ${selector}`, timeoutMs: 15000 });
+      await page.mouseMove(at.x, at.y);
+    },
+    exists: (selector) => evaluate((s) => !!document.querySelector(s), selector),
+    // React-safe value change for an input (native setter + input event), then the caller may press Enter.
+    setValue: (selector, value) =>
+      evaluate(
+        (selector, value) => {
+          const el = document.querySelector(selector);
+          if (!el) return false;
+          const proto = el instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
+          Object.getOwnPropertyDescriptor(proto, "value").set.call(el, value);
+          el.dispatchEvent(new Event("input", { bubbles: true }));
+          el.focus();
+          return true;
+        },
+        selector,
+        value,
+      ),
+    scrollContainer: (selector, top) =>
+      evaluate(
+        (selector, top) => {
+          const el = document.querySelector(selector);
+          if (!el) return false;
+          el.scrollTop = top === "end" ? el.scrollHeight : top;
+          return el.scrollTop;
+        },
+        selector,
+        top,
+      ),
+    // Synthetic drag events with an in-memory file (the native file chooser is outside the page).
+    dragFile: (selector, { name, content, drop = false } = {}) =>
+      evaluate(
+        (selector, name, content, drop) => {
+          const el = document.querySelector(selector);
+          if (!el) return false;
+          const dt = new DataTransfer();
+          if (name) dt.items.add(new File([content ?? ""], name, { type: "text/csv" }));
+          const types = drop ? ["dragenter", "dragover", "drop"] : ["dragenter", "dragover"];
+          for (const type of types) el.dispatchEvent(new DragEvent(type, { bubbles: true, cancelable: true, dataTransfer: dt }));
+          return true;
+        },
+        selector,
+        name ?? null,
+        content ?? "",
+        drop,
+      ),
     sleep: (ms) => new Promise((r) => setTimeout(r, ms)),
 
     // PNG of the viewport. Waits until two captures in a row are identical, so a running animation

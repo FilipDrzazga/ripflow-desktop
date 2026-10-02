@@ -12,6 +12,7 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { execFileSync } from "node:child_process";
 import { pathToFileURL, fileURLToPath } from "node:url";
 import { SANDBOX_ROOT } from "../../src/electron/sandboxBoot.js";
 import { app } from "electron";
@@ -22,7 +23,10 @@ import {
   DEMO_FABRICS,
   DEMO_SHOP,
   DEMO_WORKSTATION,
+  DEMO_CUSTOM_ART,
+  INBOX_AGES,
   STAGE_CHAIN,
+  withAllFeaturesOff,
   buildFiles,
   buildInboxPlan,
   makeRng,
@@ -42,6 +46,8 @@ const pad2 = (n) => String(n).padStart(2, "0");
 const dayName = (d) => `${pad2(d.getDate())}-${pad2(d.getMonth() + 1)}-${d.getFullYear()}`;
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+const VARIANT = process.env.UI_SHOTS_VARIANT || "v0";
+const roleValue = (role) => (role === "none" ? "" : role);
 const demoHome = assertDemoHome(resolveDemoHome());
 const layout = demoLayout(demoHome);
 
@@ -78,7 +84,7 @@ const main = async () => {
   if (SANDBOX_ROOT !== layout.root) return fail(`sandbox root is ${SANDBOX_ROOT}, expected ${layout.root}`);
 
   // The config must exist BEFORE getSettings.js builds its Store (the dynamic imports below).
-  writeDemoConfig(demoHome, process.env.UI_SHOTS_ROLE ? { workstationRole: process.env.UI_SHOTS_ROLE } : {});
+  writeDemoConfig(demoHome, process.env.UI_SHOTS_ROLE ? { workstationRole: roleValue(process.env.UI_SHOTS_ROLE) } : {});
 
   const { registerIpcHandlers } = await import(src("electron/ipc/index.js"));
   const db = await import(src("electron/helpers/db.js"));
@@ -97,10 +103,11 @@ const main = async () => {
   await registerIpcHandlers();
 
   // saveShopProfile does not validate (the import path does), so the demo profile goes through the import validator first.
-  const verdict = validateShopProfile(DEMO_SHOP, { schemaVersion: DEFAULT_PROFILE.schemaVersion });
+  const SHOP = VARIANT === "v1" ? withAllFeaturesOff(DEMO_SHOP) : DEMO_SHOP;
+  const verdict = validateShopProfile(SHOP, { schemaVersion: DEFAULT_PROFILE.schemaVersion });
   if (!verdict.ok) return fail(`the demo shop profile is invalid: ${verdict.errors.join("; ")}`);
   // Then through the app's compare-and-swap write.
-  const saved = saveShopProfile(DEMO_SHOP, DEMO_WORKSTATION);
+  const saved = saveShopProfile(SHOP, DEMO_WORKSTATION);
   if (!saved.success) return fail(`saveShopProfile refused the demo profile: ${JSON.stringify(saved)}`);
 
   for (const f of DEMO_FABRICS) {
@@ -116,6 +123,15 @@ const main = async () => {
   fs.mkdirSync(path.join(layout.storagePath, DEMO_SHOP.folders.ripError), { recursive: true });
   fs.mkdirSync(path.join(layout.storagePath, DEMO_SHOP.folders.customOrder), { recursive: true });
 
+  if (VARIANT === "v2") {
+    // Empty shop: the profile, the catalogue and the reason list exist, nothing was ever printed. The PRINTED
+    // folder exists too - a missing one would raise the "Printed folder not found" banner on every screen.
+    fs.mkdirSync(path.join(layout.storagePath, "PRINTED"), { recursive: true });
+    console.log("[seed] variant v2: profile, catalogue and reasons only");
+    app.exit(0);
+    return;
+  }
+
   // 1) Inbox: PDFs the operator sees in Print.
   const rng = makeRng(20261002);
   const inbox = buildInboxPlan(rng);
@@ -124,6 +140,20 @@ const main = async () => {
     await writePdf(PDFDocument, rgb, StandardFonts, path.join(settingsStorage, f.material, f.name), f.name, seed++);
   }
   console.log(`[seed] inbox: ${inbox.length} files`);
+
+  // The age badge of a file counts days from its CREATION time, which Node cannot set - PowerShell can.
+  const agePs = inbox
+    .map((f, i) => {
+      const target = path.join(settingsStorage, f.material, f.name);
+      assertInside(demoHome, target);
+      return `(Get-Item -LiteralPath '${target.replaceAll("'", "''")}').CreationTime = (Get-Date).AddDays(-${INBOX_AGES[i % INBOX_AGES.length]})`;
+    })
+    .join(String.fromCharCode(10));
+  const agePsFile = path.join(layout.root, "set-ages.ps1");
+  assertInside(demoHome, agePsFile);
+  fs.writeFileSync(agePsFile, agePs, "utf8");
+  execFileSync("powershell", ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", agePsFile], { stdio: "ignore" });
+  fs.rmSync(agePsFile, { force: true });
 
   // 2) Batches through the real pipeline, then moved to their day in history.
   const real = new Database(path.join(settingsStorage, "ripflow.db"));
@@ -231,7 +261,18 @@ const main = async () => {
     });
   }
 
-  for (const o of DEMO_CUSTOM_ORDERS) {
+  // Artwork the custom-order CSVs refer to: a .tif per name that is "present" (the rest shows as missing).
+  for (const art of Object.values(DEMO_CUSTOM_ART)) {
+    for (const name of art.present) {
+      const tif = path.join(layout.customOrderFolderPath, name + ".tif");
+      assertInside(demoHome, tif);
+      fs.writeFileSync(tif, "demo artwork");
+    }
+  }
+  const historyFiles = (art) => art.files.map((fileName, i) => ({ fileName, found: art.present.includes(fileName), meters: 1.5 + i * 0.75 }));
+  const historyArt = [DEMO_CUSTOM_ART.complete, DEMO_CUSTOM_ART.partial];
+
+  for (const [oi, o] of DEMO_CUSTOM_ORDERS.entries()) {
     db.insertCustomOrder({
       poNumber: o.poNumber,
       materialName: o.materialName,
@@ -241,8 +282,24 @@ const main = async () => {
       missingFiles: o.missingFiles,
       totalMeters: o.totalMeters,
       status: o.status,
-      files: [],
+      files: historyFiles(historyArt[oi]),
     });
+  }
+
+  if (VARIANT === "v3") {
+    // First run: the data above is the "other station's" shop. This station has no paths yet, and the wizard is
+    // pointed by hand at the full storage (profile ready), an empty one (no profile) and a copy of the database
+    // alone (profile ready but the printer hotfolders missing).
+    fs.mkdirSync(layout.storageEmptyPath, { recursive: true });
+    fs.mkdirSync(layout.storageNoHotPath, { recursive: true });
+    const noHotDb = path.join(layout.storageNoHotPath, "ripflow.db");
+    assertInside(demoHome, noHotDb);
+    real.exec(`VACUUM INTO '${noHotDb.replaceAll("'", "''")}'`);
+    writeDemoConfig(demoHome, { storagePath: "", xmlPath: "", customOrderFolderPath: "", ...(process.env.UI_SHOTS_ROLE ? { workstationRole: roleValue(process.env.UI_SHOTS_ROLE) } : {}) });
+    // a storage whose database is not one: the wizard's "database could not be opened" step
+    fs.mkdirSync(layout.storageCorruptPath, { recursive: true });
+    assertInside(demoHome, path.join(layout.storageCorruptPath, "ripflow.db"));
+    fs.writeFileSync(path.join(layout.storageCorruptPath, "ripflow.db"), "this is not a SQLite database - demo".repeat(40), "utf8");
   }
 
   real.close();
