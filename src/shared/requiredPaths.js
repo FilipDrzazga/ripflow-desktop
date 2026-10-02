@@ -18,6 +18,8 @@ export const isPathSet = (value) => typeof value === "string" && value.trim() !=
 
 export const missingRequiredPaths = (settings) => REQUIRED_PATH_KEYS.filter((key) => !isPathSet(settings?.[key]));
 
+// The code of the refusal: thrown by getRootPath.js, matched by the renderer (setupWizard.js).
+export const ERR_PATHS_NOT_SET = "ERR_PATHS_NOT_SET";
 export const PATHS_NOT_SET_TITLE = "Paths not set";
 export const PATHS_NOT_SET_MESSAGE =
   "The storage path and the XML path are not set on this computer. Set them in Settings, then restart RipFlow.";

@@ -1,5 +1,5 @@
 import { getSettings } from "./getSettings.js";
-import { isPathSet, PATHS_NOT_SET_MESSAGE, PATHS_NOT_SET_TITLE } from "../../shared/requiredPaths.js";
+import { ERR_PATHS_NOT_SET, isPathSet, PATHS_NOT_SET_MESSAGE, PATHS_NOT_SET_TITLE } from "../../shared/requiredPaths.js";
 
 // The RIP-error folder name is no longer here: it is shop-profile data (folders.ripError,
 // ETAP 2d-3), resolved in ipc/ripErrorHandlers.js. This file must not import shopProfile.js -
@@ -13,7 +13,7 @@ const requirePath = (key) => {
   const value = getSettings()[key];
   if (isPathSet(value)) return value;
   throw Object.assign(new Error(PATHS_NOT_SET_MESSAGE), {
-    code: "ERR_PATHS_NOT_SET",
+    code: ERR_PATHS_NOT_SET,
     stage: "validate",
     title: PATHS_NOT_SET_TITLE,
     type: "Error",

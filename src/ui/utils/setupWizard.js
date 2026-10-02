@@ -11,6 +11,7 @@
 //   3. folders - a READ check of every folder the station works with (setup:checkFolders, the same
 //                list as the diagnostics zip); nothing is written, writing is proven by the first job
 // It ends with a restart: the watchers and polls take the paths only at startup.
+import { ERR_PATHS_NOT_SET } from "../../shared/requiredPaths";
 import { PROFILE_STATUS } from "./profileStatus";
 import { isProfileUnconfigured } from "./shopProfileData";
 
@@ -18,7 +19,7 @@ import { isProfileUnconfigured } from "./shopProfileData";
 // and its toast says "Set them in Settings, then restart" right over the wizard that is doing
 // exactly that. Only THAT toast is dropped, and only while the wizard is open - every other scan
 // error still shows; the log entry is written either way.
-export const isToastHiddenByWizard = (error, wizardOpen) => wizardOpen === true && error?.code === "ERR_PATHS_NOT_SET";
+export const isToastHiddenByWizard = (error, wizardOpen) => wizardOpen === true && error?.code === ERR_PATHS_NOT_SET;
 
 export const WIZARD_STEPS = Object.freeze([
   { key: "paths", label: "Paths" },
