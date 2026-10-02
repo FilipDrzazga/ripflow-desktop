@@ -112,7 +112,7 @@ describe("PRINTED root signal — what the operator ends up seeing", () => {
     expect(channels()).toEqual(["printed:unreachable"]);
   });
 
-  // Both readers carry the signal, because the PRINTED probe (probePrintedRoot) and the legacy full scan can
+  // Both readers carry the signal, because refreshBatchDays and the legacy full scan can
   // each be the first to touch the share.
   it("is raised by the full scan too", async () => {
     await readPrintedFolder();

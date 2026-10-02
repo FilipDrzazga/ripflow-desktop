@@ -145,8 +145,8 @@ A Settings edit reaching the XML is therefore **intended**.
 - **main process** → `getEstimateConfig()` from `fabricCache.js` (`createXML.js`, `submitBatch.js`,
   `readPrintedFolder.js`, `batchHistoryHandlers.js` ×2)
 - **renderer** → `store.fabricConfig` (`useStore.applySort`, `DataList`,
-  `utils/overviewBars.js` (`inboxBarData`; the class totals come from `inboxClassSplit`, which passes it
-  **third**, after `materialType`) and `utils/selectionPrintLength.js`, the metres counter of the Print selection
+  `PrintMaterialBreakdownCard`, `ProductionOverviewCard` — the last one passes it **third**, after
+  `materialType` — and `utils/selectionPrintLength.js`, the metres counter of the Print selection
   bar: one estimate over the WHOLE selection after `applyPrintOverrides`, i.e. the batch label's
   number, not the sum of the per-group DataList numbers)
 - **Both are built by ONE function since ETAP 2g-3b**: `estimateConfigFrom(fabrics, profile)` in

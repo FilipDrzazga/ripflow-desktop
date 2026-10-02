@@ -23,7 +23,7 @@ const DataPrintSelection = () => {
   const selectedIds = useStore((state) => state.selectedIds);
   const clearSelection = useStore((state) => state.toggleClearSelection);
   const refreshFiles = useStore((state) => state.refreshFiles);
-  const probePrintedRoot = useStore((state) => state.probePrintedRoot);
+  const refreshBatchDays = useStore((state) => state.refreshBatchDays);
   const setIsBatchSubmitting = useStore((state) => state.setIsBatchSubmitting);
   const selectedOverrides = useStore((state) => state.selectedOverrides);
   const fabricConfig = useStore((state) => state.fabricConfig);
@@ -173,7 +173,7 @@ const DataPrintSelection = () => {
       setIsBatchSubmitting(true);
       try {
         const submitBatchResponse = await runMutation(() => submitBatch(print, selectedOverrides), {
-          refresh: async () => { await refreshFiles({ clearSelection: true }); probePrintedRoot(); },
+          refresh: async () => { await refreshFiles({ clearSelection: true }); refreshBatchDays(); },
         });
         if (submitBatchResponse?.timedOut) return;
 
@@ -239,7 +239,7 @@ const DataPrintSelection = () => {
 
         clearAllOverrides();
         await refreshFiles({ clearSelection: true });
-        await probePrintedRoot();
+        await refreshBatchDays();
         setSelectedPrinter(null);
       } catch (err) {
         notify(

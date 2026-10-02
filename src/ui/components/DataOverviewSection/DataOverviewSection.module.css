@@ -1,10 +1,9 @@
-/* Three equal cards in ONE row - no wrap; each card shrinks (min-width: 0) and ellipsises. */
 .carts_container {
   display: flex;
   flex-direction: row;
-  align-items: stretch;
+  align-items: flex-start;
   justify-content: flex-start;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   gap: 20px;
   width: 100%;
   padding: 0 20px;

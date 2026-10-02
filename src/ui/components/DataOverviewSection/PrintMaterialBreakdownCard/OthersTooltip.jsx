@@ -1,19 +1,22 @@
 import style from "./OthersTooltip.module.css";
-import { formatPercentage } from "./formatPercentage";
 
-// Hover list under a bar row: children are the row, items the groups behind it
-// ({ label, percentage, length, color? } - a dot colour per item, else dotColor).
-const OthersTooltip = ({ children, items, dotColor, title = "Remaining materials" }) => {
+const formatPercentage = (value) => {
+  if (!Number.isFinite(value)) return "0%";
+  if (value >= 10 || Number.isInteger(value)) return `${Math.round(value)}%`;
+  return `${value.toFixed(1)}%`;
+};
+
+const OthersTooltip = ({ children, items, dotColor }) => {
   return (
     <div className={style.tooltip}>
       {children}
       <div className={style.tooltip_content}>
-        <span className={style.tooltip_title}>{title}</span>
+        <span className={style.tooltip_title}>Remaining materials</span>
         <div className={style.tooltip_list}>
           {items.map((item) => (
             <div key={item.label} className={style.tooltip_item}>
               <div className={style.tooltip_item_box}>
-                <span className={style.tooltip_item_dot} style={{ backgroundColor: item.color ?? dotColor }} />
+                <span className={style.tooltip_item_dot} style={{ backgroundColor: dotColor }} />
                 <span className={style.tooltip_item_label}>{item.label}</span>
               </div>
               <div className={style.tooltip_item_values}>

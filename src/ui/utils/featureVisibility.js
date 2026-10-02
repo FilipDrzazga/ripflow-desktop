@@ -15,7 +15,7 @@ export const VIEW_FEATURE = {
 
 // A profile feature flag asked for by name, with no view mapping in between. Not every
 // gated feature owns a NavBar tab: ripErrors is a poll plus badges, a header counter and
-// an alert chip scattered across several components, so it has to be asked for directly.
+// a status pill scattered across several components, so it has to be asked for directly.
 // isViewEnabled delegates here, so the two callers can never drift apart on what "off"
 // means.
 export const isFeatureEnabled = (flag, profile) => {

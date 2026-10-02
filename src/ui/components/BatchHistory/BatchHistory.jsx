@@ -69,6 +69,7 @@ const attachReasonsToDay = async (day) => ({
 });
 
 const BatchHistory = () => {
+  const setBatchDays = useStore((state) => state.setBatchDays);
   const reasonDefinitions = useStore((state) => state.reasonDefinitions);
   const refreshFiles = useStore((state) => state.refreshFiles);
   const pollingPaused = useStore((state) => state.pollingPaused);
@@ -495,7 +496,8 @@ const BatchHistory = () => {
 
   useEffect(() => {
     dayGroupsRef.current = dayGroups;
-  }, [dayGroups]);
+    setBatchDays(dayGroups);
+  }, [dayGroups, setBatchDays]);
 
   // Animate new items after state update
   useEffect(() => {

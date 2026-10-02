@@ -221,7 +221,7 @@ export function registerProductionHandlers() {
   });
 
   // Open reprint requests (fulfilled_at IS NULL AND superseded_at IS NULL) across all
-  // files — used by the print-view Attention bar for a global "Reprints" count. Returns
+  // files — used by the print-view OverviewPanel for a global "Reprints" count. Returns
   // rows (not just a count) so the renderer can derive .length and stay flexible.
   ipcMain.handle("reprint:getOpen", () => {
     try {

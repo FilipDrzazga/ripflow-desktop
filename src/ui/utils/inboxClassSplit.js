@@ -1,6 +1,6 @@
-// The Inbox bar's split by material class (ETAP 4, 4-types-b part 2), as a pure function -
-// utils/overviewBars.js builds the per-group segments on top of it. One row per class of the
-// shop profile, in profile order and always shown (as Cottons / Polyesters always were); then ONE "Unknown" row
+// The Inbox card's split by material class (ETAP 4, 4-types-b part 2): what
+// ProductionOverviewCard draws, as a pure function. One row per class of the shop profile, in
+// profile order and always shown (as Cottons / Polyesters always were); then ONE "Unknown" row
 // for every file whose class is not a class of the profile - "Unknown" itself, an empty class,
 // or a name the profile does not list - drawn only when it has files. Each row: its file count,
 // its estimated length and its share of the total LENGTH (not of the file count).
