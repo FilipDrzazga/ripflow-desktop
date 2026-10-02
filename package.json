@@ -52,6 +52,7 @@
     "electron-store": "^11.0.2",
     "electron-updater": "^6.6.2",
     "fast-xml-parser": "^5.9.3",
+    "gsap": "^3.14.2",
     "pdf-lib": "^1.17.1",
     "pdfjs-dist": "^4.10.38",
     "react": "^19.2.0",
