@@ -44,6 +44,17 @@ export const STAGE_PREV = {
   shipped:     "packed",
 };
 
+// Stages a file can be marked shipped from in ONE move ("Mark as Shipped" in Production), skipping
+// every stage in between. Legacy rejected/overridden rows and shipped itself are not offered.
+export const MARK_SHIPPED_FROM = [
+  PRODUCTION_STAGE.PRINTED,
+  PRODUCTION_STAGE.HEATPRESS,
+  PRODUCTION_STAGE.QC,
+  PRODUCTION_STAGE.TO_SEWING,
+  PRODUCTION_STAGE.FROM_SEWING,
+  PRODUCTION_STAGE.PACKED,
+];
+
 export const STAGE_LABEL = {
   printed:     "Printed",
   heatpress:   "Heat Press",

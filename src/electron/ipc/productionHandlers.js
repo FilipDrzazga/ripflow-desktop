@@ -115,8 +115,10 @@ export function registerProductionHandlers() {
       const { workstationName } = getSettings();
       const result = advanceFileStage(fileId, newStage, workstationName, expectedStage ?? null);
       if (!result) return { success: false, error: "DB unavailable" };
-      // Reaching "packed" completes any open reprint request for the file
-      if (result.updated && newStage === PRODUCTION_STAGE.PACKED) {
+      // Reaching "packed" completes any open reprint request for the file. A jump straight to
+      // "shipped" (Mark as Shipped) passes "packed" without stopping, so it completes it too -
+      // otherwise the request stays open and the Reprints pill counts a phantom.
+      if (result.updated && (newStage === PRODUCTION_STAGE.PACKED || newStage === PRODUCTION_STAGE.SHIPPED)) {
         fulfillReprintRequests(fileId);
       }
       return { success: true, updated: result.updated };

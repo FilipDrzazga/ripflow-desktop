@@ -18,6 +18,7 @@ import {
   LuChevronsUpDown,
   LuFilter,
   LuLayers,
+  LuTruck,
 } from "react-icons/lu";
 import { useStore } from "../../store/useStore";
 import {
@@ -39,6 +40,7 @@ import { useStageTransition } from "../../hooks/useStageTransition";
 import { useScrollAnchor } from "../../hooks/useScrollAnchor";
 import { VIEW_MODE } from "../../constants/viewModes";
 import { isFeatureEnabled } from "../../utils/featureVisibility";
+import { canMarkShipped, isShippableRow } from "../../utils/markShipped";
 import { getSewingCompanies, getScanRule, getPrinterColor } from "../../utils/shopProfileData";
 import { UNKNOWN_ORDER_KEY } from "../../utils/groupByOrder";
 import {
@@ -872,6 +874,36 @@ const Production = () => {
     if (failed > 0) notifyStageFailed(failed);
   };
 
+  // "Mark as Shipped": the clicked file or the whole selection straight to shipped from whatever
+  // stage each one is at (an order that left while its files still sat at Press). One path for
+  // both, through the same guarded transition as every other move: expected = the stage the row
+  // shows, so a file another station already moved comes back "rejected", never overwritten.
+  const handleMarkShipped = async (ids) => {
+    let count = 0,
+      rejected = 0,
+      failed = 0;
+    for (const id of ids) {
+      const r = productionStages[id];
+      if (!r || !isShippableRow(r)) continue;
+      const now = new Date().toISOString();
+      const res = await advanceStage(id, PRODUCTION_STAGE.SHIPPED, r.stage);
+      const outcome = applyStageTransition({ fileId: id, row: r, newStage: PRODUCTION_STAGE.SHIPPED, res, now });
+      if (outcome === "applied") count++;
+      else if (outcome === "rejected") rejected++;
+      else failed++;
+    }
+    // Same as the bulk Pass: keep the selection on files that survive in the store.
+    setSelectedFileIds((prev) => {
+      const next = new Set();
+      for (const id of prev) if (productionStages[id]) next.add(id);
+      return next;
+    });
+    if (count > 0)
+      notify({ type: "Success", title: `${count} file${count > 1 ? "s" : ""} shipped`, message: "Marked as shipped." });
+    if (rejected > 0) notifyStageRejected(rejected);
+    if (failed > 0) notifyStageFailed(failed);
+  };
+
   const handleBulkReceive = async () => {
     const ids = [...selectedFileIds];
     let count = 0,
@@ -1469,6 +1501,7 @@ const Production = () => {
       count > 0 &&
       targetRows.every((r) => r.stage === PRODUCTION_STAGE.QC);
     const canGoBack = count > 0 && targetRows.every((r) => STAGE_PREV[r.stage]);
+    const canShip = canMarkShipped(targetRows);
     const canRollback = count > 0 && targetRows.every((r) => r.batch_path && r.stage !== PRODUCTION_STAGE.SHIPPED);
 
     const items = [];
@@ -1527,6 +1560,17 @@ const Production = () => {
           setContextMenu(null);
           if (isBulk) handleBulkGoBack();
           else handleGoBack(fileId);
+        },
+      });
+    }
+    if (canShip) {
+      items.push({
+        id: "ship",
+        label: count > 1 ? `Mark ${count} files as Shipped` : "Mark as Shipped",
+        icon: <LuTruck size={14} />,
+        onClick: () => {
+          setContextMenu(null);
+          handleMarkShipped(targetRows.map((r) => r.file_id));
         },
       });
     }
