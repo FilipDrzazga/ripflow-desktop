@@ -31,6 +31,8 @@ import style from "./DataList.module.css";
 import { runBulkUnhold } from "../../utils/bulkUnhold";
 import { getPrinters, getPrinterColor } from "../../utils/shopProfileData";
 import { sharedPreferredPrinter } from "../../utils/preferredPrinter";
+import { claimShiftMouseDown } from "../../utils/rangeSelect";
+import { describeSkipped } from "../../utils/printRangeSelect";
 
 const formatFileSize = (bytes) => {
   if (bytes == null) return null;
@@ -71,7 +73,7 @@ const DataList = () => {
   const heldIds = useStore((state) => state.heldIds);
   const heldReasons = useStore((state) => state.heldReasons);
   const heldSelectedIds = useStore((state) => state.heldSelectedIds);
-  const toggleHeldSelection = useStore((state) => state.toggleHeldSelection);
+  const selectPrintRow = useStore((state) => state.selectPrintRow);
   const rollbackReasons = useStore((state) => state.rollbackReasons);
   // The inbox entry to Shopify; the others are the two Production context-menu items
   // and the BatchHistory one, whose components already read the profile. Gated at the
@@ -81,7 +83,6 @@ const DataList = () => {
   const goneIds = useMemo(() => new Set(inboxRemoved), [inboxRemoved]);
   const reasonDefinitions = useStore((state) => state.reasonDefinitions);
   const toggleGroupSelection = useStore((state) => state.toggleGroupSelection);
-  const toggleItemSelection = useStore((state) => state.toggleItemSelection);
   const toggleHold = useStore((state) => state.toggleHold);
   const holdSelectedFiles = useStore((state) => state.holdSelectedFiles);
   const selectedOverrides = useStore((state) => state.selectedOverrides);
@@ -118,13 +119,14 @@ const DataList = () => {
     e.stopPropagation();
     toggleGroupSelection(group.items);
   };
+  // One handler for both kinds of row: the store sends a held row to the held selection and any
+  // other to the print selection. React fires a checkbox's onChange from the click, so
+  // nativeEvent.shiftKey is the modifier of the click (also one forwarded by its label).
   const handleItemCheckboxChange = (e, item) => {
     e.stopPropagation();
-    toggleItemSelection(item.id);
-  };
-  const handleHeldCheckboxChange = (e, item) => {
-    e.stopPropagation();
-    toggleHeldSelection(item.id);
+    const { skipped } = selectPrintRow(item.id, { shiftKey: e.nativeEvent.shiftKey === true });
+    const detail = skipped ? describeSkipped(skipped) : null;
+    if (detail) notify({ type: "Info", title: "Range selected", message: detail });
   };
   const closeContextMenu = () => setContextMenu(null);
 
@@ -347,14 +349,19 @@ const DataList = () => {
                     onContextMenu={(e) => handleItemContextMenu(e, item)}
                   >
                     <div className={style.item_info}>
-                      <label htmlFor={item.id} className={style.item_name} data-tooltip={tooltip}>
+                      <label
+                        htmlFor={item.id}
+                        className={style.item_name}
+                        data-tooltip={tooltip}
+                        onMouseDown={(e) => claimShiftMouseDown(e, window)}
+                      >
                         <input
                           disabled={isCheckboxDisabled}
                           id={item.id}
                           type="checkbox"
                           className={style.checkbox}
                           checked={isChecked}
-                          onChange={(e) => (isHeld ? handleHeldCheckboxChange(e, item) : handleItemCheckboxChange(e, item))}
+                          onChange={(e) => handleItemCheckboxChange(e, item)}
                         />
                         <LuFileText className={style.file_icon} />
                         <span className={style.file_name_text}>{item.file.name}</span>

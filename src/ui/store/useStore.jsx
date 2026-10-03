@@ -32,6 +32,7 @@ import { getShopProfile as getShopProfileApi, reloadShopData as reloadShopDataAp
 import { PROFILE_STATUS, resolveProfileResult } from "../utils/profileStatus";
 import { latestRipErrorPerFile } from "../utils/ripErrorsByFile";
 import { toggleHeldId, pruneHeldSelection, unholdMany } from "../utils/heldSelection";
+import { lockMaterialOf, printSelectBlock, planRangeSelect, anchorFor } from "../utils/printRangeSelect";
 import { isToastHiddenByWizard } from "../utils/setupWizard";
 import { getStagesByBatch as getStagesByBatchApi, getAllStages as getAllStagesApi, getStagesAfter as getStagesAfterApi, getAllStageHistory as getAllStageHistoryApi, clearAllProductionStages as clearAllProductionStagesApi, getOpenReprints as getOpenReprintsApi } from "../services/productionService";
 import { scanRipErrors as scanRipErrorsApi, resolveRipError as resolveRipErrorApi } from "../services/ripErrorService";
@@ -538,24 +539,52 @@ export const useStore = create(
           return { selectedIds: newSelectedIds };
         }
 
-        const selectedMaterialTypes = new Set();
-        state.filteredFiles.forEach((group) => {
-          group.items.forEach((item) => {
-            if (newSelectedIds.has(item.id)) {
-              selectedMaterialTypes.add(item.materialType);
-            }
-          });
-        });
-
-        const lockMaterial = selectedMaterialTypes.size === 1 ? [...selectedMaterialTypes][0] : null;
-
-        if (lockMaterial && clickedItem.materialType !== lockMaterial) {
-          return state; // brak zmiany
-        }
+        // The same decision a shift-click range takes for each of its rows (printSelectBlock).
+        const lockMaterial = lockMaterialOf(state.filteredFiles, newSelectedIds);
+        if (printSelectBlock(clickedItem, { heldIds: state.heldIds, lockMaterial })) return state;
 
         newSelectedIds.add(id);
         return { selectedIds: newSelectedIds };
       }),
+
+    // The anchor of a shift-click range in Print: the row last clicked and applied. It lives with
+    // the selections - emptied together with them by the subscriber at the bottom of this file.
+    selectionAnchorId: null,
+    // A click on a Print row (the checkbox). A plain click goes through toggleHeldSelection /
+    // toggleItemSelection, so its gates are untouched; a shift-click with a usable anchor takes
+    // the range (utils/printRangeSelect.js). Returns { skipped } - the counts of the rows a range
+    // stepped over, null for a plain click - and stays silent: the caller reports it, once.
+    selectPrintRow: (id, { shiftKey = false } = {}) => {
+      const state = get();
+      const plan = shiftKey
+        ? planRangeSelect({
+            groups: state.filteredFiles,
+            heldIds: state.heldIds,
+            selectedIds: state.selectedIds,
+            heldSelectedIds: state.heldSelectedIds,
+            anchorId: state.selectionAnchorId,
+            targetId: id,
+          })
+        : null;
+      if (plan) {
+        set({
+          selectedIds: plan.selectedIds,
+          heldSelectedIds: plan.heldSelectedIds,
+          selectionAnchorId: anchorFor(plan.selectedIds, plan.heldSelectedIds, id),
+        });
+        return { skipped: plan.skipped };
+      }
+      const isHeld = state.heldIds.has(id);
+      const before = isHeld ? state.heldSelectedIds : state.selectedIds;
+      if (isHeld) get().toggleHeldSelection(id);
+      else get().toggleItemSelection(id);
+      const after = get();
+      // a refused click changed nothing, so it moves no anchor either
+      if ((isHeld ? after.heldSelectedIds : after.selectedIds) !== before) {
+        set({ selectionAnchorId: anchorFor(after.selectedIds, after.heldSelectedIds, id) });
+      }
+      return { skipped: null };
+    },
 
     toggleGroupSelection: (groupItems) =>
       set((state) => {
@@ -826,4 +855,13 @@ export const useStore = create(
       }
     },
   })),
+);
+
+// The Print range anchor dies with the selections, whichever path emptied them (Clear, submit, hold,
+// refresh with clearSelection, deselecting the last row) - one place instead of one per path.
+useStore.subscribe(
+  (state) => state.selectedIds.size + state.heldSelectedIds.size === 0,
+  (isEmpty) => {
+    if (isEmpty && useStore.getState().selectionAnchorId !== null) useStore.setState({ selectionAnchorId: null });
+  },
 );

@@ -5,10 +5,14 @@
 // the other way round (toggleItemSelection / toggleGroupSelection) - so no click ever turns one
 // kind of selection into the other behind the operator's back.
 
+// May this file join the held selection: it is held, and no print selection exists. The one
+// decision behind a single click (toggleHeldId) and every row of a shift-click range.
+export const canSelectHeld = (id, { heldIds, selectedIds }) => heldIds.has(id) && selectedIds.size === 0;
+
 // Toggle one held file. Refused (same Set back) for a file that is not held, or while a print
 // selection exists.
 export const toggleHeldId = (heldSelectedIds, id, { heldIds, selectedIds }) => {
-  if (!heldIds.has(id) || selectedIds.size > 0) return heldSelectedIds;
+  if (!canSelectHeld(id, { heldIds, selectedIds })) return heldSelectedIds;
   const next = new Set(heldSelectedIds);
   if (next.has(id)) next.delete(id);
   else next.add(id);
