@@ -1,10 +1,11 @@
 import { useMemo } from "react";
-import { LuCheck, LuPackageCheck, LuTrash2, LuScanBarcode, LuMousePointerClick } from "react-icons/lu";
+import { LuCheck, LuPackageCheck, LuTruck, LuTrash2, LuScanBarcode, LuMousePointerClick } from "react-icons/lu";
 import { HiXMark } from "react-icons/hi2";
 import { useStore } from "../../store/useStore";
 import { PRODUCTION_STAGE } from "../../../shared/constants";
 import { groupByOrder, UNKNOWN_ORDER_KEY, UNKNOWN_ORDER_LABEL } from "../../utils/groupByOrder";
 import { notify } from "@/utils/notify";
+import { shipTargetIds, otherUnpackedCount } from "../../utils/receiveShip";
 import ProductionCard from "./ProductionCard";
 import PdfThumb from "../PdfThumb/PdfThumb";
 import style from "./SewingReceive.module.css";
@@ -30,6 +31,7 @@ const SewingReceive = ({
   session,
   setSession,
   onReceive,
+  onShip,
   isReceiving,
   selectedFileIds,
   onSelect,
@@ -98,6 +100,17 @@ const SewingReceive = ({
 
   const handleReceiveOrder = (order) =>
     onReceive(order.files.filter((f) => f.stage === PRODUCTION_STAGE.TO_SEWING).map((f) => f.file_id));
+
+  // Ship straight from here, so the operator does not have to find the files in Batches and click again.
+  // Acts on the picked items of the open order, else on the whole order; to_sewing items jump to shipped
+  // without a stop at packed (same move as "Mark as Shipped" in Batches). The hint is information only.
+  const shipTarget = activeOrder
+    ? shipTargetIds(activeOrder.files, selectedFileIds)
+    : { ids: [], fromSelection: false };
+  const otherUnpacked = useMemo(
+    () => otherUnpackedCount(Object.values(productionStages), activeOrder),
+    [productionStages, activeOrder],
+  );
 
   // No per-row receive wrapper any more: ProductionCard carries no action button,
   // so a single item is received through the context menu (which routes to the
@@ -261,7 +274,21 @@ const SewingReceive = ({
                   <LuPackageCheck size={14} />
                   Receive all
                 </button>
+                <button
+                  type="button"
+                  className={style.ship_btn}
+                  disabled={isReceiving || shipTarget.ids.length === 0}
+                  onClick={() => onShip(shipTarget.ids)}
+                >
+                  <LuTruck size={14} />
+                  {shipTarget.fromSelection ? `Ship ${shipTarget.ids.length} selected` : "Ship order"}
+                </button>
               </div>
+              {otherUnpacked > 0 && (
+                <div className={style.ship_hint}>
+                  {otherUnpacked} other file{otherUnpacked !== 1 ? "s" : ""} of this order {otherUnpacked !== 1 ? "are" : "is"} not packed yet.
+                </div>
+              )}
               <div className={style.card_list}>
                 {activeOrder.files.map((row) => (
                   <ProductionCard

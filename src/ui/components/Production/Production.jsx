@@ -878,14 +878,17 @@ const Production = () => {
     let count = 0,
       rejected = 0,
       failed = 0;
+    const appliedIds = [];
     for (const id of ids) {
       const r = productionStages[id];
       if (!r || !isShippableRow(r)) continue;
       const now = new Date().toISOString();
       const res = await advanceStage(id, PRODUCTION_STAGE.SHIPPED, r.stage);
       const outcome = applyStageTransition({ fileId: id, row: r, newStage: PRODUCTION_STAGE.SHIPPED, res, now });
-      if (outcome === "applied") count++;
-      else if (outcome === "rejected") rejected++;
+      if (outcome === "applied") {
+        count++;
+        appliedIds.push(id);
+      } else if (outcome === "rejected") rejected++;
       else failed++;
     }
     // Same as the bulk Pass: keep the selection on files that survive in the store.
@@ -898,6 +901,30 @@ const Production = () => {
       notify({ type: "Success", title: `${count} file${count > 1 ? "s" : ""} shipped`, message: "Marked as shipped." });
     if (rejected > 0) notifyStageRejected(rejected);
     if (failed > 0) notifyStageFailed(failed);
+    return appliedIds;
+  };
+
+  // Ship from the Receive lens: the same handleMarkShipped (one guarded move, no second ship path), plus
+  // the session ledger. A shipped item leaves to_sewing, and sessionRows keeps only to_sewing rows and
+  // ledger rows - without the ledger entry the order would vanish at the moment it was shipped. Shares
+  // isReceivingRef with receive / undo: all three mutate the same rows.
+  const shipFiles = async (ids) => {
+    if (isReceivingRef.current || ids.length === 0) return;
+    isReceivingRef.current = true;
+    setIsReceiving(true);
+    let appliedIds = [];
+    try {
+      appliedIds = await handleMarkShipped(ids);
+    } finally {
+      isReceivingRef.current = false;
+      setIsReceiving(false);
+    }
+    if (appliedIds.length > 0) {
+      setSession((s) => ({
+        ...s,
+        receivedInSession: new Set([...s.receivedInSession, ...appliedIds]),
+      }));
+    }
   };
 
   const handleBulkReceive = async () => {
@@ -1415,6 +1442,7 @@ const Production = () => {
       const canUndoReceive =
         receiveCount > 0 &&
         receiveTargets.every((r) => session.receivedInSession.has(r.file_id) && r.stage === PRODUCTION_STAGE.PACKED);
+      const canShipReceive = receiveCount > 0 && receiveTargets.every(isShippableRow);
       const canRollbackReceive =
         receiveCount > 0 && receiveTargets.every((r) => r.batch_path && r.stage !== PRODUCTION_STAGE.SHIPPED);
 
@@ -1439,6 +1467,18 @@ const Production = () => {
           onClick: () => {
             setContextMenu(null);
             undoReceiveFiles(receiveIds);
+          },
+        });
+      }
+      if (canShipReceive) {
+        receiveItems.push({
+          id: "ship",
+          label: receiveCount > 1 ? `Mark ${receiveCount} files as Shipped` : "Mark as Shipped",
+          icon: <LuTruck size={14} />,
+          advance: true,
+          onClick: () => {
+            setContextMenu(null);
+            shipFiles(receiveIds);
           },
         });
       }
@@ -1878,6 +1918,7 @@ const Production = () => {
             session={session}
             setSession={setSession}
             onReceive={receiveFiles}
+            onShip={shipFiles}
             isReceiving={isReceiving}
             selectedFileIds={selectedFileIds}
             onSelect={handleCardSelect}
