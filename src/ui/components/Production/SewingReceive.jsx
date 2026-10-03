@@ -80,6 +80,11 @@ const SewingReceive = ({
     [orders, activeOrderKey],
   );
 
+  // A shift-click range stays inside the one order on screen: its items, in the order the list
+  // draws them (the selection is cleared whenever the active order changes).
+  const handleSelectItem = (fileId, opts) =>
+    onSelect(fileId, { ...opts, orderedIds: (activeOrder?.files ?? []).map((f) => f.file_id) });
+
   const receivedCountOf = (order) =>
     order.files.filter((f) => receivedInSession.has(f.file_id)).length;
 
@@ -271,7 +276,7 @@ const SewingReceive = ({
                     // which is laziness enough — no observer, no prefetch.
                     thumbnail={<PdfThumb filePath={`${row.batch_path}\\${row.file_id}.pdf`} />}
                     onRipBadgeClick={onRipBadgeClick}
-                    onSelect={onSelect}
+                    onSelect={handleSelectItem}
                     onContextMenu={onContextMenu}
                   />
                 ))}

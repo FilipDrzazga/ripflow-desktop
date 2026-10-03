@@ -41,6 +41,7 @@ import { useScrollAnchor } from "../../hooks/useScrollAnchor";
 import { VIEW_MODE } from "../../constants/viewModes";
 import { isFeatureEnabled } from "../../utils/featureVisibility";
 import { canMarkShipped, isShippableRow } from "../../utils/markShipped";
+import { anchorAfterSelection, nextSelection, visibleFileIds } from "../../utils/rangeSelect";
 import { getSewingCompanies, getScanRule, getPrinterColor } from "../../utils/shopProfileData";
 import { UNKNOWN_ORDER_KEY } from "../../utils/groupByOrder";
 import {
@@ -747,14 +748,9 @@ const Production = () => {
 
   // ─── Multi-select ─────────────────────────────────────────────────────────
 
-  const toggleProductionSelect = useCallback((fileId) => {
-    setSelectedFileIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(fileId)) next.delete(fileId);
-      else next.add(fileId);
-      return next;
-    });
-  }, []);
+  // The card last clicked: the end a shift-click extends from. It lives and dies with the selection
+  // (effect below), and a shift-click whose anchor is gone from the list is a plain click.
+  const selectionAnchorRef = useRef(null);
 
   const [groupingEnabled, setGroupingEnabled] = useState(true);
 
@@ -1346,6 +1342,27 @@ const Production = () => {
     setCollapsedDays(allDaysCollapsed ? new Set() : new Set(groupedDays.map((d) => d.dayKey)));
   };
 
+  // Shift-click range: the cards on screen in the order the Batches lens draws them (collapsed days
+  // left out). The Receive lens passes the active order's items instead (`orderedIds`).
+  const visibleIds = useMemo(
+    () => visibleFileIds(groupedDays, collapsedDays, isGrouped),
+    [groupedDays, collapsedDays, isGrouped],
+  );
+
+  // The ONE click path of every card in both lenses.
+  const handleCardSelect = useCallback(
+    (fileId, { shiftKey = false, orderedIds = visibleIds } = {}) => {
+      const anchorId = selectionAnchorRef.current;
+      setSelectedFileIds((prev) => nextSelection(prev, { fileId, shiftKey, anchorId, orderedIds }));
+      selectionAnchorRef.current = fileId;
+    },
+    [visibleIds],
+  );
+
+  useEffect(() => {
+    selectionAnchorRef.current = anchorAfterSelection(selectedFileIds, selectionAnchorRef.current);
+  }, [selectedFileIds]);
+
   // One card definition for both layouts inside a day (batch groups / flat).
   const renderCard = (row) => (
     <ProductionCard
@@ -1362,7 +1379,7 @@ const Production = () => {
       idleDays={isStuck(row, now) ? idleDaysOf(row, now) : null}
       idleAlert={(idleDaysOf(row, now) ?? 0) >= STALE_DAYS_ALERT}
       onRipBadgeClick={(error, x, y) => setRipPopover({ error, x, y })}
-      onSelect={toggleProductionSelect}
+      onSelect={handleCardSelect}
       onContextMenu={(r, x, y) => setContextMenu({ row: r, x, y })}
     />
   );
@@ -1863,7 +1880,7 @@ const Production = () => {
             onReceive={receiveFiles}
             isReceiving={isReceiving}
             selectedFileIds={selectedFileIds}
-            onSelect={toggleProductionSelect}
+            onSelect={handleCardSelect}
             onRipBadgeClick={(error, x, y) => setRipPopover({ error, x, y })}
             onContextMenu={(r, x, y) => setContextMenu({ row: r, x, y })}
           />

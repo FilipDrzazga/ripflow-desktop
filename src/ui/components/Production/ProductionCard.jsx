@@ -10,6 +10,7 @@ import {
 } from "../../../shared/constants";
 import { useStore } from "@/store/useStore";
 import { getPrinterColor } from "@/utils/shopProfileData";
+import { claimShiftMouseDown } from "@/utils/rangeSelect";
 import style from "./Production.module.css";
 
 const SEWING_PIPELINE = [
@@ -76,6 +77,8 @@ const ProductionCard = ({ stage: row, history = [], highlighted, restored = fals
 
   const handlePointerDown = (e) => {
     pointerDownRef.current = { x: e.clientX, y: e.clientY };
+    // Shift-click selects a range: keep the browser from turning it into a text selection.
+    claimShiftMouseDown(e, window);
   };
 
   const handleCardClick = (e) => {
@@ -86,7 +89,7 @@ const ProductionCard = ({ stage: row, history = [], highlighted, restored = fals
     // A non-collapsed selection means the user is highlighting text (e.g. the order number) -> don't toggle.
     const selection = window.getSelection?.();
     if (selection && !selection.isCollapsed && selection.toString().length > 0) return;
-    onSelect?.(row.file_id);
+    onSelect?.(row.file_id, { shiftKey: e.shiftKey });
   };
 
   // stage -> formatted date of the LAST entry into that stage (max entered_at; ISO compares lexicographically)
