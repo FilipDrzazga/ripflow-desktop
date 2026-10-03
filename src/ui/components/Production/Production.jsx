@@ -891,10 +891,13 @@ const Production = () => {
       } else if (outcome === "rejected") rejected++;
       else failed++;
     }
-    // Same as the bulk Pass: keep the selection on files that survive in the store.
+    // Unlike the bulk Pass, the shipped files leave the selection: a shipped file cannot be shipped
+    // again, so keeping it picked only leaves a stale "Ship 0 selected" (FILIP 2026-10-03). Rejected /
+    // failed files stay picked for a retry; files that vanished from the store are dropped as before.
+    const shippedNow = new Set(appliedIds);
     setSelectedFileIds((prev) => {
       const next = new Set();
-      for (const id of prev) if (productionStages[id]) next.add(id);
+      for (const id of prev) if (productionStages[id] && !shippedNow.has(id)) next.add(id);
       return next;
     });
     if (count > 0)
