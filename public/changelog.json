@@ -1,5 +1,35 @@
 [
   {
+    "version": "1.0.30",
+    "date": "2026-10-05",
+    "changes": [
+      {
+        "text": "Production and the Print list: hold Shift and click a second card or row to select the whole range between the two, like in Gmail. A plain click still selects one. In Print a range stays inside one list (held files or files to print) and skips files that cannot be selected",
+        "clients": ["all"]
+      },
+      {
+        "text": "Production: right-click a file or a selection and choose \"Mark as Shipped\" to send it to shipped from any stage, without stopping at packed. The shipped files leave the selection",
+        "clients": ["all"]
+      },
+      {
+        "text": "Production > Receive: the open order has a \"Ship order\" button (\"Ship N selected\" when files are ticked), so the files can be shipped straight from this view",
+        "clients": ["all"]
+      },
+      {
+        "text": "Settings > Fabrics: Global Parameters accept a margin of 0 for a class. A fabric cannot be renamed or added under a name that another fabric already has, and the preferred printer is matched without regard to upper or lower case",
+        "clients": ["all"]
+      },
+      {
+        "text": "Print: a printer you picked by hand stays selected until you change it, the class changes or the selection is cleared. If the automatic label is skipped because the shop profile could not be read, the batch shows a warning",
+        "clients": ["all"]
+      },
+      {
+        "text": "A computer that starts the app while its screen is already locked now pauses its background folder checks until the screen is unlocked, as it already does after sleep. Settings > General > Workstation Role is now a dropdown like the other lists",
+        "clients": ["all"]
+      }
+    ]
+  },
+  {
     "version": "1.0.29",
     "date": "2026-09-30",
     "changes": [
