@@ -156,7 +156,7 @@ const BatchRow = ({
               onContextMenu={onContextMenu}
               elementRefsRef={elementRefsRef}
               isSelected={selectedFilePaths?.has(file.path) ?? false}
-              onToggleSelect={(filePath) => onToggleFileSelect?.(filePath, batch.path)}
+              onToggleSelect={(filePath, opts) => onToggleFileSelect?.(filePath, batch.path, opts)}
             />
           ))}
         </ul>

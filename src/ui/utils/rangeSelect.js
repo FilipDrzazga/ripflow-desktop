@@ -1,6 +1,9 @@
-// Shift-click range selection for the Production cards (Gmail model: the range takes the state of
-// the anchor, the card last clicked, and ADDS to / removes from the selection - it never replaces it).
-// Pure helpers only: Production.jsx owns the anchor ref and the selection state.
+import { FILE_STATUS } from "../../shared/constants";
+
+// Shift-click range selection for the Production cards and the BatchHistory file rows (Gmail model:
+// the range takes the state of the anchor, the card last clicked, and ADDS to / removes from the
+// selection - it never replaces it).
+// Pure helpers only: Production.jsx and BatchHistory.jsx own the anchor ref and the selection state.
 
 // The ids from anchor to target inclusive, in the order of `orderedIds`. null when either end is
 // missing (no anchor yet, or the anchor/target is not in the list any more) - the caller then
@@ -47,6 +50,38 @@ export const visibleFileIds = (groupedDays, collapsedDays, isGrouped) =>
   groupedDays
     .filter((day) => !collapsedDays.has(day.dayKey))
     .flatMap((day) => dayRowsInRenderOrder(day, isGrouped).map((row) => row.file_id));
+
+// BatchHistory: the selectable files in the order the tree draws them. Only what is on screen
+// counts - a collapsed day or batch draws no file rows - and rolled-back files are skipped
+// because their rows have no checkbox (the same split FileRow makes). The batch layer is the
+// filtered one (a search narrows batch.files), so pass the list the render maps over.
+export const visibleHistoryFiles = (dayGroups, expandedDays, expandedBatches) =>
+  dayGroups
+    .filter((day) => expandedDays.has(day.date))
+    .flatMap((day) => day.batches)
+    .filter((batch) => expandedBatches.has(batch.path))
+    .flatMap((batch) =>
+      batch.files
+        .filter((file) => file.status !== FILE_STATUS.ROLLED_BACK)
+        .map((file) => ({ path: file.path, batchPath: batch.path })),
+    );
+
+// BatchHistory keeps its selection as Map<filePath, batchPath> (bulk rollback needs the batch of
+// every file). The range maths is the Set one above; this maps it back, taking the batch of a file
+// from `ordered` ([{ path, batchPath }], what visibleHistoryFiles returns) or from the click.
+export const nextFileSelection = (prev, { filePath, batchPath, shiftKey, anchorPath, ordered }) => {
+  const paths = nextSelection(new Set(prev.keys()), {
+    fileId: filePath,
+    shiftKey,
+    anchorId: anchorPath,
+    orderedIds: ordered.map((f) => f.path),
+  });
+  const batchOf = new Map(ordered.map((f) => [f.path, f.batchPath]));
+  batchOf.set(filePath, batchPath);
+  const next = new Map();
+  for (const path of paths) next.set(path, prev.get(path) ?? batchOf.get(path));
+  return next;
+};
 
 // mousedown on a card with Shift held: stop the browser from extending a text selection to the
 // click point, and drop any selection already there. Otherwise the click guard in ProductionCard

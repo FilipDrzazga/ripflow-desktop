@@ -34,6 +34,7 @@ import { printBatchLabel } from "../../services/productionService";
 import { isFeatureEnabled } from "../../utils/featureVisibility";
 import { getPrinters } from "../../utils/shopProfileData";
 import { shouldTick, pickDaysToPoll, mergePolledDays } from "../../utils/batchHistoryPoll";
+import { anchorAfterSelection, nextFileSelection, visibleHistoryFiles } from "../../utils/rangeSelect";
 
 
 // Cross-station poll. 30s (not Production's 15s): each polled day also runs SQLite reads in
@@ -98,6 +99,8 @@ const BatchHistory = () => {
   // Multi-file selection for bulk rollback
   const [selectedFiles, setSelectedFiles] = useState(new Map()); // Map<filePath, batchPath>
 
+  const selectionAnchorRef = useRef(null); // path of the file row clicked last; dropped with the selection
+
   const pendingAnimationsRef = useRef(new Set());
   const elementRefsRef = useRef(new Map());
   const isInitialLoadRef = useRef(true);
@@ -126,15 +129,6 @@ const BatchHistory = () => {
         { stage: "printLabel", code: "PRINT_LABEL_FAILED" },
       );
     }
-  }, []);
-
-  const toggleFileSelect = useCallback((filePath, batchPath) => {
-    setSelectedFiles((prev) => {
-      const next = new Map(prev);
-      if (next.has(filePath)) next.delete(filePath);
-      else next.set(filePath, batchPath);
-      return next;
-    });
   }, []);
 
   const clearFileSelection = useCallback(() => setSelectedFiles(new Map()), []);
@@ -661,6 +655,28 @@ const BatchHistory = () => {
   // footer, and lets the empty-state drop the scoped "in loaded days" wording.
   const isSearchLoadingMore =
     searchQuery.trim() !== "" && (dayGroups.some((d) => d.loaded !== true) || loadingDays.size > 0);
+
+  // Shift-click range: the selectable file rows on screen, in the order the tree draws them.
+  const visibleFiles = useMemo(
+    () => visibleHistoryFiles(filteredDayGroups, expandedDays, expandedBatches),
+    [filteredDayGroups, expandedDays, expandedBatches],
+  );
+
+  // The ONE click path of every file row. Declared after visibleFiles: its deps are read at render.
+  const toggleFileSelect = useCallback(
+    (filePath, batchPath, { shiftKey = false } = {}) => {
+      const anchorPath = selectionAnchorRef.current;
+      setSelectedFiles((prev) =>
+        nextFileSelection(prev, { filePath, batchPath, shiftKey, anchorPath, ordered: visibleFiles }),
+      );
+      selectionAnchorRef.current = filePath;
+    },
+    [visibleFiles],
+  );
+
+  useEffect(() => {
+    selectionAnchorRef.current = anchorAfterSelection(selectedFiles, selectionAnchorRef.current);
+  }, [selectedFiles]);
 
   const handleOpenInFolder = useCallback(async (filePath) => {
     try {

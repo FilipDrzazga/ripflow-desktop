@@ -1,6 +1,7 @@
 import { LuFileText, LuCheck, LuTriangleAlert } from "react-icons/lu";
 import { FILE_STATUS } from "../../../shared/constants";
 import StageBadge from "../StageBadge/StageBadge";
+import { claimShiftMouseDown } from "../../utils/rangeSelect";
 import style from "./BatchHistory.module.css";
 
 const formatRolledBackAt = (isoString) => {
@@ -23,7 +24,8 @@ const FileRow = ({ file, batch, stageRow, ripError, onRipBadgeClick, activeConte
   return (
     <li
       className={`${style.file_row} ${activeContextFilePath === file.path ? style.file_row_active : ""} ${isFileRolledBack ? style.file_row_rolled_back : ""} ${isSelected ? style.file_row_selected : ""} ${!isFileRolledBack ? style.file_row_selectable : ""}`}
-      onClick={!isFileRolledBack ? () => onToggleSelect?.(file.path) : undefined}
+      onMouseDown={!isFileRolledBack ? (e) => claimShiftMouseDown(e, window) : undefined}
+      onClick={!isFileRolledBack ? (e) => onToggleSelect?.(file.path, { shiftKey: e.shiftKey }) : undefined}
       onContextMenu={
         isFileRolledBack
           ? undefined
