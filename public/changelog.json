@@ -1,5 +1,15 @@
 [
   {
+    "version": "1.0.31",
+    "date": "2026-10-08",
+    "changes": [
+      {
+        "text": "Batch history: hold Shift and click a second file row to select the whole range between the two, like in Production and Print. The range can cross batches and days, skips rolled-back files and works only on what is expanded on screen. A plain click still selects one file",
+        "clients": ["all"]
+      }
+    ]
+  },
+  {
     "version": "1.0.30",
     "date": "2026-10-05",
     "changes": [
