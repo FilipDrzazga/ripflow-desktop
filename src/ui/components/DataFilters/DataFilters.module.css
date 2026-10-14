@@ -247,7 +247,6 @@
   cursor: pointer;
   transition:
     border-color 0.15s ease,
-    box-shadow 0.15s ease,
     color 0.15s ease;
 }
 
@@ -285,11 +284,10 @@
   text-align: center;
 }
 
-/* the inset shadow doubles the border without changing the chip's size */
+/* on = the chip's own 1px border turned dark */
 .type_chip_on,
 .type_chip_on:hover {
   border-color: var(--border-black);
-  box-shadow: inset 0 0 0 1px var(--border-black);
   color: var(--text-primary);
 }
 
