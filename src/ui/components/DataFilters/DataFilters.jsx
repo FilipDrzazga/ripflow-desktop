@@ -136,14 +136,20 @@ const DataFilters = () => {
           <span className={styles.sort_btn_label}>
             <HiAdjustmentsHorizontal />
             Filter
-            {filterCount > 0 && <span className={styles.filter_count}>{filterCount}</span>}
           </span>
           <span className={styles.sort_chevron}>{panelOpen ? <HiChevronUp /> : <HiChevronDown />}</span>
         </button>
         {panelOpen && (
           <div className={styles.filter_panel}>
             <div className={styles.panel_label}>Sort</div>
-            <div className={styles.segmented} role="radiogroup" aria-label="Sort">
+            <div
+              className={styles.segmented}
+              role="radiogroup"
+              aria-label="Sort"
+              style={{ "--segment-count": SORT_OPTIONS.length, "--segment-index": SORT_OPTIONS.indexOf(activeSortOption) }}
+            >
+              {/* one white thumb under the segments; it slides to the active one */}
+              <span className={styles.segment_thumb} aria-hidden="true" />
               {SORT_OPTIONS.map((opt) => {
                 const OptIcon = opt.icon;
                 const isOn = sortOrder === opt.value;
@@ -175,11 +181,10 @@ const DataFilters = () => {
                     type="button"
                     aria-pressed={isOn}
                     className={`${styles.type_chip} ${isOn ? styles.type_chip_on : ""} ${count === 0 && !isOn ? styles.type_chip_empty : ""}`}
-                    style={{ "--chip-color": def?.color ?? "#6b7280" }}
                     onClick={() => handleTypeToggle(opt.value)}
                   >
-                    {Icon && <Icon size={15} className={styles.type_chip_icon} />}
-                    {opt.label}
+                    {Icon && <Icon size={14} className={styles.type_chip_icon} />}
+                    <span className={styles.type_chip_label}>{opt.label}</span>
                     <span className={styles.type_chip_count}>{count}</span>
                   </button>
                 );

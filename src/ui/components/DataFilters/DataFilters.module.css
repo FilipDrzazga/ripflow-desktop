@@ -137,20 +137,6 @@
   justify-content: space-between;
 }
 
-/* how many filters are on (types + sort) - on the black active button */
-.filter_count {
-  min-width: 18px;
-  height: 18px;
-  padding: 0 5px;
-  border-radius: 999px;
-  background-color: var(--bg-white);
-  color: var(--text-black);
-  font-size: 11px;
-  font-weight: 700;
-  line-height: 18px;
-  text-align: center;
-}
-
 .filter_panel {
   position: absolute;
   top: calc(100% + 6px);
@@ -178,15 +164,37 @@
   margin-bottom: 16px;
 }
 
-/* sort: one segmented switch, exactly one segment on */
+/* sort: one segmented switch, exactly one segment on - the white thumb slides between them */
 .segmented {
+  position: relative;
   display: flex;
   padding: 3px;
   border-radius: 10px;
-  background-color: var(--bg-grey-light);
+  background-color: var(--bg-grey);
+}
+
+/* the segments are equal (flex: 1), so one segment's width is the thumb's width and its step */
+.segment_thumb {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  left: 3px;
+  width: calc((100% - 6px) / var(--segment-count));
+  border-radius: 8px;
+  background-color: var(--bg-white);
+  box-shadow: 0 1px 3px rgba(27, 39, 94, 0.14);
+  transform: translateX(calc(var(--segment-index) * 100%));
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .segment_thumb {
+    transition: none;
+  }
 }
 
 .segment {
+  position: relative;
   flex: 1;
   display: flex;
   align-items: center;
@@ -200,43 +208,42 @@
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
-  transition:
-    background-color 0.15s ease,
-    color 0.15s ease,
-    box-shadow 0.15s ease;
+  transition: color 0.2s ease;
 }
 
 .segment:hover {
   color: var(--text-primary);
 }
 
+/* no own background: the thumb under it is the "on" look */
 .segment_on,
 .segment_on:hover {
-  background-color: var(--bg-white);
   color: var(--text-black);
   font-weight: 600;
-  box-shadow: 0 1px 3px rgba(27, 39, 94, 0.14);
 }
 
-/* types: toggle chips - the state is the type's colour, not a tick */
+/* types: toggle chips in a two-column grid of equal chips, sized like the active chips next to
+   the Filter button. No type colour here - "on" is the app's black active look; the colour
+   stays on the active chips outside the panel */
 .type_chips {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 6px;
 }
 
 .type_chip {
   display: flex;
   align-items: center;
-  gap: 6px;
-  height: 32px;
-  padding: 0 6px 0 10px;
+  gap: 5px;
+  min-width: 0;
+  height: 28px;
+  padding: 0 4px 0 10px;
   border: 1px solid var(--border-grey);
   border-radius: 999px;
   background-color: var(--bg-white);
   color: var(--text-primary);
-  font-size: 13px;
-  font-weight: 500;
+  font-size: 12px;
+  font-weight: 600;
   cursor: pointer;
   transition:
     background-color 0.15s ease,
@@ -245,7 +252,7 @@
 }
 
 .type_chip:hover {
-  border-color: var(--chip-color);
+  border-color: var(--text-secondary);
 }
 
 .type_chip_icon {
@@ -253,33 +260,44 @@
   flex-shrink: 0;
 }
 
+.type_chip_label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
+}
+
+/* the count sits at the right edge of every chip, so the numbers line up down the column */
 .type_chip_count {
-  min-width: 20px;
-  height: 20px;
-  padding: 0 6px;
+  flex-shrink: 0;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
   border-radius: 999px;
   background-color: var(--bg-grey-light);
   color: var(--text-secondary);
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 600;
-  line-height: 20px;
+  line-height: 18px;
   text-align: center;
 }
 
-.type_chip_on {
-  border-color: var(--chip-color);
-  background-color: color-mix(in srgb, var(--chip-color) 12%, white);
-  color: var(--chip-color);
-  font-weight: 600;
+.type_chip_on,
+.type_chip_on:hover {
+  border-color: var(--border-black);
+  background-color: var(--bg-black);
+  color: var(--text-white);
 }
 
 .type_chip_on .type_chip_icon {
-  color: var(--chip-color);
+  color: var(--text-white);
 }
 
 .type_chip_on .type_chip_count {
-  background-color: var(--chip-color);
-  color: #fff;
+  background-color: rgba(255, 255, 255, 0.2);
+  color: var(--text-white);
 }
 
 /* nothing of this type in the tab: still clickable, just quiet */
