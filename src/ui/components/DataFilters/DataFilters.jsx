@@ -201,7 +201,13 @@ const DataFilters = () => {
       {filterCount > 0 && (
         <div className={styles.active_chips}>
           {sortOrder && (
-            <button type="button" className={styles.active_chip} onClick={() => setSortOrder(null)} title="Remove sort">
+            <button
+              key={sortOrder}
+              type="button"
+              className={styles.active_chip}
+              onClick={() => setSortOrder(null)}
+              title="Remove sort"
+            >
               <ActiveSortIcon />
               {activeSortOption.label}
               <HiXMark className={styles.active_chip_x} />
