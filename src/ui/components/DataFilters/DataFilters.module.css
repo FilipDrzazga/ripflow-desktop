@@ -223,8 +223,8 @@
 }
 
 /* types: toggle chips in a two-column grid of equal chips, sized like the active chips next to
-   the Filter button. No type colour here - "on" is the app's black active look; the colour
-   stays on the active chips outside the panel */
+   the Filter button. No type colour and no fill here - light like the other buttons, "on" is a
+   dark outline; the colour stays on the active chips outside the panel */
 .type_chips {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -241,18 +241,19 @@
   border: 1px solid var(--border-grey);
   border-radius: 999px;
   background-color: var(--bg-white);
-  color: var(--text-primary);
+  color: var(--text-secondary);
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
   transition:
-    background-color 0.15s ease,
     border-color 0.15s ease,
+    box-shadow 0.15s ease,
     color 0.15s ease;
 }
 
 .type_chip:hover {
   border-color: var(--text-secondary);
+  color: var(--text-primary);
 }
 
 .type_chip_icon {
@@ -284,20 +285,21 @@
   text-align: center;
 }
 
+/* the inset shadow doubles the border without changing the chip's size */
 .type_chip_on,
 .type_chip_on:hover {
   border-color: var(--border-black);
-  background-color: var(--bg-black);
-  color: var(--text-white);
+  box-shadow: inset 0 0 0 1px var(--border-black);
+  color: var(--text-primary);
 }
 
 .type_chip_on .type_chip_icon {
-  color: var(--text-white);
+  color: var(--text-primary);
 }
 
 .type_chip_on .type_chip_count {
-  background-color: rgba(255, 255, 255, 0.2);
-  color: var(--text-white);
+  background-color: var(--bg-grey);
+  color: var(--text-primary);
 }
 
 /* nothing of this type in the tab: still clickable, just quiet */
