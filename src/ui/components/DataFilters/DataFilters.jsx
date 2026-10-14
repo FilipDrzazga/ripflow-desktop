@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useStore } from "../../store/useStore";
 import {
   HiClipboardDocumentList,
@@ -10,15 +10,15 @@ import {
   HiChevronUp,
   HiArrowTrendingDown,
   HiClock,
-  HiFunnel,
-  HiCheck,
+  HiAdjustmentsHorizontal,
 } from "react-icons/hi2";
-import { LuRefreshCw, LuCircle } from "react-icons/lu";
+import { LuRefreshCw } from "react-icons/lu";
 import { IoLeaf, IoLeafOutline } from "react-icons/io5";
 import { PiPolygon, PiPolygonFill } from "react-icons/pi";
 import { PRINT_TYPE_MAP } from "@/constants/printTypeMap";
 import { withSlotLooks } from "@/utils/materialClasses";
 import { printTypeOptions } from "@/utils/printTypeOptions";
+import { SORT_ORDER, countByPrintType, activeFilterCount } from "@/utils/printFilters";
 import styles from "./DataFilters.module.css";
 
 // The icon pair of each material-class slot (4-types-b): slot 0 = the leaf Cottons always had,
@@ -29,9 +29,9 @@ const CLASS_TAB_LOOKS = [
 ];
 
 const SORT_OPTIONS = [
-  { value: null, label: "Sort by", icon: HiArrowsUpDown },
-  { value: "meters_desc", label: "Meters", icon: HiArrowTrendingDown },
-  { value: "date_asc", label: "Oldest", icon: HiClock },
+  { value: null, label: "Default", icon: HiArrowsUpDown },
+  { value: SORT_ORDER.METERS_DESC, label: "Meters", icon: HiArrowTrendingDown },
+  { value: SORT_ORDER.DATE_ASC, label: "Oldest", icon: HiClock },
 ];
 
 
@@ -54,28 +54,29 @@ const DataFilters = () => {
   // the print types this shop has (4-types-f): fixed-size ones only from the profile
   const typeOptions = printTypeOptions(shopProfile);
 
-  const [sortOpen, setSortOpen] = useState(false);
-  const [typeOpen, setTypeOpen] = useState(false);
-  const sortRef = useRef(null);
-  const typeRef = useRef(null);
+  const files = useStore((state) => state.files);
+  // what each type chip would show: the current tab + search, the type filter left out
+  const typeCounts = useMemo(() => countByPrintType(files, activeTab, searchQuery), [files, activeTab, searchQuery]);
+  const filterCount = activeFilterCount(printTypeFilter, sortOrder);
+
+  const [panelOpen, setPanelOpen] = useState(false);
+  const panelRef = useRef(null);
 
   useEffect(() => {
-    if (!sortOpen) return;
+    if (!panelOpen) return;
     const handleClick = (e) => {
-      if (!sortRef.current?.contains(e.target)) setSortOpen(false);
+      if (!panelRef.current?.contains(e.target)) setPanelOpen(false);
+    };
+    const handleKey = (e) => {
+      if (e.key === "Escape") setPanelOpen(false);
     };
     document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
-  }, [sortOpen]);
-
-  useEffect(() => {
-    if (!typeOpen) return;
-    const handleClick = (e) => {
-      if (!typeRef.current?.contains(e.target)) setTypeOpen(false);
+    document.addEventListener("keydown", handleKey);
+    return () => {
+      document.removeEventListener("mousedown", handleClick);
+      document.removeEventListener("keydown", handleKey);
     };
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
-  }, [typeOpen]);
+  }, [panelOpen]);
 
   const handleClick = (tab) => {
     setActiveTab(tab);
@@ -93,25 +94,18 @@ const DataFilters = () => {
     clearSelection();
   };
 
-  const handleTypeClear = () => {
-    setPrintTypeFilter([]);
-    clearSelection();
-    setTypeOpen(false);
+  // "Clear all": types and sort at once; the selection goes with the types, as on a toggle
+  const handleClearAll = () => {
+    if (printTypeFilter.length > 0) {
+      setPrintTypeFilter([]);
+      clearSelection();
+    }
+    setSortOrder(null);
   };
-
-  const singleTypeOpt = printTypeFilter.length === 1
-    ? typeOptions.find((o) => o.value === printTypeFilter[0])
-    : null;
-  const singleTypeDef = singleTypeOpt ? PRINT_TYPE_MAP[singleTypeOpt.value] : null;
-  const typeButtonLabel =
-    printTypeFilter.length === 0
-      ? "All Types"
-      : singleTypeOpt
-        ? singleTypeOpt.label
-        : `${printTypeFilter.length} types`;
 
   const activeSortOption = SORT_OPTIONS.find((o) => o.value === sortOrder) ?? SORT_OPTIONS[0];
   const ActiveSortIcon = activeSortOption.icon;
+  const activeTypeOptions = typeOptions.filter((o) => printTypeFilter.includes(o.value));
 
   return (
     <div className={styles.filters_container}>
@@ -132,57 +126,102 @@ const DataFilters = () => {
         </button>
       ))}
       <div className={styles.filter_separator} />
-      <div className={styles.sort_wrapper} ref={typeRef}>
+      <div className={styles.sort_wrapper} ref={panelRef}>
         <button
           type="button"
-          className={`${styles.filter_button} ${styles.type_button} ${printTypeFilter.length > 0 ? styles.active : ""}`}
-          onClick={() => setTypeOpen((v) => !v)}
+          className={`${styles.filter_button} ${styles.panel_button} ${filterCount > 0 ? styles.active : ""}`}
+          onClick={() => setPanelOpen((v) => !v)}
+          aria-expanded={panelOpen}
         >
           <span className={styles.sort_btn_label}>
-            {singleTypeDef
-              ? <singleTypeDef.Icon size={15} style={{ color: singleTypeDef.color }} />
-              : <HiFunnel />
-            }
-            {typeButtonLabel}
+            <HiAdjustmentsHorizontal />
+            Filter
+            {filterCount > 0 && <span className={styles.filter_count}>{filterCount}</span>}
           </span>
-          <span className={styles.sort_chevron}>{typeOpen ? <HiChevronUp /> : <HiChevronDown />}</span>
+          <span className={styles.sort_chevron}>{panelOpen ? <HiChevronUp /> : <HiChevronDown />}</span>
         </button>
-        {typeOpen && (
-          <div className={`${styles.sort_dropdown} ${styles.type_dropdown}`}>
-            <button
-              type="button"
-              className={`${styles.sort_option} ${printTypeFilter.length === 0 ? styles.sort_option_active : ""}`}
-              onClick={handleTypeClear}
-            >
-              <span className={styles.sort_option_content}>
-                <HiFunnel />
-                All Types
-              </span>
-            </button>
-            {typeOptions.map((opt) => {
-              const isSelected = printTypeFilter.includes(opt.value);
-              const def = PRINT_TYPE_MAP[opt.value];
-              const Icon = def?.Icon;
-              return (
-                <button
-                  key={opt.value}
-                  type="button"
-                  className={`${styles.sort_option} ${isSelected ? styles.sort_option_active : ""}`}
-                  onClick={() => handleTypeToggle(opt.value)}
-                >
-                  <span className={styles.sort_option_content}>
-                    <span className={styles.type_option_check}>
-                      {isSelected ? <HiCheck /> : <LuCircle size={12} style={{ opacity: 0.25 }} />}
-                    </span>
-                    {Icon && <Icon size={15} style={{ color: isSelected ? def.color : undefined, flexShrink: 0 }} />}
+        {panelOpen && (
+          <div className={styles.filter_panel}>
+            <div className={styles.panel_label}>Sort</div>
+            <div className={styles.segmented} role="radiogroup" aria-label="Sort">
+              {SORT_OPTIONS.map((opt) => {
+                const OptIcon = opt.icon;
+                const isOn = sortOrder === opt.value;
+                return (
+                  <button
+                    key={String(opt.value)}
+                    type="button"
+                    role="radio"
+                    aria-checked={isOn}
+                    className={`${styles.segment} ${isOn ? styles.segment_on : ""}`}
+                    onClick={() => setSortOrder(opt.value)}
+                  >
+                    <OptIcon />
                     {opt.label}
-                  </span>
-                </button>
-              );
-            })}
+                  </button>
+                );
+              })}
+            </div>
+            <div className={styles.panel_label}>Types</div>
+            <div className={styles.type_chips}>
+              {typeOptions.map((opt) => {
+                const isOn = printTypeFilter.includes(opt.value);
+                const def = PRINT_TYPE_MAP[opt.value];
+                const Icon = def?.Icon;
+                const count = typeCounts[opt.value] ?? 0;
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    aria-pressed={isOn}
+                    className={`${styles.type_chip} ${isOn ? styles.type_chip_on : ""} ${count === 0 && !isOn ? styles.type_chip_empty : ""}`}
+                    style={{ "--chip-color": def?.color ?? "#6b7280" }}
+                    onClick={() => handleTypeToggle(opt.value)}
+                  >
+                    {Icon && <Icon size={15} className={styles.type_chip_icon} />}
+                    {opt.label}
+                    <span className={styles.type_chip_count}>{count}</span>
+                  </button>
+                );
+              })}
+            </div>
+            <div className={styles.panel_footer}>
+              <button type="button" className={styles.clear_all} onClick={handleClearAll} disabled={filterCount === 0}>
+                Clear all
+              </button>
+            </div>
           </div>
         )}
       </div>
+      {filterCount > 0 && (
+        <div className={styles.active_chips}>
+          {sortOrder && (
+            <button type="button" className={styles.active_chip} onClick={() => setSortOrder(null)} title="Remove sort">
+              <ActiveSortIcon />
+              {activeSortOption.label}
+              <HiXMark className={styles.active_chip_x} />
+            </button>
+          )}
+          {activeTypeOptions.map((opt) => {
+            const def = PRINT_TYPE_MAP[opt.value];
+            const Icon = def?.Icon;
+            return (
+              <button
+                key={opt.value}
+                type="button"
+                className={`${styles.active_chip} ${styles.active_chip_type}`}
+                style={{ "--chip-color": def?.color ?? "#6b7280" }}
+                onClick={() => handleTypeToggle(opt.value)}
+                title={`Remove ${opt.label}`}
+              >
+                {Icon && <Icon size={14} />}
+                {opt.label}
+                <HiXMark className={styles.active_chip_x} />
+              </button>
+            );
+          })}
+        </div>
+      )}
       <div className={styles.right_group}>
         <div className={styles.search_wrapper}>
           <HiMagnifyingGlass className={styles.search_icon} />
@@ -197,42 +236,6 @@ const DataFilters = () => {
             <button className={styles.search_clear} type="button" onClick={() => setSearchQuery("")}>
               <HiXMark />
             </button>
-          )}
-        </div>
-        <div className={styles.sort_wrapper} ref={sortRef}>
-          <button
-            type="button"
-            className={`${styles.filter_button} ${styles.sort_button} ${sortOrder !== null ? styles.active : ""}`}
-            onClick={() => setSortOpen((v) => !v)}
-          >
-            <span className={styles.sort_btn_label}>
-              <ActiveSortIcon />
-              {activeSortOption.label}
-            </span>
-            <span className={styles.sort_chevron}>{sortOpen ? <HiChevronUp /> : <HiChevronDown />}</span>
-          </button>
-          {sortOpen && (
-            <div className={styles.sort_dropdown}>
-              {SORT_OPTIONS.map((opt) => {
-                const OptIcon = opt.icon;
-                return (
-                  <button
-                    key={String(opt.value)}
-                    type="button"
-                    className={`${styles.sort_option} ${sortOrder === opt.value ? styles.sort_option_active : ""}`}
-                    onClick={() => {
-                      setSortOrder(opt.value);
-                      setSortOpen(false);
-                    }}
-                  >
-                    <span className={styles.sort_option_content}>
-                      <OptIcon />
-                      {opt.label}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
           )}
         </div>
         <button

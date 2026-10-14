@@ -35,17 +35,18 @@ import { toggleHeldId, pruneHeldSelection, unholdMany } from "../utils/heldSelec
 import { lockMaterialOf, printSelectBlock, planRangeSelect, anchorFor } from "../utils/printRangeSelect";
 import { isToastHiddenByWizard } from "../utils/setupWizard";
 import { getStagesByBatch as getStagesByBatchApi, getAllStages as getAllStagesApi, getStagesAfter as getStagesAfterApi, getAllStageHistory as getAllStageHistoryApi, clearAllProductionStages as clearAllProductionStagesApi, getOpenReprints as getOpenReprintsApi } from "../services/productionService";
+import { matchesTabAndSearch, SORT_ORDER } from "../utils/printFilters";
 import { scanRipErrors as scanRipErrorsApi, resolveRipError as resolveRipErrorApi, resolveRipErrorJob as resolveRipErrorJobApi } from "../services/ripErrorService";
 
 const applySort = (groups, sortOrder, config = null) => {
   if (!sortOrder) return groups;
-  if (sortOrder === "meters_desc") {
+  if (sortOrder === SORT_ORDER.METERS_DESC) {
     return [...groups]
       .map((g) => ({ g, _len: estimatePrintLength(g.items, config).fixedTotalLengthM }))
       .sort((a, b) => b._len - a._len)
       .map(({ g }) => g);
   }
-  if (sortOrder === "date_asc") {
+  if (sortOrder === SORT_ORDER.DATE_ASC) {
     return [...groups].sort((a, b) => {
       const aMin = Math.min(...a.items.map((i) => new Date(i.createdAt).getTime()));
       const bMin = Math.min(...b.items.map((i) => new Date(i.createdAt).getTime()));
@@ -62,15 +63,8 @@ const applyFilters = (files, activeTab, searchQuery, sortOrder, printTypeFilter,
     .map((group) => ({
       ...group,
       items: group.items.filter((item) => {
-        if (activeTab !== "All" && item.materialType !== activeTab) return false;
         if (printTypeFilter.length > 0 && !printTypeFilter.includes(item.printTypeCode)) return false;
-        if (query) {
-          const matchesOrderId = item.orderId?.toLowerCase().includes(query);
-          const matchesCustomer = item.customerName?.toLowerCase().includes(query);
-          const matchesMaterial = item.material?.toLowerCase().includes(query);
-          return matchesOrderId || matchesCustomer || matchesMaterial;
-        }
-        return true;
+        return matchesTabAndSearch(item, activeTab, query);
       }),
     }))
     .filter((group) => group.items.length > 0);
