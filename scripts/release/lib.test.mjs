@@ -101,6 +101,24 @@ describe("publishRelease with a fake GitHub", () => {
     expect(gh.calls.some((c) => c.method === "POST")).toBe(false);
   });
 
+  // D35: the tag lookup answered 401/403 (expired token) was reported as "already exists".
+  it.each([401, 403])("a refused token (HTTP %i) is named as such and creates nothing", async (status) => {
+    const calls = [];
+    const fetch = async (url, opts = {}) => {
+      calls.push({ url, method: opts.method || "GET" });
+      return { status, ok: false, json: async () => ({}) };
+    };
+    const run = publishRelease({ ...base, full: false, fetch });
+    await expect(run).rejects.toThrow(new RegExp(`GitHub refused GH_TOKEN \\(HTTP ${status}\\)`));
+    await expect(run).rejects.not.toThrow(/already exists/);
+    expect(calls.some((c) => c.method === "POST")).toBe(false);
+  });
+
+  it("any other answer to the tag lookup stops the run without claiming the release exists", async () => {
+    const fetch = async () => ({ status: 500, ok: false, json: async () => ({}) });
+    await expect(publishRelease({ ...base, full: false, fetch })).rejects.toThrow(/checking for a v1\.0\.24 release failed: HTTP 500/);
+  });
+
   it("a failed upload stops the run with the asset's name", async () => {
     const gh = fakeGitHub({ failUpload: true });
     await expect(publishRelease({ ...base, full: false, fetch: gh.fetch })).rejects.toThrow(/uploading RipFlow-Desktop-Setup-1\.0\.24\.exe failed/);

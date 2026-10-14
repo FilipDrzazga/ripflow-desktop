@@ -63,7 +63,13 @@ export const publishRelease = async ({ repo, token, version, body, full, yml, re
   const api = `https://api.github.com/repos/${repo}`;
 
   const existing = await fetch(`${api}/releases/tags/v${version}`, { headers });
-  if (existing.status !== 404) throw new Error(`a release for v${version} already exists (HTTP ${existing.status}) - stopping`);
+  // Only 404 means "free to create". A 401/403 is a refused token, not a release that exists
+  // (1.0.32: an expired GH_TOKEN was reported as "already exists").
+  if (existing.status === 401 || existing.status === 403) {
+    throw new Error(`GitHub refused GH_TOKEN (HTTP ${existing.status}) - renew it in .env`);
+  }
+  if (existing.ok) throw new Error(`a release for v${version} already exists (HTTP ${existing.status}) - stopping`);
+  if (existing.status !== 404) throw new Error(`checking for a v${version} release failed: HTTP ${existing.status} - stopping`);
 
   const res = await fetch(`${api}/releases`, { method: "POST", headers, body: JSON.stringify(releaseRequest({ version, body, full })) });
   const rel = await res.json();
