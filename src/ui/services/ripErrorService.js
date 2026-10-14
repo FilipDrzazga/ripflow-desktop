@@ -8,3 +8,6 @@ export const getRipErrors = () =>
 // Manual resolve — a single guarded UPDATE, so it shares the cheap DB-read timeout.
 export const resolveRipError = (fileId) =>
   withTimeout(window.api.ripErrors.resolve(fileId), 5_000, "rip-errors:resolve");
+// Manual resolve of a whole-batch failure: every open row of the job (rip_errors.job_guid).
+export const resolveRipErrorJob = (jobGuid) =>
+  withTimeout(window.api.ripErrors.resolveJob(jobGuid), 5_000, "rip-errors:resolveJob");

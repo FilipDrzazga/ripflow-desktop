@@ -1,18 +1,26 @@
 import path from "path";
 import { XMLParser } from "fast-xml-parser";
+import { RIP_ERROR_SCOPE } from "../../shared/constants.js";
 
 // PrintFactory drops a <name>.xml per failed job into WORKFLOW_ERROR/. Structure (verified
 // against real exports):
 //   parsed.Job                                  ← true root: JobGUID, Created, WFState, Name,
-//                                                  Journal, and (Shape A only) a job-level
-//                                                  <Documents> listing the single failed file
+//                                                  Journal, and (usually) a job-level
+//                                                  <Documents> listing what the job carried
 //   parsed.Job.ProcessNodes.XML.RipFlowJob      ← batch context: BatchId, NestingGroup,
 //                                                  <Documents> with ALL batch documents
-// Two shapes:
-//   Shape A (post-split, common): a job-level <Documents> is present → exactly ONE failed
-//     file = stem of the job-level <Name>.
-//   Shape B (pre-split, rarer): no job-level <Documents> → every document under
-//     RipFlowJob.Documents is affected → one row each.
+// What failed is told by HOW MANY documents the job-level <Documents> lists:
+//   ONE (post-split - the workflow's Split node runs SplitOn=Document): exactly one failed
+//     file → one row, scope FILE. Real: "Layout does not fit on any mediasize", Journal with
+//     a Split entry, job <Name> = that pdf.
+//   SEVERAL (pre-split): the whole batch failed → one row per batch document, scope BATCH.
+//     Real: "Conversion to Aur failed" at the Hotfolder, no Split in the Journal, job <Name> =
+//     the batch's XML name - before 2026-10-14 that name became the ONE file_id, so the error
+//     matched no file and only the Overview counter showed it.
+//   NONE (pre-split, e.g. "File not found or not accesible"): also BATCH, one row per batch
+//     document.
+// BATCH rows are taken from RipFlowJob.Documents - the list RipFlow itself wrote, so its names
+// are exactly the file stems - and from the job-level list only when that one is missing.
 // XWD/documentId is taken from the filename (UserData.DocumentId is unreliable across
 // exports). This parser returns an ARRAY of error rows; it never throws (malformed/odd xml
 // → [] logged, missing fields → null).
@@ -145,16 +153,23 @@ export const parseRipErrorXml = (xmlString) => {
     const base = { jobGuid, batchId, nestingGroup, failedNode, errorMessage, createdAt };
     const rows = [];
 
-    // Shape discriminator: a JOB-LEVEL <Documents> (direct child of <Job>, distinct from the
-    // RipFlowJob one) means post-split → exactly one failed file = stem of the job-level
-    // <Name>. Otherwise pre-split → one row per document under RipFlowJob.Documents.
-    if (job.Documents) {
-      const name = textOf(job.Name) ?? docName(docList(job.Documents)[0]);
-      rows.push({ ...base, fileId: stemOf(name), documentId: xwdFromName(name) });
+    // Scope discriminator: the number of documents in the JOB-LEVEL <Documents> (direct child
+    // of <Job>, distinct from the RipFlowJob one) - see the header. One → that file (its own
+    // name first: the job <Name> is the batch's when a one-document batch fails pre-split).
+    const jobDocs = docList(job.Documents);
+    if (job.Documents && jobDocs.length <= 1) {
+      const name = docName(jobDocs[0]) ?? textOf(job.Name);
+      rows.push({ ...base, scope: RIP_ERROR_SCOPE.FILE, fileId: stemOf(name), documentId: xwdFromName(name) });
     } else {
-      for (const doc of docList(ripFlowJob?.Documents)) {
+      const batchDocs = docList(ripFlowJob?.Documents);
+      for (const doc of batchDocs.length > 0 ? batchDocs : jobDocs) {
         const name = docName(doc);
-        rows.push({ ...base, fileId: stemOf(name), documentId: xwdFromName(name) ?? docDocId(doc) ?? null });
+        rows.push({
+          ...base,
+          scope: RIP_ERROR_SCOPE.BATCH,
+          fileId: stemOf(name),
+          documentId: xwdFromName(name) ?? docDocId(doc) ?? null,
+        });
       }
     }
 

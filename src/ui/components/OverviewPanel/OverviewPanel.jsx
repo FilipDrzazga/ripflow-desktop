@@ -6,6 +6,7 @@ import { PRODUCTION_STAGE, STAGE_COLOR, STAGE_LABEL } from "../../../shared/cons
 import { STAGE_ICON } from "../../constants/stageIcons";
 import { getPrinterColor } from "../../utils/shopProfileData";
 import { isFeatureEnabled } from "../../utils/featureVisibility";
+import { countRipErrorEvents } from "../../utils/ripErrorsByFile";
 import style from "./OverviewPanel.module.css";
 
 // Batch folder name → HH:MM (PRINTED_HHMMSS-GROUP-PRINTER). Lifted from LastBatchCard.
@@ -53,7 +54,8 @@ const OverviewPanel = ({ onNavigate }) => {
 
   const result = useMemo(() => getLastBatch(batchDays), [batchDays]);
 
-  const ripErrorCount = Object.keys(ripErrors).length;
+  // Failures, not files: a whole-batch failure badges every file of the batch but is one error.
+  const ripErrorCount = countRipErrorEvents(ripErrors);
   const holdCount = heldIds.size;
   const reprintCount = openReprints.length;
 

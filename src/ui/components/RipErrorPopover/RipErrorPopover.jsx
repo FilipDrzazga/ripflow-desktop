@@ -2,6 +2,7 @@ import { useLayoutEffect, useRef, useState, useEffect } from "react";
 import { LuTriangleAlert, LuCopy, LuCheck, LuCircleCheck } from "react-icons/lu";
 import { useStore } from "../../store/useStore";
 import { notify } from "../../utils/notify";
+import { RIP_ERROR_SCOPE } from "../../../shared/constants";
 import style from "./RipErrorPopover.module.css";
 
 const EDGE_OFFSET = 12;
@@ -18,7 +19,8 @@ const formatRipTime = (iso) => {
   return `${hh}:${mm} ${dd}/${mo}/${d.getFullYear()}`;
 };
 
-// Anchored popover showing one file's RIP-error detail. Positioning + backdrop-close lifted
+// Anchored popover showing one RIP-error detail - one file's, or a whole batch's (scope BATCH:
+// the job failed before PrintFactory split it; opened from the batch header or any of its files). Positioning + backdrop-close lifted
 // from ContextMenu (anchor edge-flip clamps; full-screen backdrop onPointerDown → onClose),
 // but renders free-form content instead of the options[] menu. The caller portals this into
 // document.body (matching how ContextMenu is portaled).
@@ -28,6 +30,7 @@ const RipErrorPopover = ({ error, anchorX, anchorY, onClose }) => {
   const [isResolving, setIsResolving] = useState(false);
   const copyTimerRef = useRef(null);
   const resolveRipError = useStore((state) => state.resolveRipError);
+  const resolveRipErrorJob = useStore((state) => state.resolveRipErrorJob);
 
   // Edge-flip clamp (same math as ContextMenu): keep the box inside the viewport.
   useLayoutEffect(() => {
@@ -60,12 +63,22 @@ const RipErrorPopover = ({ error, anchorX, anchorY, onClose }) => {
     typeof error.file_id === "string" && error.file_id.trim() !== "" ? error.file_id : null;
   const message = error.error_message ?? "—";
   const node = error.failed_node ?? "—";
+  // A whole-batch failure is shown and resolved as ONE event: the batch instead of the file, and
+  // the job (every file of the batch) as the key. The row's own file_id is only the file it was
+  // opened from - the header passes any of them.
+  const isBatch = error.scope === RIP_ERROR_SCOPE.BATCH;
+  const batchId = error.batch_id ?? "—";
+  const rawJobGuid =
+    typeof error.job_guid === "string" && error.job_guid.trim() !== "" ? error.job_guid : null;
+  const resolveKey = isBatch ? rawJobGuid : rawFileId;
 
   const handleCopy = (e) => {
     // stopPropagation so the click neither hits the backdrop nor bubbles (through the React
     // portal tree) to the row's expand / select handler.
     e.stopPropagation();
-    const block = `RIP Error\nFile: ${fileId}\nError: ${message}\nNode: ${node}\nTime: ${time}`;
+    const block = isBatch
+      ? `RIP Error (whole batch)\nBatch: ${batchId}\nError: ${message}\nNode: ${node}\nTime: ${time}`
+      : `RIP Error\nFile: ${fileId}\nError: ${message}\nNode: ${node}\nTime: ${time}`;
     navigator.clipboard.writeText(block).then(() => {
       setCopied(true);
       clearTimeout(copyTimerRef.current);
@@ -79,13 +92,13 @@ const RipErrorPopover = ({ error, anchorX, anchorY, onClose }) => {
   // the popover open for a retry instead of hiding an error that is still open.
   const handleResolve = async (e) => {
     e.stopPropagation();
-    if (isResolving || !rawFileId) return;
+    if (isResolving || !resolveKey) return;
     setIsResolving(true);
 
-    const res = await resolveRipError(rawFileId);
+    const res = isBatch ? await resolveRipErrorJob(resolveKey) : await resolveRipError(resolveKey);
     if (res?.success) {
       notify(
-        { type: "Success", title: "RIP error resolved", message: rawFileId },
+        { type: "Success", title: "RIP error resolved", message: isBatch ? `Whole batch: ${batchId}` : rawFileId },
         { stage: "rip-errors", code: "RIP_ERROR_RESOLVED" },
       );
       onClose(); // unmounts this popover — no state update after it
@@ -122,13 +135,17 @@ const RipErrorPopover = ({ error, anchorX, anchorY, onClose }) => {
       >
         <div className={style.header}>
           <LuTriangleAlert size={14} />
-          <span className={style.title}>RIP Error</span>
+          <span className={style.title}>{isBatch ? "RIP Error — whole batch" : "RIP Error"}</span>
         </div>
         <dl className={style.fields}>
           <div className={style.field}><dt className={style.dt}>Error</dt><dd className={style.dd}>{message}</dd></div>
           <div className={style.field}><dt className={style.dt}>Node</dt><dd className={style.dd}>{node}</dd></div>
           <div className={style.field}><dt className={style.dt}>Time</dt><dd className={style.dd}>{time}</dd></div>
-          <div className={style.field}><dt className={style.dt}>File</dt><dd className={`${style.dd} ${style.file_value}`}>{fileId}</dd></div>
+          {isBatch ? (
+            <div className={style.field}><dt className={style.dt}>Batch</dt><dd className={`${style.dd} ${style.file_value}`}>{batchId}</dd></div>
+          ) : (
+            <div className={style.field}><dt className={style.dt}>File</dt><dd className={`${style.dd} ${style.file_value}`}>{fileId}</dd></div>
+          )}
         </dl>
         <div className={style.actions}>
           <button type="button" className={style.copy_btn} onClick={handleCopy}>
@@ -139,8 +156,12 @@ const RipErrorPopover = ({ error, anchorX, anchorY, onClose }) => {
             type="button"
             className={style.resolve_btn}
             onClick={handleResolve}
-            disabled={isResolving || !rawFileId}
-            title={rawFileId ? "Mark this RIP error as resolved" : "No file id on this error"}
+            disabled={isResolving || !resolveKey}
+            title={
+              !resolveKey
+                ? isBatch ? "No job id on this error" : "No file id on this error"
+                : isBatch ? "Mark the RIP error of the whole batch as resolved" : "Mark this RIP error as resolved"
+            }
           >
             <LuCircleCheck size={13} />
             {isResolving ? "Resolving…" : "Resolved"}

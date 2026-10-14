@@ -30,12 +30,12 @@ const fabricConfigFor = (state, profile) =>
   state.fabricConfig ? { fabricConfig: estimateConfigFrom(state.fabricConfig.fabrics, profile) } : {};
 import { getShopProfile as getShopProfileApi, reloadShopData as reloadShopDataApi } from "../services/profileService";
 import { PROFILE_STATUS, resolveProfileResult } from "../utils/profileStatus";
-import { latestRipErrorPerFile } from "../utils/ripErrorsByFile";
+import { latestRipErrorPerFile, withoutRipErrorJob } from "../utils/ripErrorsByFile";
 import { toggleHeldId, pruneHeldSelection, unholdMany } from "../utils/heldSelection";
 import { lockMaterialOf, printSelectBlock, planRangeSelect, anchorFor } from "../utils/printRangeSelect";
 import { isToastHiddenByWizard } from "../utils/setupWizard";
 import { getStagesByBatch as getStagesByBatchApi, getAllStages as getAllStagesApi, getStagesAfter as getStagesAfterApi, getAllStageHistory as getAllStageHistoryApi, clearAllProductionStages as clearAllProductionStagesApi, getOpenReprints as getOpenReprintsApi } from "../services/productionService";
-import { scanRipErrors as scanRipErrorsApi, resolveRipError as resolveRipErrorApi } from "../services/ripErrorService";
+import { scanRipErrors as scanRipErrorsApi, resolveRipError as resolveRipErrorApi, resolveRipErrorJob as resolveRipErrorJobApi } from "../services/ripErrorService";
 
 const applySort = (groups, sortOrder, config = null) => {
   if (!sortOrder) return groups;
@@ -436,6 +436,24 @@ export const useStore = create(
         return { success: false, error: res?.error };
       } catch (err) {
         console.error("[store] resolveRipError failed:", err);
+        return { success: false, error: { message: err.message } };
+      }
+    },
+    // The same for a whole-batch failure (scope BATCH): resolves every file of the job, so the
+    // badges of all of them and the batch header go at once. Same contract: DB first, silent.
+    resolveRipErrorJob: async (jobGuid) => {
+      try {
+        const res = await resolveRipErrorJobApi(jobGuid);
+        if (res?.success) {
+          set((state) => {
+            const next = withoutRipErrorJob(state.ripErrors, jobGuid);
+            return next === state.ripErrors ? state : { ripErrors: next };
+          });
+          return { success: true };
+        }
+        return { success: false, error: res?.error };
+      } catch (err) {
+        console.error("[store] resolveRipErrorJob failed:", err);
         return { success: false, error: { message: err.message } };
       }
     },

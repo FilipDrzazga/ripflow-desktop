@@ -3,7 +3,13 @@ import fs from "fs";
 import path from "path";
 import { getStorageRootPath } from "../helpers/getRootPath.js";
 import { parseRipErrorXml } from "../helpers/parseRipErrorXml.js";
-import { insertRipError, getOpenRipErrors, resolveRipErrorsByFile } from "../helpers/db.js";
+import {
+  insertRipError,
+  getOpenRipErrors,
+  resolveRipErrorsByFile,
+  resolveRipErrorsByJob,
+  ripErrorJobHasOtherFiles,
+} from "../helpers/db.js";
 import { toIpcError } from "../helpers/ipcError.js";
 import { getFolder } from "../helpers/shopProfile.js";
 import { createLogOnce } from "../helpers/logOnce.js";
@@ -45,12 +51,13 @@ export const scanRipErrors = async () => {
   for (const fileName of xmlFiles) {
     try {
       const xml = await fs.promises.readFile(path.join(dir, fileName), "utf8");
-      const rows = parseRipErrorXml(xml);
+      const rows = parseRipErrorXml(xml).filter((row) => row.jobGuid && row.fileId); // both keys required
+      if (rows.length === 0) continue;
+      // One xml = one job (the rows share its JobGUID). Already read the other way (another
+      // file set, e.g. by a build before the per-file reading of a batch failure) -> leave it.
+      if (ripErrorJobHasOtherFiles(rows[0].jobGuid, rows.map((row) => row.fileId))) continue;
       const detectedAt = new Date().toISOString();
-      for (const row of rows) {
-        if (!row.jobGuid || !row.fileId) continue; // both keys required
-        insertRipError({ ...row, detectedAt });
-      }
+      for (const row of rows) insertRipError({ ...row, detectedAt });
     } catch (err) {
       console.error(`[ripErrors] failed to process ${fileName}:`, err);
     }
@@ -75,24 +82,36 @@ export function registerRipErrorHandlers() {
   // through runWrite, which NEVER throws: it returns false when the DB is unavailable or the
   // write fails. So success is taken from that boolean — otherwise a dead DB would report
   // success and the renderer would optimistically drop a badge that is still open in the DB.
-  ipcMain.handle("rip-errors:resolve", (_event, fileId) => {
-    try {
-      if (typeof fileId !== "string" || fileId.trim() === "") {
-        throw Object.assign(new Error("fileId is required."), { code: "INVALID_FILE_ID" });
-      }
-      const ok = resolveRipErrorsByFile(fileId);
-      if (!ok) {
-        throw Object.assign(new Error("Database write failed — RIP error not resolved."), {
-          code: "DB_WRITE_FAILED",
-        });
-      }
-      return { success: true };
-    } catch (err) {
-      console.error("[ripErrors] resolve failed:", err);
-      return {
-        success: false,
-        error: toIpcError(err, "rip-errors:resolve", "Resolve RIP error failed"),
-      };
-    }
-  });
+  ipcMain.handle("rip-errors:resolve", (_event, fileId) =>
+    resolveOpenRows("rip-errors:resolve", fileId, "fileId", "INVALID_FILE_ID", resolveRipErrorsByFile),
+  );
+
+  // Manual resolve of a whole-batch failure (scope BATCH) - every file of the job at once, from
+  // the badge on the batch header or on any of its files. Same contract as rip-errors:resolve.
+  ipcMain.handle("rip-errors:resolveJob", (_event, jobGuid) =>
+    resolveOpenRows("rip-errors:resolveJob", jobGuid, "jobGuid", "INVALID_JOB_GUID", resolveRipErrorsByJob),
+  );
 }
+
+// The two manual resolves differ only in the key. success comes from the runWrite boolean (see
+// above), never from the absence of an exception.
+const resolveOpenRows = (stage, key, keyName, invalidCode, resolve) => {
+  try {
+    if (typeof key !== "string" || key.trim() === "") {
+      throw Object.assign(new Error(`${keyName} is required.`), { code: invalidCode });
+    }
+    const ok = resolve(key);
+    if (!ok) {
+      throw Object.assign(new Error("Database write failed — RIP error not resolved."), {
+        code: "DB_WRITE_FAILED",
+      });
+    }
+    return { success: true };
+  } catch (err) {
+    console.error(`[ripErrors] ${stage} failed:`, err);
+    return {
+      success: false,
+      error: toIpcError(err, stage, "Resolve RIP error failed"),
+    };
+  }
+};

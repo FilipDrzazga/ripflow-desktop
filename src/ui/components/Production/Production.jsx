@@ -19,6 +19,7 @@ import {
   LuFilter,
   LuLayers,
   LuTruck,
+  LuTriangleAlert,
 } from "react-icons/lu";
 import { useStore } from "../../store/useStore";
 import {
@@ -42,6 +43,7 @@ import { VIEW_MODE } from "../../constants/viewModes";
 import { isFeatureEnabled } from "../../utils/featureVisibility";
 import { canMarkShipped, isShippableRow } from "../../utils/markShipped";
 import { canRollbackRows } from "../../utils/productionRollback";
+import { batchRipErrorOf } from "../../utils/ripErrorsByFile";
 import { anchorAfterSelection, nextSelection, visibleFileIds } from "../../utils/rangeSelect";
 import { getSewingCompanies, getScanRule, getPrinterColor } from "../../utils/shopProfileData";
 import { UNKNOWN_ORDER_KEY } from "../../utils/groupByOrder";
@@ -138,8 +140,12 @@ const notifyStageFailed = (n) =>
 
 const batchNameOf = (batchPath) => batchPath?.split(/[/\\]/).pop() ?? "Unknown";
 
-const BatchGroupHeader = ({ batchPath, rows, selectedFileIds, onSelectAll }) => {
+const BatchGroupHeader = ({ batchPath, rows, selectedFileIds, onSelectAll, onRipBadgeClick }) => {
   const shopProfile = useStore((s) => s.shopProfile);
+  const ripErrors = useStore((s) => s.ripErrors);
+  // The whole batch failed in PrintFactory (scope BATCH) - the same badge as on BatchHistory's
+  // header; every card of the batch also carries its own.
+  const batchRipError = batchRipErrorOf(rows.map((r) => r.file_id), ripErrors);
   const batchName = batchPath?.split(/[/\\]/).pop() ?? "Unknown";
   const printer = printerOfBatch(batchName);
   const pc = printer ? (getPrinterColor(shopProfile, printer) ?? { bg: "#f0f0f0", color: "#616161" }) : null;
@@ -157,6 +163,16 @@ const BatchGroupHeader = ({ batchPath, rows, selectedFileIds, onSelectAll }) => 
       <span className={style.batch_group_count}>
         {rows.length} file{rows.length !== 1 ? "s" : ""}
       </span>
+      {batchRipError && (
+        <span
+          className={style.card_type_badge_rip_error}
+          title="PrintFactory failed the whole batch"
+          onClick={(e) => { e.stopPropagation(); onRipBadgeClick?.(batchRipError, e.clientX, e.clientY); }}
+        >
+          <LuTriangleAlert size={12} />
+          RIP Error · whole batch
+        </span>
+      )}
       <span className={style.batch_group_sep} />
       <div className={style.batch_group_stages}>
         {STAGE_PIPELINE_ORDER.filter((s) => stageCounts[s] > 0).map((s) => {
@@ -1961,6 +1977,7 @@ const Production = () => {
                               rows={rows}
                               selectedFileIds={selectedFileIds}
                               onSelectAll={handleSelectBatch}
+                              onRipBadgeClick={(error, x, y) => setRipPopover({ error, x, y })}
                             />
                             {rows.map((row) => renderCard(row))}
                           </div>

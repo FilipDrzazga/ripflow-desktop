@@ -16,6 +16,7 @@ vi.mock("../helpers/db.js", () => ({
   insertRipError: (row) => inserted.push(row),
   getOpenRipErrors: () => OPEN,
   resolveRipErrorsByFile: () => true,
+  ripErrorJobHasOtherFiles: () => false,
 }));
 vi.mock("../helpers/shopProfile.js", () => ({ getFolder: (name) => (name === "ripError" ? folder : null) }));
 vi.mock("../helpers/getRootPath.js", () => ({ getStorageRootPath: () => storageRoot }));

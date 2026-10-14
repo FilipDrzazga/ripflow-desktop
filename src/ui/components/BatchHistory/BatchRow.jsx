@@ -1,7 +1,8 @@
 import { useEffect } from "react";
-import { LuRefreshCw, LuFolderOpen, LuCornerUpLeft, LuTrash2, LuChevronRight, LuChevronDown, LuPrinter } from "react-icons/lu";
+import { LuRefreshCw, LuFolderOpen, LuCornerUpLeft, LuTrash2, LuChevronRight, LuChevronDown, LuPrinter, LuTriangleAlert } from "react-icons/lu";
 import { BATCH_STATUS, FILE_STATUS } from "../../../shared/constants";
 import { getPrinterColor } from "../../utils/shopProfileData";
+import { batchRipErrorOf } from "../../utils/ripErrorsByFile";
 import { useStore } from "../../store/useStore";
 import FileRow from "./FileRow";
 import style from "./BatchHistory.module.css";
@@ -46,6 +47,12 @@ const BatchRow = ({
     (n, f) => n + (ripErrors[f.name.replace(/\.[^.]+$/, "")] ? 1 : 0),
     0,
   );
+  // The whole batch failed in PrintFactory (scope BATCH): a clickable badge replaces the count,
+  // which would only repeat that every file carries it. The files keep their own badges.
+  const batchRipError = batchRipErrorOf(
+    batch.files.map((f) => f.name.replace(/\.[^.]+$/, "")),
+    ripErrors,
+  );
 
   return (
     <div
@@ -66,7 +73,16 @@ const BatchRow = ({
           {rolledBackCount > 0 && (
             <span className={style.rolled_back_badge}>{rolledBackCount} rolled back</span>
           )}
-          {ripErrorCount > 0 && (
+          {batchRipError ? (
+            <span
+              className={style.rip_error_badge}
+              title="PrintFactory failed the whole batch"
+              onClick={(e) => { e.stopPropagation(); onRipBadgeClick?.(batchRipError, e.clientX, e.clientY); }}
+            >
+              <LuTriangleAlert size={12} />
+              RIP Error · whole batch
+            </span>
+          ) : ripErrorCount > 0 && (
             <span className={style.rip_error_count_badge}>
               {ripErrorCount} RIP Error{ripErrorCount === 1 ? "" : "s"}
             </span>

@@ -489,8 +489,11 @@ export const initDb = () => {
       )
     `);
     db.exec("CREATE INDEX IF NOT EXISTS idx_rip_errors_file ON rip_errors(file_id)");
+    ripErrorsHaveScope = ensureRipErrorScopeColumn();
     stmtInsertRipError = db.prepare(
-      "INSERT OR IGNORE INTO rip_errors (id, job_guid, file_id, batch_id, nesting_group, failed_node, error_message, document_id, detected_at, created_at, resolved_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+      ripErrorsHaveScope
+        ? "INSERT OR IGNORE INTO rip_errors (id, job_guid, file_id, batch_id, nesting_group, failed_node, error_message, document_id, detected_at, created_at, resolved_at, scope) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+        : "INSERT OR IGNORE INTO rip_errors (id, job_guid, file_id, batch_id, nesting_group, failed_node, error_message, document_id, detected_at, created_at, resolved_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
     );
     stmtGetOpenRipErrors = db.prepare("SELECT * FROM rip_errors WHERE resolved_at IS NULL ORDER BY detected_at DESC");
     dropRetiredTables();
@@ -542,6 +545,7 @@ export const initDb = () => {
     stmtGetFileStagesAfter = null;
     stmtInsertRipError = null;
     stmtGetOpenRipErrors = null;
+    ripErrorsHaveScope = false;
   }
 };
 
@@ -1271,12 +1275,33 @@ export const clearAllReprintRequests = () =>
 
 // ── rip_errors ─────────────────────────────────────────────────────────────
 
+// Idempotent, the alias pattern: rip_errors.scope (RIP_ERROR_SCOPE, src/shared/constants.js) - what
+// a failure hit, one file or the whole batch (2026-10-14). Returns whether the column is there.
+// When the ALTER fails (SQLITE_BUSY on a busy share) the insert is prepared without it: the rows
+// still reach every file badge, only the batch-header badge is missing until a later start adds
+// the column. A row without a scope (written before the column, or by an older build) reads as a
+// file error.
+let ripErrorsHaveScope = false;
+const ensureRipErrorScopeColumn = () => {
+  try {
+    const has = db
+      .prepare("PRAGMA table_info(rip_errors)")
+      .all()
+      .some((col) => col.name === "scope");
+    if (!has) db.exec("ALTER TABLE rip_errors ADD COLUMN scope TEXT");
+    return true;
+  } catch (err) {
+    console.error("[db] ensureRipErrorScopeColumn failed:", err);
+    return false;
+  }
+};
+
 // INSERT OR IGNORE dedups on the UNIQUE(job_guid, file_id) pair — a re-scanned xml (and
 // each file within a pre-split failure) inserts at most once. The synthetic id matches the
 // reprint_requests convention (crypto.randomUUID).
 export const insertRipError = (row) =>
   runWrite("insertRipError", () => {
-    stmtInsertRipError.run(
+    const values = [
       crypto.randomUUID(),
       row.jobGuid,
       row.fileId,
@@ -1288,8 +1313,32 @@ export const insertRipError = (row) =>
       row.detectedAt ?? new Date().toISOString(),
       row.createdAt ?? null,
       null,
-    );
+    ];
+    if (ripErrorsHaveScope) values.push(row.scope ?? null);
+    stmtInsertRipError.run(...values);
   });
+
+// Whether this job (one error xml) already has rows for files OTHER than fileIds - i.e. it was
+// read before, the other way. The scan skips such a job, so a change in how the parser reads an
+// xml never re-opens an error that was read and resolved under the old reading: on 2026-10-14 the
+// pre-split failure of 30-09 was one resolved row under the batch's name, and the per-file reading
+// would have opened 14 new rows from the xml still in the folder. Rows for the SAME files are not
+// "other" - INSERT OR IGNORE skips them, and a job whose rows were cut short by a failed write
+// (runWrite answers false on SQLITE_BUSY) is completed by the next scan. A failed read answers
+// true: nothing is inserted this round and the next poll asks again, rather than risk a duplicate.
+export const ripErrorJobHasOtherFiles = (jobGuid, fileIds) => {
+  if (!db || !fileIds.length) return false;
+  try {
+    const placeholders = fileIds.map(() => "?").join(",");
+    const row = db
+      .prepare(`SELECT 1 FROM rip_errors WHERE job_guid = ? AND file_id NOT IN (${placeholders}) LIMIT 1`)
+      .get(jobGuid, ...fileIds);
+    return row !== undefined;
+  } catch (err) {
+    console.error("[db] ripErrorJobHasOtherFiles failed:", err);
+    return true;
+  }
+};
 
 export const getOpenRipErrors = () => {
   if (!stmtGetOpenRipErrors) return [];
@@ -1321,6 +1370,15 @@ export const resolveRipErrorsByFile = (fileId) =>
     db.prepare(
       "UPDATE rip_errors SET resolved_at = ? WHERE file_id = ? AND resolved_at IS NULL",
     ).run(new Date().toISOString(), fileId),
+  );
+
+// Manual resolve of a whole-batch failure (scope BATCH): every open row of the job, i.e. every file
+// of the batch at once. Same runWrite contract as resolveRipErrorsByFile (false, never a throw).
+export const resolveRipErrorsByJob = (jobGuid) =>
+  runWrite("resolveRipErrorsByJob", () =>
+    db.prepare(
+      "UPDATE rip_errors SET resolved_at = ? WHERE job_guid = ? AND resolved_at IS NULL",
+    ).run(new Date().toISOString(), jobGuid),
   );
 
 export const getRollbackDetails = (since) => {

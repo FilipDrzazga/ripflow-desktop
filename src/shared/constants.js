@@ -91,6 +91,15 @@ export const STAGE_COLOR = {
 
 export const SEWING_SUGGESTED_TYPES = ["CUSHION", "TEA_TOWEL"];
 
+// rip_errors.scope - what a PrintFactory failure hit. FILE: one document failed after the Split
+// node (the badge sits on that file). BATCH: the job failed before the split, so every file of the
+// batch got a row (badge on every file AND on the batch header). NULL in rows written before the
+// column existed = FILE.
+export const RIP_ERROR_SCOPE = {
+  FILE: "file",
+  BATCH: "batch",
+};
+
 // The code profile:set answers when the stored shop profile is no longer the one this station
 // loaded - another station saved it in between (ETAP 3-1, helpers/saveShopProfile.js).
 export const PROFILE_CHANGED = "PROFILE_CHANGED";
