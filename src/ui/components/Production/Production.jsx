@@ -41,6 +41,7 @@ import { useScrollAnchor } from "../../hooks/useScrollAnchor";
 import { VIEW_MODE } from "../../constants/viewModes";
 import { isFeatureEnabled } from "../../utils/featureVisibility";
 import { canMarkShipped, isShippableRow } from "../../utils/markShipped";
+import { canRollbackRows } from "../../utils/productionRollback";
 import { anchorAfterSelection, nextSelection, visibleFileIds } from "../../utils/rangeSelect";
 import { getSewingCompanies, getScanRule, getPrinterColor } from "../../utils/shopProfileData";
 import { UNKNOWN_ORDER_KEY } from "../../utils/groupByOrder";
@@ -1446,8 +1447,7 @@ const Production = () => {
         receiveCount > 0 &&
         receiveTargets.every((r) => session.receivedInSession.has(r.file_id) && r.stage === PRODUCTION_STAGE.PACKED);
       const canShipReceive = receiveCount > 0 && receiveTargets.every(isShippableRow);
-      const canRollbackReceive =
-        receiveCount > 0 && receiveTargets.every((r) => r.batch_path && r.stage !== PRODUCTION_STAGE.SHIPPED);
+      const canRollbackReceive = canRollbackRows(receiveTargets);
 
       const receiveItems = [];
       if (canReceive) {
@@ -1562,7 +1562,7 @@ const Production = () => {
       targetRows.every((r) => r.stage === PRODUCTION_STAGE.QC);
     const canGoBack = count > 0 && targetRows.every((r) => STAGE_PREV[r.stage]);
     const canShip = canMarkShipped(targetRows);
-    const canRollback = count > 0 && targetRows.every((r) => r.batch_path && r.stage !== PRODUCTION_STAGE.SHIPPED);
+    const canRollback = canRollbackRows(targetRows);
 
     const items = [];
 
