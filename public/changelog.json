@@ -1,5 +1,23 @@
 [
   {
+    "version": "1.0.32",
+    "date": "2026-10-14",
+    "changes": [
+      {
+        "text": "Print: the \"All Types\" and \"Sort by\" lists are now one \"Filter\" button. Its panel switches the sort (Default, Meters, Oldest) and turns print types on and off, each type showing how many files it would list. What is switched on appears next to the button - click it to take it off, or use \"Clear all\"",
+        "clients": ["all"]
+      },
+      {
+        "text": "Production: Rollback is now offered at every stage, shipped files included, so a fault found after an order has left no longer means stepping the file back a stage first",
+        "clients": ["all"]
+      },
+      {
+        "text": "RIP errors: when PrintFactory fails a whole batch (before it splits the job into files), every file in it gets the RIP Error badge and the batch header shows \"RIP Error · whole batch\". \"Resolved\" on such an error clears it for the whole batch at once",
+        "clients": ["all"]
+      }
+    ]
+  },
+  {
     "version": "1.0.31",
     "date": "2026-10-08",
     "changes": [
