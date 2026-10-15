@@ -320,6 +320,13 @@ export const run = async ({ page, step, ctx }) => {
     }
     await page.sleep(700);
     await shot();
+    // the stack may have timed out while the first shot waited for the page to settle: stack it again
+    if (!(await page.exists('[class*="alert_container"] > div'))) {
+      for (let i = 0; i < 3; i++) {
+        await page.clickText("Save", { selector: "button" });
+        await page.sleep(350);
+      }
+    }
     await page.hoverSelector('[class*="alert_container"] > div', { nth: 0 });
     await page.sleep(700);
     await shot(undefined, "SW-toasts-expanded");
