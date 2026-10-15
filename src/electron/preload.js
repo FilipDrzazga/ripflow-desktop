@@ -220,6 +220,18 @@ const api = Object.freeze({
   selectFolder: () => ipcRenderer.invoke("dialog:select-folder"),
   minimizeWindow: () => ipcRenderer.send("window:minimize"),
   closeWindow: () => ipcRenderer.send("window:close"),
+  toggleMaximizeWindow: () => ipcRenderer.send("window:toggle-maximize"),
+  // { maximized } on every maximise / restore (button, double click on the title bar, Win+Up).
+  onWindowMaximizedChanged: (callback) => {
+    if (typeof callback !== "function") {
+      throw new TypeError("Window maximized callback must be a function.");
+    }
+    const handler = (_event, payload) => callback(payload);
+    ipcRenderer.on("window:maximized-changed", handler);
+    return () => ipcRenderer.removeListener("window:maximized-changed", handler);
+  },
+  // Snapshot for a window that loaded after the last change: { maximized }.
+  isWindowMaximized: () => ipcRenderer.invoke("window:is-maximized"),
 
   customOrder: Object.freeze({
     scanFolder: () => ipcRenderer.invoke("customOrder:scanFolder"),

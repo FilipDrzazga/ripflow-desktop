@@ -15,6 +15,11 @@ export const pruneOrphanHolds = (liveIds) =>
 // fire-and-forget IPC sends — no invoke, no timeout needed
 export const minimizeWindow = () => window.api.minimizeWindow();
 export const closeWindow = () => window.api.closeWindow();
+export const toggleMaximizeWindow = () => window.api.toggleMaximizeWindow();
+// Event subscription, returns an unsubscribe fn; payload { maximized }.
+export const onWindowMaximizedChanged = (cb) => window.api.onWindowMaximizedChanged(cb);
+// Snapshot for a (re)loaded renderer - { maximized }.
+export const isWindowMaximized = () => window.api.isWindowMaximized();
 // no timeout — user drives the dialog
 export const showConfirm = (message) => window.api.showConfirm(message);
 // DB degraded signals — event subscriptions, return an unsubscribe fn (like onBatchUpdate)

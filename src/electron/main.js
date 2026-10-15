@@ -1,7 +1,7 @@
 // MUST stay the FIRST import: ES modules evaluate in import order, so sandboxBoot.js moves
 // userData into the local sandbox before getSettings.js (via ./ipc/index.js) builds its Store.
 import { SANDBOX_ROOT } from "./sandboxBoot.js";
-import { app, BrowserWindow, ipcMain, dialog, powerMonitor } from "electron";
+import { app, BrowserWindow, ipcMain, dialog, powerMonitor, screen } from "electron";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 import { createRequire } from "module";
@@ -12,6 +12,7 @@ import { setPrintedRootSink } from "./ipc/readPrintedFolder.js";
 import { getSettings } from "./helpers/getSettings.js";
 import { findUnsafeSettings } from "./helpers/sandboxGuard.js";
 import { createPowerPause, applyStartupLock } from "./helpers/powerPause.js";
+import { fitStartSize, WINDOW_MIN_WIDTH, WINDOW_MIN_HEIGHT } from "./helpers/windowBounds.js";
 const require = createRequire(import.meta.url);
 const { autoUpdater } = require("electron-updater");
 
@@ -21,11 +22,13 @@ const __dirname = dirname(__filename);
 let win = null;
 
 const createWindow = () => {
+  // The window starts maximised; this is the size "restore" gives back, clamped to the screen it opens on.
+  const startSize = fitStartSize(screen.getPrimaryDisplay().workArea);
   win = new BrowserWindow({
-    width: 1280,
-    height: 800,
-    minWidth: 960,
-    minHeight: 640,
+    width: startSize.width,
+    height: startSize.height,
+    minWidth: WINDOW_MIN_WIDTH,
+    minHeight: WINDOW_MIN_HEIGHT,
     resizable: true,
     maximizable: true,
     fullscreenable: false,
@@ -42,6 +45,14 @@ const createWindow = () => {
 
   ipcMain.on("window:minimize", () => win.minimize());
   ipcMain.on("window:close", () => win.close());
+  // Maximise / restore. The renderer's icon follows the window, not a local toggle: a double click on the
+  // drag region switches the state without any IPC, so main pushes every change (and answers a snapshot
+  // for a renderer that loaded or reloaded after the last change - same pattern as power:get-paused).
+  ipcMain.on("window:toggle-maximize", () => (win.isMaximized() ? win.unmaximize() : win.maximize()));
+  ipcMain.handle("window:is-maximized", () => ({ maximized: win.isMaximized() }));
+  const sendMaximized = () => win.webContents.send("window:maximized-changed", { maximized: win.isMaximized() });
+  win.on("maximize", sendMaximized);
+  win.on("unmaximize", sendMaximized);
 
   ipcMain.handle("dialog:confirm", async (_event, message) => {
     const { response } = await dialog.showMessageBox(win, {
