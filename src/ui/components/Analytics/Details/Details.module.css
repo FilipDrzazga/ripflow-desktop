@@ -132,9 +132,6 @@
   left: 0;
   z-index: 100;
   min-width: 100%;
-  /* the list is clipped by the panel below it: in a short window it scrolls instead of being cut (260 px = bar + title + window padding) */
-  max-height: calc(100vh - 260px);
-  overflow-y: auto;
   padding: 6px;
   border: 1px solid rgba(34, 51, 84, 0.08);
   border-radius: 14px;
@@ -670,4 +667,14 @@
   .col_process { grid-area: 2 / 3; }
   .col_printer { grid-area: 2 / 4; }
   .col_type { grid-area: 2 / 5; }
+}
+
+/* The dropdown hangs below the filter bar and is clipped by the panel: in a short window it scrolls instead of being cut
+   (255 px = filter bar rows + title + window padding at 960..1092 px, where the bar wraps to 3 rows). Taller windows
+   keep the full list, which fits there. */
+@media (max-height: 720px) {
+  .reason_dropdown {
+    max-height: calc(100vh - 255px);
+    overflow-y: auto;
+  }
 }

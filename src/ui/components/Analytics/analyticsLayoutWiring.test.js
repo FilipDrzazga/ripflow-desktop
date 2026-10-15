@@ -44,9 +44,10 @@ describe("short windows scroll instead of cutting", () => {
     expect(ruleBody(summary, ".grid")).toContain("overflow-y: auto;");
   });
 
-  it("the reasons dropdown has a height cap and scrolls", () => {
-    const body = ruleBody(details, ".reason_dropdown");
-    expect(body).toContain("max-height: calc(100vh - 260px);");
-    expect(body).toContain("overflow-y: auto;");
+  it("the reasons dropdown has a height cap and scrolls - only in a short window, a taller one keeps the full list", () => {
+    expect(ruleBody(details, ".reason_dropdown")).not.toContain("max-height");
+    const short = details.slice(details.indexOf("@media (max-height: 720px)"));
+    expect(short).toContain("max-height: calc(100vh - 255px);");
+    expect(short).toContain("overflow-y: auto;");
   });
 });
