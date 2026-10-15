@@ -7,6 +7,7 @@
 //   --only=SW-print,SW-batch narrows the views (a re-take of a step replaces just its rows).
 import { closeOverlays, openFirstHistoryBatch, openNav, openSettings } from "../lib/ui.mjs";
 import { atEverySize } from "../lib/sweepSizes.mjs";
+import { DEMO_CUSTOM_ART, buildDemoCsv } from "../demoData.mjs";
 
 export const NAME = "sweep";
 export const VARIANT = "v0";
@@ -102,6 +103,24 @@ export const run = async ({ page, step }) => {
   await view("SW-custom", async () => {
     await openNav(page, "Custom Orders");
   });
+  await view("SW-custom-history-open", async () => {
+    await page.clickSelector('[class*="right_column"] [class*="card_header"]', { nth: 0 });
+    await page.sleep(500);
+  });
+  // Two imported CSVs (one with a missing artwork file) = the busiest card header: name, badges, PO, count, printers, three buttons. Nothing is generated.
+  await view("SW-custom-cards", async () => {
+    await page.clickSelector('[class*="right_column"] [class*="card_header"]', { nth: 0 });
+    for (const [name, art] of [["demo-complete.csv", DEMO_CUSTOM_ART.complete], ["demo-partial.csv", DEMO_CUSTOM_ART.partial]]) {
+      const content = buildDemoCsv({ po: art.po, material: art.material, rows: art.files.map((file, i) => ({ file, meters: 2 + i * 0.5 })) });
+      await page.dragFile('[aria-label="Import CSV files"]', { name, content, drop: true });
+      await page.sleep(1500);
+    }
+    await page.waitForText("1 missing", { exact: false });
+  });
+  await view("SW-custom-card-open", async () => {
+    await page.clickSelector('[class*="cards_list"] [class*="card_header"]', { nth: 1 });
+    await page.sleep(600);
+  });
   await view("SW-analytics", async () => {
     await openNav(page, "Analytics");
     await page.sleep(1200);
@@ -122,6 +141,10 @@ export const run = async ({ page, step }) => {
   });
   await view("SW-logs", async () => {
     await openNav(page, "Logs");
+  });
+  await view("SW-logs-open", async () => {
+    await page.clickSelector('[class*="entry_row"]', { nth: 0 });
+    await page.sleep(500);
   });
   for (const section of ["General", "Paths", "Fabrics", "Rollback Reasons", "Shop Profile", "Updates", "Database", "Maintenance"]) {
     await view(`SW-settings-${section.toLowerCase().replace(/ /g, "-")}`, async () => {
