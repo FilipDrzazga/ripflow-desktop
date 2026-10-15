@@ -10,6 +10,7 @@ const FOLDERS = {
   LG: "logs",
   ST: "settings",
   WZ: "wizard",
+  SW: "sweep",
 };
 
 export const folderOf = (id) => {

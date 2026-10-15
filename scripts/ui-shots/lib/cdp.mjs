@@ -5,6 +5,7 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { waitFor } from "./launch.mjs";
+import { probeOverflow } from "./overflowProbe.mjs";
 
 export const connectPage = async (port, { urlPrefix = "http://localhost:5173" } = {}) => {
   const target = await waitFor(
@@ -227,6 +228,8 @@ export const connectPage = async (port, { urlPrefix = "http://localhost:5173" } 
 // Writes a screenshot and returns its manifest row.
 export const saveShot = async (page, outDir, { id, view, state, file }) => {
   const { buf, stable } = await page.screenshotStable();
+  // Numbers for responsiveness (lib/overflowProbe.mjs); a failing probe must not lose the shot.
+  const overflow = await page.evaluate(probeOverflow).catch((err) => ({ error: err.message }));
   const target = path.join(outDir, file);
   fs.mkdirSync(path.dirname(target), { recursive: true });
   fs.writeFileSync(target, buf);
@@ -240,5 +243,6 @@ export const saveShot = async (page, outDir, { id, view, state, file }) => {
     bytes: buf.length,
     sha256: crypto.createHash("sha256").update(buf).digest("hex"),
     stable,
+    overflow,
   };
 };

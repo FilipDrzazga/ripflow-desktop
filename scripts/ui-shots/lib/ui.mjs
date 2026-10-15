@@ -21,7 +21,9 @@ export const scanBarcode = async (page, text) => {
 };
 
 // Moves the pointer to an empty corner of the window: closes hover states and tooltips.
-export const parkMouse = (page) => page.mouseMove(1700, 1040);
+// 220 px from the right and 40 px from the bottom edge (1700,1040 at the default 1920x1080).
+export const corner = (page) => ({ x: (page.viewport?.width ?? 1920) - 220, y: (page.viewport?.height ?? 1080) - 40 });
+export const parkMouse = (page) => page.mouseMove(corner(page).x, corner(page).y);
 
 // Escape a few times: closes menus, popovers and modals that listen for it.
 export const closeOverlays = async (page) => {
@@ -31,7 +33,7 @@ export const closeOverlays = async (page) => {
   }
   // Production and Batch History menus ignore Escape: a click on their full-screen backdrop closes them.
   if (await page.exists("[role=menu]")) {
-    await page.mouseClickAt(1700, 1040);
+    await page.mouseClickAt(corner(page).x, corner(page).y);
     await page.sleep(300);
   }
   await parkMouse(page);

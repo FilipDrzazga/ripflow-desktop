@@ -28,7 +28,10 @@ const scenarioName = arg("scenario", "sample");
 const demoHome = assertDemoHome(resolveDemoHome(arg("demo-home")));
 const cdpPort = Number(arg("cdp-port", "9333"));
 const outDir = path.resolve(arg("out", path.join(REPO, "agents", "chat", "artefakty", "ui-dostawa", "shots")));
-const VIEWPORT = { width: 1920, height: 1080 };
+// --viewport=960x560: the window size in CSS px (default 1920x1080, the stations today). The responsive sweep sets it per run.
+const viewportArg = arg("viewport", "1920x1080").match(/^(\d+)x(\d+)$/);
+if (!viewportArg) throw new Error("--viewport must look like 1366x768");
+const VIEWPORT = { width: Number(viewportArg[1]), height: Number(viewportArg[2]) };
 // --only=PR-07,PR-08: run just these steps (for re-takes); state a step needs from an earlier one is NOT replayed.
 const only = arg("only", "") ? new Set(arg("only", "").split(",").map((x) => x.trim())) : null;
 
@@ -113,7 +116,7 @@ const main = async () => {
           await page.pressKey("Escape").catch(() => {});
           await page.sleep(150);
         }
-        await page.mouseMove(1700, 1040).catch(() => {});
+        await page.mouseMove(VIEWPORT.width - 220, VIEWPORT.height - 40).catch(() => {});
       }
       current = null;
     };
