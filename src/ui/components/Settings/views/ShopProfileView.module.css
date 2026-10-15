@@ -6,9 +6,16 @@
 
 .header {
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
+}
+
+/* the text keeps a readable measure; the three buttons drop to their own line when the pane is narrow */
+.header_text {
+  flex: 1 1 320px;
+  min-width: 0;
 }
 
 .title_row {

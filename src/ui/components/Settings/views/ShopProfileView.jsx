@@ -52,7 +52,7 @@ const ShopProfileView = () => {
   return (
     <div className={`${styles.view} ${own.view_cards}`}>
       <div className={`${styles.view_header} ${own.header}`}>
-        <div>
+        <div className={own.header_text}>
           <div className={own.title_row}>
             <h2 className={styles.view_title} style={{ margin: 0 }}>
               Shop Profile
