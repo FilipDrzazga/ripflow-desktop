@@ -2,7 +2,7 @@
 // (lib/overflowProbe.mjs) counted. "ok" = nothing wrong. Built from manifest rows, so the same table is
 // produced for the "before" map and for the final "after" run.
 
-export const SWEEP_SIZES = ["960x560", "1092x582", "1366x728", "1536x824", "1920x1080", "2560x1400"];
+export const SWEEP_SIZES = ["960x560", "1092x582", "1280x800", "1366x728", "1536x824", "1920x1080", "2560x1400"];
 
 const cell = (row) => {
   if (!row) return "-";
