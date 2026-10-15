@@ -211,6 +211,8 @@
 }
 
 .column {
+  /* The Receive cards size against this column (see Production.module.css, @container cards). */
+  container: cards / inline-size;
   display: flex;
   flex-direction: column;
   gap: 6px;

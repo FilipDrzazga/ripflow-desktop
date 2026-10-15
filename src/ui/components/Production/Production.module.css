@@ -25,6 +25,9 @@
   box-sizing: border-box;
   border-bottom: 1px solid var(--border-grey);
   flex-shrink: 0;
+  /* Wraps instead of squeezing: the lens toggle and the stage tabs used to fold into columns of 3-7 rows. */
+  flex-wrap: wrap;
+  row-gap: 8px;
 }
 
 .topbar_right {
@@ -47,7 +50,7 @@
   display: flex;
   align-items: center;
   gap: 4px;
-  flex-wrap: wrap;
+  flex-shrink: 0;
 }
 
 .tab {
@@ -432,6 +435,12 @@
      content above changes, and two mechanisms correcting the same thing give a
      non-deterministic result — so the browser's is turned off deliberately. */
   overflow-anchor: none;
+}
+
+/* The cards answer to the width of the list they sit in, not to the window: the Receive items column is 280 px
+   narrower than the Batches list at the same window size. See the @container blocks after .separator. */
+.cards_wrapper {
+  container: cards / inline-size;
 }
 
 .empty_state {
@@ -1001,6 +1010,43 @@
   margin: 0 8px;
 }
 
+/* A card is one row (filename + badges | 560 px of stage pills) while the filename keeps ~240 px. In a narrower list
+   the pills drop under the filename as a full-width second row and the divider goes with them. A card with a
+   thumbnail needs 76 px more, so it wraps earlier. The pills are the one fixed-width piece: 7 pills x ~70 px. */
+@container cards (max-width: 1080px) {
+  .card_with_thumb {
+    flex-wrap: wrap;
+    row-gap: 6px;
+  }
+
+  .card_with_thumb > .separator {
+    display: none;
+  }
+
+  .card_with_thumb > .stage_pills {
+    flex: 1 1 100%;
+    width: auto;
+  }
+}
+
+@container cards (max-width: 1000px) {
+  .card {
+    flex-wrap: wrap;
+    row-gap: 6px;
+    height: auto;
+    padding: 6px 16px;
+  }
+
+  .card > .separator {
+    display: none;
+  }
+
+  .card > .stage_pills {
+    flex: 1 1 100%;
+    width: auto;
+  }
+}
+
 /* ===== STAGE PILLS ===== */
 
 .stage_pills {
@@ -1332,6 +1378,35 @@
   background: var(--border-grey);
   flex-shrink: 0;
   margin: 0 4px;
+}
+
+/* Title + lens toggle + 8 stage tabs + toolbar need ~1600 px of window in one row. Below that the tabs take a row of
+   their own under the title line, and the divider that separated the lens toggle from the tabs has nothing to
+   separate. */
+@media (max-width: 1600px) {
+  .topbar_sep {
+    display: none;
+  }
+
+  .stage_tabs {
+    order: 2;
+    flex: 1 1 100%;
+  }
+}
+
+/* At 960 the title, the lens toggle and the toolbar (~390 px at its widest) are 25 px over one line of the topbar:
+   tighter padding, and the toolbar takes the rest of the line (its basis 0 counts as its minimum when the line is
+   filled, so it wraps only when even that does not fit). */
+@media (max-width: 1100px) {
+  .topbar {
+    padding: 12px 20px;
+    gap: 12px;
+  }
+
+  .topbar_right {
+    flex: 1 1 0;
+    justify-content: flex-end;
+  }
 }
 
 /* Shared geometry for the topbar toggles (Groups, collapse-all). Matches
