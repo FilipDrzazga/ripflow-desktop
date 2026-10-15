@@ -425,10 +425,14 @@
   display: flex;
   gap: 0;
   padding: 8px 16px 4px;
+}
+
+/* the card is the container (a query styles descendants, never the container itself); a card narrower than 780 px
+   (window below ~1250 px) gives each row the whole width instead of half of it */
+.card_materials {
   container: matlist / inline-size;
 }
 
-/* a pane narrower than 780 px (window below ~1250 px) gives each row the whole width instead of half of it */
 @container matlist (max-width: 780px) {
   .mat_columns {
     flex-direction: column;

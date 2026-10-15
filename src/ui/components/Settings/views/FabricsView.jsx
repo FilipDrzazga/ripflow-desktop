@@ -400,7 +400,7 @@ const MaterialsCard = () => {
   };
 
   return (
-    <div className={styles.card}>
+    <div className={`${styles.card} ${styles.card_materials}`}>
       <div className={styles.card_header}>
         <p className={styles.card_title}>Materials</p>
         <p className={styles.card_desc}>
