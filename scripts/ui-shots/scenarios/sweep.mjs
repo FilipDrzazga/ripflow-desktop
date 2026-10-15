@@ -5,9 +5,11 @@
 //   node scripts/ui-shots/run.mjs --scenario=sweep --out=agents/chat/artefakty/resp-0/przed
 //   node scripts/ui-shots/overflowMap.mjs --dir=agents/chat/artefakty/resp-0/przed   (the table)
 //   --only=SW-print,SW-batch narrows the views (a re-take of a step replaces just its rows).
-import { closeOverlays, openFirstHistoryBatch, openNav, openSettings } from "../lib/ui.mjs";
+import fs from "node:fs";
+import path from "node:path";
+import { closeOverlays, openFirstHistoryBatch, openNav, openSettings, waitForCondition } from "../lib/ui.mjs";
 import { atEverySize } from "../lib/sweepSizes.mjs";
-import { DEMO_CUSTOM_ART, buildDemoCsv } from "../demoData.mjs";
+import { DEMO_CUSTOM_ART, buildDemoCsv, buildFileName } from "../demoData.mjs";
 
 export const NAME = "sweep";
 export const VARIANT = "v0";
@@ -17,7 +19,16 @@ const lens = async (page, label) => {
   await page.sleep(700);
 };
 
-export const run = async ({ page, step }) => {
+const findInboxFile = (layout, name) => {
+  for (const dir of fs.readdirSync(layout.storagePath, { withFileTypes: true })) {
+    if (!dir.isDirectory()) continue;
+    const candidate = path.join(layout.storagePath, dir.name, name);
+    if (fs.existsSync(candidate)) return candidate;
+  }
+  throw new Error(`${name} is not in the inbox`);
+};
+
+export const run = async ({ page, step, ctx }) => {
   await page.waitForText("Natural Canvas", { exact: false });
   await page.sleep(1200);
 
@@ -175,5 +186,111 @@ export const run = async ({ page, step }) => {
     await page.sleep(400);
     await page.clickSelector('button[title="Choose icon"]');
     await page.sleep(500);
+  });
+
+  // ---- what floats over the views: menus, popovers, modals, toasts, the new-files pill ----
+  const productionMenu = async (nth = 0) => {
+    await page.clickSelector("[data-file-id]", { nth, button: "right" });
+    await page.waitForText("Cancel", { selector: "[role=menu] button" });
+    await page.sleep(400);
+  };
+  // The tallest menu: a file of a batch, with its Rollback submenu (every reason) open.
+  await view("SW-batch-menu-reasons", async () => {
+    await openNav(page, "Batch");
+    await page.sleep(1200);
+    await openFirstHistoryBatch(page);
+    await page.clickSelector('[class*="file_row_selectable"]', { nth: 1, button: "right" });
+    await page.waitForText("Cancel", { selector: "[role=menu] button" });
+    await page.hoverText("Rollback this file", { selector: "[role=menuitem]" });
+    await page.sleep(600);
+  });
+  await view("SW-batch-rip-popover", async () => {
+    await closeOverlays(page);
+    await page.clickSelector('[class*="rip_error_badge"]');
+    await page.sleep(600);
+  });
+  await view("SW-batch-rollback-modal", async () => {
+    await closeOverlays(page);
+    await page.clickSelector('button[title="Rollback batch"]', { nth: 0 });
+    await page.waitForText("Rollback batch", { selector: "h3" });
+    await page.sleep(400);
+  });
+  // The busiest state of the modal: the "Other" reason adds the input and its hint.
+  await view("SW-batch-rollback-other", async () => {
+    await page.clickText("Other", { selector: '[class*="reason_pill"]', exact: false });
+    await page.sleep(400);
+  });
+  await view("SW-production-menu", async () => {
+    await closeOverlays(page);
+    await page.clickText("Cancel", { selector: "button" }).catch(() => {});
+    await openNav(page, "Production");
+    await page.sleep(1500);
+    await productionMenu(0);
+  });
+  await view("SW-production-rip-popover", async () => {
+    await closeOverlays(page);
+    await page.clickSelector('[class*="card_type_badge_rip_error"]');
+    await page.sleep(600);
+  });
+  await view("SW-production-rollback", async () => {
+    await closeOverlays(page);
+    await productionMenu(0);
+    await page.clickText("Rollback this file", { selector: "[role=menuitem]" });
+    await page.waitForText("Rollback to Inbox:", { selector: "h3" });
+    await page.sleep(500);
+  });
+  await view("SW-production-rollback-reasons", async () => {
+    await page.clickSelector('[class*="reason_dropdown_trigger"]', { nth: 0 });
+    await page.sleep(500);
+  });
+  // Several files at once: the modal with the longest file list.
+  await view("SW-production-rollback-all", async () => {
+    await closeOverlays(page);
+    await page.clickText("Cancel", { selector: "button" }).catch(() => {});
+    await page.sleep(400);
+    await page.clickText("Select All", { selector: "button" });
+    await page.sleep(500);
+    await productionMenu(0);
+    await page.clickText("Rollback", { selector: "[role=menuitem]", exact: false });
+    await page.waitForText("Rollback to Inbox:", { selector: "h3" });
+    await page.sleep(500);
+  });
+  await view("SW-print-preview", async () => {
+    await closeOverlays(page);
+    await page.clickText("Cancel", { selector: "button" }).catch(() => {});
+    await page.sleep(400);
+    await openNav(page, "Print");
+    await page.sleep(800);
+    await page.rightClickText("Linear Meter", { selector: '[class*="file_name_text"]', exact: false });
+    await page.waitForText("Quick Preview", { selector: "[role=menuitem]" });
+    await page.clickText("Quick Preview", { selector: "[role=menuitem]" });
+    await waitForCondition(page, () => !!document.querySelector('img[class*="preview_img"]'), { what: "the preview image", timeoutMs: 30000 });
+    await page.sleep(600);
+  });
+  // Three saves in a row: the toast stack, then the stack expanded by hovering it.
+  await view("SW-toasts", async () => {
+    await closeOverlays(page);
+    await page.clickSelector('button[aria-label="Close preview"]').catch(() => {});
+    await openSettings(page, "General");
+    for (let i = 0; i < 3; i++) {
+      await page.clickText("Save", { selector: "button" });
+      await page.sleep(350);
+    }
+    await page.sleep(700);
+  });
+  await view("SW-toasts-expanded", async () => {
+    await page.hoverSelector('[class*="alert_container"] > div', { nth: 0 });
+    await page.sleep(700);
+  });
+  // A file arrives while the operator looks at the list: the "N new files" pill floats over the top of it.
+  await view("SW-print-pill", async () => {
+    await page.sleep(3500);
+    await openNav(page, "Print");
+    const donorName = await page.evaluate(() => [...document.querySelectorAll('[class*="file_name_text"]')].find((e) => e.textContent.includes("Natural Canvas"))?.textContent);
+    const donor = findInboxFile(ctx.layout, donorName);
+    const newName = buildFileName({ order: "409001", first: "Piper", last: "Hollis", x: 1, y: 1, material: "Natural Canvas", qty: 2, kind: "LM", xwd: "0a0b0c0d" });
+    fs.copyFileSync(donor, path.join(path.dirname(donor), newName));
+    await page.waitForText("new file", { selector: "button", exact: false, timeoutMs: 70000 });
+    await page.sleep(600);
   });
 };
