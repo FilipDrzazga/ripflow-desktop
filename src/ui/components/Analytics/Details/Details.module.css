@@ -132,6 +132,9 @@
   left: 0;
   z-index: 100;
   min-width: 100%;
+  /* the list is clipped by the panel below it: in a short window it scrolls instead of being cut (260 px = bar + title + window padding) */
+  max-height: calc(100vh - 260px);
+  overflow-y: auto;
   padding: 6px;
   border: 1px solid rgba(34, 51, 84, 0.08);
   border-radius: 14px;
@@ -406,6 +409,7 @@
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+  container: atable / inline-size;
 }
 
 .empty_state {
@@ -633,3 +637,37 @@
   color: var(--text-secondary);
 }
 
+
+/* === NARROW TABLE (resp-4) ===
+   The ten columns need about 780 px; a narrower table (window below ~1280 px) would push the right-hand cells out of their
+   card. The width asked is the width of the table's scroll area (.content, a size container), not of the window. The card
+   becomes two rows of five cells - order / customer / fabric / meters / delete over date / reason / process / printer / type -
+   and the column header, which would no longer line up with anything, is hidden. */
+@container atable (max-width: 780px) {
+  .col_header {
+    display: none;
+  }
+
+  .day_header {
+    top: 0;
+  }
+
+  .card {
+    grid-template-columns: 92px minmax(0, 1.3fr) minmax(0, 1fr) 68px 64px;
+    grid-template-rows: auto auto;
+    row-gap: 6px;
+    height: auto;
+    padding: 8px 16px;
+  }
+
+  .col_order { grid-area: 1 / 1; }
+  .col_customer { grid-area: 1 / 2; }
+  .col_fabric { grid-area: 1 / 3; }
+  .col_meters { grid-area: 1 / 4; }
+  .col_action { grid-area: 1 / 5; }
+  .col_date { grid-area: 2 / 1; }
+  .col_reason { grid-area: 2 / 2; }
+  .col_process { grid-area: 2 / 3; }
+  .col_printer { grid-area: 2 / 4; }
+  .col_type { grid-area: 2 / 5; }
+}

@@ -5,7 +5,9 @@
   flex-direction: column;
   gap: 12px;
   min-height: 0;
-  overflow: hidden;
+  /* in a short window the cards keep their minimum height and the column scrolls - Top Fabric / Top reasons were cut off, unreachable */
+  overflow-x: hidden;
+  overflow-y: auto;
   opacity: 1;
   transition: opacity 0.2s ease;
 }
