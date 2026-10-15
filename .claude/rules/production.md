@@ -75,7 +75,7 @@ DB tables: `file_stages` (one row per active file), `file_stage_history` (append
 
 **No REJECTED stage in UI** — "Rollback to inbox" is the only destructive action, for a file on any stage (shipped included since 2026-10-14). REJECTED/OVERRIDDEN constants remain in code for DB backward compatibility only.
 
-**Polling** — `POLL_INTERVAL = 15s`; `loadStagesAfter(since)` returns `{ success: bool }`. Update `lastPollAt` only on success so a network failure retries the same window on the next tick. No interval runs while `store.pollingPaused` (sleep / lock screen / 10 s after a wake - ETAP 4 4-power); the watermark catches up on the first tick after.
+**Polling** — `POLL_INTERVAL = 15s`; `loadStagesAfter(since)` returns `{ success: bool }`. Update `lastPollAt` only on success so a network failure retries the same window on the next tick. No interval runs while the polls stand (`usePollingPaused`: `store.pollingPaused` - sleep / lock screen / 10 s after a wake, ETAP 4 4-power - OR `store.windowHidden` - minimised / covered window, B2a); `useOnPollingResume(pollStages)` ticks once at once when they start again, and the watermark catches up on that tick.
 
 **Workstation roles — the scanner is DRIVEN BY `profile.scanRules[]`, not by branches.** The role is the KEY, the rule is the behaviour, and the two live in different places on purpose: `workstationRole` stays per-machine in electron-store (it is the identity of THIS PC), the rules come from the shared shop profile.
 

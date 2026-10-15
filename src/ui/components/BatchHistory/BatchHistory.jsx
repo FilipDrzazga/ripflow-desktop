@@ -8,6 +8,7 @@ import RipErrorPopover from "../RipErrorPopover/RipErrorPopover";
 import PdfPreviewModal from "../PdfPreviewModal/PdfPreviewModal";
 import RollbackModal from "../RollbackModal/RollbackModal";
 import { usePdfPreview } from "../../hooks/usePdfPreview";
+import { usePollingPaused, useOnPollingResume } from "../../hooks/usePollingPaused";
 import { resolveIcon } from "../../constants/rollbackReasonIcons";
 import BatchRow from "./BatchRow";
 import gsap from "gsap";
@@ -73,7 +74,7 @@ const BatchHistory = () => {
   const setBatchDays = useStore((state) => state.setBatchDays);
   const reasonDefinitions = useStore((state) => state.reasonDefinitions);
   const refreshFiles = useStore((state) => state.refreshFiles);
-  const pollingPaused = useStore((state) => state.pollingPaused);
+  const pollingPaused = usePollingPaused(); // power pause OR hidden window (B2a)
   const removeStageFromStore = useStore((state) => state.removeStageFromStore);
   const removeRipError = useStore((state) => state.removeRipError);
   const clearRipErrorsForFiles = useStore((state) => state.clearRipErrorsForFiles);
@@ -332,17 +333,12 @@ const BatchHistory = () => {
   }, []);
 
   useEffect(() => {
-    if (pollingPaused) return; // ETAP 4 (4-power): the station sleeps or is locked
+    if (pollingPaused) return; // ETAP 4 (4-power): the station sleeps or is locked; B2a: the window is hidden
     const id = setInterval(tick, POLL_INTERVAL_MS);
-    const onVisible = () => {
-      if (document.visibilityState === "visible") tick(); // shouldTick still enforces MIN_GAP
-    };
-    document.addEventListener("visibilitychange", onVisible);
-    return () => {
-      clearInterval(id);
-      document.removeEventListener("visibilitychange", onVisible);
-    };
+    return () => clearInterval(id);
   }, [tick, pollingPaused]);
+  // B2a: the extra tick on return (it was the visibilitychange listener here) - shouldTick still enforces MIN_GAP.
+  useOnPollingResume(tick);
 
   const handleBatchUpdate = useCallback(async (payload) => {
     const { type, batch, batchPath, file } = payload;

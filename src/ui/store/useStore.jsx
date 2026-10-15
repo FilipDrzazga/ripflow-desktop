@@ -159,6 +159,12 @@ export const useStore = create(
       } catch (err) { console.error("[store] checkPowerPaused failed:", err); }
     },
 
+    // B2a: true while the window is hidden (minimised, covered) - written ONLY by the document's
+    // visibilitychange (App.jsx). Kept apart from pollingPaused (power): the polls stand when either
+    // is true, read through usePollingPaused / pollsStand, so neither source can overwrite the other.
+    windowHidden: false,
+    setWindowHidden: (val) => set({ windowHidden: val === true }),
+
     // Set by main-process printed:unreachable / printed:reachable — drives the PRINTED
     // banner. Separate from dbDegraded on purpose: a dead NAS raises both, a PRINTED
     // folder that is merely gone raises only this one, and the second case is invisible

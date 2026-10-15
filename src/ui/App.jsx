@@ -27,6 +27,7 @@ import { notify } from "./utils/notify";
 import { getSettings } from "./services/settingsService";
 import { missingRequiredPaths } from "../shared/requiredPaths";
 import SetupWizard from "./components/SetupWizard/SetupWizard";
+import { usePollingPaused, useOnPollingResume } from "./hooks/usePollingPaused";
 
 const RIP_ERROR_POLL_INTERVAL = 30_000;
 const INBOX_WATCH_INTERVAL = 30_000;
@@ -48,8 +49,10 @@ const App = () => {
   const shopProfileStatus = useStore((state) => state.shopProfileStatus);
   const dbDegraded = useStore((state) => state.dbDegraded);
   const setDbDegraded = useStore((state) => state.setDbDegraded);
-  const pollingPaused = useStore((state) => state.pollingPaused);
+  // The ONE computed "polls stand" condition (B2a): power pause OR hidden window (usePollingPaused).
+  const pollingPaused = usePollingPaused();
   const setPollingPaused = useStore((state) => state.setPollingPaused);
+  const setWindowHidden = useStore((state) => state.setWindowHidden);
   const checkDbDegraded = useStore((state) => state.checkDbDegraded);
   const checkPowerPaused = useStore((state) => state.checkPowerPaused);
   const printedRootUnreachable = useStore((state) => state.printedRootUnreachable);
@@ -178,18 +181,19 @@ const App = () => {
   // open reprints re-load in full (small set) so the count self-heals after a transient
   // startup failure and picks up mid-session rollbacks. Initial full loads fire in the
   // startup effect above.
+  const pollStages = useCallback(async () => {
+    loadOpenReprints();
+    if (lastStagePollAt.current) {
+      const since = lastStagePollAt.current;
+      const result = await loadStagesAfter(since);
+      if (result?.success !== false) lastStagePollAt.current = new Date().toISOString();
+    }
+  }, [loadStagesAfter, loadOpenReprints]);
   useEffect(() => {
-    if (pollingPaused) return; // ETAP 4 (4-power); the watermark catches up on the next tick
-    const id = setInterval(async () => {
-      loadOpenReprints();
-      if (lastStagePollAt.current) {
-        const since = lastStagePollAt.current;
-        const result = await loadStagesAfter(since);
-        if (result?.success !== false) lastStagePollAt.current = new Date().toISOString();
-      }
-    }, RIP_ERROR_POLL_INTERVAL);
+    if (pollingPaused) return; // ETAP 4 (4-power) + B2a hidden window; the watermark catches up on resume
+    const id = setInterval(pollStages, RIP_ERROR_POLL_INTERVAL);
     return () => clearInterval(id);
-  }, [pollingPaused, loadStagesAfter, loadOpenReprints]);
+  }, [pollingPaused, pollStages]);
 
   // ETAP 4 (4-inbox): the light look at the inbox every 30 s, session-wide (the NavBar counter
   // works from any view). Names only - it tells, it never refreshes the list (store.checkInbox).
@@ -204,8 +208,26 @@ const App = () => {
     return () => clearInterval(id);
   }, [pollingPaused, checkInbox, recheckCopying]);
 
+  // B2a: one tick of the polls above at once when they start again (the window is back, or the
+  // power pause ended while it is visible) instead of up to 30 s later. The RIP-error effect needs
+  // no line here: it already loads the moment its effect restarts.
+  useOnPollingResume(() => {
+    pollStages();
+    checkInbox();
+    recheckCopying();
+  });
+
   // ETAP 4 (4-power): main says when the station sleeps / locks and when it is back.
   useEffect(() => onPowerPaused((payload) => setPollingPaused(payload?.paused === true)), [setPollingPaused]);
+
+  // B2a: the window hidden (minimised, covered) stops the polls, like the power pause does. The only
+  // writer of store.windowHidden; synced once at once because the window may already be hidden.
+  useEffect(() => {
+    const sync = () => setWindowHidden(document.visibilityState === "hidden");
+    sync();
+    document.addEventListener("visibilitychange", sync);
+    return () => document.removeEventListener("visibilitychange", sync);
+  }, [setWindowHidden]);
 
   // DB degraded banner: main emits db:error/db:recovered only on state transition.
   useEffect(() => {

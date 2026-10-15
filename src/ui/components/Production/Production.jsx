@@ -39,6 +39,7 @@ import { notify } from "@/utils/notify";
 import { usePdfPreview } from "../../hooks/usePdfPreview";
 import { useStageTransition } from "../../hooks/useStageTransition";
 import { useScrollAnchor } from "../../hooks/useScrollAnchor";
+import { usePollingPaused, useOnPollingResume } from "../../hooks/usePollingPaused";
 import { VIEW_MODE } from "../../constants/viewModes";
 import { isFeatureEnabled } from "../../utils/featureVisibility";
 import { canMarkShipped, isShippableRow } from "../../utils/markShipped";
@@ -238,7 +239,7 @@ const DayGroupHeader = ({ day, collapsed, onToggle, onFilter }) => {
 const Production = () => {
   const productionStages = useStore((s) => s.productionStages);
   const loadAllStages = useStore((s) => s.loadAllStages);
-  const pollingPaused = useStore((s) => s.pollingPaused);
+  const pollingPaused = usePollingPaused(); // power pause OR hidden window (B2a)
   const loadStagesAfter = useStore((s) => s.loadStagesAfter);
   const removeStageFromStore = useStore((s) => s.removeStageFromStore);
   const refreshFiles = useStore((s) => s.refreshFiles);
@@ -392,18 +393,20 @@ const Production = () => {
   }, [loadAllStages, loadAllStageHistory]);
 
   // Poll for changes — only advance lastPollAt on success so a network failure retries the same window
+  const pollStages = useCallback(async () => {
+    if (!lastPollAt.current) return;
+    const since = lastPollAt.current;
+    const result = await loadStagesAfter(since);
+    if (result?.success !== false) {
+      lastPollAt.current = new Date().toISOString();
+    }
+  }, [loadStagesAfter]);
   useEffect(() => {
-    if (pollingPaused) return; // ETAP 4 (4-power): the station sleeps or is locked
-    const id = setInterval(async () => {
-      if (!lastPollAt.current) return;
-      const since = lastPollAt.current;
-      const result = await loadStagesAfter(since);
-      if (result?.success !== false) {
-        lastPollAt.current = new Date().toISOString();
-      }
-    }, POLL_INTERVAL);
+    if (pollingPaused) return; // ETAP 4 (4-power): the station sleeps or is locked; B2a: the window is hidden
+    const id = setInterval(pollStages, POLL_INTERVAL);
     return () => clearInterval(id);
-  }, [pollingPaused, loadStagesAfter]);
+  }, [pollingPaused, pollStages]);
+  useOnPollingResume(pollStages); // B2a: one tick at once when the polls start again
 
   // ─── Action handlers ───────────────────────────────────────────────────────
 
