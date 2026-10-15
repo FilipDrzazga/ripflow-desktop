@@ -12,12 +12,14 @@
 
 /* ===== TOPBAR ===== */
 
+/* Wraps instead of squeezing: below ~1050 px of window the search box collapsed to a stub and the controls ran out of room; the last controls drop to a second line. */
 .topbar {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
-  height: 76px;
-  padding: 0 28px;
+  min-height: 76px;
+  padding: 12px 28px;
   border-bottom: 1px solid var(--border-grey);
   flex-shrink: 0;
 }
@@ -48,7 +50,9 @@
   position: relative;
   display: flex;
   align-items: center;
-  width: 260px;
+  flex: 1 1 160px;
+  min-width: 0;
+  max-width: 260px;
 }
 
 .search_icon {

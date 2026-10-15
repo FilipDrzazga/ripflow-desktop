@@ -435,3 +435,48 @@
   color: #ef4444;
   font-weight: 600;
 }
+
+/* ── Narrow list ─────────────────────────────────────── */
+
+/* Below 1000 px the one-line header (name, badges, PO, count, printers, three buttons) needs ~900 px: the name collapses and the buttons leave
+   the card. Line 1 keeps the name and the chevron; line 2 holds PO / count and, as far as they fit, the printers and the buttons (each wraps
+   to line 3 on its own). The ::after is the forced line break. The container is .cards_list. */
+@container cocards (max-width: 1000px) {
+  .card_header {
+    flex-wrap: wrap;
+    height: auto;
+    min-height: 48px;
+    padding: 8px 16px;
+    row-gap: 0;
+  }
+
+  .card_header::after {
+    content: "";
+    order: 2;
+    flex: 0 0 100%;
+  }
+
+  .chevron {
+    order: 1;
+  }
+
+  .header_right,
+  .printer_toggles,
+  .card_actions {
+    order: 3;
+    margin-top: 6px;
+  }
+
+  .header_right {
+    margin-left: 50px;
+  }
+
+  .printer_toggles {
+    margin-left: 0;
+    flex-wrap: wrap;
+  }
+
+  .card_actions {
+    margin-left: auto;
+  }
+}

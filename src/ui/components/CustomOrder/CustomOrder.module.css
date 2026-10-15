@@ -15,7 +15,9 @@
   overflow: hidden;
 }
 
+/* The history is a size container for its entry headers (CustomOrderHistory.module.css): the column is 1/2.4 of the window, so the headers must follow the column, not the window. */
 .right_column {
+  container: cohistory / inline-size;
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -80,7 +82,9 @@
   font-weight: 500;
 }
 
+/* The list is a size container for the card headers (CustomOrderCard.module.css): the column is 1.4/2.4 of the window. */
 .cards_list {
+  container: cocards / inline-size;
   display: flex;
   flex-direction: column;
   gap: 8px;

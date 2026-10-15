@@ -252,3 +252,30 @@
 .icon_missing {
   color: #ef4444;
 }
+
+/* ── Narrow column ────────────────────────────────── */
+
+/* Below 640 px the one-line header (name, badges, PO, count, date, two icons) squeezes the material name to nothing and pushes the delete button
+   out of the card. The entry's own facts (PO, count, date) move to a second line under the name; the container is .right_column. */
+@container cohistory (max-width: 640px) {
+  .card_header {
+    flex-wrap: wrap;
+    height: auto;
+    min-height: 48px;
+    padding: 8px 16px;
+    row-gap: 4px;
+  }
+
+  .chevron,
+  .delete_btn {
+    order: 1;
+  }
+
+  .header_right {
+    order: 2;
+    flex: 0 0 100%;
+    flex-wrap: wrap;
+    padding-left: 50px;
+    row-gap: 2px;
+  }
+}
