@@ -5,8 +5,8 @@
 //   node scripts/ui-shots/run.mjs --scenario=sweep --out=agents/chat/artefakty/resp-0/przed
 //   node scripts/ui-shots/overflowMap.mjs --dir=agents/chat/artefakty/resp-0/przed   (the table)
 //   --only=SW-print,SW-batch narrows the views (a re-take of a step replaces just its rows).
-import { closeOverlays, openFirstHistoryBatch, openNav, openSettings, parkMouse } from "../lib/ui.mjs";
-import { SWEEP_SIZES } from "../lib/overflowTable.mjs";
+import { closeOverlays, openFirstHistoryBatch, openNav, openSettings } from "../lib/ui.mjs";
+import { atEverySize } from "../lib/sweepSizes.mjs";
 
 export const NAME = "sweep";
 export const VARIANT = "v0";
@@ -20,22 +20,11 @@ export const run = async ({ page, step }) => {
   await page.waitForText("Natural Canvas", { exact: false });
   await page.sleep(1200);
 
-  // Photographs the current screen at every size; the page is left at the last (largest) one.
-  const atEverySize = async (shot) => {
-    for (const size of SWEEP_SIZES) {
-      const [w, h] = size.split("x").map(Number);
-      await page.setViewport(w, h);
-      await page.sleep(700);
-      await parkMouse(page);
-      await shot(size);
-    }
-  };
-
   const view = (id, prepare) =>
     step(id, async ({ shot }) => {
       await closeOverlays(page);
       await prepare();
-      await atEverySize(shot);
+      await atEverySize(page, shot);
       await page.setViewport(1920, 1080);
     });
 
@@ -139,4 +128,29 @@ export const run = async ({ page, step }) => {
       await openSettings(page, section);
     });
   }
+  // The inline editors are the widest states of Settings: a fabric row opened for editing, the add form, a reason with its icon picker open.
+  await view("SW-settings-fabrics-edit", async () => {
+    await openSettings(page, "Fabrics");
+    await page.clickSelector('button[title="Edit"]', { nth: 0 });
+    await page.sleep(600);
+  });
+  await view("SW-settings-fabrics-add", async () => {
+    await page.clickText("Cancel", { selector: "button", within: "main", exact: true });
+    await page.clickText("Add material", { selector: "button", within: "main", exact: false });
+    await page.sleep(600);
+  });
+  await view("SW-settings-reasons-edit", async () => {
+    await openSettings(page, "Rollback Reasons");
+    await page.clickSelector('button[class*="edit_btn"]', { nth: 0 });
+    await page.sleep(400);
+    await page.clickSelector('button[title="Change icon"]');
+    await page.sleep(500);
+  });
+  await view("SW-settings-reasons-add", async () => {
+    await page.clickText("Cancel", { selector: "button", within: "main", exact: true });
+    await page.clickText("Add reason", { selector: "button", within: "main", exact: false });
+    await page.sleep(400);
+    await page.clickSelector('button[title="Choose icon"]');
+    await page.sleep(500);
+  });
 };
