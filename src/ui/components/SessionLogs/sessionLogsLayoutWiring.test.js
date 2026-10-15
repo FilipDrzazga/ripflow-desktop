@@ -7,7 +7,7 @@ import { fileURLToPath } from "url";
 const css = readFileSync(fileURLToPath(new URL("./SessionLogs.module.css", import.meta.url)), "utf8");
 
 const ruleBody = (selector) => {
-  const bodies = [...css.matchAll(new RegExp(`(?:^|\n)${selector.replace(".", "\.")} \{([^}]*)\}`, "g"))].map((m) => m[1]);
+  const bodies = [...css.matchAll(new RegExp(`(?:^|\\n)${selector.replace(".", "\\.")} \\{([^}]*)\\}`, "g"))].map((m) => m[1]);
   expect(bodies.length, `${selector} has a rule of its own`).toBeGreaterThan(0);
   return bodies.join("\n");
 };

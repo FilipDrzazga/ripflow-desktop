@@ -12,7 +12,7 @@ const card = read("./CustomOrderCard.module.css");
 const history = read("./CustomOrderHistory.module.css");
 
 const ruleBody = (css, selector) => {
-  const bodies = [...css.matchAll(new RegExp(`(?:^|\n)${selector.replace(".", "\.")} \{([^}]*)\}`, "g"))].map((m) => m[1]);
+  const bodies = [...css.matchAll(new RegExp(`(?:^|\\n)${selector.replace(".", "\\.")} \\{([^}]*)\\}`, "g"))].map((m) => m[1]);
   expect(bodies.length, `${selector} has a rule of its own`).toBeGreaterThan(0);
   return bodies.join("\n");
 };
