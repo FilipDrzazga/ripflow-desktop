@@ -283,9 +283,22 @@ export const run = async ({ page, step, ctx }) => {
     await page.sleep(600);
     await shot("1920x1080");
   });
+  // The selection's modal: its last row's reason list opens where there is room, and a stress state with eight more rows
+  // (clones of the first one - layout only) shows what a long list does to a low window.
   await floating("SW-production-rollback-all", async ({ shot }) => {
     await productionRollbackModal();
     await shot();
+    await page.clickSelector('[class*="reason_dropdown_trigger"]', { nth: 3 });
+    await page.sleep(500);
+    await shot(undefined, "SW-production-rollback-all-reasons");
+    await page.pressKey("Escape");
+    await page.sleep(300);
+    await page.evaluate(() => {
+      const list = document.querySelector('[class*="qc_file_list"]');
+      for (let i = 0; i < 8; i++) list.appendChild(list.children[0].cloneNode(true));
+    });
+    await page.sleep(400);
+    await shot(undefined, "SW-production-rollback-many");
   });
   // Quick Preview of a real file (image in the modal).
   await floating("SW-print-preview", async ({ shot }) => {
