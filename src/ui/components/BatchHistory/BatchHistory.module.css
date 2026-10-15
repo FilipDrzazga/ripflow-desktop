@@ -37,7 +37,9 @@
   position: relative;
   display: flex;
   align-items: center;
-  flex: 0 1 280px;
+  /* wrap decides the lines from flex-basis, so the basis is the SMALLEST width (160) and the box grows to 280 */
+  flex: 1 1 160px;
+  max-width: 280px;
   min-width: 120px;
 }
 
