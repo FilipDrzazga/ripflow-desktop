@@ -7,8 +7,9 @@
 //   --only=SW-print,SW-batch narrows the views (a re-take of a step replaces just its rows).
 import fs from "node:fs";
 import path from "node:path";
-import { closeOverlays, openFirstHistoryBatch, openNav, openSettings, waitForCondition } from "../lib/ui.mjs";
+import { closeOverlays, openFirstHistoryBatch, openNav, openSettings, parkMouse, waitForCondition } from "../lib/ui.mjs";
 import { atEverySize } from "../lib/sweepSizes.mjs";
+import { SWEEP_SIZES } from "../lib/overflowTable.mjs";
 import { DEMO_CUSTOM_ART, buildDemoCsv, buildFileName } from "../demoData.mjs";
 
 export const NAME = "sweep";
@@ -189,76 +190,105 @@ export const run = async ({ page, step, ctx }) => {
   });
 
   // ---- what floats over the views: menus, popovers, modals, toasts, the new-files pill ----
+  // A menu, popover or dropdown is anchored where it was OPENED and never re-laid out when the window changes size, so
+  // each of these is opened afresh at every size (view() opens it once and then resizes under it - fine for a view,
+  // wrong for something that positions itself at open time). `open` leaves the overlay up, `shot` photographs it.
+  const dismiss = async () => {
+    for (let i = 0; i < 3; i++) {
+      await page.pressKey("Escape");
+      await page.sleep(150);
+    }
+    for (let i = 0; i < 3 && (await page.exists('[role=menu], [role=dialog], [class*="backdrop"]')); i++) {
+      await page.mouseClickAt((page.viewport?.width ?? 1920) - 10, (page.viewport?.height ?? 1080) - 10);
+      await page.sleep(300);
+    }
+  };
+  const floating = (id, open) =>
+    step(id, async ({ shot }) => {
+      for (const size of SWEEP_SIZES) {
+        const [w, h] = size.split("x").map(Number);
+        await page.setViewport(w, h);
+        await page.sleep(700);
+        await dismiss();
+        await open({ shot: (state = size, shotId = id) => shot(state, shotId), size });
+        await dismiss();
+      }
+      await page.setViewport(1920, 1080);
+    });
+  const FILE_ROW = '[class*="file_row_selectable"]';
   const productionMenu = async (nth = 0) => {
     await page.clickSelector("[data-file-id]", { nth, button: "right" });
     await page.waitForText("Cancel", { selector: "[role=menu] button" });
     await page.sleep(400);
   };
-  // The tallest menu: a file of a batch, with its Rollback submenu (every reason) open.
-  await view("SW-batch-menu-reasons", async () => {
-    await openNav(page, "Batch");
-    await page.sleep(1200);
-    await openFirstHistoryBatch(page);
-    await page.clickSelector('[class*="file_row_selectable"]', { nth: 1, button: "right" });
-    await page.waitForText("Cancel", { selector: "[role=menu] button" });
-    await page.hoverText("Rollback this file", { selector: "[role=menuitem]" });
-    await page.sleep(600);
-  });
-  await view("SW-batch-rip-popover", async () => {
-    await closeOverlays(page);
-    await page.clickSelector('[class*="rip_error_badge"]');
-    await page.sleep(600);
-  });
-  await view("SW-batch-rollback-modal", async () => {
-    await closeOverlays(page);
-    await page.clickSelector('button[title="Rollback batch"]', { nth: 0 });
-    await page.waitForText("Rollback batch", { selector: "h3" });
-    await page.sleep(400);
-  });
-  // The busiest state of the modal: the "Other" reason adds the input and its hint.
-  await view("SW-batch-rollback-other", async () => {
-    await page.clickText("Other", { selector: '[class*="reason_pill"]', exact: false });
-    await page.sleep(400);
-  });
-  await view("SW-production-menu", async () => {
-    await closeOverlays(page);
-    await page.clickText("Cancel", { selector: "button" }).catch(() => {});
-    await openNav(page, "Production");
-    await page.sleep(1500);
-    await productionMenu(0);
-  });
-  await view("SW-production-rip-popover", async () => {
-    await closeOverlays(page);
-    await page.clickSelector('[class*="card_type_badge_rip_error"]');
-    await page.sleep(600);
-  });
-  await view("SW-production-rollback", async () => {
-    await closeOverlays(page);
-    await productionMenu(0);
-    await page.clickText("Rollback this file", { selector: "[role=menuitem]" });
-    await page.waitForText("Rollback to Inbox:", { selector: "h3" });
-    await page.sleep(500);
-  });
-  await view("SW-production-rollback-reasons", async () => {
-    await page.clickSelector('[class*="reason_dropdown_trigger"]', { nth: 0 });
-    await page.sleep(500);
-  });
-  // Several files at once: the modal with the longest file list.
-  await view("SW-production-rollback-all", async () => {
-    await closeOverlays(page);
-    await page.clickText("Cancel", { selector: "button" }).catch(() => {});
-    await page.sleep(400);
-    await page.clickText("Select All", { selector: "button" });
-    await page.sleep(500);
+  const productionRollbackModal = async () => {
     await productionMenu(0);
     await page.clickText("Rollback", { selector: "[role=menuitem]", exact: false });
     await page.waitForText("Rollback to Inbox:", { selector: "h3" });
     await page.sleep(500);
+  };
+
+  // Batch history: the tallest menu (a file, Rollback submenu with every reason open), the RIP popover, the rollback modal (+ its "Other" state).
+  await step("SW-batch-prepare", async ({ shot }) => {
+    await openNav(page, "Batch");
+    await page.sleep(1200);
+    await openFirstHistoryBatch(page);
+    await shot("1920x1080");
   });
-  await view("SW-print-preview", async () => {
-    await closeOverlays(page);
-    await page.clickText("Cancel", { selector: "button" }).catch(() => {});
+  await floating("SW-batch-menu-reasons", async ({ shot }) => {
+    await page.clickSelector(FILE_ROW, { nth: 1, button: "right" });
+    await page.waitForText("Cancel", { selector: "[role=menu] button" });
+    await page.hoverText("Rollback this file", { selector: "[role=menuitem]" });
+    await page.sleep(600);
+    await shot();
+  });
+  await floating("SW-batch-rip-popover", async ({ shot }) => {
+    await page.clickSelector('[class*="rip_error_badge"]');
+    await page.sleep(600);
+    await shot();
+  });
+  await floating("SW-batch-rollback-modal", async ({ shot }) => {
+    await page.clickSelector('button[title="Rollback batch"]', { nth: 0 });
+    await page.waitForText("Rollback batch", { selector: "h3" });
     await page.sleep(400);
+    await shot();
+    await page.clickText("Other", { selector: '[class*="reason_pill"]', exact: false });
+    await page.sleep(400);
+    await shot(undefined, "SW-batch-rollback-other");
+  });
+  // Production: the card menu, the RIP popover, the rollback modal of one file (+ its reason dropdown) and of the whole selection.
+  await step("SW-production-prepare", async ({ shot }) => {
+    await openNav(page, "Production");
+    await page.sleep(1500);
+    await shot("1920x1080");
+  });
+  await floating("SW-production-menu", async ({ shot }) => {
+    await productionMenu(0);
+    await shot();
+  });
+  await floating("SW-production-rip-popover", async ({ shot }) => {
+    await page.clickSelector('[class*="card_type_badge_rip_error"]');
+    await page.sleep(600);
+    await shot();
+  });
+  await floating("SW-production-rollback", async ({ shot }) => {
+    await productionRollbackModal();
+    await shot();
+    await page.clickSelector('[class*="reason_dropdown_trigger"]', { nth: 0 });
+    await page.sleep(500);
+    await shot(undefined, "SW-production-rollback-reasons");
+  });
+  await step("SW-production-select-all", async ({ shot }) => {
+    await page.clickText("Select All", { selector: "button" });
+    await page.sleep(600);
+    await shot("1920x1080");
+  });
+  await floating("SW-production-rollback-all", async ({ shot }) => {
+    await productionRollbackModal();
+    await shot();
+  });
+  // Quick Preview of a real file (image in the modal).
+  await floating("SW-print-preview", async ({ shot }) => {
     await openNav(page, "Print");
     await page.sleep(800);
     await page.rightClickText("Linear Meter", { selector: '[class*="file_name_text"]', exact: false });
@@ -266,21 +296,22 @@ export const run = async ({ page, step, ctx }) => {
     await page.clickText("Quick Preview", { selector: "[role=menuitem]" });
     await waitForCondition(page, () => !!document.querySelector('img[class*="preview_img"]'), { what: "the preview image", timeoutMs: 30000 });
     await page.sleep(600);
+    await shot();
   });
-  // Three saves in a row: the toast stack, then the stack expanded by hovering it.
-  await view("SW-toasts", async () => {
-    await closeOverlays(page);
-    await page.clickSelector('button[aria-label="Close preview"]').catch(() => {});
+  // Three saves in a row: the toast stack, then the stack expanded by hovering it (toasts last a few seconds: opened per size).
+  await floating("SW-toasts", async ({ shot }) => {
     await openSettings(page, "General");
     for (let i = 0; i < 3; i++) {
       await page.clickText("Save", { selector: "button" });
       await page.sleep(350);
     }
     await page.sleep(700);
-  });
-  await view("SW-toasts-expanded", async () => {
+    await shot();
     await page.hoverSelector('[class*="alert_container"] > div', { nth: 0 });
     await page.sleep(700);
+    await shot(undefined, "SW-toasts-expanded");
+    await parkMouse(page);
+    await page.sleep(4500);
   });
   // A file arrives while the operator looks at the list: the "N new files" pill floats over the top of it.
   await view("SW-print-pill", async () => {
