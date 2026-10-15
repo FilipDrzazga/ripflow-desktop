@@ -7,5 +7,5 @@
 // at Windows scaling 100-150%. A new threshold needs a reason a flexible layout (flex-wrap, minmax(),
 // min-width: 0, clamp()) could not give - add it here, in the same change.
 
-export const BREAKPOINT_WIDTHS = Object.freeze([1100, 1200, 1400]);
+export const BREAKPOINT_WIDTHS = Object.freeze([1100, 1200, 1440]);
 export const BREAKPOINT_HEIGHTS = Object.freeze([640, 720]);

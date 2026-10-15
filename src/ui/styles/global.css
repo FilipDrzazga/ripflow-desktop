@@ -3,7 +3,7 @@
   Flexible layout first (flex-wrap, minmax(), min-width: 0, clamp()); @media only where the layout must change.
   A CSS variable does not work in a media condition, so the allowed thresholds (CSS px) are listed here and in
   ui/constants/breakpoints.js - breakpoints.test.js fails on any other width/height in @media / @container.
-  BREAKPOINTS-TABLE: widths 1100 1200 1400
+  BREAKPOINTS-TABLE: widths 1100 1200 1440
   heights 640 720
 */
 

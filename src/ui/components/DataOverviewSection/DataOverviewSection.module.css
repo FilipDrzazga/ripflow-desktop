@@ -1,7 +1,7 @@
 .carts_container {
   display: flex;
   flex-direction: row;
-  align-items: flex-start;
+  align-items: stretch;
   justify-content: flex-start;
   flex-wrap: wrap;
   gap: 20px;

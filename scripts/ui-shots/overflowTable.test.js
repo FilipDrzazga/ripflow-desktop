@@ -26,3 +26,11 @@ describe("overflowTable", () => {
     expect(problemCount([row("a", "s", clean), row("a", "t", { ...clean, outsideCount: 1 }), row("b", "s", undefined, "failed")])).toBe(2);
   });
 });
+
+describe("overflowTable geometry cells", () => {
+  it("shows overlapping siblings and hollow wrapped items as their own figures, and counts them as problems", () => {
+    const rows = [row("SW-print", "960x560", { ...clean, overlapCount: 2, hollowCount: 3, spillCount: 1 }), row("SW-print", "1920x1080", clean)];
+    expect(overflowTable(rows, ["960x560", "1920x1080"])).toContain("| SW-print | overlap 2, hollow 3, spill 1 | ok |");
+    expect(problemCount(rows)).toBe(1);
+  });
+});

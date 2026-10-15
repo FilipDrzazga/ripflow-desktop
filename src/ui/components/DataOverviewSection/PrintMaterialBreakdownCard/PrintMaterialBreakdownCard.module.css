@@ -3,7 +3,6 @@
   flex-direction: column;
   flex: 1 1 0;
   min-width: 0;
-  height: 100%;
   padding: 20px;
   border-radius: 20px;
   background-color: var(--bg-white);
@@ -147,8 +146,8 @@
   color: var(--text-secondary);
 }
 
-/* Below 1200 px the four overview cards sit two by two (a single column pushed the file list out of the window). */
-@media (max-width: 1200px) {
+/* Up to 1440 px the four overview cards sit two by two: four across leave the Inbox card under ~295 px, too narrow for the material names (measured: "Polyesters" is cut up to 1425 px). */
+@media (max-width: 1440px) {
   .card {
     flex: 1 1 calc(50% - 10px);
   }

@@ -13,6 +13,9 @@ const cell = (row) => {
   if (o.pageScrollX > 0) parts.push(`X+${o.pageScrollX}`);
   if (o.pageScrollY > 0) parts.push(`Y+${o.pageScrollY}`);
   if (o.outsideCount > 0) parts.push(`out ${o.outsideCount}`);
+  if (o.overlapCount > 0) parts.push(`overlap ${o.overlapCount}`);
+  if (o.hollowCount > 0) parts.push(`hollow ${o.hollowCount}`);
+  if (o.spillCount > 0) parts.push(`spill ${o.spillCount}`);
   return parts.length ? parts.join(", ") : "ok";
 };
 
