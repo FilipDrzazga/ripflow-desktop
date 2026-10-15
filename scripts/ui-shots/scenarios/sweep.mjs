@@ -57,6 +57,25 @@ export const run = async ({ page, step }) => {
     await page.sleep(1200);
     await openFirstHistoryBatch(page);
   });
+  await view("SW-batch-selected", async () => {
+    await openFirstHistoryBatch(page);
+    for (const nth of [0, 1, 2]) await page.clickSelector('[class*="file_row_selectable"]', { nth });
+    await page.sleep(500);
+  });
+  await view("SW-batch-search", async () => {
+    await closeOverlays(page);
+    await page.setValue('input[placeholder="Search batches or files..."]', "ON40");
+    await page.sleep(2500);
+    await page.clickText("ARCA", { selector: '[class*="printer_btn"]' });
+    await page.sleep(500);
+  });
+  await view("SW-batch-collapsed", async () => {
+    await page.clickText("ARCA", { selector: '[class*="printer_btn"]' });
+    await page.setValue('input[placeholder="Search batches or files..."]', "");
+    await page.sleep(800);
+    await page.clickSelector('button[title="Collapse all"]');
+    await page.sleep(500);
+  });
   await view("SW-production", async () => {
     await openNav(page, "Production");
     await page.sleep(1500);
