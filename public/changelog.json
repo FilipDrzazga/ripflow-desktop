@@ -1,5 +1,19 @@
 [
   {
+    "version": "1.0.33",
+    "date": "2026-10-15",
+    "changes": [
+      {
+        "text": "Inbox: a PDF that is still being copied in now shows as \"Copying...\". It cannot be selected or sent to print until the copy is finished, and it turns into a normal row by itself",
+        "clients": ["all"]
+      },
+      {
+        "text": "A minimized or fully covered window no longer polls the disk and the database. Everything refreshes at once when the window is shown again (RIP Error badges too)",
+        "clients": ["all"]
+      }
+    ]
+  },
+  {
     "version": "1.0.32",
     "date": "2026-10-14",
     "changes": [
