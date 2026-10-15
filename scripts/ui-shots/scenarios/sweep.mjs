@@ -117,6 +117,20 @@ export const run = async ({ page, step }) => {
     await openNav(page, "Analytics");
     await page.sleep(1200);
   });
+  // All time = the longest Summary lists and the most rows; the reason dropdown is the one overlay of the filter bar (closed by its own "All reasons" option - Escape does not close it).
+  await view("SW-analytics-all", async () => {
+    await page.clickText("All time", { selector: '[class*="period_btn"]' });
+    await page.sleep(900);
+  });
+  await view("SW-analytics-reasons", async () => {
+    await page.clickText("All reasons", { selector: '[class*="reason_btn"]', exact: false });
+    await page.sleep(500);
+  });
+  await view("SW-analytics-empty", async () => {
+    await page.clickSelector('button[class*="reason_option"]', { nth: 0 });
+    await page.setValue('[class*="search_input"]', "zzzzqqq");
+    await page.sleep(700);
+  });
   await view("SW-logs", async () => {
     await openNav(page, "Logs");
   });
