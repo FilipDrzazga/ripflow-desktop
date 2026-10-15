@@ -182,3 +182,18 @@
 .submenu .menu_item {
   white-space: nowrap;
 }
+
+/* Low window (960x560): the longest menu (Production card, 9 rows) must still end above the bottom edge. The menu cannot scroll
+   itself - overflow on it would clip the absolutely positioned submenu - so the rows get shorter. */
+@media (max-height: 640px) {
+  .menu {
+    gap: 2px;
+    padding: 6px;
+  }
+
+  .menu_item,
+  .menu_item_secondary,
+  .pair_btn {
+    min-height: 32px;
+  }
+}
