@@ -5,6 +5,7 @@ import { HiChevronDown } from "react-icons/hi2";
 import { useStore } from "../../store/useStore";
 import { resolveIcon } from "../../constants/rollbackReasonIcons";
 import { getPrinterColor } from "@/utils/shopProfileData";
+import { dropdownPlacement } from "@/utils/dropdownPlacement";
 import style from "./Production.module.css";
 
 // ─── ReasonDropdown ────────────────────────────────────────────────────────────
@@ -41,7 +42,7 @@ const ReasonDropdown = ({ reasons, value, onChange, placeholder = "Select reason
   const handleToggle = () => {
     if (!triggerRef.current) return;
     const rect = triggerRef.current.getBoundingClientRect();
-    setMenuPos({ top: rect.bottom + 4, left: rect.left });
+    setMenuPos({ ...dropdownPlacement(rect, window.innerHeight), left: rect.left });
     setOpen((o) => !o);
   };
 
@@ -68,7 +69,7 @@ const ReasonDropdown = ({ reasons, value, onChange, placeholder = "Select reason
         <div
           ref={menuRef}
           className={style.reason_dropdown_menu}
-          style={{ top: menuPos.top, left: menuPos.left }}
+          style={menuPos}
         >
           {reasons.map((r) => (
             <button
