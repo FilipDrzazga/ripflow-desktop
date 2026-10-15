@@ -27,6 +27,7 @@ export const lockMaterialOf = (groups, selectedIds) => {
 // conditions is how a range would let through what a click refuses.
 export const printSelectBlock = (item, { heldIds, lockMaterial }) => {
   if (heldIds.has(item.id)) return "held";
+  if (item.status === FILE_STATUS.COPYING) return "copying"; // still being written (pdfReadiness.js)
   if (item.status === FILE_STATUS.INVALID) return "invalid";
   if (lockMaterial && item.materialType !== lockMaterial) return "material";
   return null;
@@ -72,7 +73,8 @@ export const planRangeSelect = ({ groups, heldIds, selectedIds, heldSelectedIds,
       continue;
     }
     const block = printSelectBlock(rowById.get(id), { heldIds, lockMaterial });
-    if (block) skipped[block] += 1;
+    // `copying` is counted only when it happens, so a range that skips none keeps the four-key shape
+    if (block) skipped[block] = (skipped[block] ?? 0) + 1;
     else next.add(id);
   }
   return { selectedIds: next, heldSelectedIds, skipped };
@@ -82,6 +84,7 @@ export const planRangeSelect = ({ groups, heldIds, selectedIds, heldSelectedIds,
 export const describeSkipped = (skipped) => {
   const parts = [];
   if (skipped.held) parts.push(`${skipped.held} on hold`);
+  if (skipped.copying) parts.push(`${skipped.copying} still copying`);
   if (skipped.invalid) parts.push(`${skipped.invalid} invalid`);
   if (skipped.material) parts.push(`${skipped.material} of another material`);
   if (skipped.notHeld) parts.push(`${skipped.notHeld} not on hold`);

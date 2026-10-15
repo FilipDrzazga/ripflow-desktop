@@ -7,6 +7,8 @@ export const FILE_STATUS = {
   READY: "READY",
   INVALID: "INVALID",
   WARNING: "WARNING",
+  // An inbox PDF still being written (see helpers/pdfReadiness.js): listed, never selectable.
+  COPYING: "COPYING",
   ROLLED_BACK: "rolled_back",
 };
 

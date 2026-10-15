@@ -3,7 +3,8 @@ import { subscribeWithSelector } from "zustand/middleware";
 import { estimatePrintLength } from "../../shared/estimatePrintLength";
 import { BATCH_STATUS, FILE_STATUS } from "../../shared/constants";
 import { ROLLBACK_REASONS } from "../constants/rollbackReasons";
-import { readFolders, peekInbox as peekInboxApi } from "../services/fileService";
+import { readFolders, peekInbox as peekInboxApi, recheckCopying as recheckCopyingApi } from "../services/fileService";
+import { applyReadinessUpdates, hasCopyingRows } from "../../shared/inboxReadiness";
 import { inboxDiff, loadedInboxIds } from "../utils/inboxWatch";
 
 // The baseline of the inbox watch (4-inbox): the PDF names in the inbox right before a scan.
@@ -603,7 +604,9 @@ export const useStore = create(
         if (state.heldSelectedIds.size > 0) return state; // one selection at a time
         const newSelectedIds = new Set(state.selectedIds);
 
-        const validItems = groupItems.filter((item) => item.status !== FILE_STATUS.INVALID && !state.heldIds.has(item.id));
+        // held / invalid / still copying: the same refusals as a click (printSelectBlock), minus the
+        // material lock, which is applied per item below
+        const validItems = groupItems.filter((item) => !printSelectBlock(item, { heldIds: state.heldIds, lockMaterial: null }));
 
         const selectedMaterialTypes = new Set();
         state.filteredFiles.forEach((group) => {
@@ -688,6 +691,29 @@ export const useStore = create(
           current: res.ids,
         });
         return { inboxWatch: { ...w, previous: res.ids, added, removed, error: false } };
+      });
+    },
+    // The "Copying..." rows asked about again, on the inbox tick (App.jsx; same pollingPaused gate).
+    // Only those rows change and only in place: no selection cleared, no row moved, no list
+    // reloaded - a file that finished copying simply becomes selectable.
+    recheckCopying: async () => {
+      if (get().isRefreshingFiles) return;
+      if (!hasCopyingRows(get().files)) return;
+      let res;
+      try {
+        res = await recheckCopyingApi();
+      } catch {
+        return; // the next tick asks again
+      }
+      if (!res?.success || !res.updates?.length) return;
+      if (get().isRefreshingFiles) return; // a scan started meanwhile: its answer is the newer one
+      set((state) => {
+        const files = applyReadinessUpdates(state.files, res.updates);
+        if (files === state.files) return state;
+        return {
+          files,
+          filteredFiles: applyFilters(files, state.activeTab, state.searchQuery, state.sortOrder, state.printTypeFilter, state.fabricConfig),
+        };
       });
     },
     // The operator's refresh - the Refresh button and a click on the inbox pill (4-inbox): the

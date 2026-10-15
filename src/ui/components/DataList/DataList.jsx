@@ -20,6 +20,7 @@ import {
   LuCircleHelp,
   LuCircleCheck,
   LuCircleX,
+  LuLoader,
   LuTriangleAlert,
   LuEye,
   LuPencil,
@@ -63,6 +64,7 @@ const STATUS_MAP = {
   READY: { Icon: LuCircleCheck, color: "#3B6D11" },
   INVALID: { Icon: LuCircleX, color: "#A32D2D" },
   WARNING: { Icon: LuTriangleAlert, color: "#BA7517" },
+  COPYING: { Icon: LuLoader, color: "#6b7280" },
 };
 
 const DataList = () => {
@@ -264,7 +266,10 @@ const DataList = () => {
         const groupHasSelectable =
           !hasSelection ||
           !lockMaterial ||
-          group.items.some((item) => item.status !== FILE_STATUS.INVALID && item.materialType === lockMaterial);
+          group.items.some(
+            (item) =>
+              item.status !== FILE_STATUS.INVALID && item.status !== FILE_STATUS.COPYING && item.materialType === lockMaterial,
+          );
 
         return (
           <div key={unqGroupId} className={style.list_content}>
@@ -301,6 +306,7 @@ const DataList = () => {
               {group.items.map((item) => {
                 const isInvalid = item.status === FILE_STATUS.INVALID;
                 const isWarning = item.status === FILE_STATUS.WARNING;
+                const isCopying = item.status === FILE_STATUS.COPYING;
                 const isLocked = hasSelection && lockMaterial && item.materialType !== lockMaterial;
                 const isHeld = heldIds.has(item.id);
                 // 4-inbox: the last look no longer saw this file - marked at once, before a Submit
@@ -310,17 +316,20 @@ const DataList = () => {
 
                 let tooltip = null;
                 if (isInvalid) tooltip = "File failed validation";
-                else if (isHeld) {
+                else if (isCopying) {
+                  tooltip = `Still being copied - it can be selected once the copy has finished${item.copyingReason ? ` (${item.copyingReason})` : ""}`;
+                } else if (isHeld) {
                   const detail = heldReasons.get(item.id);
                   tooltip = detail ? `On hold · ${detail}` : "File is on hold";
                   if (hasSelection) tooltip += " - clear the print selection to select held files";
                 } else if (isLocked) tooltip = `Cannot mix ${lockMaterial} with ${item.materialType}`;
                 else if (hasHeldSelection) tooltip = "Held files are selected - uncheck them to pick files to print";
+                else if (isWarning && item.warnings?.length) tooltip = item.warnings.join(" ");
                 // A held row's checkbox picks it for a bulk Unhold (heldSelectedIds), never for print.
                 const isChecked = isHeld ? heldSelectedIds.has(item.id) : selectedIds.has(item.id);
                 const isCheckboxDisabled = isHeld
                   ? hasSelection || isBatchSubmitting
-                  : isInvalid || isLocked || hasHeldSelection || isBatchSubmitting;
+                  : isInvalid || isCopying || isLocked || hasHeldSelection || isBatchSubmitting;
 
                 const age = item.diffDays;
                 const ageColor = age <= 1 ? "#3B6D11" : age === 2 ? "#D4860E" : age === 3 ? "#C05208" : "#A32D2D";
@@ -335,6 +344,7 @@ const DataList = () => {
                   isHeld ? style.list_item_held : null,
                   isInvalid ? style.list_item_invalid : null,
                   isWarning ? style.list_item_warning : null,
+                  isCopying ? style.list_item_copying : null,
                   activeContextItemId === item.id ? style.list_item_active : null,
                   isChecked ? style.list_item_selected : null,
                 ]
@@ -395,6 +405,11 @@ const DataList = () => {
                               </span>
                             );
                           })()}
+                        {isCopying && (
+                          <span className={style.copying_badge} title="Still being copied into the inbox">
+                            Copying...
+                          </span>
+                        )}
                         {isGone && (
                           <span
                             className={`${style.gone_badge} ${selectedIds.has(item.id) ? style.gone_badge_selected : ""}`}
@@ -551,8 +566,9 @@ const DataList = () => {
               (() => {
                 const item = contextMenu.item;
                 const isItemInvalid = item.status === FILE_STATUS.INVALID;
+                const isItemCopying = item.status === FILE_STATUS.COPYING;
                 const isItemHeld = heldIds.has(item.id);
-                if (isItemInvalid || isItemHeld) return null;
+                if (isItemInvalid || isItemCopying || isItemHeld) return null;
 
                 // Bulk override: right-clicked item is part of a multi-selection. Apply one
                 // quantity to every eligible selected file. Selected files are already

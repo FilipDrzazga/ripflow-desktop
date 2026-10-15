@@ -6,6 +6,8 @@ export const readFolders = () =>
 export const onReadFoldersProgress = (cb) => window.api.onReadFoldersProgress(cb);
 // ETAP 4 (4-inbox): names only, every 30 s - a short deadline, a slow share just skips a round.
 export const peekInbox = () => withTimeout(window.api.peekInbox(), 10_000, "inbox:peek");
+// The "Copying..." rows asked about again, on the same tick: only those files, same short deadline.
+export const recheckCopying = () => withTimeout(window.api.recheckCopying(), 10_000, "inbox:recheck-copying");
 export const submitBatch = (batch, overrides) => {
   // effectiveQty = manual override ?? reprintQty ?? parsed original - applied in
   // utils/applyPrintOverrides.js, shared with the print-length counter of the selection bar.

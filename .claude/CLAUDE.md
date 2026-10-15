@@ -25,6 +25,7 @@ Only the files whose role the name does not tell, or that carry a rule. Anything
 
 - `src/electron/helpers/parseFileName.js` — the filename parser, core logic; change with extreme care (golden net + `parseFileName.test.js`).
 - `src/electron/ipc/createBatch.js` — atomic move + lock (see `.claude/rules/create-batch.md`).
+- `src/electron/helpers/pdfReadiness.js` — the ONE "is this inbox PDF finished" check (scan and createBatch both call it; see `.claude/rules/create-batch.md`).
 - `src/electron/ipc/batchHistoryHandlers.js` — rollback / regenerate / delete; `renameNoOverwrite`, `resolveOriginalGroup` (rule 19).
 - `src/electron/ipc/readPrintedFolder.js` — the PRINTED reader: `readPrintedDays`, `readPrintedDay`, `readSingleBatch`, `buildDayGroup`, `normalizeOverrideEntry`.
 - `src/electron/helpers/fabricCache.js`, `shopProfile.js` — in-memory caches with a `null` "not loaded" sentinel; `getEstimateConfig()` is the one config source for the estimator.

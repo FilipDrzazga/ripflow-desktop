@@ -1,7 +1,10 @@
 import fs from "fs";
 import path from "path";
 import { getRootPath } from "../helpers/getRootPath.js";
-import { isPDF } from "../helpers/isPDF.js";
+import { checkPdf, stabilityTracker } from "../helpers/pdfReadiness.js";
+import { rememberCopying } from "./recheckCopying.js";
+import { FILE_STATUS } from "../../shared/constants.js";
+import { PDF_STATE, applyReadiness } from "../../shared/inboxReadiness.js";
 import { parsePrintFileName } from "../helpers/parseFileName.js";
 import { getProfile } from "../helpers/shopProfile.js";
 import { getMaterialType } from "../helpers/getMaterialType.js";
@@ -73,6 +76,8 @@ export const readFolders = async ({ onProgress } = {}) => {
     // Defensive scan: a single unreadable file/folder must never zero the whole inbox.
     // Skipped entries are collected here and surfaced to the operator via result.warnings.
     const warnings = [];
+    const watched = new Set(); // paths whose verdict rests on the stability tracker
+    const copying = new Map(); // id -> full path of every COPYING row (the tick re-checks only these)
     const readSubFolders = readMainFolder.map(async (folder) => {
       if (!folder.isDirectory()) return [];
       const folderPath = path.join(PATH, folder.name);
@@ -98,23 +103,30 @@ export const readFolders = async ({ onProgress } = {}) => {
             throw err;
           }
           if (fileStats.size === 0) return null;
-          const ispdf = await isPDF(fullPath);
-          if (!ispdf) return null;
+          // A file still being written is listed as COPYING (not selectable), not dropped.
+          const verdict = await checkPdf(fullPath);
+          if (verdict.state === PDF_STATE.NOT_PDF || verdict.state === PDF_STATE.GONE) return null;
+          if (verdict.tracked) watched.add(fullPath);
           const meta = parsePrintFileName(job.name, {
             fullPath,
             dir: folderPath,
             shopConfig: getProfile(),
           });
           if (!meta) return null;
-          return {
-            id: `${folder.name}_${job.name}`,
-            printGroup: folder.name,
-            materialType: getMaterialType(meta.material),
-            createdAt: fileStats.birthtime,
-            diffDays: getFileAgeInDays(fileStats),
-            fileSizeBytes: fileStats.size,
-            ...meta,
-          };
+          const item = applyReadiness(
+            {
+              id: `${folder.name}_${job.name}`,
+              printGroup: folder.name,
+              materialType: getMaterialType(meta.material),
+              createdAt: fileStats.birthtime,
+              diffDays: getFileAgeInDays(fileStats),
+              fileSizeBytes: fileStats.size,
+              ...meta,
+            },
+            verdict,
+          );
+          if (item.status === FILE_STATUS.COPYING) copying.set(item.id, fullPath);
+          return item;
         } catch (err) {
           // Unreadable / unparseable file — skip it, keep the rest of the folder.
           warnings.push(`Skipped file "${folder.name}/${job.name}" (${err.code || "ERROR"})`);
@@ -128,6 +140,8 @@ export const readFolders = async ({ onProgress } = {}) => {
     const nested = await Promise.all(readSubFolders);
     const files = nested.flat();
     result.warnings = warnings;
+    stabilityTracker.retainOnly(watched);
+    rememberCopying(copying);
 
     // Attach open reprint request quantities (unit follows print type: meters for LM, pieces otherwise)
     const stems = files.map((f) => path.parse(f.file.name).name);

@@ -57,6 +57,7 @@ const App = () => {
   const checkPrintedRoot = useStore((state) => state.checkPrintedRoot);
   const reloadShopData = useStore((state) => state.reloadShopData);
   const checkInbox = useStore((state) => state.checkInbox);
+  const recheckCopying = useStore((state) => state.recheckCopying);
   const inboxNewCount = useStore((state) => state.inboxWatch.added.length);
   const [shopDataReloading, setShopDataReloading] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -192,11 +193,16 @@ const App = () => {
 
   // ETAP 4 (4-inbox): the light look at the inbox every 30 s, session-wide (the NavBar counter
   // works from any view). Names only - it tells, it never refreshes the list (store.checkInbox).
+  // The same tick re-asks about the rows still "Copying..." and flips the finished ones in place
+  // (store.recheckCopying) - no second timer, and the same pause.
   useEffect(() => {
     if (pollingPaused) return; // ETAP 4 (4-power)
-    const id = setInterval(() => checkInbox(), INBOX_WATCH_INTERVAL);
+    const id = setInterval(() => {
+      checkInbox();
+      recheckCopying();
+    }, INBOX_WATCH_INTERVAL);
     return () => clearInterval(id);
-  }, [pollingPaused, checkInbox]);
+  }, [pollingPaused, checkInbox, recheckCopying]);
 
   // ETAP 4 (4-power): main says when the station sleeps / locks and when it is back.
   useEffect(() => onPowerPaused((payload) => setPollingPaused(payload?.paused === true)), [setPollingPaused]);

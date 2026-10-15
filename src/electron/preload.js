@@ -24,6 +24,7 @@ const api = Object.freeze({
   readFolders: () => ipcRenderer.invoke("read-folders"),
   // ETAP 4 (4-inbox): the PDF names in the inbox, for "N new files" - no parsing, cheap.
   peekInbox: () => ipcRenderer.invoke("inbox:peek"),
+  recheckCopying: () => ipcRenderer.invoke("inbox:recheck-copying"),
   onReadFoldersProgress: (callback) => {
     if (typeof callback !== "function") {
       throw new TypeError("Progress callback must be a function.");

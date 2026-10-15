@@ -4,6 +4,8 @@ import { PDFDocument } from "pdf-lib";
 import { createBatchIds } from "../helpers/createBatchIds.js";
 import { getStorageRootPath } from "../helpers/getRootPath.js";
 import { toIpcError } from "../helpers/ipcError.js";
+import { checkPdf } from "../helpers/pdfReadiness.js";
+import { PDF_STATE, NO_EOF_WARNING } from "../../shared/inboxReadiness.js";
 import { getWorkflowFolderName } from "./createXML.js";
 
 const LOCK_HEARTBEAT_MS = 10 * 1000;   // refresh the lock's mtime during COPY
@@ -230,6 +232,30 @@ export const createBatch = async (batch) => {
       }
 
       entry.size = stat.size;
+    }
+
+    // A source still being written is refused HERE, before the lock and before anything is copied
+    // (like the printer gate above). The SAME function the inbox scan uses (pdfReadiness.js), so a
+    // row the list shows as ready cannot be refused for a different reason, and a "Copying..." row
+    // cannot be let through. A file ready only by the no-%%EOF exit goes ahead with a warning.
+    const stillCopying = [];
+    for (const entry of sourceEntries) {
+      const verdict = await checkPdf(entry.sourcePath);
+      if (verdict.state === PDF_STATE.GONE) {
+        throw Object.assign(new Error(`Source file does not exist: ${entry.sourcePath}`), {
+          code: "ENOENT",
+          stage,
+          title: "Invalid source file",
+        });
+      }
+      if (verdict.state === PDF_STATE.COPYING) stillCopying.push(`${entry.fileName} (${verdict.reason})`);
+      else if (verdict.state === PDF_STATE.READY_NO_EOF) result.warnings.push(`${entry.fileName}: ${NO_EOF_WARNING}`);
+    }
+    if (stillCopying.length > 0) {
+      throw Object.assign(
+        new Error(`Still being copied, try again when the copy has finished: ${stillCopying.join("; ")}`),
+        { code: "ERR_FILE_COPYING", stage, title: "File still copying" },
+      );
     }
 
     stage = STAGES.LOCK;

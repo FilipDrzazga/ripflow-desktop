@@ -91,6 +91,28 @@
   border-color: #BA7517;
 }
 
+/* A PDF still being written: visible, dimmed, not selectable (its checkbox is disabled). */
+.list_item_copying {
+  border-style: dashed;
+}
+.list_item_copying .item_name,
+.list_item_copying .item_badges {
+  opacity: 0.6;
+}
+
+.copying_badge {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  margin-left: 8px;
+  padding: 2px 7px;
+  border-radius: 6px;
+  background: var(--bg-grey);
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+}
+
 .list_item:hover,
 .list_item_active {
   background-color: var(--bg-grey-light);

@@ -4,6 +4,7 @@ import os from "os";
 import path from "path";
 import { readFolders } from "./readFolders.js";
 import { peekInbox } from "./peekInbox.js";
+import { recheckCopying } from "./recheckCopying.js";
 import { submitBatch } from "./submitBatch.js";
 import { openPreview } from "./openPreview.js";
 import { openInFolder } from "./openInFolder.js";
@@ -243,6 +244,9 @@ export async function registerIpcHandlers() {
 
   // ETAP 4 (4-inbox): which PDF names are in the inbox now - names only, cheap (peekInbox.js).
   ipcMain.handle("inbox:peek", () => peekInbox());
+  // The "Copying..." rows of the last scan, asked about again (recheckCopying.js): no argument, main
+  // keeps its own list.
+  ipcMain.handle("inbox:recheck-copying", () => recheckCopying());
 
   ipcMain.handle("read-folders", async (event) => {
     try {
