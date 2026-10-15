@@ -80,11 +80,35 @@ export const run = async ({ page, step }) => {
     await openNav(page, "Production");
     await page.sleep(1500);
   });
+  await view("SW-production-selected", async () => {
+    await page.clickText("Select All", { selector: "button" });
+    await page.sleep(600);
+  });
+  await view("SW-production-collapsed", async () => {
+    await page.clickSelector('button[title="Collapse all days"]');
+    await page.sleep(600);
+  });
   await view("SW-production-orders", async () => {
     await lens(page, "Orders");
   });
+  await view("SW-production-orders-open", async () => {
+    await page.clickSelector('[class*="order_header"]', { nth: 0 });
+    await page.sleep(500);
+  });
   await view("SW-production-receive", async () => {
     await lens(page, "Receive");
+  });
+  // A parcel of two dispatches (company chips) with the first order open: the busiest state of the lens. Scans only fill the basket, nothing is moved.
+  await view("SW-production-receive-session", async () => {
+    for (const batch of ["PRINTED_142200-Chiffon Light-CIRRUS", "PRINTED_153540-Velvet Soft-CIRRUS"]) {
+      await page.setValue('input[placeholder="Id, customer, fabric"]', batch);
+      await page.sleep(400);
+      await page.pressKey("Enter");
+      await page.sleep(3800);
+    }
+    await page.setValue('input[placeholder="Id, customer, fabric"]', "");
+    await page.clickSelector('[class*="order_main"]', { nth: 0 });
+    await page.sleep(2500);
   });
   await view("SW-custom", async () => {
     await openNav(page, "Custom Orders");
