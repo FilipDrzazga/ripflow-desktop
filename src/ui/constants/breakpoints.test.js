@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { readdirSync, readFileSync, statSync } from "fs";
 import { fileURLToPath } from "url";
 import { join } from "path";
-import { BREAKPOINT_WIDTHS, BREAKPOINT_HEIGHTS, LEGACY_BREAKPOINT_WIDTHS } from "./breakpoints.js";
+import { BREAKPOINT_WIDTHS, BREAKPOINT_HEIGHTS } from "./breakpoints.js";
 
 // Every size condition in an @media / @container rule must come from constants/breakpoints.js. A CSS
 // variable cannot stand in a media condition, so this test is the single guard against a dozen private
@@ -68,7 +68,7 @@ describe("breakpoints on the allowed list", () => {
   });
 
   it("every width/height condition in every stylesheet is a px value from constants/breakpoints.js", () => {
-    const widths = new Set([...BREAKPOINT_WIDTHS, ...LEGACY_BREAKPOINT_WIDTHS]);
+    const widths = new Set(BREAKPOINT_WIDTHS);
     const heights = new Set(BREAKPOINT_HEIGHTS);
     const offenders = [];
     for (const file of files) {

@@ -196,22 +196,24 @@ const OverviewPanel = ({ onNavigate }) => {
                   {Icon && <Icon className={style.stage_icon} />}
                   <span className={style.stage_count}>{getStageCount(key)}</span>
                 </button>
-                {i < PIPELINE.length - 1 && <LuChevronRight className={style.chevron} />}
+                {/* the slot after a pill: a chevron, and after the last chain stage the divider before shipped */}
+                {i < PIPELINE.length - 1 ? <LuChevronRight className={style.chevron} /> : <span className={style.pipeline_divider} />}
               </div>
             );
           })}
           {/* shipped — daily flow, split from the current-state chain */}
-          <span className={style.pipeline_divider} />
-          <button
-            type="button"
-            className={`${style.stage_pill} ${style.stage_pill_shipped}`}
-            style={{ backgroundColor: shippedColors.bg, color: shippedColors.color }}
-            onClick={() => onNavigate?.("production")}
-            title={`${STAGE_LABEL.shipped} today`}
-          >
-            {ShippedIcon && <ShippedIcon className={style.stage_icon} />}
-            <span className={style.stage_count}>{shippedTodayCount}</span>
-          </button>
+          <div className={`${style.pipeline_step} ${style.pipeline_step_last}`}>
+            <button
+              type="button"
+              className={`${style.stage_pill} ${style.stage_pill_shipped}`}
+              style={{ backgroundColor: shippedColors.bg, color: shippedColors.color }}
+              onClick={() => onNavigate?.("production")}
+              title={`${STAGE_LABEL.shipped} today`}
+            >
+              {ShippedIcon && <ShippedIcon className={style.stage_icon} />}
+              <span className={style.stage_count}>{shippedTodayCount}</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>

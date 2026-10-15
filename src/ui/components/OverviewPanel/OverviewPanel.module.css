@@ -176,18 +176,29 @@
   color: var(--text-secondary);
 }
 
+/* The row wraps: when the card is too narrow for every stage in one line (a 4-up row on a 1280 px
+   window) the stages go to a second line instead of sticking out of the card. */
 .pipeline_row {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 4px;
+  gap: 6px 4px;
   width: 100%;
 }
 
-/* display: contents flattens the pill+chevron wrapper so every stage pill becomes a
-   direct flex child of the row — pills share the width equally (flex: 1), chevrons and
-   the divider stay fixed. */
+/* One step = a pill plus the slot after it (chevron / divider / empty), so a wrap never separates a
+   pill from its chevron. Every step has the same total width (flex: 1 1 0), so the pills stay equal. */
 .pipeline_step {
-  display: contents;
+  display: flex;
+  align-items: center;
+  flex: 1 1 0;
+  gap: 4px;
+  align-self: stretch;
+}
+
+/* shipped has no slot of its own: the padding keeps its pill as wide as the others. */
+.pipeline_step_last {
+  padding-right: 18px;
 }
 
 .stage_pill {
@@ -196,7 +207,7 @@
   align-items: center;
   justify-content: center;
   gap: 5px;
-  padding: 8px 6px;
+  padding: 8px 4px;
   border-radius: 9px;
   cursor: pointer;
   white-space: nowrap;
@@ -241,16 +252,18 @@
   flex-shrink: 0;
 }
 
+/* a 1 px line centred in the same 14 px slot a chevron takes */
 .pipeline_divider {
   align-self: stretch;
-  width: 1px;
+  flex-shrink: 0;
+  width: 14px;
   min-height: 22px;
-  margin: 0 5px;
-  background-color: var(--border-grey);
+  background: linear-gradient(var(--border-grey), var(--border-grey)) center / 1px 100% no-repeat;
 }
 
+/* Below 1200 px the four overview cards sit two by two (a single column pushed the file list out of the window). */
 @media (max-width: 1200px) {
   .panel {
-    flex: 1 1 100%;
+    flex: 1 1 calc(50% - 10px);
   }
 }

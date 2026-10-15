@@ -147,8 +147,9 @@
   color: var(--text-secondary);
 }
 
+/* Below 1200 px the four overview cards sit two by two (a single column pushed the file list out of the window). */
 @media (max-width: 1200px) {
   .card {
-    flex: 1 1 100%;
+    flex: 1 1 calc(50% - 10px);
   }
 }

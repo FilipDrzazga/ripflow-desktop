@@ -9,7 +9,3 @@
 
 export const BREAKPOINT_WIDTHS = Object.freeze([1100, 1200, 1400]);
 export const BREAKPOINT_HEIGHTS = Object.freeze([640, 720]);
-
-// 900 px in DataPrintSelection.module.css never fires (the window is >= 960 px wide). Tolerated until
-// resp-1 replaces it; remove it from here when that rule is gone.
-export const LEGACY_BREAKPOINT_WIDTHS = Object.freeze([900]);

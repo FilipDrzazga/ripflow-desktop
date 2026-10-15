@@ -5,7 +5,9 @@
   gap: 20px;
   width: 100%;
   flex: 1;
-  min-height: 0;
+  /* a floor, not 0: on a short window the Print column (App.module.css .print_view) scrolls instead of
+     squeezing the list to nothing */
+  min-height: 300px;
   padding: 0px 20px 20px 20px;
   border-radius: 20px;
   overflow-y: auto;

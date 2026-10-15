@@ -9,6 +9,15 @@
   box-shadow: var(--card-shadow);
   flex-shrink: 0;
   z-index: 10;
+  /* Last resort on a window shorter than even the compact bar below: the bar scrolls (scrollbar hidden)
+     instead of cutting off Settings. */
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+
+.navbar::-webkit-scrollbar {
+  display: none;
 }
 
 .nav_top {
@@ -16,6 +25,8 @@
   flex-direction: column;
   gap: 12px;
   flex: 1;
+  /* keeps the top group apart from the bottom one; the floor is the gap a bar that is too tall scrolls with */
+  margin-bottom: 12px;
 }
 
 .nav_bottom {
@@ -90,4 +101,27 @@
   font-weight: 600;
   letter-spacing: 0.01em;
   line-height: 1;
+}
+
+/* A window of 720 px or less (1366x768 at 100%, 1366x768 at 125% = 1092x582, the 960x560 minimum): the bar
+   is the same bar, packed tighter - smaller margins, gaps and item padding - so all seven tabs fit. */
+@media (max-height: 720px) {
+  .navbar {
+    margin: 12px 0 16px 16px;
+    padding: 8px 10px;
+  }
+
+  .nav_top,
+  .nav_bottom {
+    gap: 4px;
+  }
+
+  .nav_top {
+    margin-bottom: 4px;
+  }
+
+  .nav_item {
+    gap: 4px;
+    padding: 6px 6px;
+  }
 }

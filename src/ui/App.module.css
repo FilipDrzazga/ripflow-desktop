@@ -26,6 +26,21 @@
   min-width: 0;
 }
 
+/* The Print view: overview cards, filters, file list. On a window too short for all three the column
+   scrolls (the cards go up and away) - the list keeps its own floor height (DataList .list_container). The
+   4px padding/margin pair keeps the top ring of the card shadow out of the clip. */
+.print_view {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  gap: 16px;
+  min-height: 0;
+  margin-top: -4px;
+  padding-top: 4px;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
 .db_banner {
   flex: 0 0 auto;
   width: 100%;

@@ -311,14 +311,14 @@ const App = () => {
           <NavBar activeView={activeView} onViewChange={setActiveView} shopProfile={shopProfile} badges={{ print: inboxNewCount }} />
           <main className={styles.content}>
             {activeView === "print" && (
-              <>
+              <div className={styles.print_view}>
                 <DataOverviewSection onNavigate={setActiveView} />
                 <DataFilters />
                 <InboxWatchPill />
                 <ErrorBoundary>
                   <DataList />
                 </ErrorBoundary>
-              </>
+              </div>
             )}
             {activeView === "batch" && (
               <ErrorBoundary>

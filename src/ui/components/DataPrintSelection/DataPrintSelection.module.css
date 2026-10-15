@@ -8,7 +8,8 @@
   align-items: center;
   justify-content: center;
   width: max-content;
-  max-width: calc(100vw - 40px);
+  /* the bar is centred in the area beside the NavBar, so that area (not the window) is its limit */
+  max-width: calc(100vw - var(--navbar-width) - 24px);
   min-height: 80px;
   padding: 0 20px;
   border-radius: 20px;
@@ -144,19 +145,6 @@
 .clear_button:hover {
   background-color: #f9d2d8;
   border-color: #e7b3c0;
-}
-
-@media (max-width: 900px) {
-  .selection_container {
-    width: calc(100vw - 24px);
-    bottom: 12px;
-    padding: 16px;
-  }
-
-  .selection_form {
-    gap: 12px;
-    padding-left: 16px;
-  }
 }
 
 /* Why printing is blocked. Sits beside the disabled controls rather than in a tooltip
