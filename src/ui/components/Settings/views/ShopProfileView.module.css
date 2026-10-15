@@ -183,7 +183,10 @@
   font-weight: 600;
   background-color: var(--bg-grey);
   color: var(--text-secondary);
-  white-space: nowrap;
+  /* wraps inside a narrow card instead of leaving it (a long company name at 960 px) */
+  white-space: normal;
+  overflow-wrap: anywhere;
+  max-width: 100%;
   width: fit-content;
 }
 

@@ -48,6 +48,15 @@ describe("Shop Profile key/value grid lets its value column shrink", () => {
   });
 });
 
+describe("Shop Profile chips wrap inside a narrow card", () => {
+  it("a chip wraps its text and never grows past its parent", () => {
+    const chip = ruleBody(profileCss, ".chip");
+    expect(chip).toContain("white-space: normal;");
+    expect(chip).toContain("overflow-wrap: anywhere;");
+    expect(chip).toContain("max-width: 100%;");
+  });
+});
+
 describe("the wizard keeps its buttons in view in a short window", () => {
   it("below 720 px the step buttons stick to the bottom of the scrolling body", () => {
     const short = wizard.slice(wizard.indexOf("@media (max-height: 720px)"));
