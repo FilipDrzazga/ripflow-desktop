@@ -9,7 +9,7 @@
   box-shadow: var(--card-shadow);
 }
 
-/* ─── Printed metres: per machine, yesterday and today (PrintFactory Cloud) ─ */
+/* ─── Printed metres: machines across, yesterday and today down (PrintFactory Cloud) ─ */
 /* The whole block is one click target (it reads PrintFactory Cloud again): the padding and the equal negative
    margin give the hover tint some room around the content without moving anything. */
 .metres {
@@ -61,47 +61,74 @@
 
 /* The body has ONE height whatever it holds (a note, 3 machines, 7 machines): the tile is part of a
    row of cards that stretch to the tallest, so a body that grew with the machine list stretched
-   Inbox, Cottons and Polyesters with it (FILIP 2026-10-16). More machines than fit scroll inside. */
+   Inbox, Cottons and Polyesters with it (FILIP 2026-10-16). More machines than fit scroll inside (sideways). */
 .metres_body {
   display: flex;
   flex-direction: column;
   gap: 4px;
   height: 112px;
   overflow-y: auto;
-  overflow-x: hidden;
+  overflow-x: auto;
   scrollbar-width: thin;
 }
 
 .metres_grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
-  column-gap: 18px;
-  row-gap: 2px;
+  /* columns are set inline: the day labels, then one per machine */
+  column-gap: 8px;
+  row-gap: 4px;
   align-items: center;
+  width: max-content;
+  min-width: 100%;
 }
 
-/* the column heads stay in view while the machines scroll under them; the tile's hover tint is behind
-   them, so they take the tile's colour instead of a white patch (.metres:hover below) */
+/* More machines than fit scroll sideways inside the body; the machine heads stay in view while the rows
+   scroll under them and the day labels stay in view while the machines scroll past. The tile's hover tint
+   is behind them, so they take the tile's colour instead of a white patch (.metres:hover below) */
 .metres_corner,
-.metres_colhead {
+.metres_colhead,
+.metres_rowhead {
   position: sticky;
-  top: 0;
   z-index: 1;
   background-color: var(--bg-white);
   transition: background-color 0.15s ease;
 }
 
+.metres_corner,
+.metres_colhead {
+  top: 0;
+}
+
+.metres_corner,
+.metres_rowhead {
+  left: 0;
+}
+
+.metres_corner {
+  z-index: 2;
+}
+
 .metres:hover .metres_corner,
 .metres:hover .metres_colhead,
+.metres:hover .metres_rowhead,
 .metres:focus-visible .metres_corner,
-.metres:focus-visible .metres_colhead {
+.metres:focus-visible .metres_colhead,
+.metres:focus-visible .metres_rowhead {
   background-color: var(--bg-grey-light);
 }
 
+/* a machine head: one printer badge (the badge look of the Production cards) */
 .metres_colhead {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+}
+
+/* a day label with its Copy button */
+.metres_rowhead {
   display: inline-flex;
   align-items: center;
-  justify-content: flex-end;
   gap: 4px;
   font-size: 11px;
   font-weight: 600;
@@ -127,17 +154,10 @@
   color: var(--text-primary);
 }
 
-/* the machine cell: one printer badge (the badge look of the Production cards) */
-.metres_name {
-  display: flex;
-  align-items: center;
-  min-width: 0;
-}
-
 .metres_badge {
   display: inline-block;
   min-width: 0;
-  max-width: 100%;
+  max-width: 84px;
   padding: 3px 8px;
   border-radius: 7px;
   overflow: hidden;
@@ -149,8 +169,8 @@
 }
 
 .metres_value {
-  text-align: right;
-  font-size: 14px;
+  text-align: center;
+  font-size: 13px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   color: var(--text-primary);

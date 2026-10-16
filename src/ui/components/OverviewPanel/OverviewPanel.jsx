@@ -31,8 +31,8 @@ const PIPELINE = [
 // The grey every printer badge falls back to when the profile has no colours for a code.
 const BADGE_FALLBACK = { bg: "#f0f0f0", color: "#616161" };
 
-// The two day columns of the metres block; keyField names the day key the main process sent along.
-const COLUMNS = [
+// The two day rows of the metres table; keyField names the day key the main process sent along.
+const DAYS = [
   { field: "yesterday", label: "Yesterday", keyField: "yesterdayKey" },
   { field: "today", label: "Today", keyField: "todayKey" },
 ];
@@ -172,45 +172,52 @@ const OverviewPanel = ({ onNavigate }) => {
           {cloud.status === "loading" && <span className={style.metres_note}>Reading PrintFactory Cloud...</span>}
           {cloud.data && (
             <>
-              <div className={style.metres_grid}>
+              {/* A table: the machines (printer badges) across the top, one row per day under them (FILIP 2026-10-16). */}
+              <div
+                className={style.metres_grid}
+                style={{ gridTemplateColumns: `auto repeat(${cloud.data.devices.length}, minmax(52px, 1fr))` }}
+              >
                 <span className={style.metres_corner} />
-                {COLUMNS.map(({ field, label, keyField }) => (
-                  <span key={field} className={style.metres_colhead} title={`${label} ${dayHeading(cloud.data[keyField])}`}>
-                    {label}
-                    <button
-                      type="button"
-                      className={style.metres_copy}
-                      onClick={(e) => {
-                        // Copy must not also count as a click on the tile (the refresh).
-                        e.stopPropagation();
-                        copyDay(field, keyField);
-                      }}
-                      title={`Copy ${label.toLowerCase()}`}
-                      aria-label={`Copy ${label.toLowerCase()} metres`}
-                    >
-                      <LuCopy />
-                    </button>
-                  </span>
-                ))}
                 {cloud.data.devices.map((device, i) => {
                   const badge = badges[i];
                   const colors = badge.code ? getPrinterColor(shopProfile, badge.code) : null;
                   return (
-                    <Fragment key={device.name}>
-                      <span className={style.metres_name}>
-                        <span
-                          className={style.metres_badge}
-                          style={{ backgroundColor: (colors ?? BADGE_FALLBACK).bg, color: (colors ?? BADGE_FALLBACK).color }}
-                          title={device.name}
-                        >
-                          {badge.text}
-                        </span>
+                    <span key={device.name} className={style.metres_colhead}>
+                      <span
+                        className={style.metres_badge}
+                        style={{ backgroundColor: (colors ?? BADGE_FALLBACK).bg, color: (colors ?? BADGE_FALLBACK).color }}
+                        title={device.name}
+                      >
+                        {badge.text}
                       </span>
-                      <span className={style.metres_value}>{metresLabel(device.yesterday)}</span>
-                      <span className={style.metres_value}>{metresLabel(device.today)}</span>
-                    </Fragment>
+                    </span>
                   );
                 })}
+                {DAYS.map(({ field, label, keyField }) => (
+                  <Fragment key={field}>
+                    <span className={style.metres_rowhead} title={`${label} ${dayHeading(cloud.data[keyField])}`}>
+                      {label}
+                      <button
+                        type="button"
+                        className={style.metres_copy}
+                        onClick={(e) => {
+                          // Copy must not also count as a click on the tile (the refresh).
+                          e.stopPropagation();
+                          copyDay(field, keyField);
+                        }}
+                        title={`Copy ${label.toLowerCase()}`}
+                        aria-label={`Copy ${label.toLowerCase()} metres`}
+                      >
+                        <LuCopy />
+                      </button>
+                    </span>
+                    {cloud.data.devices.map((device) => (
+                      <span key={device.name} className={style.metres_value}>
+                        {field === "yesterday" ? metresLabel(device.yesterday) : metresLabel(device.today)}
+                      </span>
+                    ))}
+                  </Fragment>
+                ))}
               </div>
               {cloud.data.devices.length === 0 && <span className={style.metres_note}>Nothing printed yesterday or today.</span>}
               {cloud.data.partialJobs > 0 && (
