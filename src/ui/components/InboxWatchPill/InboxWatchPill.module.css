@@ -1,14 +1,12 @@
-/* ETAP 4 (4-inbox): "N new files - click to refresh", floating over the top of the Print view.
-   The anchor has no height, so the pill never moves anything (FILIP 2026-09-29); sticky keeps it
-   in sight while the view scrolls. GSAP owns opacity / visibility / the slide (InboxWatchPill.jsx).
-   It is the FIRST child of .print_view, above the overview cards (FILIP 2026-10-16: under the cards it was
-   below the fold at <= 1536 px). The negative bottom margin cancels the flex gap after it, so the cards stay
-   where they were; the 16 px the pill used to add between the filters and the list is now on .filters_container. */
+/* ETAP 4 (4-inbox): "N new files - click to refresh", floating over the top of the Print list.
+   The anchor has no height, so the pill never moves the list (FILIP 2026-09-29); sticky keeps it
+   in sight while the list scrolls. GSAP owns opacity / visibility / the slide (InboxWatchPill.jsx).
+   It sits between the filters and the list and overlaps the top of the list a little (FILIP 2026-10-16 10:12:
+   over the cards it covered their headings - the operator sees it best low, on the list). */
 .anchor {
   position: sticky;
   top: 8px;
   height: 0;
-  margin-bottom: -16px;
   z-index: 20;
 }
 

@@ -27,19 +27,20 @@ const mediaBlock = (css, condition) => {
   throw new Error(`@media (${condition}) is not closed`);
 };
 
-describe("Print view: the new-files pill sits above the overview cards", () => {
-  it("is the first child of the print view, before the cards, the filters and the list", () => {
+describe("Print view: the new-files pill floats over the top of the list", () => {
+  it("sits between the filters and the list, after the overview cards (FILIP 2026-10-16 10:12)", () => {
     const view = app.slice(app.indexOf("styles.print_view"));
     const at = (needle) => view.indexOf(needle);
-    expect(at("<InboxWatchPill />")).toBeGreaterThan(-1);
-    expect(at("<InboxWatchPill />")).toBeLessThan(at("<DataOverviewSection"));
+    expect(at("<DataOverviewSection")).toBeGreaterThan(-1);
     expect(at("<DataOverviewSection")).toBeLessThan(at("<DataFilters />"));
-    expect(at("<DataFilters />")).toBeLessThan(at("<DataList />"));
+    expect(at("<DataFilters />")).toBeLessThan(at("<InboxWatchPill />"));
+    expect(at("<InboxWatchPill />")).toBeLessThan(at("<DataList />"));
   });
 
-  it("takes no room: the flex gap after it is cancelled and moved to the filters, so the list stays put", () => {
-    expect(pillCss).toMatch(/\.anchor \{[^}]*height: 0;[^}]*margin-bottom: -16px;/s);
-    expect(filtersCss).toMatch(/\.filters_container \{[^}]*margin-bottom: 16px;/s);
+  it("takes no room: a zero-height sticky anchor, no negative margin, nothing added to the filters", () => {
+    expect(pillCss).toMatch(/\.anchor \{[^}]*position: sticky;[^}]*height: 0;/s);
+    expect(pillCss).not.toMatch(/\.anchor \{[^}]*margin-bottom/s);
+    expect(filtersCss).not.toMatch(/\.filters_container \{[^}]*margin-bottom/s);
   });
 });
 

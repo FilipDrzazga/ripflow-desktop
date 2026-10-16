@@ -8,8 +8,6 @@
   height: auto;
   padding: 0 20px;
   margin-top: 24px;
-  /* the old spot of the Inbox pill's flex-gap slot (the pill now sits above the cards): keeps the list where it was */
-  margin-bottom: 16px;
   background-color: var(--bg-grey);
 }
 .filter_button {
