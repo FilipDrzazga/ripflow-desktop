@@ -115,12 +115,25 @@ describe("createCloudMetres", () => {
     expect(fetchImpl.mock.calls.every(([, init]) => init.headers.MisKey === "test-key-12345")).toBe(true);
   });
 
-  it("asks for a week of jobs: a job made days ago can be printed today", async () => {
+  it("asks for jobs created up to 21 days before the START of yesterday: a job can queue for 11 days before it prints", async () => {
     const fetchImpl = makeFetch({ jobs: [], xml: {} });
     await service(fetchImpl).getDayMetres();
     const body = JSON.parse(fetchImpl.mock.calls[0][1].body);
-    expect(body.DateTimeFrom).toBe("2026-10-09T11:00:00.000Z");
     expect(body.DateTimeTo).toBe("2026-10-16T11:00:00.000Z");
+    expect(body.DateTimeFrom).toBe("2026-09-23T11:00:00.000Z");
+    // yesterday (15 Oct) starts at 23:00 UTC on the 14th in London; the longest wait seen is 11.6 days
+    const startOfYesterday = Date.parse("2026-10-14T23:00:00Z");
+    expect(Date.parse(body.DateTimeFrom)).toBeLessThanOrEqual(startOfYesterday - 14 * 24 * 3600 * 1000);
+  });
+
+  it("the window still reaches 14+ days before the start of yesterday when this instant is just after midnight", async () => {
+    // 00:05 London on the 16th: yesterday began almost 24 h ago, the window is measured from now
+    const fetchImpl = makeFetch({ jobs: [], xml: {} });
+    const justAfterMidnight = Date.parse("2026-10-15T23:05:00Z");
+    await service(fetchImpl, { now: () => justAfterMidnight }).getDayMetres();
+    const body = JSON.parse(fetchImpl.mock.calls[0][1].body);
+    const startOfYesterday = Date.parse("2026-10-14T23:00:00Z");
+    expect(Date.parse(body.DateTimeFrom)).toBeLessThanOrEqual(startOfYesterday - 14 * 24 * 3600 * 1000);
   });
 
   it("reads a finished job (Deleted / Completed) once, and a job still open again after five minutes", async () => {

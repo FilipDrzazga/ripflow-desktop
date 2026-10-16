@@ -10,8 +10,17 @@ import { parseCloudJobXml } from "./parseCloudJobXml.js";
 
 export const CLOUD_BASE_URL = "https://api.aurelon.com/api/v2";
 
-// A job printed on the day being counted can have been created days before (a long queue).
-const LOOKBACK_DAYS = 7;
+// job/list filters by the day a job was CREATED, but the day counted is the day it was PRINTED, and
+// a job can wait in a queue for days: over the last 30 days (813 prints) the gap from creation to
+// print had p99 4.1 days and a maximum of 11.6 (S2, agents/chat/artefakty/printfactory-cloud-api/s2).
+// A window of 7 days dropped such jobs without any sign (partialJobs stays 0) and left the morning
+// "yesterday" sum short by 7-9 m on two of ten days. The list therefore starts this many days
+// before the START of yesterday - 21, nearly twice the longest wait seen. A job queued longer
+// than that is missed; it is the price of not walking the whole history.
+const DAYS_BEFORE_YESTERDAY = 21;
+// Yesterday began at most 2 days ago (this instant is in today), so counting back from now
+// DAYS_BEFORE_YESTERDAY + 2 days always starts at or before (start of yesterday - 21 days).
+const LIST_WINDOW_DAYS = DAYS_BEFORE_YESTERDAY + 2;
 const CONCURRENCY = 6;
 const REQUEST_TIMEOUT_MS = 20000;
 // A job the Cloud calls Deleted or Completed will not print again, so its XML is read once. Any
@@ -126,7 +135,7 @@ export const createCloudMetres = ({ getKey, fetchImpl = fetch, now = () => Date.
   const compute = async (key) => {
     const todayKey = dayKeyOf(new Date(now()), timeZone);
     const yesterdayKey = previousDayKey(todayKey);
-    const jobs = await listJobs(key, now() - LOOKBACK_DAYS * 24 * 3600 * 1000);
+    const jobs = await listJobs(key, now() - LIST_WINDOW_DAYS * 24 * 3600 * 1000);
 
     const liveGuids = new Set(jobs.map((job) => job.JobGUID));
     for (const guid of jobCache.keys()) if (!liveGuids.has(guid)) jobCache.delete(guid);
