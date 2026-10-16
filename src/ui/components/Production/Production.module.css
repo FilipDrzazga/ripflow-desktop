@@ -1417,6 +1417,24 @@
     flex: 1 1 0;
     justify-content: flex-end;
   }
+
+  /* Smaller numbers and tighter tabs keep the stage row on one line with three- and four-digit counts (FILIP 2026-10-16). */
+  .stage_tabs {
+    gap: 2px;
+  }
+
+  .stage_tab {
+    gap: 4px;
+    padding: 8px 9px 10px;
+  }
+
+  .stage_tab_count {
+    font-size: 17px;
+  }
+
+  .stage_tab_sep {
+    margin: 8px 8px 12px;
+  }
 }
 
 /* Shared geometry for the topbar toggles (Groups, collapse-all). Matches

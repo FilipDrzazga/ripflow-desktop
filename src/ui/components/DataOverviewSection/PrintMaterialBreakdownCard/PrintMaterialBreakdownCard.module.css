@@ -146,9 +146,10 @@
   color: var(--text-secondary);
 }
 
-/* Up to 1440 px the four overview cards sit two by two: four across leave the Inbox card under ~295 px, too narrow for the material names (measured: "Polyesters" is cut up to 1425 px). */
+/* Up to 1440 px the four overview cards sit two by two: four across leave the Inbox card under ~295 px, too narrow for the material names (measured: "Polyesters" is cut up to 1425 px). The rows pair the material cards (order 0), then Inbox (1) next to Last batch (2) - FILIP 2026-10-16. */
 @media (max-width: 1440px) {
   .card {
     flex: 1 1 calc(50% - 10px);
+    order: 0;
   }
 }
