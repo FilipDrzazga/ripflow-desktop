@@ -18,6 +18,14 @@
   min-width: 0;
 }
 
+.metres_head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 22px;
+}
+
 .top_label {
   font-size: 11px;
   font-weight: 700;
@@ -26,12 +34,45 @@
   color: #9a9ea8;
 }
 
+/* time of the last read + the refresh button */
+.metres_updated {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-secondary);
+}
+
+/* The body has ONE height whatever it holds (a note, 3 machines, 7 machines): the tile is part of a
+   row of cards that stretch to the tallest, so a body that grew with the machine list stretched
+   Inbox, Cottons and Polyesters with it (FILIP 2026-10-16). More machines than fit scroll inside. */
+.metres_body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  height: 112px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+}
+
 .metres_grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto auto;
   column-gap: 18px;
-  row-gap: 4px;
-  align-items: baseline;
+  row-gap: 2px;
+  align-items: center;
+}
+
+/* the column heads stay in view while the machines scroll under them */
+.metres_corner,
+.metres_colhead {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background-color: var(--bg-white);
 }
 
 .metres_colhead {
@@ -98,19 +139,20 @@
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
-  margin-top: 16px;
-  padding-top: 16px;
+  margin-top: 12px;
+  padding-top: 12px;
   border-top: 1px solid var(--border-grey);
 }
 
+/* one line per pill (icon, count, label): the three pills were 70 px tall stacked */
 .status_pill {
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 4px;
-  padding: 12px 8px;
-  border-radius: 12px;
+  gap: 6px;
+  min-width: 0;
+  padding: 8px;
+  border-radius: 10px;
   cursor: pointer;
   transition: filter 0.15s ease;
 }
@@ -119,25 +161,23 @@
   filter: brightness(0.96);
 }
 
-.status_top {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
 .status_icon {
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
   flex-shrink: 0;
 }
 
 .status_count {
-  font-size: 22px;
+  font-size: 16px;
   font-weight: 700;
   line-height: 1;
 }
 
 .status_label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: 12px;
   font-weight: 600;
 }
@@ -166,9 +206,9 @@
 .pipeline_section {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  margin-top: 16px;
-  padding-top: 16px;
+  gap: 10px;
+  margin-top: 12px;
+  padding-top: 12px;
   border-top: 1px solid var(--border-grey);
 }
 

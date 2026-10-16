@@ -77,3 +77,25 @@ describe("Printed metres tile", () => {
     expect(hook).toMatch(/if \(stopped\) return undefined;/);
   });
 });
+
+describe("Printed metres tile - height", () => {
+  const css = read("./OverviewPanel/OverviewPanel.module.css");
+
+  it("the machine list has one fixed height and scrolls inside it, so it cannot stretch the row of cards", () => {
+    expect(overview).toMatch(/className=\{style\.metres_body\}/);
+    const body = css.match(/\.metres_body \{([^}]*)\}/)[1];
+    expect(body).toMatch(/\n\s*height: \d+px;/);
+    expect(body).toMatch(/overflow-y: auto;/);
+  });
+
+  it("the status pills are one line each, not an icon-over-label stack", () => {
+    expect(overview).not.toMatch(/status_top/);
+    expect(css).not.toMatch(/\.status_pill \{[^}]*flex-direction: column/);
+  });
+
+  it("shows when the numbers were read and can read again", () => {
+    expect(overview).toMatch(/cloud\.data\.fetchedAt/);
+    expect(overview).toMatch(/onClick=\{cloud\.reload\}/);
+    expect(read("../hooks/useCloudDayMetres.js")).toMatch(/reload: load/);
+  });
+});

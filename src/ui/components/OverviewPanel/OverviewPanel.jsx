@@ -1,5 +1,5 @@
 import { Fragment, useMemo } from "react";
-import { LuTriangleAlert, LuRepeat2, LuChevronRight, LuCopy } from "react-icons/lu";
+import { LuTriangleAlert, LuRepeat2, LuChevronRight, LuCopy, LuRefreshCw } from "react-icons/lu";
 import { FiLock } from "react-icons/fi";
 import { useStore } from "../../store/useStore";
 import { PRODUCTION_STAGE, STAGE_COLOR, STAGE_LABEL } from "../../../shared/constants";
@@ -131,46 +131,65 @@ const OverviewPanel = ({ onNavigate }) => {
     <div className={style.panel}>
       {/* Printed metres per machine, yesterday and today, from PrintFactory Cloud (FILIP 2026-10-16) */}
       <div className={style.metres}>
-        <span className={style.top_label}>Printed metres</span>
-        {cloud.status === "unconfigured" && (
-          <span className={style.metres_note}>Add the PrintFactory Cloud key in Settings, General.</span>
-        )}
-        {cloud.status === "loading" && <span className={style.metres_note}>Reading PrintFactory Cloud...</span>}
-        {cloud.data && (
-          <>
-            <div className={style.metres_grid}>
-              <span />
-              {COLUMNS.map(({ field, label, keyField }) => (
-                <span key={field} className={style.metres_colhead}>
-                  {label} {dayHeading(cloud.data[keyField])}
-                  <button
-                    type="button"
-                    className={style.metres_copy}
-                    onClick={() => copyDay(field, keyField)}
-                    title={`Copy ${label.toLowerCase()}`}
-                    aria-label={`Copy ${label.toLowerCase()} metres`}
-                  >
-                    <LuCopy />
-                  </button>
+        <div className={style.metres_head}>
+          <span className={style.top_label}>Printed metres</span>
+          {cloud.data && (
+            <span className={style.metres_updated} title="Time of the last read from PrintFactory Cloud (it reads again every 5 minutes)">
+              {new Date(cloud.data.fetchedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+              <button
+                type="button"
+                className={style.metres_copy}
+                onClick={cloud.reload}
+                title="Read PrintFactory Cloud again"
+                aria-label="Refresh printed metres"
+              >
+                <LuRefreshCw />
+              </button>
+            </span>
+          )}
+        </div>
+        {/* One height whatever it holds: a note, a few machines or many never change the height of the card. */}
+        <div className={style.metres_body}>
+          {cloud.status === "unconfigured" && (
+            <span className={style.metres_note}>Add the PrintFactory Cloud key in Settings, General.</span>
+          )}
+          {cloud.status === "loading" && <span className={style.metres_note}>Reading PrintFactory Cloud...</span>}
+          {cloud.data && (
+            <>
+              <div className={style.metres_grid}>
+                <span className={style.metres_corner} />
+                {COLUMNS.map(({ field, label, keyField }) => (
+                  <span key={field} className={style.metres_colhead}>
+                    {label} {dayHeading(cloud.data[keyField])}
+                    <button
+                      type="button"
+                      className={style.metres_copy}
+                      onClick={() => copyDay(field, keyField)}
+                      title={`Copy ${label.toLowerCase()}`}
+                      aria-label={`Copy ${label.toLowerCase()} metres`}
+                    >
+                      <LuCopy />
+                    </button>
+                  </span>
+                ))}
+                {cloud.data.devices.map((device) => (
+                  <Fragment key={device.name}>
+                    <span className={style.metres_name} title={device.name}>{device.name}</span>
+                    <span className={style.metres_value}>{metresCell(device.yesterday)}</span>
+                    <span className={style.metres_value}>{metresCell(device.today)}</span>
+                  </Fragment>
+                ))}
+              </div>
+              {cloud.data.devices.length === 0 && <span className={style.metres_note}>Nothing printed yesterday or today.</span>}
+              {cloud.data.partialJobs > 0 && (
+                <span className={style.metres_note}>
+                  {cloud.data.partialJobs} {cloud.data.partialJobs === 1 ? "job" : "jobs"} could not be read - the totals may be low.
                 </span>
-              ))}
-              {cloud.data.devices.map((device) => (
-                <Fragment key={device.name}>
-                  <span className={style.metres_name} title={device.name}>{device.name}</span>
-                  <span className={style.metres_value}>{metresCell(device.yesterday)}</span>
-                  <span className={style.metres_value}>{metresCell(device.today)}</span>
-                </Fragment>
-              ))}
-            </div>
-            {cloud.data.devices.length === 0 && <span className={style.metres_note}>Nothing printed yesterday or today.</span>}
-            {cloud.data.partialJobs > 0 && (
-              <span className={style.metres_note}>
-                {cloud.data.partialJobs} {cloud.data.partialJobs === 1 ? "job" : "jobs"} could not be read - the totals may be low.
-              </span>
-            )}
-          </>
-        )}
-        {cloud.status === "error" && <span className={style.metres_error}>{cloud.error}</span>}
+              )}
+            </>
+          )}
+          {cloud.status === "error" && <span className={style.metres_error}>{cloud.error}</span>}
+        </div>
       </div>
 
       {/* Status pills */}
@@ -183,10 +202,8 @@ const OverviewPanel = ({ onNavigate }) => {
             onClick={onClick}
             title={label}
           >
-            <span className={style.status_top}>
-              <Icon className={style.status_icon} />
-              <span className={style.status_count}>{count}</span>
-            </span>
+            <Icon className={style.status_icon} />
+            <span className={style.status_count}>{count}</span>
             <span className={style.status_label}>{label}</span>
           </button>
         ))}

@@ -41,5 +41,6 @@ export const useCloudDayMetres = () => {
     return () => clearInterval(id);
   }, [stopped, load]);
 
-  return state;
+  // `reload` is the tile's refresh button: main still answers from its cache inside a minute.
+  return { ...state, reload: load };
 };
