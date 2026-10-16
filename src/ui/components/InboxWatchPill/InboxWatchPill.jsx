@@ -6,12 +6,12 @@ import { useStore } from "../../store/useStore";
 import { inboxPillLabel } from "../../utils/inboxWatch";
 import styles from "./InboxWatchPill.module.css";
 
-// ETAP 4 (4-inbox): the pill at the top of the Print list - "3 new files - click to refresh" (and
+// ETAP 4 (4-inbox): the pill at the top of the Print view (above the overview cards, FILIP 2026-10-16) - "3 new files - click to refresh" (and
 // "N files gone" when files on the list left the inbox), or a grey "Can't check the inbox" when
 // the last look failed. A click is the Refresh button (store.refreshInbox). No toast, no sound: a
 // toast every 30 s would fill Logs.
 //
-// It FLOATS over the list (FILIP 2026-09-29): a zero-height sticky anchor holds it, so showing or
+// It FLOATS over the view (FILIP 2026-09-29): a zero-height sticky anchor holds it, so showing or
 // hiding it never pushes the list down or makes it jump back up. GSAP fades it in and out; the
 // last text stays mounted while it fades out, so the pill does not go blank mid-animation.
 const InboxWatchPill = () => {

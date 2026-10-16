@@ -312,9 +312,9 @@ const App = () => {
           <main className={styles.content}>
             {activeView === "print" && (
               <div className={styles.print_view}>
+                <InboxWatchPill />
                 <DataOverviewSection onNavigate={setActiveView} />
                 <DataFilters />
-                <InboxWatchPill />
                 <ErrorBoundary>
                   <DataList />
                 </ErrorBoundary>
