@@ -1,5 +1,15 @@
 [
   {
+    "version": "1.0.35",
+    "date": "2026-10-16",
+    "changes": [
+      {
+        "text": "Print: the \"new files\" pill is back under the filters, floating over the top of the list - in 1.0.34 it sat above the overview cards and covered their headings",
+        "clients": ["all"]
+      }
+    ]
+  },
+  {
     "version": "1.0.34",
     "date": "2026-10-16",
     "changes": [
