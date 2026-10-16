@@ -24,10 +24,15 @@ describe("PrintFactory Cloud key", () => {
   it("main registers exactly those channels, and none that returns the key", () => {
     const channels = [...handlers.matchAll(/ipcMain\.handle\("([^"]+)"/g)].map((m) => m[1]);
     expect(channels.sort()).toEqual(["cloud:clear-key", "cloud:get-day-metres", "cloud:has-key", "cloud:set-key", "cloud:test"]);
-    // the stored key is used inside main (getKey for the service, the test with no typed key) and
-    // is not part of any answer: no handler returns getCloudKey()
-    expect(handlers).not.toMatch(/return[^;]*getCloudKey\(\)/);
-    expect(handlers).not.toMatch(/data:\s*getCloudKey/);
+    // The stored key is used inside main in exactly two places - the service's getKey and the
+    // Settings test with no typed key - and is part of no answer. Any other mention of
+    // getCloudKey in this file (a handler putting it in its reply) fails here.
+    const mentions = handlers.split("\n").filter((line) => line.includes("getCloudKey")).map((line) => line.trim());
+    expect(mentions).toEqual([
+      'import { hasCloudKey, getCloudKey, setCloudKey, clearCloudKey } from "../helpers/cloudKey.js";',
+      "const metres = createCloudMetres({ getKey: getCloudKey });",
+      'const key = typeof typedKey === "string" && typedKey.trim() !== "" ? typedKey.trim() : getCloudKey();',
+    ]);
   });
 
   it("handlers are registered at startup", () => {

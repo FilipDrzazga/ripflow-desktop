@@ -35,6 +35,14 @@ describe("parseCloudJobXml", () => {
     expect(out.prints).toEqual([{ printedAt: "2026-10-15T10:18:41.000Z", copies: 1 }]);
   });
 
+  it("a failed attempt AFTER the good print does not take its place (the last valid entry counts)", () => {
+    const out = parseCloudJobXml(job({
+      prints: [print("2026-10-15T10:18:41"), print("2026-10-15T11:00:00", { error: "Communication with the printer failed" })],
+      pageCopies: '<Page Requested="1" Done="1" />',
+    }));
+    expect(out.prints).toEqual([{ printedAt: "2026-10-15T10:18:41.000Z", copies: 1 }]);
+  });
+
   it("a message that says it failed is not a print", () => {
     const out = parseCloudJobXml(job({ prints: [print("2026-10-15T10:18:41", { message: "Print failed" })] }));
     expect(out.prints).toEqual([]);
