@@ -1,5 +1,5 @@
 import { Fragment, useMemo } from "react";
-import { LuTriangleAlert, LuRepeat2, LuChevronRight, LuCopy, LuRefreshCw } from "react-icons/lu";
+import { LuTriangleAlert, LuRepeat2, LuChevronRight, LuCopy } from "react-icons/lu";
 import { FiLock } from "react-icons/fi";
 import { useStore } from "../../store/useStore";
 import { PRODUCTION_STAGE, STAGE_COLOR, STAGE_LABEL } from "../../../shared/constants";
@@ -7,7 +7,8 @@ import { STAGE_ICON } from "../../constants/stageIcons";
 import { isFeatureEnabled } from "../../utils/featureVisibility";
 import { countRipErrorEvents } from "../../utils/ripErrorsByFile";
 import { useCloudDayMetres } from "../../hooks/useCloudDayMetres";
-import { dayHeading, metresCell, metresCopyText } from "../../utils/cloudMetresText";
+import { dayHeading, deviceBadges, metresLabel, metresCopyText } from "../../utils/cloudMetresText";
+import { getPrinters, getPrinterColor } from "../../utils/shopProfileData";
 import { notify } from "../../utils/notify";
 import style from "./OverviewPanel.module.css";
 
@@ -27,6 +28,9 @@ const PIPELINE = [
   { key: PRODUCTION_STAGE.PACKED, label: STAGE_LABEL.packed },
 ];
 
+// The grey every printer badge falls back to when the profile has no colours for a code.
+const BADGE_FALLBACK = { bg: "#f0f0f0", color: "#616161" };
+
 // The two day columns of the metres block; keyField names the day key the main process sent along.
 const COLUMNS = [
   { field: "yesterday", label: "Yesterday", keyField: "yesterdayKey" },
@@ -42,6 +46,12 @@ const OverviewPanel = ({ onNavigate }) => {
   const stageHistory = useStore((s) => s.stageHistory);
 
   const cloud = useCloudDayMetres();
+
+  // A machine the Cloud names ("d.gen Artrix H8") shows as the printer badge used everywhere else (DGEN).
+  const badges = useMemo(
+    () => deviceBadges(cloud.data?.devices.map((d) => d.name) ?? [], getPrinters(shopProfile).map((p) => p.code)),
+    [cloud.data, shopProfile],
+  );
 
   // Copy puts "<machine><TAB><metres>" lines on the clipboard, one day at a time.
   const copyDay = async (field, keyField) => {
@@ -130,21 +140,27 @@ const OverviewPanel = ({ onNavigate }) => {
   return (
     <div className={style.panel}>
       {/* Printed metres per machine, yesterday and today, from PrintFactory Cloud (FILIP 2026-10-16) */}
-      <div className={style.metres}>
+      {/* The whole block is the refresh: hover lights it up, a click reads PrintFactory Cloud again (FILIP 2026-10-16). */}
+      <div
+        className={style.metres}
+        role="button"
+        tabIndex={0}
+        onClick={cloud.reload}
+        onKeyDown={(e) => {
+          if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) {
+            e.preventDefault();
+            cloud.reload();
+          }
+        }}
+        title="Click to read PrintFactory Cloud again"
+      >
         <div className={style.metres_head}>
           <span className={style.top_label}>Printed metres</span>
           {cloud.data && (
             <span className={style.metres_updated} title="Time of the last read from PrintFactory Cloud (it reads again every 5 minutes)">
-              {new Date(cloud.data.fetchedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-              <button
-                type="button"
-                className={style.metres_copy}
-                onClick={cloud.reload}
-                title="Read PrintFactory Cloud again"
-                aria-label="Refresh printed metres"
-              >
-                <LuRefreshCw />
-              </button>
+              {cloud.refreshing
+                ? "Reading..."
+                : new Date(cloud.data.fetchedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
             </span>
           )}
         </div>
@@ -159,12 +175,16 @@ const OverviewPanel = ({ onNavigate }) => {
               <div className={style.metres_grid}>
                 <span className={style.metres_corner} />
                 {COLUMNS.map(({ field, label, keyField }) => (
-                  <span key={field} className={style.metres_colhead}>
-                    {label} {dayHeading(cloud.data[keyField])}
+                  <span key={field} className={style.metres_colhead} title={`${label} ${dayHeading(cloud.data[keyField])}`}>
+                    {label}
                     <button
                       type="button"
                       className={style.metres_copy}
-                      onClick={() => copyDay(field, keyField)}
+                      onClick={(e) => {
+                        // Copy must not also count as a click on the tile (the refresh).
+                        e.stopPropagation();
+                        copyDay(field, keyField);
+                      }}
                       title={`Copy ${label.toLowerCase()}`}
                       aria-label={`Copy ${label.toLowerCase()} metres`}
                     >
@@ -172,13 +192,25 @@ const OverviewPanel = ({ onNavigate }) => {
                     </button>
                   </span>
                 ))}
-                {cloud.data.devices.map((device) => (
-                  <Fragment key={device.name}>
-                    <span className={style.metres_name} title={device.name}>{device.name}</span>
-                    <span className={style.metres_value}>{metresCell(device.yesterday)}</span>
-                    <span className={style.metres_value}>{metresCell(device.today)}</span>
-                  </Fragment>
-                ))}
+                {cloud.data.devices.map((device, i) => {
+                  const badge = badges[i];
+                  const colors = badge.code ? getPrinterColor(shopProfile, badge.code) : null;
+                  return (
+                    <Fragment key={device.name}>
+                      <span className={style.metres_name}>
+                        <span
+                          className={style.metres_badge}
+                          style={{ backgroundColor: (colors ?? BADGE_FALLBACK).bg, color: (colors ?? BADGE_FALLBACK).color }}
+                          title={device.name}
+                        >
+                          {badge.text}
+                        </span>
+                      </span>
+                      <span className={style.metres_value}>{metresLabel(device.yesterday)}</span>
+                      <span className={style.metres_value}>{metresLabel(device.today)}</span>
+                    </Fragment>
+                  );
+                })}
               </div>
               {cloud.data.devices.length === 0 && <span className={style.metres_note}>Nothing printed yesterday or today.</span>}
               {cloud.data.partialJobs > 0 && (

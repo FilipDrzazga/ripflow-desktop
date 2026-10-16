@@ -14,10 +14,14 @@ export const useCloudDayMetres = () => {
   const [state, setState] = useState({ status: "loading", data: null, error: null });
   const stopped = usePollingPaused();
   const inFlightRef = useRef(false);
+  // True while a read is running: the tile shows it, because a click on the tile (`reload`) otherwise
+  // looks like nothing happened while main answers.
+  const [refreshing, setRefreshing] = useState(false);
 
   const load = useCallback(async () => {
     if (inFlightRef.current) return;
     inFlightRef.current = true;
+    setRefreshing(true);
     try {
       const res = await getCloudDayMetres();
       if (!res?.success) {
@@ -31,6 +35,7 @@ export const useCloudDayMetres = () => {
       setState((prev) => ({ status: "error", data: prev.data, error: "PrintFactory Cloud did not answer in time." }));
     } finally {
       inFlightRef.current = false;
+      setRefreshing(false);
     }
   }, []);
 
@@ -41,6 +46,6 @@ export const useCloudDayMetres = () => {
     return () => clearInterval(id);
   }, [stopped, load]);
 
-  // `reload` is the tile's refresh button: main still answers from its cache inside a minute.
-  return { ...state, reload: load };
+  // `reload` runs when the operator clicks the tile: main still answers from its cache inside a minute.
+  return { ...state, refreshing, reload: load };
 };

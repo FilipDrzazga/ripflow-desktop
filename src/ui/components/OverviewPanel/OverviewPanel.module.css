@@ -10,12 +10,26 @@
 }
 
 /* ─── Printed metres: per machine, yesterday and today (PrintFactory Cloud) ─ */
+/* The whole block is one click target (it reads PrintFactory Cloud again): the padding and the equal negative
+   margin give the hover tint some room around the content without moving anything. */
 .metres {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  width: 100%;
+  box-sizing: border-box;
+  width: calc(100% + 16px);
   min-width: 0;
+  margin: -8px;
+  padding: 8px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.metres:hover,
+.metres:focus-visible {
+  background-color: var(--bg-grey-light);
+  outline: none;
 }
 
 .metres_head {
@@ -66,13 +80,22 @@
   align-items: center;
 }
 
-/* the column heads stay in view while the machines scroll under them */
+/* the column heads stay in view while the machines scroll under them; the tile's hover tint is behind
+   them, so they take the tile's colour instead of a white patch (.metres:hover below) */
 .metres_corner,
 .metres_colhead {
   position: sticky;
   top: 0;
   z-index: 1;
   background-color: var(--bg-white);
+  transition: background-color 0.15s ease;
+}
+
+.metres:hover .metres_corner,
+.metres:hover .metres_colhead,
+.metres:focus-visible .metres_corner,
+.metres:focus-visible .metres_colhead {
+  background-color: var(--bg-grey-light);
 }
 
 .metres_colhead {
@@ -104,14 +127,25 @@
   color: var(--text-primary);
 }
 
+/* the machine cell: one printer badge (the badge look of the Production cards) */
 .metres_name {
+  display: flex;
+  align-items: center;
   min-width: 0;
+}
+
+.metres_badge {
+  display: inline-block;
+  min-width: 0;
+  max-width: 100%;
+  padding: 3px 8px;
+  border-radius: 7px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text-primary);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
 }
 
 .metres_value {
