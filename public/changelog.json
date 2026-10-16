@@ -1,5 +1,23 @@
 [
   {
+    "version": "1.0.34",
+    "date": "2026-10-16",
+    "changes": [
+      {
+        "text": "The window can now be made smaller: a new button next to minimize switches between maximized and a smaller window, and the window can be resized down to 960 x 560. Every view (Print, Batch history, Production, Analytics, Custom Orders, Settings, Logs) rearranges itself to fit a small window instead of cutting things off",
+        "clients": ["all"]
+      },
+      {
+        "text": "Print: in a small window the search bar gets narrower so the filters stay on one line, and the overview cards sit in pairs (Cottons next to Polyesters, Inbox next to Last batch). The \"new files\" pill now floats at the top of the Print view, above the cards",
+        "clients": ["all"]
+      },
+      {
+        "text": "Production: the stage numbers get a little smaller in a small window so all stages stay on one line",
+        "clients": ["all"]
+      }
+    ]
+  },
+  {
     "version": "1.0.33",
     "date": "2026-10-15",
     "changes": [
