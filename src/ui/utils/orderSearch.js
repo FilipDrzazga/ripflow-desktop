@@ -79,6 +79,12 @@ const stageSince = (row, history) => {
   return latest ?? isoOf(row.updated_at);
 };
 
+// store.files is the readFolders answer: a list of GROUPS (one per fabric folder), each with its `items`.
+// A flat list of items is accepted too (the first tests, a direct call) - an element without `items` is
+// an item itself.
+const inboxItemsOf = (files) =>
+  (Array.isArray(files) ? files : []).flatMap((entry) => (Array.isArray(entry?.items) ? entry.items : [entry]));
+
 const tokensOf = (query) => text(query).toLowerCase().split(/\s+/).filter(Boolean);
 
 // Every token must appear somewhere in order id + customer + file name (so "ruby 401365" works
@@ -94,7 +100,9 @@ const inboxRow = ({ item, held, heldReason, production }) => {
   return {
     fileId: item.id,
     fileName: name,
-    orderKey: orderKeyOf(item.orderId),
+    // An item the parser gave no orderId (an invalid file) still shows under the ON number in its name,
+    // like the order column of the Inbox list does.
+    orderKey: orderKeyOf(text(item.orderId) || name.match(/ON\d+/i)?.[0]),
     customerName: text(item.customerName) || null,
     where: held ? ORDER_SEARCH_WHERE.HELD : ORDER_SEARCH_WHERE.INBOX,
     since: isoOf(item.createdAt),
@@ -133,7 +141,7 @@ const byNewest = (a, b) => (a < b ? 1 : a > b ? -1 : 0);
 
 /**
  * @param {string} query
- * @param {{ files?: object[], heldIds?: Set<string>, heldReasons?: Map<string,string>,
+ * @param {{ files?: object[] (store.files: groups with `items`; a flat item list also works), heldIds?: Set<string>, heldReasons?: Map<string,string>,
  *           productionStages?: Record<string, object>, stageHistory?: Record<string, object[]> }} snapshot
  *   the store slices of the same names; every one is optional (a slice not loaded yet is empty).
  * @returns {{ status: "short" | "ok", query: string, groups: object[], totalRows: number,
@@ -152,7 +160,7 @@ export const searchOrders = (query, snapshot = {}) => {
   const rows = [];
 
   const stems = new Set();
-  for (const item of Array.isArray(files) ? files : []) {
+  for (const item of inboxItemsOf(files)) {
     if (!item?.id) continue;
     const name = text(item.file?.name);
     const stem = stemOf(name);
