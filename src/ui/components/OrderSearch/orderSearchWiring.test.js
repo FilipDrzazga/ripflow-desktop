@@ -150,4 +150,10 @@ describe("OrderSearch.module.css", () => {
     expect(panel).toMatch(/transform: translate\(-50%, -50%\);/);
     expect(panel).toMatch(/\n\s+height: \d+px;/);
   });
+
+  it("sizes the list to its rows (it shrinks and scrolls when long) - it must not stretch over the fixed-height column", () => {
+    const list = css.match(/\.list \{([^}]*)\}/)[1];
+    expect(list).toMatch(/flex: 0 1 auto;/);
+    expect(list).toMatch(/min-height: 0;/);
+  });
 });
