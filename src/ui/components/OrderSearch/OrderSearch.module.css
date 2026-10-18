@@ -1,6 +1,6 @@
 /* The Ctrl+F order search window: a panel near the top centre of the window, over a dimmed backdrop.
    Above every modal (3100/3101) and the first-run wizard (3200) - it never opens over one, the stack is
-   only a safety net. Height follows the window: the list scrolls, the search row and the footer stay. */
+   only a safety net. Grey panel, the search field and the list are separate white blocks (FILIP 2026-10-18); the list scrolls. */
 .backdrop {
   position: fixed;
   inset: 0;
@@ -19,7 +19,9 @@
   max-height: calc(100vh - var(--os-top) - 16px);
   display: flex;
   flex-direction: column;
-  background: var(--bg-white);
+  gap: 8px;
+  padding: 10px;
+  background: var(--bg-grey);
   border-radius: 16px;
   box-shadow: var(--card-shadow), 0 18px 48px rgba(0, 0, 0, 0.22);
   overflow: hidden;
@@ -29,10 +31,17 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 0 18px;
-  height: 56px;
+  padding: 0 16px;
+  height: 48px;
   flex-shrink: 0;
-  border-bottom: 1px solid var(--border-grey);
+  background: var(--bg-white);
+  border: 1px solid var(--bg-grey-light);
+  border-radius: 12px;
+  box-shadow: var(--card-shadow);
+}
+
+.search_row:focus-within {
+  border-color: var(--border-black);
 }
 
 .search_icon {
@@ -62,6 +71,9 @@
   min-height: 0;
   overflow-y: auto;
   padding: 6px 8px 8px;
+  background: var(--bg-white);
+  border-radius: 12px;
+  box-shadow: var(--card-shadow);
 }
 
 .group + .group {
@@ -193,6 +205,9 @@
 .empty {
   padding: 28px 24px 32px;
   text-align: center;
+  background: var(--bg-white);
+  border-radius: 12px;
+  box-shadow: var(--card-shadow);
 }
 
 .empty_title {
@@ -213,8 +228,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 8px 18px;
-  border-top: 1px solid var(--border-grey);
+  padding: 0 8px;
   font-size: 12px;
   color: var(--text-secondary);
 }
@@ -236,7 +250,7 @@
 /* A low window (960x560): tighter rows so more of the result fits. */
 @media (max-height: 640px) {
   .search_row {
-    height: 48px;
+    height: 40px;
   }
 
   .row {
