@@ -72,6 +72,8 @@ INBOX → PARSE FILENAME → UI → SELECT FILES+PRINTER → CREATE BATCH+XML �
 
 `activeView` in `App.jsx` picks the view. `DataList`, `BatchHistory` and `Analytics` are wrapped in `ErrorBoundary`; Custom Orders and Analytics are gated by the shop profile (see `.claude/rules/shop-profile.md`).
 
+**Ctrl+F order search** (`components/OrderSearch`, logic in `utils/orderSearchWindow.js`, matching in `utils/orderSearch.js`): App-level shortcut, read-only, rows come from the store only (`files` = groups with `items`, `heldIds`, `productionStages`, `stageHistory`). It does not open before startup ends, over the first-run wizard, or over any element with `aria-modal="true"` - so **every new modal must carry `role="dialog" aria-modal="true"`** (`orderSearchWiring.test.js` scans the sources for `*backdrop` classes). Focus never leaves its INPUT (rows are not focusable; `aria-activedescendant`), which is also what keeps the Production barcode scanner quiet while it is open.
+
 ## Storage — Two-tier config
 
 **electron-store** (per-machine, `%APPDATA%\ripflow-desktop\config.json`):

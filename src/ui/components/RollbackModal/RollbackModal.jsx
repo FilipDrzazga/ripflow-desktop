@@ -28,7 +28,7 @@ const RollbackModal = ({ batchName, onConfirm, onCancel }) => {
   return createPortal(
     <>
       <div className={style.backdrop} onClick={onCancel} />
-      <div className={style.modal} onKeyDown={handleKeyDown}>
+      <div className={style.modal} onKeyDown={handleKeyDown} role="dialog" aria-modal="true" aria-label="Rollback batch">
         <h3 className={style.title}>Rollback batch</h3>
         {batchName && <p className={style.subtitle}>{batchName}</p>}
         <p className={style.label}>Select reason for rollback:</p>

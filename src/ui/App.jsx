@@ -28,6 +28,8 @@ import { getSettings } from "./services/settingsService";
 import { missingRequiredPaths } from "../shared/requiredPaths";
 import SetupWizard from "./components/SetupWizard/SetupWizard";
 import { usePollingPaused, useOnPollingResume } from "./hooks/usePollingPaused";
+import OrderSearch from "./components/OrderSearch/OrderSearch";
+import { ORDER_SEARCH_INPUT_ID, isOrderSearchShortcut, orderSearchBlockedBy } from "./utils/orderSearchWindow";
 
 const RIP_ERROR_POLL_INTERVAL = 30_000;
 const INBOX_WATCH_INTERVAL = 30_000;
@@ -73,6 +75,9 @@ const App = () => {
   // on mount, so without a remount its views would keep the old, blank paths and their Save
   // would answer "Both paths are required" after "Set up later".
   const [settingsKey, setSettingsKey] = useState(0);
+  // The Ctrl+F order search window (plan C3). Local state: nothing else needs to know it is open - the
+  // barcode scanner stays quiet on its own because focus sits in the window's INPUT.
+  const [orderSearchOpen, setOrderSearchOpen] = useState(false);
   // A profile that arrives late (or one that turns a feature off) can pull the view the
   // operator is standing on out from under them — send them back to "print" instead of
   // leaving a blank main area. Written during render, not in an effect: React re-runs
@@ -229,6 +234,26 @@ const App = () => {
     return () => document.removeEventListener("visibilitychange", sync);
   }, [setWindowHidden]);
 
+  // Ctrl+F anywhere (also from inside a local search field) opens the order search window. It does NOT
+  // open before the startup loader is done, over the first-run wizard, or over any other modal
+  // (orderSearchBlockedBy: aria-modal on every modal) - and a second Ctrl+F with the window open
+  // selects the text in its field instead of opening another. preventDefault in every case: the shortcut
+  // is ours, there is no browser find in this window.
+  useEffect(() => {
+    const onKeyDown = (e) => {
+      if (!isOrderSearchShortcut(e)) return;
+      e.preventDefault();
+      if (orderSearchOpen) {
+        document.getElementById(ORDER_SEARCH_INPUT_ID)?.select();
+        return;
+      }
+      if (orderSearchBlockedBy({ isLoading, showSetup, doc: document })) return;
+      setOrderSearchOpen(true);
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [orderSearchOpen, isLoading, showSetup]);
+
   // DB degraded banner: main emits db:error/db:recovered only on state transition.
   useEffect(() => {
     const offError = onDbError(() => setDbDegraded(true));
@@ -345,6 +370,8 @@ const App = () => {
       {showSetup && (
         <SetupWizard onClose={() => setShowSetup(false)} onPathsSaved={() => setSettingsKey((k) => k + 1)} />
       )}
+      {/* C3-2: choosing a row only closes the window; C3-3 turns the pick into a jump to the card. */}
+      {orderSearchOpen && <OrderSearch onClose={() => setOrderSearchOpen(false)} onSelect={() => setOrderSearchOpen(false)} />}
     </div>
   );
 };

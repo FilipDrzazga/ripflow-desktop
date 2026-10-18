@@ -1247,7 +1247,7 @@ const BatchHistory = () => {
               className={style.other_reason_backdrop}
               onClick={() => setOtherReasonTarget(null)}
             />
-            <div className={style.other_reason_modal}>
+            <div className={style.other_reason_modal} role="dialog" aria-modal="true" aria-label="Describe the issue">
               <p className={style.other_reason_title}>Describe the issue:</p>
               <input
                 className={style.other_reason_input}

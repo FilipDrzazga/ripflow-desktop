@@ -11,6 +11,7 @@ const FOLDERS = {
   ST: "settings",
   WZ: "wizard",
   SW: "sweep",
+  SR: "search",
 };
 
 export const folderOf = (id) => {

@@ -663,7 +663,7 @@ const DataList = () => {
             return (
               <>
                 <div className={style.hold_backdrop} onClick={cancelOverride} />
-                <div className={style.hold_modal}>
+                <div className={style.hold_modal} role="dialog" aria-modal="true" aria-label="Set quantity override">
                   <p className={style.hold_modal_title}>Set quantity override</p>
                   <p className={style.hold_modal_filename}>
                     {isBulk ? `${items.length} selected files` : single.file.name}
@@ -711,7 +711,7 @@ const DataList = () => {
         createPortal(
           <>
             <div className={style.hold_backdrop} onClick={() => setHoldModal(null)} />
-            <div className={style.hold_modal}>
+            <div className={style.hold_modal} role="dialog" aria-modal="true" aria-label="Hold file">
               <p className={style.hold_modal_title}>Hold file</p>
               <p className={style.hold_modal_filename}>
                 {holdModal.bulk ? `${holdModal.count} selected files` : holdModal.item.file.name}

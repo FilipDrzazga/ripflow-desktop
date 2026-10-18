@@ -205,7 +205,7 @@ const ProductionRollbackModal = ({ rows, onConfirm, onCancel }) => {
   return createPortal(
     <>
       <div className={style.backdrop} onClick={onCancel} />
-      <div className={`${style.modal} ${style.qc_modal}`}>
+      <div className={`${style.modal} ${style.qc_modal}`} role="dialog" aria-modal="true" aria-label="Rollback to Inbox">
 
         <div className={style.qc_action_bar}>
           <h3 className={style.modal_title} style={{ margin: 0 }}>Rollback to Inbox:</h3>

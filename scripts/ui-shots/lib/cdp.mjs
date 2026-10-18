@@ -127,11 +127,20 @@ export const connectPage = async (port, { urlPrefix = "http://localhost:5173" } 
       await page.mouseMove(at.x, at.y);
     },
     pressKey: async (key) => {
-      const codes = { Enter: 13, Escape: 27, Tab: 9, ArrowLeft: 37, ArrowRight: 39 };
+      const codes = { Enter: 13, Escape: 27, Tab: 9, ArrowLeft: 37, ArrowUp: 38, ArrowRight: 39, ArrowDown: 40 };
       const vk = codes[key];
       const text = key === "Enter" ? String.fromCharCode(13) : undefined;
       await send("Input.dispatchKeyEvent", { type: "keyDown", key, code: key, windowsVirtualKeyCode: vk, nativeVirtualKeyCode: vk, ...(text ? { text } : {}) });
       await send("Input.dispatchKeyEvent", { type: "keyUp", key, code: key, windowsVirtualKeyCode: vk, nativeVirtualKeyCode: vk });
+    },
+
+    // Ctrl + a letter key (a shortcut), e.g. pressCtrl("f"). No text is sent: a shortcut types nothing.
+    pressCtrl: async (letter) => {
+      const key = letter.toLowerCase();
+      const vk = key.toUpperCase().charCodeAt(0);
+      const base = { key, code: `Key${key.toUpperCase()}`, windowsVirtualKeyCode: vk, nativeVirtualKeyCode: vk, modifiers: 2 };
+      await send("Input.dispatchKeyEvent", { type: "rawKeyDown", ...base });
+      await send("Input.dispatchKeyEvent", { type: "keyUp", ...base });
     },
 
     // Centre of the first visible element matching a CSS selector (scrolled into view). nth picks another match.

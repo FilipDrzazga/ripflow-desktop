@@ -46,6 +46,9 @@ const PdfPreviewModal = ({
       <div
         ref={cardRef}
         className={style.card}
+        role="dialog"
+        aria-modal="true"
+        aria-label="File preview"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
