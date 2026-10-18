@@ -129,29 +129,31 @@ describe("OrderSearch.module.css", () => {
     expect(Math.min(...zs)).toBeGreaterThan(3200);
   });
 
-  it("has no container: the panel paints nothing, its gap is empty and clicks through to the backdrop", () => {
+  it("is ONE container again: the panel paints the white surface, radius and shadow and clips its children", () => {
     const panel = css.match(/\.panel \{([^}]*)\}/)[1];
-    expect(panel).not.toMatch(/background|box-shadow|padding|border-radius/);
-    expect(panel).toMatch(/gap: \d+px;/);
-    expect(panel).toMatch(/pointer-events: none;/);
-    expect(css).toMatch(/\.panel > \* \{[^}]*pointer-events: auto;/);
+    expect(panel).toMatch(/background: var\(--bg-white\);/);
+    expect(panel).toMatch(/border-radius: 16px;/);
+    expect(panel).toMatch(/box-shadow:/);
+    expect(panel).toMatch(/overflow: hidden;/);
+    expect(panel).not.toMatch(/pointer-events|\n\s+gap:/);
   });
 
   it("keeps the panel inside a low window: viewport-bound height, the list scrolls", () => {
-    expect(css).toMatch(/max-height: calc\(100vh - var\(--os-top\) - 16px\)/);
+    expect(css).toMatch(/max-height: min\(600px, calc\(100vh - var\(--os-top\) - 16px\)\)/);
     expect(css).toMatch(/\.list \{[^}]*overflow-y: auto;/);
     expect(css).toMatch(/width: min\(680px, calc\(100vw - 32px\)\)/);
   });
 
-  it("centres the panel on the middle of the window with a fixed height, so the field does not jump while typing", () => {
+  it("centres a full panel: the top edge sits where a 600 px panel would start, so the field does not jump while typing", () => {
     const panel = css.match(/\.panel \{([^}]*)\}/)[1];
-    expect(panel).toMatch(/top: 50%;/);
+    expect(panel).toMatch(/--os-top: max\(16px, calc\(50vh - 300px\)\);/);
+    expect(panel).toMatch(/top: var\(--os-top\);/);
     expect(panel).toMatch(/left: 50%;/);
-    expect(panel).toMatch(/transform: translate\(-50%, -50%\);/);
-    expect(panel).toMatch(/\n\s+height: \d+px;/);
+    expect(panel).toMatch(/transform: translateX\(-50%\);/);
+    expect(panel).not.toMatch(/\n\s+height: \d+px;/);
   });
 
-  it("sizes the list to its rows (it shrinks and scrolls when long) - it must not stretch over the fixed-height column", () => {
+  it("sizes the list to its rows (it shrinks and scrolls when long) - it must not stretch to fill the panel", () => {
     const list = css.match(/\.list \{([^}]*)\}/)[1];
     expect(list).toMatch(/flex: 0 1 auto;/);
     expect(list).toMatch(/min-height: 0;/);
