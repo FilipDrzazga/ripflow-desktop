@@ -186,4 +186,141 @@ export const run = async ({ page, step }) => {
     await page.sleep(300);
     await closeOverlays(page);
   });
+
+  // ---- C3-3: choosing a row is a jump to the file --------------------------------------------------------------
+
+  // Is the element in the visible part of the window, and is the search window gone?
+  const cardState = (stem) =>
+    page.evaluate(
+      (id) => {
+        const el = document.querySelector(`[data-file-id="${CSS.escape(id)}"]`);
+        if (!el) return { found: false };
+        const r = el.getBoundingClientRect();
+        return { found: true, inView: r.top >= 0 && r.bottom <= window.innerHeight && r.height > 0, windows: document.querySelectorAll('[role=dialog][aria-label="Find an order"]').length };
+      },
+      stem,
+    );
+  // The scroll is smooth: give it up to 3 s to bring the card into view before judging.
+  const settledCard = async (stem) => {
+    let state = await cardState(stem);
+    for (let i = 0; i < 10 && !(state.found && state.inView); i++) {
+      await page.sleep(300);
+      state = await cardState(stem);
+    }
+    return state;
+  };
+  const searchAndEnter = async (text) => {
+    await openWindow(page);
+    await typeText(page, text);
+  };
+  const oldestProd = prodStems[prodStems.length - 1];
+
+  await step("SR-11", async ({ shot }) => {
+    // From Print to a Production card: Production mounts, serves the task, scrolls to the oldest day's card
+    await openNav(page, "Print");
+    await searchAndEnter(oldestProd);
+    await parkMouse(page);
+    await shot("jump-to-production-before");
+    await page.pressKey("Enter");
+    await page.sleep(700);
+    const state = await settledCard(oldestProd);
+    if (!state.found || !state.inView || state.windows !== 0) throw new Error(`jump to Production: ${JSON.stringify(state)}`);
+    await parkMouse(page);
+    await shot("jump-to-production-after");
+  });
+
+  await step("SR-12", async ({ shot }) => {
+    // Already on Production: the card's day is collapsed and a search hides it. The jump opens the day, empties the box,
+    // and a SECOND pick of the same file (task cleared in between) scrolls again.
+    await page.evaluate((id) => {
+      const el = document.querySelector(`[data-file-id="${CSS.escape(id)}"]`);
+      el.closest("[data-day-key]").querySelector('[class*="day_header_toggle"]').click();
+    }, oldestProd);
+    await page.sleep(500);
+    if ((await cardState(oldestProd)).found) throw new Error("the day did not collapse");
+    await page.evaluate(() => {
+      const el = document.querySelector('input[placeholder="Id, customer, fabric"]');
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set.call(el, "zzzzzz");
+      el.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    await page.sleep(400);
+    await parkMouse(page);
+    await shot("production-day-collapsed-and-filtered");
+    await searchAndEnter(oldestProd);
+    await page.pressKey("Enter");
+    await page.sleep(700);
+    const first = await settledCard(oldestProd);
+    if (!first.found || !first.inView || first.windows !== 0) throw new Error(`jump with a collapsed day and a search: ${JSON.stringify(first)}`);
+    const boxEmpty = await page.evaluate(() => document.querySelector('input[placeholder="Id, customer, fabric"]').value === "");
+    if (!boxEmpty) throw new Error("the Production search box was not emptied");
+    await parkMouse(page);
+    await shot("production-after-jump-filters-lifted");
+    // second pick of the same file: scroll away first, then jump again
+    await page.evaluate(() => document.querySelectorAll("[class*=cards_wrapper]").forEach((e) => (e.scrollTop = 0)));
+    await page.sleep(300);
+    await searchAndEnter(oldestProd);
+    await page.pressKey("Enter");
+    await page.sleep(700);
+    const second = await settledCard(oldestProd);
+    if (!second.found || !second.inView) throw new Error(`the second pick of the same file did not jump: ${JSON.stringify(second)}`);
+  });
+
+  const printRow = (stem) =>
+    page.evaluate(
+      (name) => {
+        const el = [...document.querySelectorAll('[class*="file_name_text"]')].find((e) => e.textContent.replace(/\.pdf$/i, "") === name);
+        if (!el) return { found: false };
+        const r = el.getBoundingClientRect();
+        return { found: true, inView: r.top >= 0 && r.bottom <= window.innerHeight, windows: document.querySelectorAll('[role=dialog][aria-label="Find an order"]').length };
+      },
+      stem,
+    );
+  const activeTabName = () =>
+    page.evaluate(() => [...document.querySelectorAll("button")].find((b) => /active/.test(b.className) && /filter_button/.test(b.className))?.textContent.trim() ?? null);
+
+  await step("SR-13", async ({ shot }) => {
+    // From Production to an Inbox file that the material tab hides: the tab goes back to All, the row is scrolled to
+    const stem = inboxStems.find((s) => s.startsWith("ON") && s !== heldStem);
+    await openNav(page, "Print");
+    // the tab that hides it: try Cottons, and Polyesters when the file is a cotton
+    for (const tab of ["Cottons", "Polyesters"]) {
+      await page.clickText(tab, { selector: "button", within: "main" });
+      await page.sleep(400);
+      if (!(await printRow(stem)).found) break;
+    }
+    if ((await printRow(stem)).found) throw new Error("no material tab hides the file");
+    await openNav(page, "Production");
+    await page.sleep(500);
+    await searchAndEnter(stem);
+    await parkMouse(page);
+    await shot("jump-to-print-before");
+    await page.pressKey("Enter");
+    await page.sleep(700);
+    const state = await printRow(stem);
+    if (!state.found || !state.inView || state.windows !== 0) throw new Error(`jump to Print: ${JSON.stringify(state)}`);
+    const tab = await activeTabName();
+    if (tab !== "All") throw new Error(`the hiding tab was not lifted, active tab "${tab}"`);
+    await parkMouse(page);
+    await shot("jump-to-print-after");
+  });
+
+  await step("SR-14", async ({ shot }) => {
+    // A Held file behind a search that hides it, jumped to from Print itself (the view is already mounted)
+    await page.evaluate(() => {
+      const el = document.querySelector('input[placeholder="Search..."]');
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set.call(el, "zzzzzz");
+      el.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    await page.sleep(400);
+    if ((await printRow(heldStem)).found) throw new Error("the search did not hide the held file");
+    await searchAndEnter(heldStem);
+    await page.pressKey("Enter");
+    await page.sleep(700);
+    const state = await printRow(heldStem);
+    if (!state.found || !state.inView || state.windows !== 0) throw new Error(`jump to a held file: ${JSON.stringify(state)}`);
+    const box = await page.evaluate(() => document.querySelector('input[placeholder="Search..."]').value);
+    if (box !== "") throw new Error(`the Print search box was not emptied: "${box}"`);
+    await parkMouse(page);
+    await shot("jump-to-held-after");
+  });
 };

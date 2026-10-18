@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useStore } from "../../store/useStore";
 import { notify } from "../../utils/notify";
@@ -34,6 +34,12 @@ import { getPrinters, getPrinterColor } from "../../utils/shopProfileData";
 import { sharedPreferredPrinter } from "../../utils/preferredPrinter";
 import { claimShiftMouseDown } from "../../utils/rangeSelect";
 import { describeSkipped } from "../../utils/printRangeSelect";
+import { APP_VIEW } from "../../constants/appViews";
+import { isSearchTargetFor } from "../../utils/searchTarget";
+import { revealElement } from "../../utils/revealElement";
+
+// How long a row the Ctrl+F search jumped to keeps its "found it" flash (DataList.module.css).
+const FOUND_FLASH_MS = 1500;
 
 const formatFileSize = (bytes) => {
   if (bytes == null) return null;
@@ -234,6 +240,40 @@ const DataList = () => {
 
     setContextMenu({ item: nextItem, x: event.clientX, y: event.clientY });
   };
+
+  // Ctrl+F jump (plan C3-3): a row picked in the order-search window that leads to an Inbox / Held file
+  // arrives as the store's ONE jump task. Served here - on mount (App.jsx switched the view) or while
+  // already mounted (the nonce changes) - and cleared, so the same file picked twice jumps twice.
+  // revealPrintFile lifts only the filters that hide the file (tab, search, type chips; sort stays); the
+  // row is then scrolled to and flashed. The selection is left alone: this is a look, not an action.
+  const searchTarget = useStore((state) => state.searchTarget);
+  const clearSearchTarget = useStore((state) => state.clearSearchTarget);
+  const revealPrintFile = useStore((state) => state.revealPrintFile);
+  const searchTargetRef = useRef(null);
+  searchTargetRef.current = searchTarget;
+  const jumpNonce = isSearchTargetFor(searchTarget, APP_VIEW.PRINT) ? searchTarget.nonce : null;
+  useEffect(() => {
+    if (jumpNonce === null) return undefined;
+    // Deferred like OrderView's focus signal: no setState in the effect body (react-hooks/set-state-in-effect).
+    const timer = setTimeout(() => {
+      const target = searchTargetRef.current;
+      if (!isSearchTargetFor(target, APP_VIEW.PRINT) || target.nonce !== jumpNonce) return;
+      clearSearchTarget(target.nonce);
+      if (!revealPrintFile(target.fileId).found) {
+        // Printed, rolled back out of the scan or moved by another station between the search and the jump.
+        notify({ type: "Warning", title: "Not found", message: `${target.fileId} is no longer in the Inbox.` });
+        return;
+      }
+      // Not cancelled by the cleanup: clearing the task above changes jumpNonce and re-runs this effect.
+      revealElement(`[data-context-item-id="${CSS.escape(target.fileId)}"]`, {
+        onReveal: (el) => {
+          el.classList.add(style.list_item_found);
+          setTimeout(() => el.classList.remove(style.list_item_found), FOUND_FLASH_MS);
+        },
+      });
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [jumpNonce, clearSearchTarget, revealPrintFile]);
 
   useEffect(() => {
     if (!contextMenu) return undefined;

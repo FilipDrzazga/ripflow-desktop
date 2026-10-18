@@ -30,6 +30,7 @@ import SetupWizard from "./components/SetupWizard/SetupWizard";
 import { usePollingPaused, useOnPollingResume } from "./hooks/usePollingPaused";
 import OrderSearch from "./components/OrderSearch/OrderSearch";
 import { ORDER_SEARCH_INPUT_ID, isOrderSearchShortcut, orderSearchBlockedBy } from "./utils/orderSearchWindow";
+import { APP_VIEW } from "./constants/appViews";
 
 const RIP_ERROR_POLL_INTERVAL = 30_000;
 const INBOX_WATCH_INTERVAL = 30_000;
@@ -61,12 +62,13 @@ const App = () => {
   const setPrintedRootUnreachable = useStore((state) => state.setPrintedRootUnreachable);
   const checkPrintedRoot = useStore((state) => state.checkPrintedRoot);
   const reloadShopData = useStore((state) => state.reloadShopData);
+  const requestSearchJump = useStore((state) => state.requestSearchJump);
   const checkInbox = useStore((state) => state.checkInbox);
   const recheckCopying = useStore((state) => state.recheckCopying);
   const inboxNewCount = useStore((state) => state.inboxWatch.added.length);
   const [shopDataReloading, setShopDataReloading] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeView, setActiveView] = useState("print");
+  const [activeView, setActiveView] = useState(APP_VIEW.PRINT);
   // In the store, not local state (4-wizard-c): refreshFiles reads it to drop its own
   // "Paths not set" toast while the wizard is open.
   const showSetup = useStore((state) => state.setupWizardOpen);
@@ -83,7 +85,7 @@ const App = () => {
   // leaving a blank main area. Written during render, not in an effect: React re-runs
   // this render before committing, so the forbidden view is never painted at all, and
   // the guards on the two gated views below close the same hole structurally.
-  if (!isViewEnabled(activeView, shopProfile)) setActiveView("print");
+  if (!isViewEnabled(activeView, shopProfile)) setActiveView(APP_VIEW.PRINT);
   // RIP errors have no NavBar tab to filter out — their entries are the per-file badge in
   // Production and BatchHistory, the batch-header counter, the popover behind those badges
   // and the print-view status pill. Read the WARNING on the gated effect below before
@@ -121,7 +123,7 @@ const App = () => {
         .then((res) => {
           if (res?.success && missingRequiredPaths(res.settings).length > 0) {
             setShowSetup(true);
-            setActiveView("settings");
+            setActiveView(APP_VIEW.SETTINGS);
           }
         })
         .catch((err) => console.error("[startup] getSettings failed:", err));
@@ -254,6 +256,19 @@ const App = () => {
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [orderSearchOpen, isLoading, showSetup]);
 
+  // A row picked in the window (Enter or click) closes it and becomes the ONE jump task in the store
+  // (store.requestSearchJump); the view that owns the file serves it - DataList for Inbox / Held,
+  // Production for a stage. The view switch is a no-op when the operator is already there, and the task's
+  // nonce makes the view act anyway. A view this station does not offer gets no jump (isViewEnabled): a
+  // task for a view that never mounts would sit in the store and fire at a later, unrelated visit.
+  const handleSearchSelect = (row) => {
+    setOrderSearchOpen(false);
+    const view = row?.target?.view;
+    if (!view || !isViewEnabled(view, shopProfile)) return;
+    const task = requestSearchJump(row.target);
+    if (task) setActiveView(task.view);
+  };
+
   // DB degraded banner: main emits db:error/db:recovered only on state transition.
   useEffect(() => {
     const offError = onDbError(() => setDbDegraded(true));
@@ -335,7 +350,7 @@ const App = () => {
         <div className={styles.body}>
           <NavBar activeView={activeView} onViewChange={setActiveView} shopProfile={shopProfile} badges={{ print: inboxNewCount }} />
           <main className={styles.content}>
-            {activeView === "print" && (
+            {activeView === APP_VIEW.PRINT && (
               <div className={styles.print_view}>
                 <DataOverviewSection onNavigate={setActiveView} />
                 <DataFilters />
@@ -345,24 +360,24 @@ const App = () => {
                 </ErrorBoundary>
               </div>
             )}
-            {activeView === "batch" && (
+            {activeView === APP_VIEW.BATCH && (
               <ErrorBoundary>
                 <BatchHistory />
               </ErrorBoundary>
             )}
-            {activeView === "analytics" && isViewEnabled("analytics", shopProfile) && (
+            {activeView === APP_VIEW.ANALYTICS && isViewEnabled(APP_VIEW.ANALYTICS, shopProfile) && (
               <ErrorBoundary>
                 <Analytics />
               </ErrorBoundary>
             )}
-            {activeView === "production" && (
+            {activeView === APP_VIEW.PRODUCTION && (
               <ErrorBoundary>
                 <Production />
               </ErrorBoundary>
             )}
-            {activeView === "customOrder" && isViewEnabled("customOrder", shopProfile) && <CustomOrder />}
-            {activeView === "logs" && <SessionLogs />}
-            {activeView === "settings" && <Settings key={settingsKey} />}
+            {activeView === APP_VIEW.CUSTOM_ORDER && isViewEnabled(APP_VIEW.CUSTOM_ORDER, shopProfile) && <CustomOrder />}
+            {activeView === APP_VIEW.LOGS && <SessionLogs />}
+            {activeView === APP_VIEW.SETTINGS && <Settings key={settingsKey} />}
           </main>
           <DataPrintSelection />
         </div>
@@ -370,8 +385,7 @@ const App = () => {
       {showSetup && (
         <SetupWizard onClose={() => setShowSetup(false)} onPathsSaved={() => setSettingsKey((k) => k + 1)} />
       )}
-      {/* C3-2: choosing a row only closes the window; C3-3 turns the pick into a jump to the card. */}
-      {orderSearchOpen && <OrderSearch onClose={() => setOrderSearchOpen(false)} onSelect={() => setOrderSearchOpen(false)} />}
+      {orderSearchOpen && <OrderSearch onClose={() => setOrderSearchOpen(false)} onSelect={handleSearchSelect} />}
     </div>
   );
 };

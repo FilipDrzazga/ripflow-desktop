@@ -286,6 +286,23 @@
   background-color: #e0e7ff;
 }
 
+/* "Found it": the row the Ctrl+F search jumped to. Class added by hand for 1.5 s (DataList) and an
+   animation, so nothing is left behind on the row afterwards. The amber of the Production scan flash. */
+.list_item.list_item_found {
+  animation: list_item_found 1.5s ease-out;
+}
+
+@keyframes list_item_found {
+  0% {
+    background-color: #fff3cd;
+    box-shadow: 0 0 0 2px #f5d98b;
+  }
+  100% {
+    background-color: transparent;
+    box-shadow: 0 0 0 2px transparent;
+  }
+}
+
 .list_item_held {
   background-color: rgba(239, 68, 68, 0.06);
   border: 1px solid rgba(239, 68, 68, 0.18);

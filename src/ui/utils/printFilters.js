@@ -16,6 +16,20 @@ export const matchesTabAndSearch = (item, activeTab, query) => {
   );
 };
 
+// Which of the three filters that HIDE rows keep this file off the list: the material tab, the search
+// box, the print-type chips. Sort hides nothing. The order-search jump clears exactly these, so the
+// operator keeps every filter that was not in the way. Same conditions as the list itself
+// (matchesTabAndSearch and the type check of the store's applyFilters), asked one at a time.
+export const printFiltersHiding = (item, { activeTab, searchQuery, printTypeFilter }) => {
+  const query = (searchQuery ?? "").trim().toLowerCase();
+  const types = printTypeFilter ?? [];
+  return {
+    tab: !matchesTabAndSearch(item, activeTab, ""),
+    search: !matchesTabAndSearch(item, "All", query),
+    printType: types.length > 0 && !types.includes(item.printTypeCode),
+  };
+};
+
 // How many files of each print type the current tab + search hold, the type filter itself left
 // out (the count says what picking the chip would show). { [printTypeCode]: n }
 export const countByPrintType = (files, activeTab, searchQuery) => {

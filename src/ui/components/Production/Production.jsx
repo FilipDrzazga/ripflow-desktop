@@ -41,6 +41,9 @@ import { useStageTransition } from "../../hooks/useStageTransition";
 import { useScrollAnchor } from "../../hooks/useScrollAnchor";
 import { usePollingPaused, useOnPollingResume } from "../../hooks/usePollingPaused";
 import { VIEW_MODE } from "../../constants/viewModes";
+import { APP_VIEW } from "../../constants/appViews";
+import { isSearchTargetFor } from "../../utils/searchTarget";
+import { revealElement } from "../../utils/revealElement";
 import { isFeatureEnabled } from "../../utils/featureVisibility";
 import { canMarkShipped, isShippableRow } from "../../utils/markShipped";
 import { canRollbackRows } from "../../utils/productionRollback";
@@ -1026,6 +1029,27 @@ const Production = () => {
 
   // ─── Scanner ───────────────────────────────────────────────────────────────
 
+  // Bring ONE file's card into view: lift every filter that could hide it, open its day, scroll to it and
+  // flash it. The scanner (a file barcode) and the Ctrl+F search jump below both go through here - one
+  // implementation, so the two cannot disagree about what "show me this file" clears. The lens is NOT
+  // touched here: the scan flips ORDERS -> BATCHES at its top, the jump sets BATCHES itself.
+  const showFileCard = useCallback(
+    (row) => {
+      const fileId = row.file_id;
+      setStageFilter("all");
+      setBatchFilter(null);
+      setDayFilter(null);
+      // Must happen BEFORE the card is looked up — a card inside a collapsed day is not
+      // in the DOM, so there would be nothing to scroll to.
+      expandDay(dayKeyFromBatchPath(row.batch_path) ?? UNKNOWN_DAY_KEY);
+      setSearch("");
+      setHighlightedId(fileId);
+      revealElement(`[data-file-id="${CSS.escape(fileId)}"]`);
+      setTimeout(() => setHighlightedId(null), 1500);
+    },
+    [expandDay],
+  );
+
   const handleScan = useCallback(
     async (value) => {
       // A scan acts on the Batches lens (filter/scroll/highlight). From the Orders
@@ -1196,27 +1220,48 @@ const Production = () => {
         notify({ type: "Error", title: "Not found", message: `Order not found: ${value}` });
         return;
       }
-      setStageFilter("all");
-      setBatchFilter(null);
-      setDayFilter(null);
-      // Must happen BEFORE the rAF below — a card inside a collapsed day is not
-      // in the DOM, so querySelector would find nothing to scroll to.
-      expandDay(dayKeyFromBatchPath(row.batch_path) ?? UNKNOWN_DAY_KEY);
-      setSearch("");
-      setHighlightedId(value);
-      requestAnimationFrame(() => {
-        const el = document.querySelector(`[data-file-id="${CSS.escape(value)}"]`);
-        if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
-      });
-      setTimeout(() => setHighlightedId(null), 1500);
+      showFileCard(row);
       notify({ type: "Success", title: "Order found", message: `${row.order_id ?? value}` });
     },
-    [productionStages, workstationRole, shopProfile, applyStageTransition, expandDay],
+    [productionStages, workstationRole, shopProfile, applyStageTransition, expandDay, showFileCard],
   );
 
   useEffect(() => {
     handleScanRef.current = handleScan;
   }, [handleScan]);
+
+  // ─── Ctrl+F jump (plan C3-3) ───────────────────────────────────────────────
+
+  // A row picked in the order-search window that leads to a Production stage arrives as the store's ONE
+  // jump task (store.requestSearchJump). It is served here, on mount (App.jsx switched the view) or while
+  // already mounted (the nonce changes), then cleared - so the same file picked twice jumps twice. The
+  // card is shown on the Batches lens (the Orders and Receive lenses do not render the cards the jump
+  // scrolls to) through the SAME showFileCard the scanner uses.
+  const searchTarget = useStore((s) => s.searchTarget);
+  const clearSearchTarget = useStore((s) => s.clearSearchTarget);
+  const searchTargetRef = useRef(null);
+  searchTargetRef.current = searchTarget;
+  const productionStagesRef = useRef(productionStages);
+  productionStagesRef.current = productionStages;
+  const jumpNonce = isSearchTargetFor(searchTarget, APP_VIEW.PRODUCTION) ? searchTarget.nonce : null;
+  useEffect(() => {
+    if (jumpNonce === null) return undefined;
+    // Deferred like OrderView's focus signal: no setState in the effect body (react-hooks/set-state-in-effect).
+    const timer = setTimeout(() => {
+      const target = searchTargetRef.current;
+      if (!isSearchTargetFor(target, APP_VIEW.PRODUCTION) || target.nonce !== jumpNonce) return;
+      clearSearchTarget(target.nonce);
+      const row = productionStagesRef.current[target.fileId];
+      if (!row) {
+        // Rolled back or shipped-and-purged between the search and the jump.
+        notify({ type: "Warning", title: "Not found", message: `${target.fileId} is no longer in Production.` });
+        return;
+      }
+      setViewMode(VIEW_MODE.BATCHES);
+      showFileCard(row);
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [jumpNonce, clearSearchTarget, showFileCard]);
 
   useEffect(() => {
     let buffer = "";

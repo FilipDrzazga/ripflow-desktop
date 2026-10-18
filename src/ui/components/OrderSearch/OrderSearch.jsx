@@ -217,7 +217,8 @@ const OrderSearch = ({ onClose, onSelect }) => {
         )}
 
         <div className={style.footer}>
-          <span className={style.key}>↑ ↓</span> move <span className={style.key}>Esc</span> close
+          <span className={style.key}>↑ ↓</span> move <span className={style.key}>Enter</span> show{" "}
+          <span className={style.key}>Esc</span> close
         </div>
       </div>
     </>,

@@ -17,6 +17,7 @@
 // `alsoInProduction`; when it matches only the Production row, that row is shown.
 
 import { printerOfBatch } from "../../shared/batchFolderName";
+import { APP_VIEW } from "../constants/appViews";
 import { dayKeyFromBatchPath } from "./dayKey";
 import { ORDER_STAGE_PIPELINE, UNKNOWN_ORDER_KEY, UNKNOWN_ORDER_LABEL } from "./groupByOrder";
 
@@ -26,11 +27,11 @@ export const ORDER_SEARCH_WHERE = {
   HELD: "held",
 };
 
-// The view ids App.jsx switches on (`activeView`). The target of a row is a VIEW plus the file;
-// C3-3 turns it into the actual navigation.
+// The view ids App.jsx switches on (`activeView`), taken from the one constant App.jsx itself uses. The
+// target of a row is a VIEW plus the file; utils/searchTarget.js turns it into the actual navigation.
 export const ORDER_SEARCH_VIEW = {
-  PRINT: "print",
-  PRODUCTION: "production",
+  PRINT: APP_VIEW.PRINT,
+  PRODUCTION: APP_VIEW.PRODUCTION,
 };
 
 // Below this many characters (after trim) nothing is searched: one letter would match half the

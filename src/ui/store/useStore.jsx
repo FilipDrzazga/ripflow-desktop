@@ -36,7 +36,8 @@ import { toggleHeldId, pruneHeldSelection, unholdMany } from "../utils/heldSelec
 import { lockMaterialOf, printSelectBlock, planRangeSelect, anchorFor } from "../utils/printRangeSelect";
 import { isToastHiddenByWizard } from "../utils/setupWizard";
 import { getStagesByBatch as getStagesByBatchApi, getAllStages as getAllStagesApi, getStagesAfter as getStagesAfterApi, getAllStageHistory as getAllStageHistoryApi, clearAllProductionStages as clearAllProductionStagesApi, getOpenReprints as getOpenReprintsApi } from "../services/productionService";
-import { matchesTabAndSearch, SORT_ORDER } from "../utils/printFilters";
+import { matchesTabAndSearch, printFiltersHiding, SORT_ORDER } from "../utils/printFilters";
+import { makeSearchTarget } from "../utils/searchTarget";
 import { scanRipErrors as scanRipErrorsApi, resolveRipError as resolveRipErrorApi, resolveRipErrorJob as resolveRipErrorJobApi } from "../services/ripErrorService";
 
 const applySort = (groups, sortOrder, config = null) => {
@@ -565,6 +566,45 @@ export const useStore = create(
         newSelectedIds.add(id);
         return { selectedIds: newSelectedIds };
       }),
+
+    // The jump from a Ctrl+F row to the file (plan C3-3): ONE pending task, { view, fileId, dayKey, nonce }.
+    // App.jsx switches the view; the view that owns the file (DataList / Production) consumes it and clears
+    // it with clearSearchTarget(nonce). searchJumpSeq only ever grows, so the second pick of the same file
+    // is a new nonce even though the task was cleared in between (utils/searchTarget.js).
+    searchTarget: null,
+    searchJumpSeq: 0,
+    // Returns the task it stored, or null when the row led nowhere (nothing is set then).
+    requestSearchJump: (target) => {
+      const nonce = get().searchJumpSeq + 1;
+      const searchTarget = makeSearchTarget(target, nonce);
+      if (!searchTarget) return null;
+      set({ searchTarget, searchJumpSeq: nonce });
+      return searchTarget;
+    },
+    // Only the task it was asked about: a newer pick made while the old one was being served stays.
+    clearSearchTarget: (nonce) =>
+      set((state) => (state.searchTarget && state.searchTarget.nonce === nonce ? { searchTarget: null } : state)),
+    // Print half of the jump: lift the filters that keep an Inbox / Held file off the list (printFiltersHiding
+    // - only those, sort stays) so the row is rendered. { found: false } when the file is no longer in the
+    // scan; `cleared` names the filters it lifted ("tab", "search", "printType").
+    revealPrintFile: (fileId) => {
+      const state = get();
+      const item = state.files.flatMap((group) => group.items ?? []).find((i) => i.id === fileId);
+      if (!item) return { found: false, cleared: [] };
+      const hiding = printFiltersHiding(item, state);
+      const cleared = Object.keys(hiding).filter((key) => hiding[key]);
+      if (cleared.length === 0) return { found: true, cleared };
+      const activeTab = hiding.tab ? "All" : state.activeTab;
+      const searchQuery = hiding.search ? "" : state.searchQuery;
+      const printTypeFilter = hiding.printType ? [] : state.printTypeFilter;
+      set({
+        activeTab,
+        searchQuery,
+        printTypeFilter,
+        filteredFiles: applyFilters(state.files, activeTab, searchQuery, state.sortOrder, printTypeFilter, state.fabricConfig),
+      });
+      return { found: true, cleared };
+    },
 
     // The anchor of a shift-click range in Print: the row last clicked and applied. It lives with
     // the selections - emptied together with them by the subscriber at the bottom of this file.
