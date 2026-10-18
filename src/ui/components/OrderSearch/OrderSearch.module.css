@@ -1,8 +1,10 @@
-/* The Ctrl+F order search window: a panel near the top centre of the window, over a dimmed backdrop.
+/* The Ctrl+F order search window: a panel centred in the window (both ways), over a dimmed backdrop.
    Above every modal (3100/3101) and the first-run wizard (3200) - it never opens over one, the stack is
    only a safety net. No container (FILIP 2026-10-18 17:47): the search field, an EMPTY gap that shows the dimmed
    page, then the list as its own white block - three loose pieces on the backdrop. The panel is only a layout
-   column and takes no clicks (pointer-events), so a click in the gap reaches the backdrop and closes; the list scrolls. */
+   column and takes no clicks (pointer-events), so a click in the gap reaches the backdrop and closes; the list scrolls.
+   Centred (FILIP 2026-10-18 18:09): the column has a FIXED height and sits on the middle of the window, the field at
+   its top - so the field stays put while the list grows or shrinks under the typing, and a full list is centred. */
 .backdrop {
   position: fixed;
   inset: 0;
@@ -11,13 +13,14 @@
 }
 
 .panel {
-  --os-top: clamp(16px, 10vh, 96px);
+  --os-top: 16px;
   position: fixed;
   z-index: 3301;
-  top: var(--os-top);
+  top: 50%;
   left: 50%;
-  transform: translateX(-50%);
+  transform: translate(-50%, -50%);
   width: min(680px, calc(100vw - 32px));
+  height: 600px;
   max-height: calc(100vh - var(--os-top) - 16px);
   display: flex;
   flex-direction: column;

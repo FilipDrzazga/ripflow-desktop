@@ -142,4 +142,12 @@ describe("OrderSearch.module.css", () => {
     expect(css).toMatch(/\.list \{[^}]*overflow-y: auto;/);
     expect(css).toMatch(/width: min\(680px, calc\(100vw - 32px\)\)/);
   });
+
+  it("centres the panel on the middle of the window with a fixed height, so the field does not jump while typing", () => {
+    const panel = css.match(/\.panel \{([^}]*)\}/)[1];
+    expect(panel).toMatch(/top: 50%;/);
+    expect(panel).toMatch(/left: 50%;/);
+    expect(panel).toMatch(/transform: translate\(-50%, -50%\);/);
+    expect(panel).toMatch(/\n\s+height: \d+px;/);
+  });
 });
