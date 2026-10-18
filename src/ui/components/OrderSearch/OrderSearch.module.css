@@ -1,6 +1,8 @@
 /* The Ctrl+F order search window: a panel near the top centre of the window, over a dimmed backdrop.
    Above every modal (3100/3101) and the first-run wizard (3200) - it never opens over one, the stack is
-   only a safety net. Grey panel, the search field and the list are separate white blocks (FILIP 2026-10-18); the list scrolls. */
+   only a safety net. No container (FILIP 2026-10-18 17:47): the search field, an EMPTY gap that shows the dimmed
+   page, then the list as its own white block - three loose pieces on the backdrop. The panel is only a layout
+   column and takes no clicks (pointer-events), so a click in the gap reaches the backdrop and closes; the list scrolls. */
 .backdrop {
   position: fixed;
   inset: 0;
@@ -19,12 +21,12 @@
   max-height: calc(100vh - var(--os-top) - 16px);
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 10px;
-  background: var(--bg-grey);
-  border-radius: 16px;
-  box-shadow: var(--card-shadow), 0 18px 48px rgba(0, 0, 0, 0.22);
-  overflow: hidden;
+  gap: 18px;
+  pointer-events: none;
+}
+
+.panel > * {
+  pointer-events: auto;
 }
 
 .search_row {
@@ -223,14 +225,19 @@
   color: var(--text-secondary);
 }
 
+/* The key hints sit straight on the dimmed page now: a small white chip keeps them readable. */
 .footer {
   flex-shrink: 0;
+  align-self: center;
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 0 8px;
+  padding: 6px 14px;
   font-size: 12px;
   color: var(--text-secondary);
+  background: var(--bg-white);
+  border-radius: 999px;
+  box-shadow: var(--card-shadow);
 }
 
 .key {

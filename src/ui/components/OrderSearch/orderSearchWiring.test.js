@@ -129,6 +129,14 @@ describe("OrderSearch.module.css", () => {
     expect(Math.min(...zs)).toBeGreaterThan(3200);
   });
 
+  it("has no container: the panel paints nothing, its gap is empty and clicks through to the backdrop", () => {
+    const panel = css.match(/\.panel \{([^}]*)\}/)[1];
+    expect(panel).not.toMatch(/background|box-shadow|padding|border-radius/);
+    expect(panel).toMatch(/gap: \d+px;/);
+    expect(panel).toMatch(/pointer-events: none;/);
+    expect(css).toMatch(/\.panel > \* \{[^}]*pointer-events: auto;/);
+  });
+
   it("keeps the panel inside a low window: viewport-bound height, the list scrolls", () => {
     expect(css).toMatch(/max-height: calc\(100vh - var\(--os-top\) - 16px\)/);
     expect(css).toMatch(/\.list \{[^}]*overflow-y: auto;/);
