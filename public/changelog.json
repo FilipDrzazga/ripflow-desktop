@@ -1,5 +1,15 @@
 [
   {
+    "version": "1.0.36",
+    "date": "2026-10-19",
+    "changes": [
+      {
+        "text": "Order search: press Ctrl+F in any view to find an order by its number, the customer or part of a file name (from 3 characters). Every file of the order is listed with where it is now - Inbox, Held, or a Production stage up to Shipped - plus the hold reason and how long ago it got there. Enter or a click jumps straight to that file in Print or Production, and Esc closes the window",
+        "clients": ["all"]
+      }
+    ]
+  },
+  {
     "version": "1.0.35",
     "date": "2026-10-16",
     "changes": [
