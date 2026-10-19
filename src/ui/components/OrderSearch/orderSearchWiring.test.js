@@ -159,13 +159,6 @@ describe("OrderSearch.module.css", () => {
     expect(list).toMatch(/min-height: 0;/);
   });
 
-  it("gives every found row the same height: the meta line keeps one line of room even when it is empty", () => {
-    // An Inbox row has no batch / printer / note; a Printed row has all three. Without the floor Printed rows stood taller.
-    const meta = css.match(/\.row_meta \{([^}]*)\}/)[1];
-    expect(meta).toMatch(/min-height: 18px;/);
-    expect(meta).toMatch(/font-size: 12px;/);
-  });
-
   it("shows a found file on ONE line like a Production card: fixed row height, the name a flex child of the row (not stacked over a meta line)", () => {
     const jsx = read("OrderSearch", "OrderSearch.jsx");
     const row = css.match(/\.row \{([^}]*)\}/)[1];
@@ -175,6 +168,16 @@ describe("OrderSearch.module.css", () => {
     expect(css).not.toMatch(/\.row_main/);
     expect(jsx).not.toContain("style.row_main");
     expect(css.match(/\.file_name \{([^}]*)\}/)[1]).toMatch(/flex: 1;/);
+  });
+
+  it("lets the file name win over the badges: the meta group is capped, so a long hold reason cannot squeeze the name to nothing", () => {
+    const meta = css.match(/\.row_meta \{([^}]*)\}/)[1];
+    expect(meta).toMatch(/max-width: 50%;/);
+    expect(meta).toMatch(/min-width: 0;/);
+    // the notes inside the cap shrink with an ellipsis
+    const note = css.match(/\.note \{([^}]*)\}/)[1];
+    expect(note).toMatch(/min-width: 0;/);
+    expect(note).toMatch(/text-overflow: ellipsis;/);
   });
 });
 

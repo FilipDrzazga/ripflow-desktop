@@ -157,15 +157,17 @@
   color: var(--text-primary);
 }
 
-/* The badges after the name. Empty for an Inbox row; the row height is fixed, so that changes nothing. The 18 px floor
-   (one line of 12 px text) is the one from the two-line layout, kept as it was. */
+/* The badges after the name. Empty for an Inbox row; the row height is fixed, so that changes nothing. Capped at half
+   the row: a held file's reason is free text and "also in Production" comes on top, and without a cap they squeezed the
+   file name - what the operator is looking for - down to nothing. Inside the cap the batch and the notes shrink with an
+   ellipsis (min-width 0), the printer badge keeps its size. */
 .row_meta {
   flex: 0 1 auto;
   display: flex;
   align-items: center;
   gap: 8px;
   min-width: 0;
-  min-height: 18px;
+  max-width: 50%;
   font-size: 12px;
   color: var(--text-secondary);
 }
