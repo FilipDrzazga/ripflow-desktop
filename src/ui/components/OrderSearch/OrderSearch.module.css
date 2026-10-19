@@ -147,9 +147,11 @@
 }
 
 /* The file icon of the Print list in front of the name (FILIP 2026-10-19 09:56); pulled 4 px towards the name so the two
-   read as one. */
+   read as one. Pushed 6 px away from the "where" pill (FILIP 2026-10-19 12:57: a little more room between the pill and
+   the file name), so 12 + 6 = 18 px between them. */
 .file_icon {
   flex-shrink: 0;
+  margin-left: 6px;
   margin-right: -4px;
   color: var(--text-secondary);
 }
