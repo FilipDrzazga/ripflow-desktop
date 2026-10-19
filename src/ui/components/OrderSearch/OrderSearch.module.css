@@ -114,13 +114,14 @@
 }
 
 /* One line per row, like a Production card (FILIP 2026-10-19 09:04: files shown the way Production shows them, so the
-   UI is stable): a FIXED height, everything centred in it - the file name stays in the middle whether or not the row
-   has a note after it. */
+   UI is stable): a MINIMUM height, everything centred in it - the file name stays in the middle whether or not the row
+   has a note after it. A name too long for one line wraps and the row grows to fit it (FILIP 2026-10-19 10:54: always
+   the full file name), so the height is a floor, not a fixed value. */
 .row {
   display: flex;
   align-items: center;
   gap: 12px;
-  height: 56px;
+  min-height: 56px;
   padding: 0 12px;
   border-radius: 10px;
   cursor: pointer;
@@ -154,13 +155,14 @@
   color: var(--text-secondary);
 }
 
-/* Name takes the free width (like .card_filename in Production); the badges after it keep their size. */
+/* Name takes the free width (like .card_filename in Production); the badges after it keep their size. It is NEVER cut
+   with an ellipsis (FILIP 2026-10-19 10:54): a long name wraps - at a break if there is one, anywhere if not (a file name
+   has few spaces) - and the vertical padding keeps a wrapped name off the row's edges. */
 .file_name {
   flex: 1;
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  padding: 6px 0;
+  overflow-wrap: anywhere;
   font-size: 14px;
   color: var(--text-primary);
 }
@@ -251,7 +253,11 @@
   }
 
   .row {
-    height: 44px;
+    min-height: 44px;
+  }
+
+  .file_name {
+    padding: 3px 0;
   }
 
   .row + .row {
