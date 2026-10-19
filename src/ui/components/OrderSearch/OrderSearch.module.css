@@ -39,6 +39,11 @@
   border-bottom: 1px solid var(--border-grey);
 }
 
+/* Nothing under the field (empty box): no divider line either. */
+.search_row_alone {
+  border-bottom: none;
+}
+
 .search_icon {
   flex-shrink: 0;
   color: var(--text-secondary);

@@ -67,6 +67,9 @@ const OrderSearch = ({ onClose, onSelect }) => {
 
   const now = new Date();
   const empty = emptyState(query, result);
+  // An empty box shows the search field alone (FILIP 2026-10-19 08:16): the placeholder already says what to type,
+  // so no "Find an order" invitation and no key legend until the first character.
+  const idle = query.trim() === "";
 
   const handleKeyDown = (e) => {
     if (e.key === "Escape") {
@@ -106,7 +109,7 @@ const OrderSearch = ({ onClose, onSelect }) => {
           if (e.target !== inputRef.current) e.preventDefault();
         }}
       >
-        <div className={style.search_row}>
+        <div className={`${style.search_row} ${idle ? style.search_row_alone : ""}`}>
           <LuSearch size={18} className={style.search_icon} aria-hidden="true" />
           <input
             ref={inputRef}
@@ -130,7 +133,7 @@ const OrderSearch = ({ onClose, onSelect }) => {
           />
         </div>
 
-        {empty ? (
+        {idle ? null : empty ? (
           <div className={style.empty}>
             <p className={style.empty_title}>{empty.title}</p>
             <p className={style.empty_hint}>{empty.hint}</p>
@@ -216,10 +219,12 @@ const OrderSearch = ({ onClose, onSelect }) => {
           </div>
         )}
 
-        <div className={style.footer}>
-          <span className={style.key}>↑ ↓</span> move <span className={style.key}>Enter</span> show{" "}
-          <span className={style.key}>Esc</span> close
-        </div>
+        {!idle && (
+          <div className={style.footer}>
+            <span className={style.key}>↑ ↓</span> move <span className={style.key}>Enter</span> show{" "}
+            <span className={style.key}>Esc</span> close
+          </div>
+        )}
       </div>
     </>,
     document.body,
