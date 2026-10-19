@@ -112,6 +112,9 @@ const POLL_INTERVAL = 15_000;
 // How long the "you were here" accent stays on the restored card. Same 1.5s the
 // Orders lens uses for its focus highlight.
 const RESTORE_FLASH_MS = 1500;
+// How long a scanned / searched card stays flagged as found. ProductionCard holds the amber 1.5 s and fades it
+// over 2 s, so this must stay >= 3500; the extra margin covers the smooth scroll that starts at the same time.
+const FOUND_FLASH_MS = 4000;
 
 const STAGE_PIPELINE_ORDER = [
   PRODUCTION_STAGE.PRINTED,
@@ -1045,7 +1048,7 @@ const Production = () => {
       setSearch("");
       setHighlightedId(fileId);
       revealElement(`[data-file-id="${CSS.escape(fileId)}"]`);
-      setTimeout(() => setHighlightedId(null), 1500);
+      setTimeout(() => setHighlightedId(null), FOUND_FLASH_MS);
     },
     [expandDay],
   );

@@ -64,6 +64,10 @@ const StagePill = ({ stageKey, status, company, title }) => {
   );
 };
 
+// The "found it" flash of a scanned / searched card: amber held, then faded (seconds).
+const FOUND_HOLD_S = 1.5;
+const FOUND_FADE_S = 2;
+
 // `thumbnail` is a SLOT: a ready-made React element, never a boolean or a path.
 // The card must not learn about pdfjs, file paths or PdfThumb — a lens that wants
 // a thumbnail builds the element and hands it over. Lenses that pass nothing
@@ -109,10 +113,13 @@ const ProductionCard = ({ stage: row, history = [], highlighted, restored = fals
 
   useEffect(() => {
     if (!highlighted || !cardRef.current) return;
+    // Holds the amber while the smooth scroll to the card is still travelling (the flash starts when the card
+    // mounts, the scroll lands up to ~1 s later), then fades. Production.jsx clears `highlighted` after
+    // FOUND_FLASH_MS, which must stay >= FOUND_HOLD_S + FOUND_FADE_S.
     gsap.fromTo(
       cardRef.current,
       { backgroundColor: "#fff3cd" },
-      { backgroundColor: selected ? "#eef2ff" : "#ffffff", duration: 1.2, ease: "power2.out" },
+      { backgroundColor: selected ? "#eef2ff" : "#ffffff", delay: FOUND_HOLD_S, duration: FOUND_FADE_S, ease: "power2.out" },
     );
   }, [highlighted, selected]);
 

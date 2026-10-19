@@ -39,7 +39,7 @@ import { isSearchTargetFor } from "../../utils/searchTarget";
 import { revealElement } from "../../utils/revealElement";
 
 // How long a row the Ctrl+F search jumped to keeps its "found it" flash (DataList.module.css).
-const FOUND_FLASH_MS = 1500;
+const FOUND_FLASH_MS = 3500;
 
 const formatFileSize = (bytes) => {
   if (bytes == null) return null;
