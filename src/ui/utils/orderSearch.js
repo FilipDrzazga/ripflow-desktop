@@ -96,15 +96,7 @@ const matches = (tokens, ...fields) => {
   return tokens.every((t) => hay.includes(t));
 };
 
-// The name as the window SHOWS it: without the artwork-id tail ("_XWD<hex>_FF.pdf" of the XWD-based files, FILIP
-// 2026-10-19 12:04) - the operator reads the order, customer and product part, and the tail only made the line too
-// long. Display only: matching, sorting and the row's title keep the full `fileName`, so the id still finds the row.
-// A name without an XWD token, or one that starts with it, is returned whole.
-const XWD_TAIL = /[\s_-]*XWD[0-9a-f]+.*$/i;
-
-export const displayFileName = (name) => text(name).replace(XWD_TAIL, "") || text(name);
-
-const inboxRow =({ item, held, heldReason, production }) => {
+const inboxRow = ({ item, held, heldReason, production }) => {
   const name = text(item.file?.name);
   return {
     fileId: item.id,

@@ -4,7 +4,7 @@ import { LuFileText, LuSearch } from "react-icons/lu";
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
 import { useStore } from "@/store/useStore";
-import { searchOrders, displayFileName } from "@/utils/orderSearch";
+import { searchOrders } from "@/utils/orderSearch";
 import {
   ORDER_SEARCH_INPUT_ID,
   emptyState,
@@ -238,7 +238,7 @@ const OrderSearch = ({ onClose, onSelect }) => {
                               batch folder and the printer are not shown (FILIP 2026-10-19 09:11): the "where" pill says enough. */}
                           <LuFileText size={17} className={style.file_icon} aria-hidden="true" />
                           <span className={style.file_name} title={row.fileName}>
-                            {displayFileName(row.fileName)}
+                            {row.fileName}
                           </span>
                           <span className={style.row_meta}>
                             {row.reason && <span className={style.note}>{row.reason}</span>}

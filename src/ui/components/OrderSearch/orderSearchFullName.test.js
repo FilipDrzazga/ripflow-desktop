@@ -23,13 +23,6 @@ describe("OrderSearch shows the file name on ONE line, cut with an ellipsis when
     expect(jsx).toContain("{row.fileName}");
   });
 
-  it("gives the panel room for a typical name (without the XWD tail), but not the 1000 px FILIP found too wide (12:06)", () => {
-    const panel = css.match(/\.panel \{([^}]*)\}/)[1];
-    const cap = Number(panel.match(/width: min\((\d+)px,/)[1]);
-    expect(cap).toBeGreaterThanOrEqual(780);
-    expect(cap).toBeLessThan(1000);
-  });
-
   it("keeps the row height FIXED (a name never makes a row grow), normal and low window alike", () => {
     const rows = bodies("row");
     expect(rows.length).toBe(2);

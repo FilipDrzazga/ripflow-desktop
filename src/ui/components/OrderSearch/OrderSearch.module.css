@@ -19,7 +19,7 @@
   top: var(--os-top);
   left: 50%;
   transform: translateX(-50%);
-  width: min(800px, calc(100vw - 32px));
+  width: min(680px, calc(100vw - 32px));
   max-height: min(600px, calc(100vh - var(--os-top) - 16px));
   display: flex;
   flex-direction: column;
@@ -154,10 +154,10 @@
   color: var(--text-secondary);
 }
 
-/* Name takes the free width (like .card_filename in Production); the badges after it keep their size. The whole name is
-   shown while it fits on one line; one that does not ends in an ellipsis (FILIP 2026-10-19 12:46: wrapping was wrong, back
-   to the original; the "_XWD..." artwork-id tail stays hidden, see displayFileName, and the title attribute keeps the full
-   name). The panel is 800 px wide (FILIP 2026-10-19 12:06), so about 580 px is left for the name - roughly 75 characters. */
+/* Name takes the free width (like .card_filename in Production); the badges after it keep their size. The whole name,
+   "_XWD..." tail included, is shown while it fits on one line; one that does not ends in an ellipsis, and the title
+   attribute keeps the full name (FILIP 2026-10-19 12:46 / 12:55: back to the original - no wrapping, no hidden tail,
+   the panel 680 px wide). */
 .file_name {
   flex: 1;
   min-width: 0;
