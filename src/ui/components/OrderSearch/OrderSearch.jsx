@@ -1,6 +1,8 @@
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { LuSearch } from "react-icons/lu";
+import gsap from "gsap";
+import { useGSAP } from "@gsap/react";
 import { useStore } from "@/store/useStore";
 import { searchOrders } from "@/utils/orderSearch";
 import { getPrinterColor } from "@/utils/shopProfileData";
@@ -18,6 +20,9 @@ import {
 import style from "./OrderSearch.module.css";
 
 const PRINTER_FALLBACK = { bg: "#f0f0f0", color: "#555" };
+
+const prefersReducedMotion = () =>
+  typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
 // The Ctrl+F window (plan C3-2): "where is order X right now?". Read-only - it shows rows from what the
 // store already holds (Inbox, Held, every Production stage) and hands the chosen row to `onSelect`.
@@ -37,6 +42,7 @@ const OrderSearch = ({ onClose, onSelect }) => {
   const [activeIndex, setActiveIndex] = useState(0);
   const inputRef = useRef(null);
   const pointerRef = useRef(null);
+  const dropRef = useRef(null);
   const listId = useId();
 
   // Back to where the operator was (a local search field, a card) when the window closes.
@@ -49,7 +55,14 @@ const OrderSearch = ({ onClose, onSelect }) => {
   }, []);
 
   const result = useMemo(
-    () => searchOrders(query, { files, heldIds, heldReasons, productionStages, stageHistory }),
+    () =>
+      searchOrders(query, {
+        files,
+        heldIds,
+        heldReasons,
+        productionStages,
+        stageHistory,
+      }),
     [query, files, heldIds, heldReasons, productionStages, stageHistory],
   );
   const rows = useMemo(() => flattenRows(result), [result]);
@@ -70,6 +83,28 @@ const OrderSearch = ({ onClose, onSelect }) => {
   // An empty box shows the search field alone (FILIP 2026-10-19 08:16): the placeholder already says what to type,
   // so no "Find an order" invitation and no key legend until the first character.
   const idle = query.trim() === "";
+
+  // The results unfold under the field when the first character is typed (FILIP 2026-10-19 08:25): height 0 -> auto
+  // plus a fade, once per idle -> typing transition. Later keystrokes only swap the rows inside the open block.
+  // The panel's top edge is fixed, so it grows downwards; clearProps hands the height back to the flex layout.
+  useGSAP(
+    () => {
+      const el = dropRef.current;
+      if (!el || prefersReducedMotion()) return;
+      gsap.fromTo(
+        el,
+        { height: 0, opacity: 0 },
+        {
+          height: "auto",
+          opacity: 1,
+          duration: 0.28,
+          ease: "power2.out",
+          clearProps: "height,opacity",
+        },
+      );
+    },
+    { dependencies: [idle] },
+  );
 
   const handleKeyDown = (e) => {
     if (e.key === "Escape") {
@@ -133,96 +168,109 @@ const OrderSearch = ({ onClose, onSelect }) => {
           />
         </div>
 
-        {idle ? null : empty ? (
-          <div className={style.empty}>
-            <p className={style.empty_title}>{empty.title}</p>
-            <p className={style.empty_hint}>{empty.hint}</p>
-          </div>
-        ) : (
-          <div id={listId} className={style.list} role="listbox" aria-label="Orders found">
-            {result.groups.map((group) => (
-              <div key={group.orderKey} className={style.group} role="group" aria-label={group.orderId}>
-                <div className={style.group_header}>
-                  <span className={`${style.order_id} ${group.isUnknown ? style.order_unknown : ""}`}>{group.orderId}</span>
-                  {group.customerName && <span className={style.customer}>{group.customerName}</span>}
-                  <span className={style.group_count}>
-                    {group.rows.length} {group.rows.length === 1 ? "file" : "files"}
-                  </span>
-                </div>
-                {group.rows.map((row) => {
-                  const isActive = row === activeRow;
-                  const colors = whereColors(row.where);
-                  const printerColors = (row.printer && getPrinterColor(shopProfile, row.printer)) || PRINTER_FALLBACK;
-                  const since = sinceLabel(row.since, now);
-                  return (
-                    <div
-                      key={rowKeyOf(row)}
-                      id={optionId(row)}
-                      role="option"
-                      aria-selected={isActive}
-                      className={`${style.row} ${isActive ? style.row_active : ""}`}
-                      onMouseMove={(e) => {
-                        // Chrome repeats a mousemove when the list moves under a still pointer (arrow
-                        // keys scrolling it, a new result list): only a pointer that really moved counts.
-                        const last = pointerRef.current;
-                        pointerRef.current = { x: e.clientX, y: e.clientY };
-                        if (last && last.x === e.clientX && last.y === e.clientY) return;
-                        const at = rows.indexOf(row);
-                        if (at !== active) setActiveIndex(at);
-                      }}
-                      onClick={() => onSelect(row)}
-                    >
-                      <span
-                        className={style.where}
-                        style={{ backgroundColor: colors.bg, color: colors.color }}
-                        title={row.reason ? `Held: ${row.reason}` : undefined}
-                      >
-                        {whereLabel(row.where)}
-                      </span>
-                      <span className={style.row_main}>
-                        <span className={style.file_name} title={row.fileName}>
-                          {row.fileName}
-                        </span>
-                        <span className={style.row_meta}>
-                          {row.batch && (
-                            <span className={style.batch} title={row.batch}>
-                              {row.batch}
-                            </span>
-                          )}
-                          {row.printer && (
-                            <span
-                              className={style.printer}
-                              style={{ backgroundColor: printerColors.bg, color: printerColors.color }}
-                            >
-                              {row.printer}
-                            </span>
-                          )}
-                          {row.reason && <span className={style.note}>{row.reason}</span>}
-                          {row.alsoInProduction && (
-                            <span className={style.note}>also in Production: {whereLabel(row.alsoInProduction)}</span>
-                          )}
-                        </span>
-                      </span>
-                      {since && (
-                        <span className={style.since} title={sinceTitle(row.since)}>
-                          {since}
-                        </span>
-                      )}
-                    </div>
-                  );
-                })}
+        {idle ? null : (
+          <div ref={dropRef} className={style.drop}>
+            {empty ? (
+              <div className={style.empty}>
+                <p className={style.empty_title}>{empty.title}</p>
+                <p className={style.empty_hint}>{empty.hint}</p>
               </div>
-            ))}
-            {result.hiddenRows > 0 && (
-              <p className={style.more}>{result.hiddenRows} more - type more of the name to narrow it down</p>
+            ) : (
+              <div id={listId} className={style.list} role="listbox" aria-label="Orders found">
+                {result.groups.map((group) => (
+                  <div key={group.orderKey} className={style.group} role="group" aria-label={group.orderId}>
+                    <div className={style.group_header}>
+                      <span className={`${style.order_id} ${group.isUnknown ? style.order_unknown : ""}`}>
+                        {group.orderId}
+                      </span>
+                      {group.customerName && <span className={style.customer}>{group.customerName}</span>}
+                      <span className={style.group_count}>
+                        {group.rows.length} {group.rows.length === 1 ? "file" : "files"}
+                      </span>
+                    </div>
+                    {group.rows.map((row) => {
+                      const isActive = row === activeRow;
+                      const colors = whereColors(row.where);
+                      const printerColors =
+                        (row.printer && getPrinterColor(shopProfile, row.printer)) || PRINTER_FALLBACK;
+                      const since = sinceLabel(row.since, now);
+                      return (
+                        <div
+                          key={rowKeyOf(row)}
+                          id={optionId(row)}
+                          role="option"
+                          aria-selected={isActive}
+                          className={`${style.row} ${isActive ? style.row_active : ""}`}
+                          onMouseMove={(e) => {
+                            // Chrome repeats a mousemove when the list moves under a still pointer (arrow
+                            // keys scrolling it, a new result list): only a pointer that really moved counts.
+                            const last = pointerRef.current;
+                            pointerRef.current = { x: e.clientX, y: e.clientY };
+                            if (last && last.x === e.clientX && last.y === e.clientY) return;
+                            const at = rows.indexOf(row);
+                            if (at !== active) setActiveIndex(at);
+                          }}
+                          onClick={() => onSelect(row)}
+                        >
+                          <span
+                            className={style.where}
+                            style={{
+                              backgroundColor: colors.bg,
+                              color: colors.color,
+                            }}
+                            title={row.reason ? `Held: ${row.reason}` : undefined}
+                          >
+                            {whereLabel(row.where)}
+                          </span>
+                          <span className={style.row_main}>
+                            <span className={style.file_name} title={row.fileName}>
+                              {row.fileName}
+                            </span>
+                            <span className={style.row_meta}>
+                              {row.batch && (
+                                <span className={style.batch} title={row.batch}>
+                                  {row.batch}
+                                </span>
+                              )}
+                              {row.printer && (
+                                <span
+                                  className={style.printer}
+                                  style={{
+                                    backgroundColor: printerColors.bg,
+                                    color: printerColors.color,
+                                  }}
+                                >
+                                  {row.printer}
+                                </span>
+                              )}
+                              {row.reason && <span className={style.note}>{row.reason}</span>}
+                              {row.alsoInProduction && (
+                                <span className={style.note}>
+                                  also in Production: {whereLabel(row.alsoInProduction)}
+                                </span>
+                              )}
+                            </span>
+                          </span>
+                          {since && (
+                            <span className={style.since} title={sinceTitle(row.since)}>
+                              {since}
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ))}
+                {result.hiddenRows > 0 && (
+                  <p className={style.more}>{result.hiddenRows} more - type more of the name to narrow it down</p>
+                )}
+              </div>
             )}
-          </div>
-        )}
 
-        {!idle && (
-          <div className={style.footer}>
-            <span className={style.key}>↑ ↓</span> move <span className={style.key}>Enter</span> show{" "}
-            <span className={style.key}>Esc</span> close
+            <div className={style.footer}>
+              <span className={style.key}>↑ ↓</span> move <span className={style.key}>Enter</span> show{" "}
+              <span className={style.key}>Esc</span> close
+            </div>
           </div>
         )}
       </div>

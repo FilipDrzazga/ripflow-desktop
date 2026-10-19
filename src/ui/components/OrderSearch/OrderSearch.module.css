@@ -260,3 +260,13 @@
     padding: 18px 24px 20px;
   }
 }
+
+/* Everything under the field (list or empty message, and the key legend): the block GSAP unfolds from height 0 on the
+   first character (OrderSearch.jsx). It carries the panel's shrink-and-scroll behaviour for the list inside it. */
+.drop {
+  display: flex;
+  flex-direction: column;
+  flex: 0 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}

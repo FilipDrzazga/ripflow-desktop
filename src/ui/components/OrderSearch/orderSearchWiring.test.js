@@ -159,3 +159,25 @@ describe("OrderSearch.module.css", () => {
     expect(list).toMatch(/min-height: 0;/);
   });
 });
+
+describe("OrderSearch results unfold (GSAP)", () => {
+  const jsx = read("OrderSearch", "OrderSearch.jsx");
+  const cssSrc = read("OrderSearch", "OrderSearch.module.css");
+
+  it("unfolds the block under the field with GSAP, once per idle <-> typing transition, and skips it for reduced motion", () => {
+    expect(jsx).toMatch(/useGSAP\(/);
+    expect(jsx).toMatch(/\{ height: 0, opacity: 0 \}/);
+    expect(jsx).toMatch(/height: "auto"/);
+    expect(jsx).toMatch(/clearProps: "height,opacity"/);
+    expect(jsx).toMatch(/dependencies: \[idle\]/);
+    expect(jsx).toMatch(/prefers-reduced-motion: reduce/);
+  });
+
+  it("wraps the list, the empty message and the legend in one .drop block that keeps the shrink-and-scroll layout", () => {
+    expect(jsx).toMatch(/ref=\{dropRef\} className=\{style\.drop\}/);
+    const drop = cssSrc.match(/\.drop \{([^}]*)\}/)[1];
+    expect(drop).toMatch(/flex: 0 1 auto;/);
+    expect(drop).toMatch(/min-height: 0;/);
+    expect(drop).toMatch(/overflow: hidden;/);
+  });
+});
