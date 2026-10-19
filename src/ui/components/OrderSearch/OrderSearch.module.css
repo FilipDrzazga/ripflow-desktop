@@ -146,6 +146,14 @@
   white-space: nowrap;
 }
 
+/* The file icon of the Print list in front of the name (FILIP 2026-10-19 09:56); pulled 4 px towards the name so the two
+   read as one. */
+.file_icon {
+  flex-shrink: 0;
+  margin-right: -4px;
+  color: var(--text-secondary);
+}
+
 /* Name takes the free width (like .card_filename in Production); the badges after it keep their size. */
 .file_name {
   flex: 1;

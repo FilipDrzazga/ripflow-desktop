@@ -1,6 +1,6 @@
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { LuSearch } from "react-icons/lu";
+import { LuFileText, LuSearch } from "react-icons/lu";
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
 import { useStore } from "@/store/useStore";
@@ -236,6 +236,7 @@ const OrderSearch = ({ onClose, onSelect }) => {
                           </span>
                           {/* One line like a Production card: the file name centred in a fixed-height row, its notes after it. The
                               batch folder and the printer are not shown (FILIP 2026-10-19 09:11): the "where" pill says enough. */}
+                          <LuFileText size={17} className={style.file_icon} aria-hidden="true" />
                           <span className={style.file_name} title={row.fileName}>
                             {row.fileName}
                           </span>
