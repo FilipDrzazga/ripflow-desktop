@@ -117,9 +117,14 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 8px 10px;
+  padding: 13px 12px;
   border-radius: 10px;
   cursor: pointer;
+}
+
+/* A little air between the found rows (FILIP 2026-10-19 08:50: taller rows, slightly wider gaps). */
+.row + .row {
+  margin-top: 4px;
 }
 
 .row_active {
@@ -249,7 +254,11 @@
   }
 
   .row {
-    padding: 5px 10px;
+    padding: 8px 12px;
+  }
+
+  .row + .row {
+    margin-top: 2px;
   }
 
   .group_header {
