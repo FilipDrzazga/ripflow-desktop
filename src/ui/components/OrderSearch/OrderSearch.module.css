@@ -156,7 +156,8 @@
 }
 
 /* Name takes the free width (like .card_filename in Production); the badges after it keep their size. It is NEVER cut
-   with an ellipsis (FILIP 2026-10-19 10:54): a long name wraps - at a break if there is one, anywhere if not (a file name
+   with an ellipsis (FILIP 2026-10-19 10:54; the "_XWD..." artwork-id tail is not shown at all since 12:04, see
+   displayFileName, and the title attribute keeps the full name): a long name wraps - at a break if there is one, anywhere if not (a file name
    has few spaces) - and the vertical padding keeps a wrapped name off the row's edges.
    On ONE line unless the window cannot hold it (FILIP 2026-10-19 10:56): the basis is the name's own width and it does
    not shrink, so the notes after it give way first (they shrink to nothing, .row_meta); only a name wider than the
