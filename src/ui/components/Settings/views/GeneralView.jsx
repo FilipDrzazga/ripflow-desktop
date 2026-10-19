@@ -3,7 +3,6 @@ import { getSettings, setSettings } from "../../../services/settingsService";
 import { notify } from "@/utils/notify";
 import { LuSave } from "react-icons/lu";
 import Select from "../../Select/Select";
-import CloudKeySection from "./CloudKeySection";
 import styles from "./SettingsView.module.css";
 
 const ROLE_OPTIONS = [
@@ -55,7 +54,7 @@ const GeneralView = () => {
     <div className={styles.view}>
       <div className={styles.view_header}>
         <h2 className={styles.view_title}>General</h2>
-        <p className={styles.view_desc}>Basic workstation identity used in shared logs, and the PrintFactory Cloud key of this PC.</p>
+        <p className={styles.view_desc}>Basic workstation identity used in shared logs.</p>
       </div>
       <div className={styles.view_body}>
         <div className={styles.field}>
@@ -119,7 +118,6 @@ const GeneralView = () => {
           </div>
           <p className={styles.hint}>Release channel for this installation. Filters the changelog in Updates; entries marked "all" always show.</p>
         </div>
-        <CloudKeySection />
       </div>
       <div className={styles.view_footer}>
         <button className={styles.save_btn} onClick={handleSave} disabled={isSaving || !allSettings}>

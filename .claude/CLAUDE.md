@@ -80,7 +80,6 @@ INBOX → PARSE FILENAME → UI → SELECT FILES+PRINTER → CREATE BATCH+XML �
 
 - `storagePath`, `xmlPath`, `workstationName`, `customOrderFolderPath`, `workstationRole`, `labelPrinterName`, `shippedRetentionDays`, `batchHistoryEagerDays`, `labelPrintMode`, `clientId`
 - `batchHistoryEagerDays` — per-machine, default 7, min 1; how many most-recent days BatchHistory eager-loads (rest are lazy skeletons, loaded on expand)
-- **`%APPDATA%\ripflow-desktop\cloud.json`** — a second electron-store file, NOT part of `getSettings()` / `config.json`: the PrintFactory Cloud key (MisKey), per station, encrypted with `safeStorage` (Windows DPAPI), never sent to the renderer (`helpers/cloudKey.js`; set in Settings > General). It feeds the read-only Printed metres tile (`helpers/cloudMetres.js`). Never move it into the shared DB or the profile.
 
 **ripflow.db** (shared across all PCs via network `storagePath`):
 

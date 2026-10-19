@@ -277,14 +277,6 @@ const api = Object.freeze({
     resolveJob: (jobGuid) => ipcRenderer.invoke("rip-errors:resolveJob", jobGuid),
   }),
 
-  cloud: Object.freeze({
-    hasKey: () => ipcRenderer.invoke("cloud:has-key"),
-    setKey: (key) => ipcRenderer.invoke("cloud:set-key", key),
-    clearKey: () => ipcRenderer.invoke("cloud:clear-key"),
-    test: (key) => ipcRenderer.invoke("cloud:test", key),
-    getDayMetres: () => ipcRenderer.invoke("cloud:get-day-metres"),
-  }),
-
   update: Object.freeze({
     check: () => ipcRenderer.invoke("update:check"),
     install: () => ipcRenderer.invoke("update:install"),

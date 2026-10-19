@@ -1,16 +1,30 @@
-import { Fragment, useMemo } from "react";
-import { LuTriangleAlert, LuRepeat2, LuChevronRight, LuCopy } from "react-icons/lu";
+import { useMemo } from "react";
+import { LuTriangleAlert, LuRepeat2, LuChevronRight } from "react-icons/lu";
 import { FiLock } from "react-icons/fi";
-import { useStore } from "../../store/useStore";
+import { useStore, getLastBatch } from "../../store/useStore";
 import { PRODUCTION_STAGE, STAGE_COLOR, STAGE_LABEL } from "../../../shared/constants";
 import { STAGE_ICON } from "../../constants/stageIcons";
+import { getPrinterColor } from "../../utils/shopProfileData";
 import { isFeatureEnabled } from "../../utils/featureVisibility";
 import { countRipErrorEvents } from "../../utils/ripErrorsByFile";
-import { useCloudDayMetres } from "../../hooks/useCloudDayMetres";
-import { dayHeading, deviceBadges, metresLabel, metresCopyText } from "../../utils/cloudMetresText";
-import { getPrinters, getPrinterColor } from "../../utils/shopProfileData";
-import { notify } from "../../utils/notify";
 import style from "./OverviewPanel.module.css";
+
+// Batch folder name → HH:MM (PRINTED_HHMMSS-GROUP-PRINTER). Lifted from LastBatchCard.
+const parseTimeFromName = (name) => {
+  const parts = name.split("_");
+  if (parts.length < 2) return null;
+  const timeStr = parts[1].split("-")[0];
+  if (timeStr.length < 6) return null;
+  return `${timeStr.slice(0, 2)}:${timeStr.slice(2, 4)}`;
+};
+
+const formatTimestamp = (batch, day) => {
+  const time = parseTimeFromName(batch.name);
+  if (!time) return day.date;
+  if (day.label === "Today") return `Today, ${time}`;
+  if (day.label === "Yesterday") return `Yesterday, ${time}`;
+  return day.date;
+};
 
 const isSameDay = (iso, ref) => {
   const d = new Date(iso);
@@ -28,16 +42,9 @@ const PIPELINE = [
   { key: PRODUCTION_STAGE.PACKED, label: STAGE_LABEL.packed },
 ];
 
-// The grey every printer badge falls back to when the profile has no colours for a code.
-const BADGE_FALLBACK = { bg: "#f0f0f0", color: "#616161" };
-
-// The two day rows of the metres table; keyField names the day key the main process sent along.
-const DAYS = [
-  { field: "yesterday", label: "Yesterday", keyField: "yesterdayKey" },
-  { field: "today", label: "Today", keyField: "todayKey" },
-];
-
 const OverviewPanel = ({ onNavigate }) => {
+  const batchDays = useStore((s) => s.batchDays);
+  const isBatchSubmitting = useStore((s) => s.isBatchSubmitting);
   const ripErrors = useStore((s) => s.ripErrors);
   const shopProfile = useStore((s) => s.shopProfile);
   const heldIds = useStore((s) => s.heldIds);
@@ -45,29 +52,7 @@ const OverviewPanel = ({ onNavigate }) => {
   const productionStages = useStore((s) => s.productionStages);
   const stageHistory = useStore((s) => s.stageHistory);
 
-  const cloud = useCloudDayMetres();
-
-  // A machine the Cloud names ("d.gen Artrix H8") shows as the printer badge used everywhere else (DGEN).
-  const badges = useMemo(
-    () => deviceBadges(cloud.data?.devices.map((d) => d.name) ?? [], getPrinters(shopProfile).map((p) => p.code)),
-    [cloud.data, shopProfile],
-  );
-
-  // Copy puts "<machine><TAB><metres>" lines on the clipboard, one day at a time.
-  const copyDay = async (field, keyField) => {
-    const text = metresCopyText(cloud.data.devices, field);
-    const heading = dayHeading(cloud.data[keyField]);
-    if (!text) {
-      notify({ type: "Warning", title: "Nothing to copy", message: `No machine printed on ${heading}.` });
-      return;
-    }
-    try {
-      await navigator.clipboard.writeText(text);
-      notify({ type: "Success", title: "Metres copied", message: `Printed metres for ${heading} are on the clipboard.` });
-    } catch {
-      notify({ type: "Error", title: "Copy failed", message: "Could not write to the clipboard." });
-    }
-  };
+  const result = useMemo(() => getLastBatch(batchDays), [batchDays]);
 
   // Failures, not files: a whole-batch failure badges every file of the batch but is one error.
   const ripErrorCount = countRipErrorEvents(ripErrors);
@@ -134,100 +119,42 @@ const OverviewPanel = ({ onNavigate }) => {
     },
   ];
 
+  const batch = result?.batch;
+  const day = result?.day;
+  const printerColors = batch ? (getPrinterColor(shopProfile, batch.printer) ?? { bg: "#f0f0f0", color: "#555" }) : null;
+
   const shippedColors = STAGE_COLOR[PRODUCTION_STAGE.SHIPPED];
   const ShippedIcon = STAGE_ICON[PRODUCTION_STAGE.SHIPPED];
 
   return (
     <div className={style.panel}>
-      {/* Printed metres per machine, yesterday and today, from PrintFactory Cloud (FILIP 2026-10-16) */}
-      {/* The whole block is the refresh: hover lights it up, a click reads PrintFactory Cloud again (FILIP 2026-10-16). */}
-      <div
-        className={style.metres}
-        role="button"
-        tabIndex={0}
-        onClick={cloud.reload}
-        onKeyDown={(e) => {
-          if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) {
-            e.preventDefault();
-            cloud.reload();
-          }
-        }}
-        title="Click to read PrintFactory Cloud again"
-      >
-        <div className={style.metres_head}>
-          <span className={style.top_label}>Printed metres</span>
-          {cloud.data && (
-            <span className={style.metres_updated} title="Time of the last read from PrintFactory Cloud (it reads again every 5 minutes)">
-              {cloud.refreshing
-                ? "Reading..."
-                : new Date(cloud.data.fetchedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-            </span>
+      {/* Top bar — condensed Last batch */}
+      <div className={style.top_bar}>
+        <div className={style.top_info}>
+          <span className={style.top_label}>Last batch</span>
+          {result ? (
+            <>
+              <span className={style.top_name} title={batch.name}>
+                {batch.name}
+              </span>
+              <span className={style.top_sub}>
+                {batch.fileCount} {batch.fileCount === 1 ? "file" : "files"} · {formatTimestamp(batch, day)}
+              </span>
+            </>
+          ) : (
+            <span className={style.top_empty}>No batches yet</span>
           )}
         </div>
-        {/* One height whatever it holds: a note, a few machines or many never change the height of the card. */}
-        <div className={style.metres_body}>
-          {cloud.status === "unconfigured" && (
-            <span className={style.metres_note}>Add the PrintFactory Cloud key in Settings, General.</span>
+        <div className={style.top_right}>
+          {isBatchSubmitting && <span className={style.spinner} />}
+          {!isBatchSubmitting && printerColors && (
+            <span
+              className={style.printer_badge}
+              style={{ backgroundColor: printerColors.bg, color: printerColors.color }}
+            >
+              {batch.printer}
+            </span>
           )}
-          {cloud.status === "loading" && <span className={style.metres_note}>Reading PrintFactory Cloud...</span>}
-          {cloud.data && (
-            <>
-              {/* A table: the machines (printer badges) across the top, one row per day under them (FILIP 2026-10-16). */}
-              <div
-                className={style.metres_grid}
-                style={{ gridTemplateColumns: `auto repeat(${cloud.data.devices.length}, minmax(52px, 1fr))` }}
-              >
-                <span className={style.metres_corner} />
-                {cloud.data.devices.map((device, i) => {
-                  const badge = badges[i];
-                  const colors = badge.code ? getPrinterColor(shopProfile, badge.code) : null;
-                  return (
-                    <span key={device.name} className={style.metres_colhead}>
-                      <span
-                        className={style.metres_badge}
-                        style={{ backgroundColor: (colors ?? BADGE_FALLBACK).bg, color: (colors ?? BADGE_FALLBACK).color }}
-                        title={device.name}
-                      >
-                        {badge.text}
-                      </span>
-                    </span>
-                  );
-                })}
-                {DAYS.map(({ field, label, keyField }) => (
-                  <Fragment key={field}>
-                    <span className={style.metres_rowhead} title={`${label} ${dayHeading(cloud.data[keyField])}`}>
-                      {label}
-                      <button
-                        type="button"
-                        className={style.metres_copy}
-                        onClick={(e) => {
-                          // Copy must not also count as a click on the tile (the refresh).
-                          e.stopPropagation();
-                          copyDay(field, keyField);
-                        }}
-                        title={`Copy ${label.toLowerCase()}`}
-                        aria-label={`Copy ${label.toLowerCase()} metres`}
-                      >
-                        <LuCopy />
-                      </button>
-                    </span>
-                    {cloud.data.devices.map((device) => (
-                      <span key={device.name} className={style.metres_value}>
-                        {field === "yesterday" ? metresLabel(device.yesterday) : metresLabel(device.today)}
-                      </span>
-                    ))}
-                  </Fragment>
-                ))}
-              </div>
-              {cloud.data.devices.length === 0 && <span className={style.metres_note}>Nothing printed yesterday or today.</span>}
-              {cloud.data.partialJobs > 0 && (
-                <span className={style.metres_note}>
-                  {cloud.data.partialJobs} {cloud.data.partialJobs === 1 ? "job" : "jobs"} could not be read - the totals may be low.
-                </span>
-              )}
-            </>
-          )}
-          {cloud.status === "error" && <span className={style.metres_error}>{cloud.error}</span>}
         </div>
       </div>
 
@@ -241,8 +168,10 @@ const OverviewPanel = ({ onNavigate }) => {
             onClick={onClick}
             title={label}
           >
-            <Icon className={style.status_icon} />
-            <span className={style.status_count}>{count}</span>
+            <span className={style.status_top}>
+              <Icon className={style.status_icon} />
+              <span className={style.status_count}>{count}</span>
+            </span>
             <span className={style.status_label}>{label}</span>
           </button>
         ))}

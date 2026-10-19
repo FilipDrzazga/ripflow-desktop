@@ -9,35 +9,20 @@
   box-shadow: var(--card-shadow);
 }
 
-/* ─── Printed metres: machines across, yesterday and today down (PrintFactory Cloud) ─ */
-/* The whole block is one click target (it reads PrintFactory Cloud again): the padding and the equal negative
-   margin give the hover tint some room around the content without moving anything. */
-.metres {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  box-sizing: border-box;
-  width: calc(100% + 16px);
-  min-width: 0;
-  margin: -8px;
-  padding: 8px;
-  border-radius: 12px;
-  cursor: pointer;
-  transition: background-color 0.15s ease;
-}
-
-.metres:hover,
-.metres:focus-visible {
-  background-color: var(--bg-grey-light);
-  outline: none;
-}
-
-.metres_head {
+/* ─── Top bar: condensed Last batch ─────────────────────────────────────── */
+.top_bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
-  min-height: 22px;
+  gap: 12px;
+  width: 100%;
+}
+
+.top_info {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
 }
 
 .top_label {
@@ -48,144 +33,59 @@
   color: #9a9ea8;
 }
 
-/* time of the last read + the refresh button */
-.metres_updated {
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  font-size: 11px;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  color: var(--text-secondary);
-}
-
-/* The body has ONE height whatever it holds (a note, 3 machines, 7 machines): the tile is part of a
-   row of cards that stretch to the tallest, so a body that grew with the machine list stretched
-   Inbox, Cottons and Polyesters with it (FILIP 2026-10-16). More machines than fit scroll inside (sideways). */
-.metres_body {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  height: 112px;
-  overflow-y: auto;
-  overflow-x: auto;
-  scrollbar-width: thin;
-}
-
-.metres_grid {
-  display: grid;
-  /* columns are set inline: the day labels, then one per machine */
-  column-gap: 8px;
-  row-gap: 4px;
-  align-items: center;
-  width: max-content;
-  min-width: 100%;
-}
-
-/* More machines than fit scroll sideways inside the body; the machine heads stay in view while the rows
-   scroll under them and the day labels stay in view while the machines scroll past. The tile's hover tint
-   is behind them, so they take the tile's colour instead of a white patch (.metres:hover below) */
-.metres_corner,
-.metres_colhead,
-.metres_rowhead {
-  position: sticky;
-  z-index: 1;
-  background-color: var(--bg-white);
-  transition: background-color 0.15s ease;
-}
-
-.metres_corner,
-.metres_colhead {
-  top: 0;
-}
-
-.metres_corner,
-.metres_rowhead {
-  left: 0;
-}
-
-.metres_corner {
-  z-index: 2;
-}
-
-.metres:hover .metres_corner,
-.metres:hover .metres_colhead,
-.metres:hover .metres_rowhead,
-.metres:focus-visible .metres_corner,
-.metres:focus-visible .metres_colhead,
-.metres:focus-visible .metres_rowhead {
-  background-color: var(--bg-grey-light);
-}
-
-/* a machine head: one printer badge (the badge look of the Production cards) */
-.metres_colhead {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 0;
-}
-
-/* a day label with its Copy button */
-.metres_rowhead {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--text-secondary);
-  white-space: nowrap;
-}
-
-.metres_copy {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 3px;
-  border: none;
-  border-radius: 6px;
-  background: transparent;
-  color: var(--text-secondary);
-  font-size: 13px;
-  cursor: pointer;
-}
-
-.metres_copy:hover {
-  background: var(--bg-hover, rgba(0, 0, 0, 0.06));
+.top_name {
+  font-size: 16px;
+  font-weight: 700;
   color: var(--text-primary);
-}
-
-.metres_badge {
-  display: inline-block;
-  min-width: 0;
-  max-width: 84px;
-  padding: 3px 8px;
-  border-radius: 7px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
+  max-width: 100%;
 }
 
-.metres_value {
-  text-align: center;
-  font-size: 13px;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  color: var(--text-primary);
-}
-
-.metres_note {
+.top_sub {
   font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.top_empty {
+  font-size: 14px;
   font-weight: 500;
   color: var(--text-secondary);
 }
 
-.metres_error {
-  font-size: 12px;
-  font-weight: 600;
-  color: #dc2626;
+.top_right {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.printer_badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3px 10px;
+  border-radius: 7px;
+  font-size: 13px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.spinner {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--text-secondary);
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
 /* ─── Status pills: RIP errors / Hold / Reprints ────────────────────────── */
@@ -193,20 +93,19 @@
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
-  margin-top: 12px;
-  padding-top: 12px;
+  margin-top: 16px;
+  padding-top: 16px;
   border-top: 1px solid var(--border-grey);
 }
 
-/* one line per pill (icon, count, label): the three pills were 70 px tall stacked */
 .status_pill {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  min-width: 0;
-  padding: 8px;
-  border-radius: 10px;
+  gap: 4px;
+  padding: 12px 8px;
+  border-radius: 12px;
   cursor: pointer;
   transition: filter 0.15s ease;
 }
@@ -215,23 +114,25 @@
   filter: brightness(0.96);
 }
 
+.status_top {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .status_icon {
-  width: 14px;
-  height: 14px;
+  width: 16px;
+  height: 16px;
   flex-shrink: 0;
 }
 
 .status_count {
-  font-size: 16px;
+  font-size: 22px;
   font-weight: 700;
   line-height: 1;
 }
 
 .status_label {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
   font-size: 12px;
   font-weight: 600;
 }
@@ -260,9 +161,9 @@
 .pipeline_section {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  margin-top: 12px;
-  padding-top: 12px;
+  gap: 12px;
+  margin-top: 16px;
+  padding-top: 16px;
   border-top: 1px solid var(--border-grey);
 }
 
