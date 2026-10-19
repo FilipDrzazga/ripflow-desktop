@@ -158,6 +158,13 @@ describe("OrderSearch.module.css", () => {
     expect(list).toMatch(/flex: 0 1 auto;/);
     expect(list).toMatch(/min-height: 0;/);
   });
+
+  it("gives every found row the same height: the meta line keeps one line of room even when it is empty", () => {
+    // An Inbox row has no batch / printer / note; a Printed row has all three. Without the floor Printed rows stood taller.
+    const meta = css.match(/\.row_meta \{([^}]*)\}/)[1];
+    expect(meta).toMatch(/min-height: 18px;/);
+    expect(meta).toMatch(/font-size: 12px;/);
+  });
 });
 
 describe("OrderSearch results unfold (GSAP)", () => {
