@@ -19,7 +19,7 @@
   top: var(--os-top);
   left: 50%;
   transform: translateX(-50%);
-  width: min(680px, calc(100vw - 32px));
+  width: min(1280px, calc(100vw - 32px));
   max-height: min(600px, calc(100vh - var(--os-top) - 16px));
   display: flex;
   flex-direction: column;
@@ -160,12 +160,15 @@
    has few spaces) - and the vertical padding keeps a wrapped name off the row's edges.
    On ONE line unless the window cannot hold it (FILIP 2026-10-19 10:56): the basis is the name's own width and it does
    not shrink, so the notes after it give way first (they shrink to nothing, .row_meta); only a name wider than the
-   row minus the other cells (pill 78 + icon + gaps + "since", about 200 px) is capped by max-width and wraps. */
+   row minus the other cells (pill 78 + icon + gaps + "since", about 220 px) is capped by max-width and wraps.
+   The panel is 1280 px wide (FILIP 2026-10-19 11:12: the name must not wrap on a full-screen app window): the longest
+   real names (about 110 characters, about 830 px at 14 px) fit with room to spare; only a window narrower than that
+   still wraps them. */
 .file_name {
   flex: 1;
   flex-basis: auto;
   flex-shrink: 0;
-  max-width: calc(100% - 200px);
+  max-width: calc(100% - 220px);
   min-width: 0;
   padding: 6px 0;
   overflow-wrap: anywhere;

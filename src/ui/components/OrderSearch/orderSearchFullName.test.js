@@ -30,6 +30,14 @@ describe("OrderSearch shows the FULL file name on a found row (FILIP 2026-10-19 
     expect(bodies("row_meta")[0]).toMatch(/flex: 0 1 auto;/);
   });
 
+  it("gives the panel enough width for a full-screen window to hold the longest real names on one line (FILIP 2026-10-19 11:12)", () => {
+    const panel = css.match(/\.panel \{([^}]*)\}/)[1];
+    const cap = Number(panel.match(/width: min\((\d+)px,/)[1]);
+    // ~110 characters at 14 px is about 830 px, plus ~220 px of other cells
+    expect(cap).toBeGreaterThanOrEqual(1100);
+    expect(bodies("file_name")[0]).toMatch(/max-width: calc\(100% - 220px\);/);
+  });
+
   it("lets the row grow with a wrapped name: the height is a floor (min-height), normal and low window alike", () => {
     const rows = bodies("row");
     expect(rows.length).toBe(2);
