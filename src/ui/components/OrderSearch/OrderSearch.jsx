@@ -194,10 +194,10 @@ const OrderSearch = ({ onClose, onSelect }) => {
                 {result.groups.map((group) => (
                   <div key={group.orderKey} className={style.group} role="group" aria-label={group.orderId}>
                     <div className={style.group_header}>
+                      {group.customerName && <span className={style.customer}>{group.customerName}</span>}
                       <span className={`${style.order_id} ${group.isUnknown ? style.order_unknown : ""}`}>
                         {group.orderId}
                       </span>
-                      {group.customerName && <span className={style.customer}>{group.customerName}</span>}
                       <span className={style.group_count}>
                         {group.rows.length} {group.rows.length === 1 ? "file" : "files"}
                       </span>

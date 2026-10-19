@@ -73,21 +73,37 @@
   padding: 6px 8px 8px;
 }
 
+/* One order = one card (FILIP 2026-10-19 09:45): customer + order number on a grey strip on top, the order's files
+   underneath, so one order is easy to tell from the next. */
+.group {
+  padding-bottom: 6px;
+  border: 1px solid var(--border-grey);
+  border-radius: 14px;
+  overflow: hidden;
+  background: var(--bg-white);
+}
+
 .group + .group {
-  margin-top: 6px;
+  margin-top: 10px;
 }
 
 .group_header {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 10px;
-  padding: 8px 10px 4px;
+  height: 40px;
+  padding: 0 14px;
   min-width: 0;
+  border-bottom: 1px solid var(--border-grey);
+  background: var(--bg-grey-light);
 }
 
 .order_id {
   flex-shrink: 0;
-  font-size: 13px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: var(--bg-grey);
+  font-size: 12px;
   font-weight: 700;
   color: var(--text-primary);
 }
@@ -102,8 +118,9 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 13px;
-  color: var(--text-secondary);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
 }
 
 .group_count {
@@ -129,6 +146,16 @@
 /* A little air between the found rows (FILIP 2026-10-19 08:50: taller rows, slightly wider gaps). */
 .row + .row {
   margin-top: 4px;
+}
+
+/* Declared after .row on purpose (a test reads the first '.row {' block). The rows sit inside the card with a little margin, so the highlighted row does not touch its border. */
+.group .row {
+  margin-left: 6px;
+  margin-right: 6px;
+}
+
+.group_header + .row {
+  margin-top: 6px;
 }
 
 .row_active {
@@ -251,7 +278,15 @@
   }
 
   .group_header {
-    padding-top: 6px;
+    height: 34px;
+  }
+
+  .group + .group {
+    margin-top: 6px;
+  }
+
+  .group_header + .row {
+    margin-top: 4px;
   }
 
   .empty {
