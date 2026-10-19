@@ -21,6 +21,15 @@ describe("OrderSearch shows the FULL file name on a found row (FILIP 2026-10-19 
     expect(jsx).toContain("{row.fileName}");
   });
 
+  it("keeps the name on ONE line unless the row cannot hold it: own-width basis, no shrinking, capped at the row minus the other cells", () => {
+    const [name] = bodies("file_name");
+    expect(name).toMatch(/flex-basis: auto;/);
+    expect(name).toMatch(/flex-shrink: 0;/);
+    expect(name).toMatch(/max-width: calc\(100% - \d+px\);/);
+    // the notes after it are what gives way
+    expect(bodies("row_meta")[0]).toMatch(/flex: 0 1 auto;/);
+  });
+
   it("lets the row grow with a wrapped name: the height is a floor (min-height), normal and low window alike", () => {
     const rows = bodies("row");
     expect(rows.length).toBe(2);
