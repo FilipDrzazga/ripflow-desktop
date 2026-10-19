@@ -1,5 +1,15 @@
 [
   {
+    "version": "1.0.37",
+    "date": "2026-10-19",
+    "changes": [
+      {
+        "text": "Order search (Ctrl+F): a found file name is shown in one line and no longer ends in an ellipsis (a very long name wraps instead), the artwork id tail \"_XWD...\" is left out of the name, the window is a little wider (800 px), and the file you jumped to stays highlighted longer in Print and Production",
+        "clients": ["all"]
+      }
+    ]
+  },
+  {
     "version": "1.0.36",
     "date": "2026-10-19",
     "changes": [
