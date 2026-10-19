@@ -164,13 +164,22 @@ describe("OrderSearch results unfold (GSAP)", () => {
   const jsx = read("OrderSearch", "OrderSearch.jsx");
   const cssSrc = read("OrderSearch", "OrderSearch.module.css");
 
-  it("unfolds the block under the field with GSAP, once per idle <-> typing transition, and skips it for reduced motion", () => {
-    expect(jsx).toMatch(/useGSAP\(/);
-    expect(jsx).toMatch(/\{ height: 0, opacity: 0 \}/);
-    expect(jsx).toMatch(/height: "auto"/);
-    expect(jsx).toMatch(/clearProps: "height,opacity"/);
-    expect(jsx).toMatch(/dependencies: \[idle\]/);
-    expect(jsx).toMatch(/prefers-reduced-motion: reduce/);
+  it("unfolds the block under the field with GSAP on every PHASE change (idle / message / list), not only on the first character", () => {
+    expect(jsx).toContain('const phase = idle ? "idle" : empty ? "message" : "list";');
+    expect(jsx).toContain("dependencies: [phase]");
+    expect(jsx).toContain("useGSAP(");
+    // from the height on screen (settled height, or the inline height of a running tween) to auto; from nothing it fades in
+    expect(jsx).toContain("gsap.isTweening(el) ? el.offsetHeight : naturalHeightRef.current");
+    expect(jsx).toContain("{ height: from, opacity: from === 0 ? 0 : 1 }");
+    expect(jsx).toContain('height: "auto"');
+    expect(jsx).toContain('clearProps: "height,opacity"');
+    expect(jsx).toContain("overwrite: true");
+  });
+
+  it("skips the motion for reduced motion, and keeps recording the settled height", () => {
+    expect(jsx).toContain("if (prefersReducedMotion()) return;");
+    expect(jsx).toContain("prefers-reduced-motion: reduce");
+    expect(jsx).toContain("if (el && !gsap.isTweening(el)) naturalHeightRef.current = el.offsetHeight;");
   });
 
   it("wraps the list, the empty message and the legend in one .drop block that keeps the shrink-and-scroll layout", () => {

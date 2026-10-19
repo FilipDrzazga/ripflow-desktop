@@ -84,27 +84,45 @@ const OrderSearch = ({ onClose, onSelect }) => {
   // so no "Find an order" invitation and no key legend until the first character.
   const idle = query.trim() === "";
 
-  // The results unfold under the field when the first character is typed (FILIP 2026-10-19 08:25): height 0 -> auto
-  // plus a fade, once per idle -> typing transition. Later keystrokes only swap the rows inside the open block.
-  // The panel's top edge is fixed, so it grows downwards; clearProps hands the height back to the flex layout.
+  // The block under the field unfolds from where it stood to its new height (FILIP 2026-10-19 08:25) whenever the
+  // PHASE changes: nothing -> message ("Keep typing", 1-2 characters) -> list (3+) -> back. From nothing it also
+  // fades in. Keystrokes inside one phase only swap the content, no motion. The panel's top edge is fixed, so it
+  // grows downwards; clearProps hands the height back to the flex layout (the list still shrinks and scrolls).
+  const phase = idle ? "idle" : empty ? "message" : "list";
+  const naturalHeightRef = useRef(0);
   useGSAP(
     () => {
       const el = dropRef.current;
-      if (!el || prefersReducedMotion()) return;
+      if (!el) {
+        naturalHeightRef.current = 0;
+        return;
+      }
+      if (prefersReducedMotion()) return;
+      // Mid-tween the inline height IS the height on screen; otherwise it is the last settled height.
+      const from = gsap.isTweening(el) ? el.offsetHeight : naturalHeightRef.current;
       gsap.fromTo(
         el,
-        { height: 0, opacity: 0 },
+        { height: from, opacity: from === 0 ? 0 : 1 },
         {
           height: "auto",
           opacity: 1,
           duration: 0.28,
           ease: "power2.out",
           clearProps: "height,opacity",
+          overwrite: true,
+          onComplete: () => {
+            naturalHeightRef.current = el.offsetHeight;
+          },
         },
       );
     },
-    { dependencies: [idle] },
+    { dependencies: [phase] },
   );
+  // Remember the settled height of the block after every render that is not mid-animation.
+  useEffect(() => {
+    const el = dropRef.current;
+    if (el && !gsap.isTweening(el)) naturalHeightRef.current = el.offsetHeight;
+  });
 
   const handleKeyDown = (e) => {
     if (e.key === "Escape") {
