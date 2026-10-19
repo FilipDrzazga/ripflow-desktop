@@ -240,34 +240,33 @@ const OrderSearch = ({ onClose, onSelect }) => {
                           >
                             {whereLabel(row.where)}
                           </span>
-                          <span className={style.row_main}>
-                            <span className={style.file_name} title={row.fileName}>
-                              {row.fileName}
-                            </span>
-                            <span className={style.row_meta}>
-                              {row.batch && (
-                                <span className={style.batch} title={row.batch}>
-                                  {row.batch}
-                                </span>
-                              )}
-                              {row.printer && (
-                                <span
-                                  className={style.printer}
-                                  style={{
-                                    backgroundColor: printerColors.bg,
-                                    color: printerColors.color,
-                                  }}
-                                >
-                                  {row.printer}
-                                </span>
-                              )}
-                              {row.reason && <span className={style.note}>{row.reason}</span>}
-                              {row.alsoInProduction && (
-                                <span className={style.note}>
-                                  also in Production: {whereLabel(row.alsoInProduction)}
-                                </span>
-                              )}
-                            </span>
+                          {/* One line like a Production card: the file name centred in a fixed-height row, its badges after it. */}
+                          <span className={style.file_name} title={row.fileName}>
+                            {row.fileName}
+                          </span>
+                          <span className={style.row_meta}>
+                            {row.batch && (
+                              <span className={style.batch} title={row.batch}>
+                                {row.batch}
+                              </span>
+                            )}
+                            {row.printer && (
+                              <span
+                                className={style.printer}
+                                style={{
+                                  backgroundColor: printerColors.bg,
+                                  color: printerColors.color,
+                                }}
+                              >
+                                {row.printer}
+                              </span>
+                            )}
+                            {row.reason && <span className={style.note}>{row.reason}</span>}
+                            {row.alsoInProduction && (
+                              <span className={style.note}>
+                                also in Production: {whereLabel(row.alsoInProduction)}
+                              </span>
+                            )}
                           </span>
                           {since && (
                             <span className={style.since} title={sinceTitle(row.since)}>

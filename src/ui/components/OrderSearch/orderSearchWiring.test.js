@@ -165,6 +165,17 @@ describe("OrderSearch.module.css", () => {
     expect(meta).toMatch(/min-height: 18px;/);
     expect(meta).toMatch(/font-size: 12px;/);
   });
+
+  it("shows a found file on ONE line like a Production card: fixed row height, the name a flex child of the row (not stacked over a meta line)", () => {
+    const jsx = read("OrderSearch", "OrderSearch.jsx");
+    const row = css.match(/\.row \{([^}]*)\}/)[1];
+    expect(row).toMatch(/align-items: center;/);
+    expect(row).toMatch(/height: 56px;/);
+    expect(row).not.toMatch(/padding: \d+px 12px;/);
+    expect(css).not.toMatch(/\.row_main/);
+    expect(jsx).not.toContain("style.row_main");
+    expect(css.match(/\.file_name \{([^}]*)\}/)[1]).toMatch(/flex: 1;/);
+  });
 });
 
 describe("OrderSearch results unfold (GSAP)", () => {

@@ -113,11 +113,15 @@
   color: var(--text-secondary);
 }
 
+/* One line per row, like a Production card (FILIP 2026-10-19 09:04: files shown the way Production shows them, so the
+   UI is stable): a FIXED height, everything centred in it - the file name stays in the middle whether or not the row
+   has a batch / printer / note after it. */
 .row {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 13px 12px;
+  height: 56px;
+  padding: 0 12px;
   border-radius: 10px;
   cursor: pointer;
 }
@@ -142,31 +146,25 @@
   white-space: nowrap;
 }
 
-.row_main {
+/* Name takes the free width (like .card_filename in Production); the badges after it keep their size. */
+.file_name {
   flex: 1;
   min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.file_name {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 13px;
-  font-weight: 500;
+  font-size: 14px;
   color: var(--text-primary);
 }
 
+/* The badges after the name. Empty for an Inbox row; the row height is fixed, so that changes nothing. The 18 px floor
+   (one line of 12 px text) is the one from the two-line layout, kept as it was. */
 .row_meta {
+  flex: 0 1 auto;
   display: flex;
   align-items: center;
   gap: 8px;
   min-width: 0;
-  /* One line of 12px text (line-height 1.5), also when the row has nothing to show here: an Inbox row has no
-     batch/printer/note, a Printed row has all three, and without a floor the Printed rows stood taller
-     (FILIP 2026-10-19 08:54: every row at the height of the tallest). */
   min-height: 18px;
   font-size: 12px;
   color: var(--text-secondary);
@@ -174,17 +172,20 @@
 
 .batch {
   min-width: 0;
+  max-width: 200px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+/* The printer badge as in a Production card (.card_printer_badge). */
 .printer {
   flex-shrink: 0;
-  font-size: 10px;
-  font-weight: 600;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
   border-radius: 7px;
-  padding: 1px 7px;
+  padding: 3px 8px;
 }
 
 .note {
@@ -258,7 +259,7 @@
   }
 
   .row {
-    padding: 8px 12px;
+    height: 44px;
   }
 
   .row + .row {
