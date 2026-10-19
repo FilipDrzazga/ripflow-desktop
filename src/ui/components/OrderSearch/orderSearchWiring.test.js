@@ -141,7 +141,7 @@ describe("OrderSearch.module.css", () => {
   it("keeps the panel inside a low window: viewport-bound height, the list scrolls", () => {
     expect(css).toMatch(/max-height: min\(600px, calc\(100vh - var\(--os-top\) - 16px\)\)/);
     expect(css).toMatch(/\.list \{[^}]*overflow-y: auto;/);
-    expect(css).toMatch(/width: min\(1000px, calc\(100vw - 32px\)\)/);
+    expect(css).toMatch(/width: min\(800px, calc\(100vw - 32px\)\)/);
   });
 
   it("centres a full panel: the top edge sits where a 600 px panel would start, so the field does not jump while typing", () => {
