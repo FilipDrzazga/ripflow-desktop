@@ -1,5 +1,15 @@
 [
   {
+    "version": "1.0.38",
+    "date": "2026-10-19",
+    "changes": [
+      {
+        "text": "Order search (Ctrl+F): back to the look of 1.0.36 - the window is 680 px wide again and a found file name is shown in full, including its \"_XWD...\" tail, in one line with an ellipsis when it does not fit. A little more room between the location pill and the file name. The longer highlight of the file you jumped to stays",
+        "clients": ["all"]
+      }
+    ]
+  },
+  {
     "version": "1.0.37",
     "date": "2026-10-19",
     "changes": [
