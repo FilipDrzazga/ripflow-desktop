@@ -179,6 +179,13 @@ describe("OrderSearch.module.css", () => {
     expect(note).toMatch(/min-width: 0;/);
     expect(note).toMatch(/text-overflow: ellipsis;/);
   });
+
+  it("shows no batch folder and no printer badge on a found row - the 'where' pill at the start is enough (FILIP 2026-10-19 09:11)", () => {
+    const jsx = read("OrderSearch", "OrderSearch.jsx");
+    expect(jsx).not.toMatch(/row\.batch|row\.printer|style\.batch|style\.printer|getPrinterColor/);
+    expect(css).not.toMatch(/\.batch \{|\.printer \{/);
+    expect(jsx).toContain("style.where");
+  });
 });
 
 describe("OrderSearch results unfold (GSAP)", () => {

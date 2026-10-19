@@ -5,7 +5,6 @@ import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
 import { useStore } from "@/store/useStore";
 import { searchOrders } from "@/utils/orderSearch";
-import { getPrinterColor } from "@/utils/shopProfileData";
 import {
   ORDER_SEARCH_INPUT_ID,
   emptyState,
@@ -18,8 +17,6 @@ import {
   whereLabel,
 } from "@/utils/orderSearchWindow";
 import style from "./OrderSearch.module.css";
-
-const PRINTER_FALLBACK = { bg: "#f0f0f0", color: "#555" };
 
 const prefersReducedMotion = () =>
   typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
@@ -36,7 +33,6 @@ const OrderSearch = ({ onClose, onSelect }) => {
   const heldReasons = useStore((s) => s.heldReasons);
   const productionStages = useStore((s) => s.productionStages);
   const stageHistory = useStore((s) => s.stageHistory);
-  const shopProfile = useStore((s) => s.shopProfile);
 
   const [query, setQuery] = useState("");
   const [activeIndex, setActiveIndex] = useState(0);
@@ -209,8 +205,6 @@ const OrderSearch = ({ onClose, onSelect }) => {
                     {group.rows.map((row) => {
                       const isActive = row === activeRow;
                       const colors = whereColors(row.where);
-                      const printerColors =
-                        (row.printer && getPrinterColor(shopProfile, row.printer)) || PRINTER_FALLBACK;
                       const since = sinceLabel(row.since, now);
                       return (
                         <div
@@ -240,27 +234,12 @@ const OrderSearch = ({ onClose, onSelect }) => {
                           >
                             {whereLabel(row.where)}
                           </span>
-                          {/* One line like a Production card: the file name centred in a fixed-height row, its badges after it. */}
+                          {/* One line like a Production card: the file name centred in a fixed-height row, its notes after it. The
+                              batch folder and the printer are not shown (FILIP 2026-10-19 09:11): the "where" pill says enough. */}
                           <span className={style.file_name} title={row.fileName}>
                             {row.fileName}
                           </span>
                           <span className={style.row_meta}>
-                            {row.batch && (
-                              <span className={style.batch} title={row.batch}>
-                                {row.batch}
-                              </span>
-                            )}
-                            {row.printer && (
-                              <span
-                                className={style.printer}
-                                style={{
-                                  backgroundColor: printerColors.bg,
-                                  color: printerColors.color,
-                                }}
-                              >
-                                {row.printer}
-                              </span>
-                            )}
                             {row.reason && <span className={style.note}>{row.reason}</span>}
                             {row.alsoInProduction && (
                               <span className={style.note}>
