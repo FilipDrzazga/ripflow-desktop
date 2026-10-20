@@ -95,10 +95,13 @@ const OrderSearch = ({ onClose, onSelect }) => {
       }
       if (prefersReducedMotion()) return;
       // Mid-tween the inline height IS the height on screen; otherwise it is the last settled height.
-      const from = gsap.isTweening(el) ? el.offsetHeight : naturalHeightRef.current;
+      const tweening = gsap.isTweening(el);
+      const from = tweening ? el.offsetHeight : naturalHeightRef.current;
+      // A phase change in the middle of a fade-in carries on from the opacity on screen, no jump to 1.
+      const fromOpacity = tweening ? Number(gsap.getProperty(el, "opacity")) : from === 0 ? 0 : 1;
       gsap.fromTo(
         el,
-        { height: from, opacity: from === 0 ? 0 : 1 },
+        { height: from, opacity: fromOpacity },
         {
           height: "auto",
           opacity: 1,
@@ -114,11 +117,12 @@ const OrderSearch = ({ onClose, onSelect }) => {
     },
     { dependencies: [phase] },
   );
-  // Remember the settled height of the block after every render that is not mid-animation.
+  // Remember the settled height of the block whenever its content or phase changed and it is not mid-animation
+  // (not on every render: a mouse move only moves the highlight, and reading offsetHeight forces a layout).
   useEffect(() => {
     const el = dropRef.current;
     if (el && !gsap.isTweening(el)) naturalHeightRef.current = el.offsetHeight;
-  });
+  }, [result, phase]);
 
   const handleKeyDown = (e) => {
     if (e.key === "Escape") {
@@ -167,7 +171,7 @@ const OrderSearch = ({ onClose, onSelect }) => {
             type="text"
             role="combobox"
             aria-expanded={rows.length > 0}
-            aria-controls={empty ? undefined : listId}
+            aria-controls={idle || empty ? undefined : listId}
             aria-autocomplete="list"
             aria-activedescendant={activeRow ? optionId(activeRow) : undefined}
             placeholder="Order number, customer or file name"

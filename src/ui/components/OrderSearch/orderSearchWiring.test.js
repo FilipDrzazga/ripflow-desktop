@@ -197,8 +197,9 @@ describe("OrderSearch results unfold (GSAP)", () => {
     expect(jsx).toContain("dependencies: [phase]");
     expect(jsx).toContain("useGSAP(");
     // from the height on screen (settled height, or the inline height of a running tween) to auto; from nothing it fades in
-    expect(jsx).toContain("gsap.isTweening(el) ? el.offsetHeight : naturalHeightRef.current");
-    expect(jsx).toContain("{ height: from, opacity: from === 0 ? 0 : 1 }");
+    expect(jsx).toContain("tweening ? el.offsetHeight : naturalHeightRef.current");
+    expect(jsx).toContain("{ height: from, opacity: fromOpacity }");
+    expect(jsx).toContain('tweening ? Number(gsap.getProperty(el, "opacity")) : from === 0 ? 0 : 1');
     expect(jsx).toContain('height: "auto"');
     expect(jsx).toContain('clearProps: "height,opacity"');
     expect(jsx).toContain("overwrite: true");
@@ -208,6 +209,7 @@ describe("OrderSearch results unfold (GSAP)", () => {
     expect(jsx).toContain("if (prefersReducedMotion()) return;");
     expect(jsx).toContain("prefers-reduced-motion: reduce");
     expect(jsx).toContain("if (el && !gsap.isTweening(el)) naturalHeightRef.current = el.offsetHeight;");
+    expect(jsx).toContain("}, [result, phase]);");
   });
 
   it("wraps the list, the empty message and the legend in one .drop block that keeps the shrink-and-scroll layout", () => {

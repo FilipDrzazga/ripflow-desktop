@@ -89,11 +89,11 @@ const FALLBACK_COLOR = { bg: "#f0f0f0", color: "#616161" };
 export const whereLabel = (where) => WHERE_LABEL[where] ?? STAGE_LABEL[where] ?? String(where);
 export const whereColors = (where) => WHERE_COLOR[where] ?? STAGE_COLOR[where] ?? FALLBACK_COLOR;
 
-// What the window says instead of a list. `result` is searchOrders' answer; an empty box and a query
-// below the minimum read differently from "looked, found nothing".
+// What the window says instead of a list. `result` is searchOrders' answer; a query below the minimum reads
+// differently from "looked, found nothing". An empty box says nothing (null): the window shows the field alone.
 export const emptyState = (query, result) => {
   if (String(query ?? "").trim() === "") {
-    return { title: "Find an order", hint: "Type an order number, a customer or part of a file name." };
+    return null;
   }
   if (result.status === "short") {
     return { title: "Keep typing", hint: `At least ${MIN_QUERY_LENGTH} characters, so a letter or two does not match half the shop.` };

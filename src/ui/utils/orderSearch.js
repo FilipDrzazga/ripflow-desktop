@@ -16,7 +16,6 @@
 // wins - it is the one the operator can act on - and keeps the stage of the other copy in
 // `alsoInProduction`; when it matches only the Production row, that row is shown.
 
-import { printerOfBatch } from "../../shared/batchFolderName";
 import { APP_VIEW } from "../constants/appViews";
 import { dayKeyFromBatchPath } from "./dayKey";
 import { ORDER_STAGE_PIPELINE, UNKNOWN_ORDER_KEY, UNKNOWN_ORDER_LABEL } from "./groupByOrder";
@@ -109,8 +108,6 @@ const inboxRow = ({ item, held, heldReason, production }) => {
     since: isoOf(item.createdAt),
     reason: held ? heldReason || null : null,
     batchPath: null,
-    batch: null,
-    printer: null,
     dayKey: null,
     alsoInProduction: production?.stage ?? null,
     target: { view: ORDER_SEARCH_VIEW.PRINT, fileId: item.id, dayKey: null },
@@ -129,8 +126,6 @@ const stageRow = ({ row, history }) => {
     since: stageSince(row, history),
     reason: null,
     batchPath,
-    batch: batchPath ? batchPath.split(/[/\\]/).filter(Boolean).pop() : null,
-    printer: printerOfBatch(batchPath),
     dayKey,
     alsoInProduction: null,
     target: { view: ORDER_SEARCH_VIEW.PRODUCTION, fileId: row.file_id, dayKey },
@@ -149,7 +144,7 @@ const byNewest = (a, b) => (a < b ? 1 : a > b ? -1 : 0);
  *             shownRows: number, hiddenRows: number }}
  *   groups: [{ orderKey, orderId, customerName, isUnknown, rows }] - exact order id first, then
  *   the order with the most recent file, the unknown-order bucket last. Rows: see inboxRow /
- *   stageRow (`where`, `since`, `batch`, `printer`, `dayKey`, `target`, ...).
+ *   stageRow (`where`, `since`, `dayKey`, `target`, ...).
  */
 export const searchOrders = (query, snapshot = {}) => {
   const q = text(query);

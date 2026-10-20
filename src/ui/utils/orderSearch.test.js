@@ -98,8 +98,6 @@ describe("searchOrders - one source at a time", () => {
       where: ORDER_SEARCH_WHERE.INBOX,
       since: "2026-10-17T08:00:00.000Z",
       reason: null,
-      batch: null,
-      printer: null,
       dayKey: null,
       target: { view: ORDER_SEARCH_VIEW.PRINT, fileId: item.id, dayKey: null },
     });
@@ -120,14 +118,12 @@ describe("searchOrders - one source at a time", () => {
     expect(rowsOf(res)).toHaveLength(0);
   });
 
-  it("Production: where = the stage, batch / printer / dayKey from batch_path, target = Production", () => {
+  it("Production: where = the stage, dayKey from batch_path, target = Production", () => {
     const row = rowsOf(searchOrders("ON100001", { productionStages: stagesOf(stage("f1")) }))[0];
     expect(row).toMatchObject({
       fileId: "f1",
       where: PRODUCTION_STAGE.HEATPRESS,
       batchPath: BATCH,
-      batch: "PRINTED_103200-Cottons-DGEN",
-      printer: "DGEN",
       dayKey: "14-10-2026",
       target: { view: ORDER_SEARCH_VIEW.PRODUCTION, fileId: "f1", dayKey: "14-10-2026" },
     });

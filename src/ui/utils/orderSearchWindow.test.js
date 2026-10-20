@@ -131,10 +131,10 @@ describe("emptyState", () => {
     ...extra,
   });
 
-  it("invites a search while the box is empty or blank", () => {
+  it("says nothing while the box is empty or blank", () => {
     const r = searchOrders("", {});
-    expect(emptyState("", r).title).toBe("Find an order");
-    expect(emptyState("   ", r).title).toBe("Find an order");
+    expect(emptyState("", r)).toBeNull();
+    expect(emptyState("   ", r)).toBeNull();
   });
 
   it("asks for more characters under the minimum, naming the minimum", () => {
