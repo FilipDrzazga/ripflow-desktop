@@ -9,7 +9,7 @@
 export const shouldTick = ({ visible, inFlight, lastTickAt, now, minGapMs }) => {
   if (!visible) return false; // window hidden/minimised — nothing to refresh for
   if (inFlight) return false; // a tick is still running — one request at a time
-  if (now - lastTickAt < minGapMs) return false; // debounce visibilitychange bursts
+  if (now - lastTickAt < minGapMs) return false; // debounce bursts of resume ticks
   return true;
 };
 

@@ -16,7 +16,7 @@ export const isOrderSearchShortcut = (e) => {
 };
 
 // One mechanism for "something is already in front of the app": every modal carries aria-modal="true"
-// (orderSearchModalWiring.test.js pins that for each modal in the sources), so the window needs no list
+// (orderSearchWiring.test.js pins that for each modal in the sources), so the window needs no list
 // of modals. The first-run wizard has the attribute too; `showSetup` is checked as well because the
 // wizard can be mounted a frame before its markup is in the document.
 export const orderSearchBlockedBy = ({ isLoading, showSetup, doc }) => {

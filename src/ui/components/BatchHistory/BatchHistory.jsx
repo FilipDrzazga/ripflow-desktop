@@ -40,7 +40,7 @@ import { anchorAfterSelection, nextFileSelection, visibleHistoryFiles } from "..
 
 // Cross-station poll. 30s (not Production's 15s): each polled day also runs SQLite reads in
 // main, and the recon measured ~75-130 ms SMB per tick, so a slower cadence is enough.
-// MIN_GAP debounces the extra tick fired on visibilitychange.
+// MIN_GAP debounces the extra tick fired when the polls start again (window back, end of a power pause).
 const POLL_INTERVAL_MS = 30_000;
 const MIN_GAP_MS = 5_000;
 
