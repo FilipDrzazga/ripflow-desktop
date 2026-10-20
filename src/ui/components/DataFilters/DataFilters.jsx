@@ -129,115 +129,117 @@ const DataFilters = () => {
           {name}
         </button>
       ))}
-      <div className={styles.filter_separator} />
-      <div className={styles.sort_wrapper} ref={panelRef}>
-        <button
-          type="button"
-          className={`${styles.filter_button} ${styles.panel_button} ${filterCount > 0 ? styles.active : ""}`}
-          onClick={() => setPanelOpen((v) => !v)}
-          aria-expanded={panelOpen}
-        >
-          <span className={styles.sort_btn_label}>
-            <HiAdjustmentsHorizontal />
-            Filter
-          </span>
-          <span className={styles.sort_chevron}>{panelOpen ? <HiChevronUp /> : <HiChevronDown />}</span>
-        </button>
-        {panelOpen && (
-          <div className={styles.filter_panel}>
-            <div className={styles.panel_label}>Sort</div>
-            <div
-              className={styles.segmented}
-              role="radiogroup"
-              aria-label="Sort"
-              style={{ "--segment-count": SORT_OPTIONS.length, "--segment-index": SORT_OPTIONS.indexOf(activeSortOption) }}
-            >
-              {/* one white thumb under the segments; it slides to the active one */}
-              <span className={styles.segment_thumb} aria-hidden="true" />
-              {SORT_OPTIONS.map((opt) => {
-                const OptIcon = opt.icon;
-                const isOn = sortOrder === opt.value;
-                return (
-                  <button
-                    key={String(opt.value)}
-                    type="button"
-                    role="radio"
-                    aria-checked={isOn}
-                    className={`${styles.segment} ${isOn ? styles.segment_on : ""}`}
-                    onClick={() => setSortOrder(opt.value)}
-                  >
-                    <OptIcon />
-                    {opt.label}
-                  </button>
-                );
-              })}
-            </div>
-            <div className={styles.panel_label}>Types</div>
-            <div className={styles.type_chips}>
-              {typeOptions.map((opt) => {
-                const isOn = printTypeFilter.includes(opt.value);
-                const def = PRINT_TYPE_MAP[opt.value];
-                const Icon = def?.Icon;
-                const count = typeCounts[opt.value] ?? 0;
-                return (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    aria-pressed={isOn}
-                    className={`${styles.type_chip} ${isOn ? styles.type_chip_on : ""} ${count === 0 && !isOn ? styles.type_chip_empty : ""}`}
-                    onClick={() => handleTypeToggle(opt.value)}
-                  >
-                    {Icon && <Icon size={14} className={styles.type_chip_icon} />}
-                    <span className={styles.type_chip_label}>{opt.label}</span>
-                    <span className={styles.type_chip_count}>{count}</span>
-                  </button>
-                );
-              })}
-            </div>
-            <div className={styles.panel_footer}>
-              <button type="button" className={styles.clear_all} onClick={handleClearAll} disabled={filterCount === 0}>
-                Clear all
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
       {filterCount > 0 && (
-        <div className={styles.active_chips}>
-          {sortOrder && (
-            <button
-              key={sortOrder}
-              type="button"
-              className={styles.active_chip}
-              onClick={() => setSortOrder(null)}
-              title="Remove sort"
-            >
-              <ActiveSortIcon />
-              {activeSortOption.label}
-              <HiXMark className={styles.active_chip_x} />
-            </button>
-          )}
-          {activeTypeOptions.map((opt) => {
-            const def = PRINT_TYPE_MAP[opt.value];
-            const Icon = def?.Icon;
-            return (
+        <>
+          <div className={styles.filter_separator} />
+          <div className={styles.active_chips}>
+            {sortOrder && (
               <button
-                key={opt.value}
+                key={sortOrder}
                 type="button"
-                className={`${styles.active_chip} ${styles.active_chip_type}`}
-                style={{ "--chip-color": def?.color ?? "#6b7280" }}
-                onClick={() => handleTypeToggle(opt.value)}
-                title={`Remove ${opt.label}`}
+                className={styles.active_chip}
+                onClick={() => setSortOrder(null)}
+                title="Remove sort"
               >
-                {Icon && <Icon size={14} />}
-                {opt.label}
+                <ActiveSortIcon />
+                {activeSortOption.label}
                 <HiXMark className={styles.active_chip_x} />
               </button>
-            );
-          })}
-        </div>
+            )}
+            {activeTypeOptions.map((opt) => {
+              const def = PRINT_TYPE_MAP[opt.value];
+              const Icon = def?.Icon;
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  className={`${styles.active_chip} ${styles.active_chip_type}`}
+                  style={{ "--chip-color": def?.color ?? "#6b7280" }}
+                  onClick={() => handleTypeToggle(opt.value)}
+                  title={`Remove ${opt.label}`}
+                >
+                  {Icon && <Icon size={14} />}
+                  {opt.label}
+                  <HiXMark className={styles.active_chip_x} />
+                </button>
+              );
+            })}
+          </div>
+        </>
       )}
       <div className={styles.right_group}>
+        <div className={styles.sort_wrapper} ref={panelRef}>
+          <button
+            type="button"
+            className={`${styles.filter_button} ${styles.panel_button} ${filterCount > 0 ? styles.active : ""}`}
+            onClick={() => setPanelOpen((v) => !v)}
+            aria-expanded={panelOpen}
+          >
+            <span className={styles.sort_btn_label}>
+              <HiAdjustmentsHorizontal />
+              Filter
+            </span>
+            <span className={styles.sort_chevron}>{panelOpen ? <HiChevronUp /> : <HiChevronDown />}</span>
+          </button>
+          {panelOpen && (
+            <div className={styles.filter_panel}>
+              <div className={styles.panel_label}>Sort</div>
+              <div
+                className={styles.segmented}
+                role="radiogroup"
+                aria-label="Sort"
+                style={{ "--segment-count": SORT_OPTIONS.length, "--segment-index": SORT_OPTIONS.indexOf(activeSortOption) }}
+              >
+                {/* one white thumb under the segments; it slides to the active one */}
+                <span className={styles.segment_thumb} aria-hidden="true" />
+                {SORT_OPTIONS.map((opt) => {
+                  const OptIcon = opt.icon;
+                  const isOn = sortOrder === opt.value;
+                  return (
+                    <button
+                      key={String(opt.value)}
+                      type="button"
+                      role="radio"
+                      aria-checked={isOn}
+                      className={`${styles.segment} ${isOn ? styles.segment_on : ""}`}
+                      onClick={() => setSortOrder(opt.value)}
+                    >
+                      <OptIcon />
+                      {opt.label}
+                    </button>
+                  );
+                })}
+              </div>
+              <div className={styles.panel_label}>Types</div>
+              <div className={styles.type_chips}>
+                {typeOptions.map((opt) => {
+                  const isOn = printTypeFilter.includes(opt.value);
+                  const def = PRINT_TYPE_MAP[opt.value];
+                  const Icon = def?.Icon;
+                  const count = typeCounts[opt.value] ?? 0;
+                  return (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      aria-pressed={isOn}
+                      className={`${styles.type_chip} ${isOn ? styles.type_chip_on : ""} ${count === 0 && !isOn ? styles.type_chip_empty : ""}`}
+                      onClick={() => handleTypeToggle(opt.value)}
+                    >
+                      {Icon && <Icon size={14} className={styles.type_chip_icon} />}
+                      <span className={styles.type_chip_label}>{opt.label}</span>
+                      <span className={styles.type_chip_count}>{count}</span>
+                    </button>
+                  );
+                })}
+              </div>
+              <div className={styles.panel_footer}>
+                <button type="button" className={styles.clear_all} onClick={handleClearAll} disabled={filterCount === 0}>
+                  Clear all
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
         <div className={styles.search_wrapper}>
           <HiMagnifyingGlass className={styles.search_icon} />
           <input
