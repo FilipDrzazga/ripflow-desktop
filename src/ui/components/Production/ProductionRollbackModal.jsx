@@ -31,11 +31,19 @@ const ReasonDropdown = ({ reasons, value, onChange, placeholder = "Select reason
       if (!inTrigger && !inMenu) setOpen(false);
     };
     const onKey = (e) => { if (e.key === "Escape") setOpen(false); };
+    // The menu is position: fixed from the rect read on open: a scroll of the file list or of the modal
+    // (scroll does not bubble, hence capture) would leave it hanging away from its row. The menu's own scroll stays.
+    const onScroll = (e) => {
+      if (menuRef.current?.contains(e.target)) return;
+      setOpen(false);
+    };
     document.addEventListener("mousedown", onMouse);
     document.addEventListener("keydown", onKey);
+    document.addEventListener("scroll", onScroll, true);
     return () => {
       document.removeEventListener("mousedown", onMouse);
       document.removeEventListener("keydown", onKey);
+      document.removeEventListener("scroll", onScroll, true);
     };
   }, [open]);
 
