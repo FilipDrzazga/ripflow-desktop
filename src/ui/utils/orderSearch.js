@@ -15,7 +15,9 @@
 // the PDF returns to the Inbox), so a stem seen in BOTH places is a fresh copy waiting in the
 // Inbox while an older one still sits in Production. When the query matches both, the Inbox row
 // wins - it is the one the operator can act on - and keeps the stage of the other copy in
-// `alsoInProduction`; when it matches only the Production row, that row is shown.
+// `alsoInProduction`; when it matches only the Production row, that row is shown. The PRINTED copy of a
+// stem that waits in the Inbox / Held is folded the same way (`alsoPrinted: { since }`, the newest batch time
+// or null): no second row.
 
 import { APP_VIEW } from "../constants/appViews";
 import { dayKeyFromBatchPath } from "./dayKey";
@@ -115,6 +117,7 @@ const inboxRow = ({ item, held, heldReason, production }) => {
     batchPath: null,
     dayKey: null,
     alsoInProduction: production?.stage ?? null,
+    alsoPrinted: null,
     target: { view: ORDER_SEARCH_VIEW.PRINT, fileId: item.id, dayKey: null },
   };
 };
@@ -133,6 +136,7 @@ const stageRow = ({ row, history }) => {
     batchPath,
     dayKey,
     alsoInProduction: null,
+    alsoPrinted: null,
     target: { view: ORDER_SEARCH_VIEW.PRODUCTION, fileId: row.file_id, dayKey },
   };
 };
@@ -165,6 +169,7 @@ const historyRow = ({ file, batch, dayFolder }) => {
     batchPath: text(batch.path) || null,
     dayKey: dayFolder,
     alsoInProduction: null,
+    alsoPrinted: null,
     target: { view: ORDER_SEARCH_VIEW.BATCH, fileId: stem, dayKey: dayFolder, batchPath: text(batch.path) || null },
   };
 };
@@ -195,6 +200,7 @@ export const searchOrders = (query, snapshot = {}) => {
   const rows = [];
 
   const stems = new Set();
+  const inboxRowByStem = new Map();
   for (const item of inboxItemsOf(files)) {
     if (!item?.id) continue;
     const name = text(item.file?.name);
@@ -202,12 +208,14 @@ export const searchOrders = (query, snapshot = {}) => {
     const production = stem ? productionStages?.[stem] : null;
     if (!matches(tokens, item.orderId, item.customerName, name)) continue;
     if (stem) stems.add(stem);
-    rows.push(inboxRow({
+    const row = inboxRow({
       item,
       held: !!heldIds?.has(item.id),
       heldReason: heldReasons?.get(item.id),
       production,
-    }));
+    });
+    rows.push(row);
+    if (stem) inboxRowByStem.set(stem, row);
   }
 
   for (const row of Object.values(productionStages ?? {})) {
@@ -218,6 +226,7 @@ export const searchOrders = (query, snapshot = {}) => {
 
   // The PRINTED folders: last resort, one row per file stem like everywhere else. A stem the store holds as a
   // Production row is not listed again (that row is the live one, and is shown whenever it matches); a stem
+  // that waits in the Inbox / Held (a reprint of an old order) is folded into that row as `alsoPrinted`; a stem
   // printed in several batches (a reprint) keeps the newest.
   const historyByStem = new Map();
   for (const day of printedDays ?? []) {
@@ -227,6 +236,12 @@ export const searchOrders = (query, snapshot = {}) => {
         if (!stem || productionStages?.[stem]) continue;
         if (!matches(tokens, file.orderId, file.customerName, file.name)) continue;
         const row = historyRow({ file, batch, dayFolder: day.dayFolder });
+        const waiting = inboxRowByStem.get(stem);
+        if (waiting) {
+          waiting.alsoPrinted ??= { since: null };
+          if ((row.since ?? "") > (waiting.alsoPrinted.since ?? "")) waiting.alsoPrinted.since = row.since;
+          continue;
+        }
         const kept = historyByStem.get(stem);
         if (!kept || (row.since ?? "") > (kept.since ?? "")) historyByStem.set(stem, row);
       }

@@ -73,12 +73,12 @@ describe("searchOrders - the PRINTED folders", () => {
     expect(rows.map((r) => r.where)).toEqual([PRODUCTION_STAGE.QC]);
   });
 
-  it("a file in the Inbox AND in PRINTED shows both: a fresh copy waits, the old one was printed", () => {
+  it("a file in the Inbox AND in PRINTED is ONE row (D71): the Inbox row, which notes the old print", () => {
     const files = [
       { items: [{ id: "g_a", orderId: "ON401365", customerName: "Ruby Stone", file: { name: "ON401365_Ruby Stone_Tee_1of2.pdf" } }] },
     ];
     const rows = rowsOf(searchOrders("ON401365", { files, printedDays: [LAST_MONTH] }));
-    expect(rows.map((r) => r.where)).toEqual([ORDER_SEARCH_WHERE.INBOX, ORDER_SEARCH_WHERE.HISTORY]);
+    expect(rows.map((r) => r.where)).toEqual([ORDER_SEARCH_WHERE.INBOX]);
   });
 
   it("one row per file stem: a stem printed twice keeps the newest batch", () => {

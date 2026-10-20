@@ -262,6 +262,11 @@ const OrderSearch = ({ onClose, onSelect }) => {
                                 also in Production: {whereLabel(row.alsoInProduction)}
                               </span>
                             )}
+                            {row.alsoPrinted && (
+                              <span className={style.note} title={sinceTitle(row.alsoPrinted.since)}>
+                                also printed{row.alsoPrinted.since ? `: ${sinceLabel(row.alsoPrinted.since, now)}` : ""}
+                              </span>
+                            )}
                           </span>
                           {since && (
                             <span className={style.since} title={sinceTitle(row.since)}>
