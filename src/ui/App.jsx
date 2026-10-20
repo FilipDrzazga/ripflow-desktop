@@ -261,7 +261,7 @@ const App = () => {
 
   // A row picked in the window (Enter or click) closes it and becomes the ONE jump task in the store
   // (store.requestSearchJump); the view that owns the file serves it - DataList for Inbox / Held,
-  // Production for a stage. The view switch is a no-op when the operator is already there, and the task's
+  // Production for a stage, BatchHistory for a file only the PRINTED folders still hold. The view switch is a no-op when the operator is already there, and the task's
   // nonce makes the view act anyway. A view this station does not offer gets no jump (isViewEnabled): a
   // task for a view that never mounts would sit in the store and fire at a later, unrelated visit.
   const handleSearchSelect = (row) => {

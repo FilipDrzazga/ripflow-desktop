@@ -531,6 +531,25 @@
   background-color: var(--bg-grey-light);
 }
 
+/* The file a Ctrl+F history row jumped to: amber held, then faded - the same colours as the Print list's
+   found row (DataList.module.css). The class comes from the render (a class put on the element by hand
+   would be dropped by the next re-render of the row and the flash would end early). */
+.file_row.file_row_found {
+  animation: file_row_found 3.5s ease-out;
+}
+
+@keyframes file_row_found {
+  0%,
+  40% {
+    background-color: #fff3cd;
+    box-shadow: 0 0 0 2px #f5d98b;
+  }
+  100% {
+    background-color: transparent;
+    box-shadow: 0 0 0 2px transparent;
+  }
+}
+
 .file_icon {
   font-size: 17px;
   color: var(--text-secondary);

@@ -36,6 +36,9 @@ import { isFeatureEnabled } from "../../utils/featureVisibility";
 import { getPrinters } from "../../utils/shopProfileData";
 import { shouldTick, pickDaysToPoll, mergePolledDays } from "../../utils/batchHistoryPoll";
 import { anchorAfterSelection, nextFileSelection, visibleHistoryFiles } from "../../utils/rangeSelect";
+import { APP_VIEW } from "../../constants/appViews";
+import { isSearchTargetFor } from "../../utils/searchTarget";
+import { revealElement } from "../../utils/revealElement";
 
 
 // Cross-station poll. 30s (not Production's 15s): each polled day also runs SQLite reads in
@@ -43,6 +46,9 @@ import { anchorAfterSelection, nextFileSelection, visibleHistoryFiles } from "..
 // MIN_GAP debounces the extra tick fired when the polls start again (window back, end of a power pause).
 const POLL_INTERVAL_MS = 30_000;
 const MIN_GAP_MS = 5_000;
+
+// How long the file a Ctrl+F history row jumped to keeps its flash class: the CSS animation (file_row_found) is 3.5 s.
+const FOUND_FLASH_MS = 3500;
 
 const pad2 = (n) => String(n).padStart(2, "0");
 const todayDayFolder = () => {
@@ -81,6 +87,9 @@ const BatchHistory = () => {
   const shopProfile = useStore((state) => state.shopProfile);
   const [dayGroups, setDayGroups] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+  // true once the first loadData has answered (well or badly): before that an empty dayGroups means "not read yet",
+  // not "no such day" - the Ctrl+F jump waits for it.
+  const [loadedOnce, setLoadedOnce] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [activePrinters, setActivePrinters] = useState(new Set());
   // Filter pills = the profile's printers (ETAP 2e step 3). A batch of a printer the
@@ -191,6 +200,7 @@ const BatchHistory = () => {
       );
     } finally {
       setIsLoading(false);
+      setLoadedOnce(true);
     }
   }, []);
 
@@ -611,6 +621,64 @@ const BatchHistory = () => {
       return next;
     });
   };
+
+  // Ctrl+F jump to a history file: a row of the order-search window that only the PRINTED folders still hold
+  // arrives as the store's ONE jump task { view: batch, fileId, dayKey, batchPath, nonce }. Served here - on
+  // mount (App.jsx switched the view) or while mounted (the nonce changes) - and cleared, so the same file
+  // picked twice jumps twice. It waits for the first loadData, loads the day when it is still a skeleton
+  // (ONCE per task: a failing read must end in a message, not in a retry loop), lifts what could hide the batch
+  // (search text, printer pills), opens day and batch, then scrolls to the file and flashes it. A look, not an
+  // action: no selection, no rollback. The flash class comes from the render (foundFilePath), like the Print list's.
+  const searchTarget = useStore((state) => state.searchTarget);
+  const clearSearchTarget = useStore((state) => state.clearSearchTarget);
+  const searchTargetRef = useRef(null);
+  searchTargetRef.current = searchTarget;
+  const [foundFilePath, setFoundFilePath] = useState(null);
+  const foundTimerRef = useRef(null);
+  useEffect(() => () => clearTimeout(foundTimerRef.current), []);
+  const dayLoadTriedRef = useRef(null); // nonce of the task that already asked for its day
+  const jumpNonce = isSearchTargetFor(searchTarget, APP_VIEW.BATCH) ? searchTarget.nonce : null;
+  useEffect(() => {
+    if (jumpNonce === null) return undefined;
+    // Deferred like the other two consumers: no setState in the effect body (react-hooks/set-state-in-effect).
+    const timer = setTimeout(() => {
+      const target = searchTargetRef.current;
+      if (!isSearchTargetFor(target, APP_VIEW.BATCH) || target.nonce !== jumpNonce) return;
+      if (!loadedOnce || isLoading) return; // runs again when the read ends (deps)
+      const finish = (warning) => {
+        clearSearchTarget(target.nonce);
+        if (warning) notify({ type: "Warning", title: "Not found", message: warning });
+      };
+      const dayFolder = target.dayKey ?? parseDayFromBatchPath(target.batchPath);
+      const day = dayGroups.find((d) => d.dayFolder === dayFolder);
+      if (!day) return finish(`${dayFolder} is no longer in batch history.`);
+      if (day.loaded !== true) {
+        if (loadingDays.has(day.dayFolder)) return; // arrives through dayGroups
+        if (dayLoadTriedRef.current === target.nonce) return finish(`Could not read ${day.date} from batch history.`);
+        dayLoadTriedRef.current = target.nonce;
+        loadDayContent(day.dayFolder);
+        return;
+      }
+      const batch = day.batches.find((b) => b.path === target.batchPath);
+      if (!batch) return finish(`That batch is no longer in ${day.date}.`);
+      const file = batch.files.find((f) => f.name.replace(/\.[^.]+$/, "") === target.fileId);
+      setSearchQuery("");
+      setActivePrinters(new Set());
+      setExpandedDays((prev) => new Set(prev).add(day.date));
+      setExpandedBatches((prev) => new Set(prev).add(batch.path));
+      finish(file ? null : `${target.fileId} is no longer in that batch.`);
+      // Not cancelled by the cleanup: clearing the task above changes jumpNonce and re-runs this effect.
+      revealElement(file ? `[data-file-path="${CSS.escape(file.path)}"]` : `[data-batch-path="${CSS.escape(batch.path)}"]`, {
+        onReveal: () => {
+          if (!file) return;
+          clearTimeout(foundTimerRef.current);
+          setFoundFilePath(file.path);
+          foundTimerRef.current = setTimeout(() => setFoundFilePath(null), FOUND_FLASH_MS);
+        },
+      });
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [jumpNonce, loadedOnce, isLoading, dayGroups, loadingDays, loadDayContent, clearSearchTarget]);
 
 
   const filteredDayGroups = useMemo(() => {
@@ -1096,6 +1164,7 @@ const BatchHistory = () => {
                         onPrintLabel={handlePrintLabel}
                         selectedFilePaths={selectedFiles}
                         onToggleFileSelect={toggleFileSelect}
+                        foundFilePath={foundFilePath}
                       />
                     ))
                   )}

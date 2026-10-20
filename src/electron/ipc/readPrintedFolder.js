@@ -460,3 +460,74 @@ export const readPrintedDay = async (dayFolder) => {
 
   return result;
 };
+
+// The Ctrl+F history search: ONE day as bare PDF names. Two readdir levels (day, then each batch)
+// and nothing else - no readFile, no DB, no length estimate - because the search only matches a name
+// and the full read of a day (readPrintedDay) costs three times as many SMB round trips. The renderer
+// comes from a dayFolder it got from readPrintedDays; anything that is not a day folder name is
+// refused, so a renderer cannot point this at another directory.
+//
+// A batch folder that cannot be listed (gone mid-scan: rolled back, deleted) does not sink the day,
+// but it is not hidden either: `unreadableBatches` says how many were left out, and the search then
+// reports a partial result instead of "not found".
+export const readPrintedDayNames = async (dayFolder) => {
+  const result = { success: false, data: null, errors: [] };
+
+  if (typeof dayFolder !== "string" || !DAY_FOLDER_RE.test(dayFolder)) {
+    result.errors = [
+      { code: "INVALID_DAY_FOLDER", message: "Not a PRINTED day folder name.", stage: "read_printed", type: "Error", title: "Failed to search batch history" },
+    ];
+    return result;
+  }
+
+  try {
+    const dayPath = path.join(getPrintedRootPath(), dayFolder);
+    let batchEntries;
+    try {
+      batchEntries = await fs.promises.readdir(dayPath, { withFileTypes: true });
+    } catch (err) {
+      // Same code and key as buildDayGroup / the readPrintedDays skeleton: one trace per window.
+      diag(dayPath, {
+        type: "error",
+        code: "PRINTED_DAY_UNREADABLE",
+        message: `Could not read day folder ${dayFolder}`,
+        detail: { dayFolder, path: dayPath, ...osFields(err) },
+      });
+      throw err;
+    }
+
+    let unreadableBatches = 0;
+    const batches = (
+      await Promise.all(
+        batchEntries
+          .filter((e) => e.isDirectory())
+          .map(async (batchEntry) => {
+            const meta = parseBatchFolderName(batchEntry.name);
+            if (!meta) return null; // not a batch: readPrintedDays already traced it (BATCH_FOLDER_SKIPPED)
+            const batchPath = path.join(dayPath, batchEntry.name);
+            let entries;
+            try {
+              entries = await fs.promises.readdir(batchPath, { withFileTypes: true });
+            } catch {
+              unreadableBatches += 1;
+              return null;
+            }
+            const files = entries
+              .filter((f) => f.isFile() && f.name.toLowerCase().endsWith(".pdf"))
+              .map((f) => {
+                const parsed = parsePrintFileName(f.name, { fullPath: path.join(batchPath, f.name), dir: batchPath, shopConfig: getProfile() });
+                return { name: f.name, orderId: parsed?.orderId || null, customerName: parsed?.customerName || null };
+              });
+            return { name: batchEntry.name, path: batchPath, printer: meta.printer, files };
+          }),
+      )
+    ).filter(Boolean);
+
+    result.data = { dayFolder, batches, unreadableBatches };
+    result.success = true;
+  } catch (err) {
+    result.errors = [makeReadError(err)];
+  }
+
+  return result;
+};

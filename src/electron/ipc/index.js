@@ -9,7 +9,7 @@ import { submitBatch } from "./submitBatch.js";
 import { openPreview } from "./openPreview.js";
 import { openInFolder } from "./openInFolder.js";
 import { openInShopify } from "./openInShopify.js";
-import { readPrintedFolder, readPrintedDays, readPrintedDay, readSingleBatch, parseBatchFolderName, setDiagWorkstationResolver, getPrintedRootUnreachable } from "./readPrintedFolder.js";
+import { readPrintedFolder, readPrintedDays, readPrintedDay, readPrintedDayNames, readSingleBatch, parseBatchFolderName, setDiagWorkstationResolver, getPrintedRootUnreachable } from "./readPrintedFolder.js";
 import { sweepOrphanTemps } from "./createBatch.js";
 import { rollbackBatchFromHistory, rollbackFileFromHistory, regenerateXmlForBatch, deleteBatchFolder } from "./batchHistoryHandlers.js";
 import { registerCustomOrderHandlers } from "./customOrderHandlers.js";
@@ -327,6 +327,10 @@ export async function registerIpcHandlers() {
 
   ipcMain.handle("read-printed-day", async (_event, dayFolder) => {
     return readPrintedDay(dayFolder);
+  });
+
+  ipcMain.handle("read-printed-day-names", async (_event, dayFolder) => {
+    return readPrintedDayNames(dayFolder);
   });
 
   ipcMain.handle("regenerate-xml", async (_event, batchPath) => {

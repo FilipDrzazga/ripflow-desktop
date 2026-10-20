@@ -13,7 +13,7 @@ const formatRolledBackAt = (isoString) => {
   return `${hh}:${mm} ${dd}/${mo}`;
 };
 
-const FileRow = ({ file, batch, stageRow, ripError, onRipBadgeClick, activeContextFilePath, onContextMenu, elementRefsRef, isSelected, onToggleSelect }) => {
+const FileRow = ({ file, batch, stageRow, ripError, onRipBadgeClick, activeContextFilePath, onContextMenu, elementRefsRef, isSelected, onToggleSelect, isFound = false }) => {
   const isFileRolledBack = file.status === FILE_STATUS.ROLLED_BACK;
   const fileId = file.name.replace(/\.[^.]+$/, "");
   const rollbackReason = isFileRolledBack
@@ -23,7 +23,8 @@ const FileRow = ({ file, batch, stageRow, ripError, onRipBadgeClick, activeConte
 
   return (
     <li
-      className={`${style.file_row} ${activeContextFilePath === file.path ? style.file_row_active : ""} ${isFileRolledBack ? style.file_row_rolled_back : ""} ${isSelected ? style.file_row_selected : ""} ${!isFileRolledBack ? style.file_row_selectable : ""}`}
+      data-file-path={file.path}
+      className={`${style.file_row} ${activeContextFilePath === file.path ? style.file_row_active : ""} ${isFileRolledBack ? style.file_row_rolled_back : ""} ${isSelected ? style.file_row_selected : ""} ${!isFileRolledBack ? style.file_row_selectable : ""} ${isFound ? style.file_row_found : ""}`}
       onMouseDown={!isFileRolledBack ? (e) => claimShiftMouseDown(e, window) : undefined}
       onClick={!isFileRolledBack ? (e) => onToggleSelect?.(file.path, { shiftKey: e.shiftKey }) : undefined}
       onContextMenu={

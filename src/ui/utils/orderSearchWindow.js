@@ -4,6 +4,7 @@
 
 import { STAGE_COLOR, STAGE_LABEL } from "../../shared/constants";
 import { MIN_QUERY_LENGTH, ORDER_SEARCH_WHERE } from "./orderSearch";
+import { PRINTED_SCAN } from "./printedSweep";
 
 // The id of the window's input: App.jsx focuses and selects it on a second Ctrl+F.
 export const ORDER_SEARCH_INPUT_ID = "order-search-input";
@@ -79,19 +80,27 @@ export const sinceTitle = (iso) => {
 const WHERE_LABEL = {
   [ORDER_SEARCH_WHERE.INBOX]: "Inbox",
   [ORDER_SEARCH_WHERE.HELD]: "Held",
+  [ORDER_SEARCH_WHERE.HISTORY]: "History",
 };
 const WHERE_COLOR = {
   [ORDER_SEARCH_WHERE.INBOX]: { bg: "#e0f2fe", color: "#075985" },
   [ORDER_SEARCH_WHERE.HELD]: { bg: "#ffe7e5", color: "#b42318" },
+  [ORDER_SEARCH_WHERE.HISTORY]: { bg: "#ece9f5", color: "#4a3f78" },
 };
 const FALLBACK_COLOR = { bg: "#f0f0f0", color: "#616161" };
 
 export const whereLabel = (where) => WHERE_LABEL[where] ?? STAGE_LABEL[where] ?? String(where);
 export const whereColors = (where) => WHERE_COLOR[where] ?? STAGE_COLOR[where] ?? FALLBACK_COLOR;
 
+// " Batch history: 12 of 35 days checked." once the sweep knows how many days there are; "" before that.
+const scanProgress = (printedScan) =>
+  printedScan.total > 0 ? ` Batch history: ${printedScan.listed} of ${printedScan.total} days checked.` : "";
+
 // What the window says instead of a list. `result` is searchOrders' answer; a query below the minimum reads
 // differently from "looked, found nothing". An empty box says nothing (null): the window shows the field alone.
-export const emptyState = (query, result) => {
+// `printedScan` is the history sweep's state (utils/printedSweep.js); without it the window did not look in the
+// PRINTED folders at all, and says what the first version of it said.
+export const emptyState = (query, result, printedScan) => {
   if (String(query ?? "").trim() === "") {
     return null;
   }
@@ -99,10 +108,41 @@ export const emptyState = (query, result) => {
     return { title: "Keep typing", hint: `At least ${MIN_QUERY_LENGTH} characters, so a letter or two does not match half the shop.` };
   }
   if (result.totalRows === 0) {
+    if (!printedScan) {
+      return {
+        title: "Not found in Inbox, Held or Production",
+        hint: "Orders shipped long ago are cleared from Production - look in Batch history.",
+      };
+    }
+    if (printedScan.status === PRINTED_SCAN.RUNNING) {
+      return {
+        title: "Searching older batches...",
+        hint: `Nothing in Inbox, Held or Production so far.${scanProgress(printedScan)}`,
+      };
+    }
+    if (printedScan.status === PRINTED_SCAN.PARTIAL) {
+      return {
+        title: "Not found - batch history was only partly read",
+        hint: "Part of the PRINTED folders could not be read (network?). The order may be in them - try again, or look in Batch history.",
+      };
+    }
     return {
-      title: "Not found in Inbox, Held or Production",
-      hint: "Orders shipped long ago are cleared from Production - look in Batch history.",
+      title: "Not found",
+      hint: "Looked in Inbox, Held, Production and the whole batch history.",
     };
+  }
+  return null;
+};
+
+// The line under the list while the sweep still reads older days (rows from the store are already shown), and the
+// one that says the history is incomplete; null when there is nothing to tell. Same states as emptyState.
+export const printedScanNote = (printedScan) => {
+  if (!printedScan) return null;
+  if (printedScan.status === PRINTED_SCAN.RUNNING) {
+    return `Searching older batches...${scanProgress(printedScan)}`;
+  }
+  if (printedScan.status === PRINTED_SCAN.PARTIAL) {
+    return "Batch history was only partly read - an older match may be missing.";
   }
   return null;
 };

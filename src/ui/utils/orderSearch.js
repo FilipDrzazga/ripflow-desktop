@@ -5,10 +5,11 @@
 // `stageHistory`). Output: order groups, one row per FILE saying where that file is NOW.
 // No IPC, no disk, no clock: the window re-runs this on every keystroke and every store change.
 //
-// What it does NOT cover, on purpose (plan C3): the PRINTED folders (an SMB read), Custom Orders,
-// and Shipped rows older than the retention (cleanupShippedStages purged them). Every file that
-// was ever submitted has a file_stages row (submitBatch), so the Production rows already span
-// Printed..Shipped; an order older than that is an empty result, and the window says so.
+// The store alone cannot answer for an order older than the Shipped retention (cleanupShippedStages purged
+// its file_stages row), so the window also sweeps the PRINTED folders in the background
+// (hooks/usePrintedSearch.js, FILIP 2026-10-20: an order of last month was found only through the Batch
+// tab) and hands what it listed in as `printedDays`. Those rows are the last resort: a file the
+// store knows (a Production row) is never shown twice. Custom Orders stay out.
 //
 // One file = one row. file_stages is keyed by the filename stem (rollback deletes the row when
 // the PDF returns to the Inbox), so a stem seen in BOTH places is a fresh copy waiting in the
@@ -20,10 +21,12 @@ import { APP_VIEW } from "../constants/appViews";
 import { dayKeyFromBatchPath } from "./dayKey";
 import { ORDER_STAGE_PIPELINE, UNKNOWN_ORDER_KEY, UNKNOWN_ORDER_LABEL } from "./groupByOrder";
 
-// Where a file is now: the two pre-print places, or a PRODUCTION_STAGE value verbatim.
+// Where a file is now: the two pre-print places, a PRODUCTION_STAGE value verbatim, or HISTORY - printed and
+// still in its PRINTED batch folder, but with no stage row any more (shipped and purged, or never staged).
 export const ORDER_SEARCH_WHERE = {
   INBOX: "inbox",
   HELD: "held",
+  HISTORY: "history",
 };
 
 // The view ids App.jsx switches on (`activeView`), taken from the one constant App.jsx itself uses. The
@@ -31,6 +34,7 @@ export const ORDER_SEARCH_WHERE = {
 export const ORDER_SEARCH_VIEW = {
   PRINT: APP_VIEW.PRINT,
   PRODUCTION: APP_VIEW.PRODUCTION,
+  BATCH: APP_VIEW.BATCH,
 };
 
 // Below this many characters (after trim) nothing is searched: one letter would match half the
@@ -40,12 +44,13 @@ export const MIN_QUERY_LENGTH = 3;
 // Rows shown at most; the rest is reported as hiddenRows ("N more").
 export const MAX_RESULT_ROWS = 50;
 
-// Sort position of a row inside its order: Inbox, Held, then the pipeline order. A stage the
+// Sort position of a row inside its order: Inbox, Held, the pipeline order, then History. A stage the
 // pipeline does not list (rejected / overridden - legacy rows) sorts after everything.
 const WHERE_RANK = new Map([
   [ORDER_SEARCH_WHERE.INBOX, 0],
   [ORDER_SEARCH_WHERE.HELD, 1],
   ...ORDER_STAGE_PIPELINE.map((stage, i) => [stage, i + 2]),
+  [ORDER_SEARCH_WHERE.HISTORY, ORDER_STAGE_PIPELINE.length + 2],
 ]);
 const whereRank = (where) => WHERE_RANK.get(where) ?? WHERE_RANK.size;
 
@@ -132,14 +137,48 @@ const stageRow = ({ row, history }) => {
   };
 };
 
+// When a PRINTED batch was made, from the day folder (dd-mm-yyyy) and the batch folder's hhmmss
+// (PRINTED_hhmmss-GROUP-PRINTER), as an ISO string; null for a day folder that is not a real date. The
+// batch time is local time, like the folder names. A batch name without the hhmmss keeps the day (00:00).
+const printedBatchTime = (dayFolder, batchName) => {
+  const d = /^(\d{2})-(\d{2})-(\d{4})$/.exec(text(dayFolder));
+  if (!d) return null;
+  const t = /^PRINTED_(\d{2})(\d{2})(\d{2})/.exec(text(batchName));
+  const [day, month, year] = [Number(d[1]), Number(d[2]), Number(d[3])];
+  const at = new Date(year, month - 1, day, t ? Number(t[1]) : 0, t ? Number(t[2]) : 0, t ? Number(t[3]) : 0);
+  // 31-02-2026 would roll over into March: a folder name that is not a date has no time.
+  if (Number.isNaN(at.getTime()) || at.getDate() !== day || at.getMonth() !== month - 1) return null;
+  return at.toISOString();
+};
+
+const historyRow = ({ file, batch, dayFolder }) => {
+  const name = text(file.name);
+  const stem = stemOf(name);
+  return {
+    fileId: stem,
+    fileName: name,
+    orderKey: orderKeyOf(text(file.orderId) || name.match(/ON\d+/i)?.[0]),
+    customerName: text(file.customerName) || null,
+    where: ORDER_SEARCH_WHERE.HISTORY,
+    since: printedBatchTime(dayFolder, batch.name),
+    reason: null,
+    batchPath: text(batch.path) || null,
+    dayKey: dayFolder,
+    alsoInProduction: null,
+    target: { view: ORDER_SEARCH_VIEW.BATCH, fileId: stem, dayKey: dayFolder, batchPath: text(batch.path) || null },
+  };
+};
+
 // Newest first; a row without a time sorts after the dated ones.
 const byNewest = (a, b) => (a < b ? 1 : a > b ? -1 : 0);
 
 /**
  * @param {string} query
  * @param {{ files?: object[] (store.files: groups with `items`; a flat item list also works), heldIds?: Set<string>, heldReasons?: Map<string,string>,
- *           productionStages?: Record<string, object>, stageHistory?: Record<string, object[]> }} snapshot
- *   the store slices of the same names; every one is optional (a slice not loaded yet is empty).
+ *           productionStages?: Record<string, object>, stageHistory?: Record<string, object[]>,
+ *           printedDays?: { dayFolder: string, batches: { name, path, printer, files: { name, orderId, customerName }[] }[] }[] } snapshot
+ *   the store slices of the same names; every one is optional (a slice not loaded yet is empty). `printedDays`
+ *   is what the history sweep has listed so far (readPrintedDayNames), not a store slice.
  * @returns {{ status: "short" | "ok", query: string, groups: object[], totalRows: number,
  *             shownRows: number, hiddenRows: number }}
  *   groups: [{ orderKey, orderId, customerName, isUnknown, rows }] - exact order id first, then
@@ -151,7 +190,7 @@ export const searchOrders = (query, snapshot = {}) => {
   const empty = (status) => ({ status, query: q, groups: [], totalRows: 0, shownRows: 0, hiddenRows: 0 });
   if (q.length < MIN_QUERY_LENGTH) return empty("short");
 
-  const { files, heldIds, heldReasons, productionStages, stageHistory } = snapshot;
+  const { files, heldIds, heldReasons, productionStages, stageHistory, printedDays } = snapshot;
   const tokens = tokensOf(q);
   const rows = [];
 
@@ -176,6 +215,24 @@ export const searchOrders = (query, snapshot = {}) => {
     if (!matches(tokens, row.order_id, row.customer_name, row.file_id)) continue;
     rows.push(stageRow({ row, history: stageHistory?.[row.file_id] }));
   }
+
+  // The PRINTED folders: last resort, one row per file stem like everywhere else. A stem the store holds as a
+  // Production row is not listed again (that row is the live one, and is shown whenever it matches); a stem
+  // printed in several batches (a reprint) keeps the newest.
+  const historyByStem = new Map();
+  for (const day of printedDays ?? []) {
+    for (const batch of day?.batches ?? []) {
+      for (const file of batch?.files ?? []) {
+        const stem = stemOf(file?.name);
+        if (!stem || productionStages?.[stem]) continue;
+        if (!matches(tokens, file.orderId, file.customerName, file.name)) continue;
+        const row = historyRow({ file, batch, dayFolder: day.dayFolder });
+        const kept = historyByStem.get(stem);
+        if (!kept || (row.since ?? "") > (kept.since ?? "")) historyByStem.set(stem, row);
+      }
+    }
+  }
+  rows.push(...historyByStem.values());
 
   // Group by order. The first non-empty customer name wins, as in groupByOrder.
   const byOrder = new Map();

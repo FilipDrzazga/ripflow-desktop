@@ -4,12 +4,14 @@ import { LuFileText, LuSearch } from "react-icons/lu";
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
 import { useStore } from "@/store/useStore";
-import { searchOrders } from "@/utils/orderSearch";
+import { MIN_QUERY_LENGTH, searchOrders } from "@/utils/orderSearch";
+import { usePrintedSearch } from "@/hooks/usePrintedSearch";
 import {
   ORDER_SEARCH_INPUT_ID,
   emptyState,
   flattenRows,
   moveActiveIndex,
+  printedScanNote,
   rowKeyOf,
   sinceLabel,
   sinceTitle,
@@ -22,7 +24,9 @@ const prefersReducedMotion = () =>
   typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
 // The Ctrl+F window (plan C3-2): "where is order X right now?". Read-only - it shows rows from what the
-// store already holds (Inbox, Held, every Production stage) and hands the chosen row to `onSelect`.
+// store already holds (Inbox, Held, every Production stage), then the PRINTED folders as they are listed in
+// the background (usePrintedSearch: an order older than the Shipped retention is only there), and hands the
+// chosen row to `onSelect`.
 //
 // FOCUS NEVER LEAVES THE INPUT. The rows are not focusable: the arrow keys move a highlight and the input
 // points at it with aria-activedescendant. That is also what keeps the Production barcode scanner quiet
@@ -35,6 +39,10 @@ const OrderSearch = ({ onClose, onSelect }) => {
   const stageHistory = useStore((s) => s.stageHistory);
 
   const [query, setQuery] = useState("");
+  // The history sweep starts with the first query long enough to search and then runs to the end, whatever is
+  // typed next (the listing does not depend on the query). Set from the input handler, never from an effect.
+  const [historyArmed, setHistoryArmed] = useState(false);
+  const printed = usePrintedSearch(historyArmed);
   const [activeIndex, setActiveIndex] = useState(0);
   const inputRef = useRef(null);
   const pointerRef = useRef(null);
@@ -58,8 +66,9 @@ const OrderSearch = ({ onClose, onSelect }) => {
         heldReasons,
         productionStages,
         stageHistory,
+        printedDays: printed.days,
       }),
-    [query, files, heldIds, heldReasons, productionStages, stageHistory],
+    [query, files, heldIds, heldReasons, productionStages, stageHistory, printed.days],
   );
   const rows = useMemo(() => flattenRows(result), [result]);
   // The store moves under an open window (the polls): keep the highlight on a row that still exists.
@@ -75,7 +84,8 @@ const OrderSearch = ({ onClose, onSelect }) => {
   }, [activeRow?.fileId, activeRow?.where]);
 
   const now = new Date();
-  const empty = emptyState(query, result);
+  const empty = emptyState(query, result, printed);
+  const scanNote = printedScanNote(printed);
   // An empty box shows the search field alone (FILIP 2026-10-19 08:16): the placeholder already says what to type,
   // so no "Find an order" invitation and no key legend until the first character.
   const idle = query.trim() === "";
@@ -181,6 +191,7 @@ const OrderSearch = ({ onClose, onSelect }) => {
             onChange={(e) => {
               setQuery(e.target.value);
               setActiveIndex(0);
+              if (e.target.value.trim().length >= MIN_QUERY_LENGTH) setHistoryArmed(true);
             }}
             onKeyDown={handleKeyDown}
           />
@@ -264,6 +275,11 @@ const OrderSearch = ({ onClose, onSelect }) => {
                 ))}
                 {result.hiddenRows > 0 && (
                   <p className={style.more}>{result.hiddenRows} more - type more of the name to narrow it down</p>
+                )}
+                {scanNote && (
+                  <p className={style.more} role="status">
+                    {scanNote}
+                  </p>
                 )}
               </div>
             )}

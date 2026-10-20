@@ -61,6 +61,10 @@ const api = Object.freeze({
     if (!isNonEmptyString(dayFolder)) throw new TypeError("Day folder must be a non-empty string.");
     return ipcRenderer.invoke("read-printed-day", dayFolder);
   },
+  readPrintedDayNames: (dayFolder) => {
+    if (!isNonEmptyString(dayFolder)) throw new TypeError("Day folder must be a non-empty string.");
+    return ipcRenderer.invoke("read-printed-day-names", dayFolder);
+  },
   regenerateXml: (batchPath) => {
     assertPath(batchPath);
     return ipcRenderer.invoke("regenerate-xml", batchPath);

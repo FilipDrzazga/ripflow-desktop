@@ -23,6 +23,7 @@ const BatchRow = ({
   onPrintLabel,
   selectedFilePaths,
   onToggleFileSelect,
+  foundFilePath = null,
 }) => {
   const productionStages = useStore((s) => s.productionStages);
   const loadStagesForBatch = useStore((s) => s.loadStagesForBatch);
@@ -56,6 +57,7 @@ const BatchRow = ({
 
   return (
     <div
+      data-batch-path={batch.path}
       className={`${style.batch_group} ${isRolledBack ? style.batch_rolled_back : ""}`}
       ref={(el) => {
         if (el) elementRefsRef.current.set(`batch:${batch.path}`, el);
@@ -171,6 +173,7 @@ const BatchRow = ({
               activeContextFilePath={activeContextFilePath}
               onContextMenu={onContextMenu}
               elementRefsRef={elementRefsRef}
+              isFound={foundFilePath === file.path}
               isSelected={selectedFilePaths?.has(file.path) ?? false}
               onToggleSelect={(filePath, opts) => onToggleFileSelect?.(filePath, batch.path, opts)}
             />
