@@ -802,9 +802,9 @@
    amber pair the Orders lens uses for its focus highlight (.order_highlight),
    so the two views speak one language. Deliberately softer than the scan
    highlight, which is a GSAP flash from #fff3cd.
-   The RING is the load-bearing half: the scan flash leaves an inline
-   background-color on any card it has touched, and an inline style would win
-   over this class — box-shadow is untouched by it. */
+   The RING is the load-bearing half: while the scan flash runs it holds an
+   inline background-color on the card, and an inline style wins over this
+   class (the two can overlap) — box-shadow is untouched by it. */
 .card_restored {
   background-color: #fff8e6;
   box-shadow: 0 0 0 2px #f5d98b;

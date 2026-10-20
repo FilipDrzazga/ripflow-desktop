@@ -128,9 +128,11 @@ const ProductionCard = ({ stage: row, history = [], highlighted, restored = fals
     const tween = gsap.fromTo(
       el,
       { backgroundColor: "#fff3cd" },
-      { backgroundColor: selectedRef.current ? "#eef2ff" : "#ffffff", delay: FOUND_HOLD_S, duration: FOUND_FADE_S, ease: "power2.out" },
+      { backgroundColor: selectedRef.current ? "#eef2ff" : "#ffffff", delay: FOUND_HOLD_S, duration: FOUND_FADE_S, ease: "power2.out", clearProps: "backgroundColor" },
     );
-    // A flash cut short (another card was found, the card left) jumps to its end colour instead of staying amber.
+    // clearProps: once the flash ends the inline colour goes and the CSS (selected / hover / restored) rules again -
+    // a card selected during the flash must not stay white. A flash cut short (another card was found, the card left)
+    // jumps to its end and clears the same way instead of staying amber.
     return () => {
       tween.progress(1).kill();
     };
