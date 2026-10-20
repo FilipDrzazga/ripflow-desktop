@@ -6,7 +6,7 @@ import { getStorageRootPath } from "./getRootPath.js";
 import { DEFAULT_FABRICS } from "./defaultFabrics.js";
 import { DEFAULT_PROFILE } from "./defaultProfile.js";
 import { printerOfBatch } from "../../shared/batchFolderName.js";
-import { preferredPrinterToStore, storesPreferredPrinter } from "./fabricInput.js";
+import { preferredPrinterToStore, storesPreferredPrinter, lengthExtraToStore } from "./fabricInput.js";
 
 let db = null;
 let stmtInsert = null;
@@ -354,6 +354,15 @@ export const initDb = () => {
     // Backfill the alias column on existing DBs created before it was introduced.
     ensureFabricAliasColumn();
     ensureFabricPreferredPrinterColumn();
+    // The length allowance per fabric lives in a table of its own, not in a column: an older build
+    // rewrites fabrics rows (INSERT OR REPLACE) without knowing a new column and would clear it, and
+    // a table it never touches survives that. One row per fabric WITH an allowance (> 0).
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS fabric_length_extra (
+        name    TEXT PRIMARY KEY,
+        percent REAL NOT NULL
+      )
+    `);
     // Seed the default catalog on first run only — an existing catalog is the shop's own data,
     // so a fabric the operator deleted must not come back on the next startup.
     const fabricsCount = db.prepare("SELECT COUNT(*) AS c FROM fabrics").get().c;
@@ -875,16 +884,85 @@ export const getFabricGlobalsRaw = () => {
 // Without the preferred_printer column (a failed ALTER, D8) the catalogue is still read - every row
 // with preferredPrinter null - instead of a SELECT on a missing column turning it into null, which
 // left the station without materials (every job refused) until a restart.
+// Every row carries lengthExtraPercent (0 = no allowance). An unreadable allowance table gives 0 for
+// every fabric and never costs the catalogue: the estimates are then short by the allowance, which
+// is better than every job refused.
 export const getAllFabrics = () => {
   if (!db) return null;
   try {
     const preferred = fabricsHavePreferredPrinter() ? "preferred_printer" : "NULL";
-    return db.prepare(`SELECT name, type, xml_width AS xmlWidth, roll_width AS rollWidth, is_velvet AS isVelvet, is_linen AS isLinen, is_blossom AS isBlossom, alias, ${preferred} AS preferredPrinter FROM fabrics ORDER BY type ASC, name ASC`).all();
+    const rows = db.prepare(`SELECT name, type, xml_width AS xmlWidth, roll_width AS rollWidth, is_velvet AS isVelvet, is_linen AS isLinen, is_blossom AS isBlossom, alias, ${preferred} AS preferredPrinter FROM fabrics ORDER BY type ASC, name ASC`).all();
+    const extras = readLengthExtras();
+    return rows.map((row) => ({ ...row, lengthExtraPercent: extras.get(row.name) ?? 0 }));
   } catch (err) {
     console.error("[db] getAllFabrics failed:", err);
     return null;
   }
 };
+
+const readLengthExtras = () => {
+  try {
+    return readLengthExtrasStrict();
+  } catch (err) {
+    console.error("[db] readLengthExtras failed:", err);
+    return new Map();
+  }
+};
+
+// fabrics:save: the allowance of ONE fabric, after saveFabric succeeded. `percent` undefined = not
+// sent: keep what the row had (moved to the new name on a rename); 0 / null / "" = none (row removed).
+export const setFabricLengthExtra = (oldName, name, percent) => {
+  if (!db) return false;
+  try {
+    db.transaction(() => {
+      const existing = db.prepare("SELECT percent FROM fabric_length_extra WHERE name = ?").get(oldName || name)?.percent ?? 0;
+      const value = lengthExtraToStore(percent, existing);
+      if (oldName && oldName !== name) db.prepare("DELETE FROM fabric_length_extra WHERE name = ?").run(oldName);
+      if (value > 0) db.prepare("INSERT OR REPLACE INTO fabric_length_extra (name, percent) VALUES (?, ?)").run(name, value);
+      else db.prepare("DELETE FROM fabric_length_extra WHERE name = ?").run(name);
+    })();
+    return true;
+  } catch (err) {
+    console.error("[db] setFabricLengthExtra failed:", err);
+    return false;
+  }
+};
+
+export const deleteFabricLengthExtra = (name) => {
+  if (!db) return false;
+  try {
+    db.prepare("DELETE FROM fabric_length_extra WHERE name = ?").run(name);
+    return true;
+  } catch (err) {
+    console.error("[db] deleteFabricLengthExtra failed:", err);
+    return false;
+  }
+};
+
+// fabrics:setAll: the whole catalogue was replaced, so the allowances are replaced with it - a row
+// that does not send one keeps what its name had, a name that left the catalogue loses its row.
+export const setAllFabricLengthExtras = (fabrics) => {
+  if (!db) return false;
+  try {
+    db.transaction(() => {
+      const existing = readLengthExtrasStrict();
+      db.prepare("DELETE FROM fabric_length_extra").run();
+      const stmt = db.prepare("INSERT OR REPLACE INTO fabric_length_extra (name, percent) VALUES (?, ?)");
+      for (const f of fabrics) {
+        const value = lengthExtraToStore(f.lengthExtraPercent, existing.get(f.name) ?? 0);
+        if (value > 0) stmt.run(f.name, value);
+      }
+    })();
+    return true;
+  } catch (err) {
+    console.error("[db] setAllFabricLengthExtras failed:", err);
+    return false;
+  }
+};
+
+// Throws: a write must not go on from an allowance table it could not read (readLengthExtras answers
+// an empty map instead, for the catalogue read).
+const readLengthExtrasStrict = () => new Map(db.prepare("SELECT name, percent FROM fabric_length_extra").all().map((r) => [r.name, r.percent]));
 
 // Without the preferred_printer column (D8) a write that carries no preference goes through without
 // it (there is nothing stored to keep), and one that carries a preference is refused - the handlers

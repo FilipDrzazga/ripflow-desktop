@@ -29,6 +29,26 @@ const printerByCode = (printers, code) => {
   return (Array.isArray(printers) ? printers : []).find((pr) => typeof pr?.code === "string" && pr.code.toUpperCase() === wanted);
 };
 
+// The length allowance of a fabric (fabric_length_extra): the percent added to the estimated print
+// length of its files, for a material that shrinks in the heat press. 0 = none (and no row).
+// undefined = the caller did not send the field (an older renderer, a JSON exported before the
+// feature): KEEP what is stored. null or "" = none, on purpose.
+export const LENGTH_EXTRA_MAX_PERCENT = 100;
+const LENGTH_EXTRA_MESSAGE = `The length allowance must be a number from 0 to ${LENGTH_EXTRA_MAX_PERCENT} percent.`;
+
+export const isLengthExtraInput = (value) => {
+  if (value === undefined || value === null || value === "") return true;
+  const n = typeof value === "number" ? value : typeof value === "string" ? Number(value) : NaN;
+  return Number.isFinite(n) && n >= 0 && n <= LENGTH_EXTRA_MAX_PERCENT;
+};
+
+// The percent a write stores, two decimals; `existing` = what the row has now (0 when none).
+export const lengthExtraToStore = (given, existing) => {
+  if (given === undefined) return existing ?? 0;
+  if (given === null || given === "") return 0;
+  return Math.round(Number(given) * 100) / 100;
+};
+
 // null when the fabric may be saved, else the message for the operator.
 // `printers` = the shop profile's printers[] (getPrinters(): [] with no readable profile). Only
 // read when the fabric names a preferred printer, which must be a printer of the fabric's OWN
@@ -39,6 +59,7 @@ export const fabricSaveError = (fabric, printers) => {
   if (typeof fabric.type !== "string" || !fabric.type.trim()) {
     return "Choose a material class for the fabric. If there is none to choose, the shop profile has no material classes yet - import it in Settings > Shop Profile.";
   }
+  if (!isLengthExtraInput(fabric.lengthExtraPercent)) return LENGTH_EXTRA_MESSAGE;
   const preferred = fabric.preferredPrinter;
   if (preferred === undefined || preferred === null || preferred === "") return null;
   if (typeof preferred !== "string") return "Preferred printer must be a printer code.";

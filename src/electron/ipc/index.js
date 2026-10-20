@@ -19,7 +19,7 @@ import { getStorageRootPath } from "../helpers/getRootPath.js";
 import { assertStorageFilePath } from "../helpers/validateStoragePath.js";
 import { parsePrintFileName } from "../helpers/parseFileName.js";
 import { getSettings, setSettings, getRollbackDefinitions, clearRollbackDefinitions } from "../helpers/getSettings.js";
-import { initDb, insertLog, getAllLogs, clearAllLogs, holdFile, unholdFile, getHeldFiles, pruneOrphanHeldFiles, getRollbackReasonsByBatch, getRollbackReasonsByFile, getRollbackStats, getRollbackDetails, clearAllRollbackReasons, deleteRollbackReason, getLatestRollbackReasonsForFileIds, getReasonDefinitions, setReasonDefinitions as setReasonDefinitionsDb, migrateReasonDefinitions, getAllFabrics, saveFabric, ensureFabricPreferredPrinter, deleteFabric as deleteFabricDb, setAllFabrics, backupDb, cleanupShippedStages, getDbDegraded, getShopProfileRaw, isDbOpen } from "../helpers/db.js";
+import { initDb, insertLog, getAllLogs, clearAllLogs, holdFile, unholdFile, getHeldFiles, pruneOrphanHeldFiles, getRollbackReasonsByBatch, getRollbackReasonsByFile, getRollbackStats, getRollbackDetails, clearAllRollbackReasons, deleteRollbackReason, getLatestRollbackReasonsForFileIds, getReasonDefinitions, setReasonDefinitions as setReasonDefinitionsDb, migrateReasonDefinitions, getAllFabrics, saveFabric, ensureFabricPreferredPrinter, deleteFabric as deleteFabricDb, setAllFabrics, setFabricLengthExtra, deleteFabricLengthExtra, setAllFabricLengthExtras, backupDb, cleanupShippedStages, getDbDegraded, getShopProfileRaw, isDbOpen } from "../helpers/db.js";
 import { collectDiagnostics, diagnosticsFileName, diagnosticTargets, checkAccess } from "../helpers/diagnostics.js";
 import { buildZip } from "../helpers/zipWriter.js";
 import { loadFabricCache, invalidateFabricCache } from "../helpers/fabricCache.js";
@@ -490,14 +490,20 @@ export async function registerIpcHandlers() {
     if (columnError) return { success: false, error: columnError };
     // the preferred printer is stored the way the profile spells it (D7)
     const ok = saveFabric(oldName ?? fabric.name, withProfilePrinterCode(fabric, getPrinters()));
+    // the length allowance has its own table; it follows a rename and is kept when not sent
+    const extraOk = ok && setFabricLengthExtra(oldName, fabric.name, fabric.lengthExtraPercent);
     invalidateFabricCache();
     loadFabricCache();
+    if (ok && !extraOk) {
+      return { success: false, error: "The material was saved, but its length allowance could not be - check the database connection and save again." };
+    }
     return { success: ok };
   });
 
   ipcMain.handle("fabrics:delete", (_event, name) => {
     if (!name?.trim()) return { success: false, error: "Fabric name is required." };
     const ok = deleteFabricDb(name);
+    if (ok) deleteFabricLengthExtra(name);
     invalidateFabricCache();
     loadFabricCache();
     return { success: ok };
@@ -511,8 +517,12 @@ export async function registerIpcHandlers() {
     const columnError = preferredPrinterColumnError(fabrics, ensureFabricPreferredPrinter);
     if (columnError) return { success: false, error: columnError };
     const ok = setAllFabrics(fabrics.map((f) => withProfilePrinterCode(f, getPrinters())));
+    const extrasOk = ok && setAllFabricLengthExtras(fabrics);
     invalidateFabricCache();
     loadFabricCache();
+    if (ok && !extrasOk) {
+      return { success: false, error: "The materials were saved, but their length allowances could not be - check the database connection." };
+    }
     return { success: ok };
   });
 

@@ -171,6 +171,8 @@ A Settings edit reaching the XML is therefore **intended**.
   current numbers; `profile:set` failed -> an Error. Validity (D1): a margin may be 0 (>= 0, like the import validator and the estimator, which uses a finite 0 as is), a roll width must be > 0, a blank field is invalid either way. The dead "XML Width Cotton/Poly" fields are gone
   from the editor.
 
+**Length allowance (FILIP 2026-10-20):** a fabric may carry `lengthExtraPercent` (Settings > Fabrics > "Length allowance", table `fabric_length_extra`, see `database.md`). `estimatePrintLength` nests per roll width AND allowance (the key is the roll width alone when the allowance is 0, so the answer and the float sum order are unchanged for every fabric without one) and scales that group's length by `1 + percent/100`; `rowsCount` is unchanged. It moves every metre figure that goes through the estimator - the inbox/selection counters, the batch label and the `_<N>m` of `<PhysicalGroup>`/`<LogisticGroup>` in the XML, the History header, rollback waste - but NOT the per-file `<Height>`: the printed artwork is not stretched. The golden net's catalogue has no allowance, so it stays at 0 differences; the allowance itself is pinned by `estimatePrintLength.lengthExtra.test.js`.
+
 **`getEstimateConfig()` returns `null`, never `{ fabrics: [] }`, when the cache is not loaded.** An
 empty array is truthy, so the estimator would take its DB branch with an empty catalog and silently
 read "not loaded" as "loaded and empty". `null` keeps the degraded path on the class defaults in

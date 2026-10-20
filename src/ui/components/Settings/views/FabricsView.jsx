@@ -43,6 +43,15 @@ const DEFAULT_NEW_FABRIC = {
   isBlossom: false,
   alias: "",
   preferredPrinter: null,
+  lengthExtraPercent: 0,
+};
+
+// The length allowance field takes 0..100 percent (main refuses anything else, fabricInput.js);
+// an empty field means none.
+const lengthExtraInvalid = (value) => {
+  if (value === "" || value === null || value === undefined) return false;
+  const n = Number(value);
+  return !Number.isFinite(n) || n < 0 || n > 100;
 };
 
 const FLAG_DEFS = [
@@ -241,6 +250,23 @@ const EditPanel = ({ fabric, title, onSave, onCancel, isSaving }) => {
         </div>
 
         <div className={styles.width_field}>
+          <span className={styles.edit_field_label}>Length allowance</span>
+          <div className={styles.width_input_wrap}>
+            <input
+              type="number"
+              min="0"
+              max="100"
+              step="0.1"
+              className={`${styles.width_input} ${lengthExtraInvalid(draft.lengthExtraPercent) ? styles.globals_input_error : ""}`}
+              value={draft.lengthExtraPercent ?? ""}
+              onChange={(e) => set("lengthExtraPercent", e.target.value)}
+              title="Percent added to the estimated print length of this material, for fabric that shrinks in the heat press. 0 = none."
+            />
+            <span className={styles.width_unit}>%</span>
+          </div>
+        </div>
+
+        <div className={styles.width_field}>
           <span className={styles.edit_field_label}>Preferred printer</span>
           <Select
             value={draft.preferredPrinter ?? ""}
@@ -281,7 +307,7 @@ const EditPanel = ({ fabric, title, onSave, onCancel, isSaving }) => {
           <button className={styles.cancel_btn} onClick={onCancel}>
             Cancel
           </button>
-          <button className={styles.save_row_btn} onClick={() => onSave(draft)} disabled={isSaving || !draft.name.trim() || !draft.type}>
+          <button className={styles.save_row_btn} onClick={() => onSave(draft)} disabled={isSaving || !draft.name.trim() || !draft.type || lengthExtraInvalid(draft.lengthExtraPercent)}>
             {isSaving ? "Saving…" : "Save"}
           </button>
         </div>
@@ -343,6 +369,7 @@ const MaterialsCard = () => {
         ...(preferredPrinter === undefined ? {} : { preferredPrinter }),
         xmlWidth: Number(fabric.xmlWidth),
         rollWidth: Number(fabric.rollWidth),
+        lengthExtraPercent: fabric.lengthExtraPercent === "" ? 0 : Number(fabric.lengthExtraPercent ?? 0),
         isVelvet: fabric.isVelvet ? 1 : 0,
         isLinen: fabric.isLinen ? 1 : 0,
         isBlossom: fabric.isBlossom ? 1 : 0,
@@ -465,6 +492,11 @@ const MaterialsCard = () => {
                               }
                             >
                               {fabric.preferredPrinter}
+                            </span>
+                          ) : null}
+                          {fabric.lengthExtraPercent > 0 ? (
+                            <span className={styles.mat_flag} title="Length allowance - added to the estimated print length">
+                              {`+${fabric.lengthExtraPercent}% length`}
                             </span>
                           ) : null}
                           {activeFlags.map(({ key, label }) => (
