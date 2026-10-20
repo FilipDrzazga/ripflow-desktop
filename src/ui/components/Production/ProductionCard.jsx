@@ -56,10 +56,10 @@ const StagePill = ({ stageKey, status, company, title }) => {
     <span
       className={`${style.stage_pill} ${isDone ? style.stage_pill_done : ""} ${isCurrent ? style.stage_pill_current : ""} ${isFuture ? style.stage_pill_future : ""}`}
       style={isCurrent ? { backgroundColor: colors.bg, color: colors.color } : undefined}
-      title={title || undefined}
+      title={[company, title].filter(Boolean).join(" - ") || undefined}
     >
       <Icon size={11} />
-      {company || STAGE_SHORT_LABEL[stageKey]}
+      <span className={style.stage_pill_label}>{company || STAGE_SHORT_LABEL[stageKey]}</span>
     </span>
   );
 };
@@ -111,17 +111,30 @@ const ProductionCard = ({ stage: row, history = [], highlighted, restored = fals
     return out;
   }, [history]);
 
+  // The end colour of the found flash is read from here when the flash starts: selecting the card while it
+  // is flashing must not restart it.
+  const selectedRef = useRef(selected);
   useEffect(() => {
-    if (!highlighted || !cardRef.current) return;
-    // Holds the amber while the smooth scroll to the card is still travelling (the flash starts when the card
-    // mounts, the scroll lands up to ~1 s later), then fades. Production.jsx clears `highlighted` after
-    // FOUND_FLASH_MS, which must stay >= FOUND_HOLD_S + FOUND_FADE_S.
-    gsap.fromTo(
-      cardRef.current,
+    selectedRef.current = selected;
+  }, [selected]);
+
+  useEffect(() => {
+    const el = cardRef.current;
+    if (!highlighted || !el) return;
+    // Holds the amber while the smooth scroll to the card is still travelling (the flash starts when
+    // `highlighted` turns on - the card is usually already mounted - and the scroll lands up to ~1 s later),
+    // then fades. Production.jsx clears `highlighted` after FOUND_FLASH_MS, which must stay >=
+    // FOUND_HOLD_S + FOUND_FADE_S.
+    const tween = gsap.fromTo(
+      el,
       { backgroundColor: "#fff3cd" },
-      { backgroundColor: selected ? "#eef2ff" : "#ffffff", delay: FOUND_HOLD_S, duration: FOUND_FADE_S, ease: "power2.out" },
+      { backgroundColor: selectedRef.current ? "#eef2ff" : "#ffffff", delay: FOUND_HOLD_S, duration: FOUND_FADE_S, ease: "power2.out" },
     );
-  }, [highlighted, selected]);
+    // A flash cut short (another card was found, the card left) jumps to its end colour instead of staying amber.
+    return () => {
+      tween.progress(1).kill();
+    };
+  }, [highlighted]);
 
   const isSewing      = !!row.sewing_sent_at;
   const currentIdx    = SEWING_PIPELINE.indexOf(row.stage);

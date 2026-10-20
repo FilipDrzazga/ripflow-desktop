@@ -1080,6 +1080,19 @@
   box-sizing: border-box;
 }
 
+/* A long company name ("Sewing Studio B") is cut with an ellipsis on the right, the icon keeps its size; the
+   full name is in the pill's title. */
+.stage_pill > svg {
+  flex-shrink: 0;
+}
+
+.stage_pill_label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .stage_pill_done {
   background: #dcfce7; /* closest match — consider adding --bg-success-subtle var */
   border-color: #bbf7d0;
