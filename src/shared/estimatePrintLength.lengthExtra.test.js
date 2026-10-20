@@ -19,10 +19,19 @@ const file = (material, extra = {}) => ({
 });
 
 describe("stretchedHeight", () => {
-  it("adds the percent, to 0.01 mm", () => {
+  it("adds the percent, in whole mm", () => {
     expect(stretchedHeight(1000, 5)).toBe(1050);
-    expect(stretchedHeight(995, 5)).toBe(1044.75);
-    expect(stretchedHeight(333, 3.3)).toBe(343.99);
+    expect(stretchedHeight(995, 5)).toBe(1045); // 1044.75
+    expect(stretchedHeight(500, 3.3)).toBe(517); // 516.5 rounds up
+    expect(stretchedHeight(333, 3.3)).toBe(344); // 343.989
+  });
+
+  it("the result is always a whole number, whatever the height and the percent", () => {
+    for (const height of [1, 220, 333, 670, 995, 1234.5, 2999.99])
+      for (const percent of [0.1, 1.5, 3.3, 5, 7.77, 12.5, 99.9]) {
+        expect(Number.isInteger(stretchedHeight(height, percent))).toBe(true);
+      }
+    expect(stretchedHeight("2000", 5)).toBe(2100);
   });
 
   it("returns the height AS GIVEN for no allowance (same value, same type)", () => {
@@ -41,8 +50,8 @@ describe("estimatePrintLength with a length allowance", () => {
   it("measures the files of the fabric at the stretched height (the margin is not stretched)", () => {
     const config = { classes, fabrics: [fabric("Satin", { lengthExtraPercent: 5 })] };
     const result = estimatePrintLength([file("Satin"), file("Satin")], config);
-    // (995 * 1.05 + 5) per file = 1049.75, two rows
-    expect(result.totalLengthMm).toBeCloseTo(2099.5, 6);
+    // (995 * 1.05 = 1044.75 -> 1045 mm, + 5 margin) per file = 1050, two rows
+    expect(result.totalLengthMm).toBe(2100);
     expect(result.fixedTotalLengthM).toBe(2.1);
     expect(result.rowsCount).toBe(2);
   });
@@ -59,7 +68,7 @@ describe("estimatePrintLength with a length allowance", () => {
   it("only the fabric with the allowance grows, also next to one of the same roll width", () => {
     const config = { classes, fabrics: [fabric("Satin", { lengthExtraPercent: 10 }), fabric("Chiffon")] };
     const result = estimatePrintLength([file("Satin"), file("Chiffon")], config);
-    expect(result.totalLengthMm).toBeCloseTo(1099.5 + 1000, 6);
+    expect(result.totalLengthMm).toBe(1100 + 1000); // 995 * 1.1 = 1094.5 -> 1095, + 5
     expect(result.rowsCount).toBe(2);
   });
 
@@ -68,7 +77,7 @@ describe("estimatePrintLength with a length allowance", () => {
     const half = { width: 1400 };
     const result = estimatePrintLength([file("Satin", half), file("Satin", half)], config);
     expect(result.rowsCount).toBe(1);
-    expect(result.totalLengthMm).toBeCloseTo(1019.9, 6);
+    expect(result.totalLengthMm).toBe(1020); // 995 * 1.02 = 1014.9 -> 1015, + 5
   });
 
   it("stretches a fixed-size product too, not only linear metres", () => {
@@ -76,7 +85,7 @@ describe("estimatePrintLength with a length allowance", () => {
     const cushion = file("Satin", { printTypeCode: "CUSHION", width: 400, height: 400, qty: 2 });
     const result = estimatePrintLength([cushion], config);
     expect(result.rowsCount).toBe(1);
-    expect(result.totalLengthMm).toBeCloseTo(400 * 1.05 + 5, 6);
+    expect(result.totalLengthMm).toBe(425); // 400 * 1.05 = 420, + 5
   });
 
   it("ignores a negative or non-numeric allowance", () => {

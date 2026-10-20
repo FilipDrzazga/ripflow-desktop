@@ -55,6 +55,12 @@ describe("buildPFJobXML - the length allowance in <Height>", () => {
     expect(heights([item(), item({ material: "Chiffon" })])).toEqual(["3150", "3000"]);
   });
 
+  it("<Height> is a whole number of mm - no fraction reaches PrintFactory", () => {
+    expect(heights([item({ height: 995 }), item({ height: 500 })])).toEqual(["1045", "525"]);
+    const odd = heights([item({ height: 333 }), item({ height: 1234.5 }), item({ height: 2999 })]);
+    expect(odd.every((h) => /^\d+$/.test(h))).toBe(true);
+  });
+
   it("a height given as a string is stretched the same way", () => {
     expect(heights([item({ height: "2000" })])).toEqual(["2100"]);
   });

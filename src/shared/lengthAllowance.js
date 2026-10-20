@@ -6,10 +6,12 @@
 // Anything that is not a finite number above 0 is "no allowance".
 export const validLengthExtraPercent = (value) => (Number.isFinite(value) && value > 0 ? value : 0);
 
-// height * (1 + percent/100), to 0.01 mm. With no allowance the height is returned AS GIVEN (same
+// height * (1 + percent/100), in WHOLE mm like every other height the app sends to PrintFactory
+// (applyPrintOverrides, the regenerated overrides, customOrderXml): a fraction in <Height> may be read
+// with a comma as the decimal separator. With no allowance the height is returned AS GIVEN (same
 // value, same type), so a fabric without one is byte for byte what it was before the feature.
 export const stretchedHeight = (height, percent) => {
   const p = validLengthExtraPercent(percent);
   if (p === 0) return height;
-  return Number((Number(height) * (1 + p / 100)).toFixed(2));
+  return Math.round(Number(height) * (1 + p / 100));
 };
