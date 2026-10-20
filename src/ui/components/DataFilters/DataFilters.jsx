@@ -29,6 +29,10 @@ const CLASS_TAB_LOOKS = [
   { IconOn: PiPolygonFill, IconOff: PiPolygon },
 ];
 
+// Active-filter chips a narrow window (<= 1100 px) still shows; the rest collapse into "+N" so the row
+// of tabs, chips, Filter, search and Refresh stays on one line.
+const CHIPS_WHEN_NARROW = 2;
+
 const SORT_OPTIONS = [
   { value: null, label: "Default", icon: HiArrowsUpDown },
   { value: SORT_ORDER.METERS_DESC, label: "Meters", icon: HiArrowTrendingDown },
@@ -110,6 +114,7 @@ const DataFilters = () => {
   const activeSortOption = SORT_OPTIONS.find((o) => o.value === sortOrder) ?? SORT_OPTIONS[0];
   const ActiveSortIcon = activeSortOption.icon;
   const activeTypeOptions = typeOptions.filter((o) => printTypeFilter.includes(o.value));
+  const hiddenChipCount = Math.max(0, (sortOrder ? 1 : 0) + activeTypeOptions.length - CHIPS_WHEN_NARROW);
 
   return (
     <div className={styles.filters_container}>
@@ -129,9 +134,8 @@ const DataFilters = () => {
           {name}
         </button>
       ))}
-      {filterCount > 0 && (
-        <>
-          <div className={styles.filter_separator} />
+      <div className={styles.right_group}>
+        {filterCount > 0 && (
           <div className={styles.active_chips}>
             {sortOrder && (
               <button
@@ -146,14 +150,16 @@ const DataFilters = () => {
                 <HiXMark className={styles.active_chip_x} />
               </button>
             )}
-            {activeTypeOptions.map((opt) => {
+            {activeTypeOptions.map((opt, i) => {
               const def = PRINT_TYPE_MAP[opt.value];
               const Icon = def?.Icon;
+              // a narrow window shows the first CHIPS_WHEN_NARROW chips and a "+N" for the rest (CSS)
+              const extra = (sortOrder ? 1 : 0) + i >= CHIPS_WHEN_NARROW;
               return (
                 <button
                   key={opt.value}
                   type="button"
-                  className={`${styles.active_chip} ${styles.active_chip_type}`}
+                  className={`${styles.active_chip} ${styles.active_chip_type} ${extra ? styles.chip_extra : ""}`}
                   style={{ "--chip-color": def?.color ?? "#6b7280" }}
                   onClick={() => handleTypeToggle(opt.value)}
                   title={`Remove ${opt.label}`}
@@ -164,10 +170,13 @@ const DataFilters = () => {
                 </button>
               );
             })}
+            {hiddenChipCount > 0 && (
+              <span className={styles.chips_more} title="More active filters - open Filter to see them">
+                +{hiddenChipCount}
+              </span>
+            )}
           </div>
-        </>
-      )}
-      <div className={styles.right_group}>
+        )}
         <div className={styles.sort_wrapper} ref={panelRef}>
           <button
             type="button"
