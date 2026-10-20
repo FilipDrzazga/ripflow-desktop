@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import { FiEye, FiFolder, FiShoppingBag, FiX } from "react-icons/fi";
 import { HiChevronRight } from "react-icons/hi2";
+import { useFloatingClose } from "../../hooks/useFloatingClose";
 import style from "./ContextMenu.module.css";
 
 const EDGE_OFFSET = 12;
@@ -18,6 +19,9 @@ const ContextMenu = ({ id, anchorX, anchorY, options, onClose, onBackdropContext
   const submenuRef = useRef(null);
   const [activeSubmenu, setActiveSubmenu] = useState(null);
   const hideTimerRef = useRef(null);
+
+  // Ctrl+F opening the order search closes every floating layer (D59)
+  useFloatingClose(onClose);
 
   const showSubmenu = (id) => {
     clearTimeout(hideTimerRef.current);

@@ -251,6 +251,11 @@ const DataList = () => {
   const revealPrintFile = useStore((state) => state.revealPrintFile);
   const searchTargetRef = useRef(null);
   searchTargetRef.current = searchTarget;
+  // The row the search jumped to carries its flash class from the RENDER (a class added by hand to the element would be
+  // dropped by the next re-render of that row - a refresh, a selection - and the flash would end early, D60).
+  const [foundFileId, setFoundFileId] = useState(null);
+  const foundTimerRef = useRef(null);
+  useEffect(() => () => clearTimeout(foundTimerRef.current), []);
   const jumpNonce = isSearchTargetFor(searchTarget, APP_VIEW.PRINT) ? searchTarget.nonce : null;
   useEffect(() => {
     if (jumpNonce === null) return undefined;
@@ -266,9 +271,11 @@ const DataList = () => {
       }
       // Not cancelled by the cleanup: clearing the task above changes jumpNonce and re-runs this effect.
       revealElement(`[data-context-item-id="${CSS.escape(target.fileId)}"]`, {
-        onReveal: (el) => {
-          el.classList.add(style.list_item_found);
-          setTimeout(() => el.classList.remove(style.list_item_found), FOUND_FLASH_MS);
+        // the flash class (style.list_item_found) is put on the row by the render below, from foundFileId
+        onReveal: () => {
+          clearTimeout(foundTimerRef.current);
+          setFoundFileId(target.fileId);
+          foundTimerRef.current = setTimeout(() => setFoundFileId(null), FOUND_FLASH_MS);
         },
       });
     }, 0);
@@ -387,6 +394,7 @@ const DataList = () => {
                   isCopying ? style.list_item_copying : null,
                   activeContextItemId === item.id ? style.list_item_active : null,
                   isChecked ? style.list_item_selected : null,
+                  foundFileId === item.id ? style.list_item_found : null,
                 ]
                   .filter(Boolean)
                   .join(" ");

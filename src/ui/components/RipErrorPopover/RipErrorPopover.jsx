@@ -2,6 +2,7 @@ import { useLayoutEffect, useRef, useState, useEffect } from "react";
 import { LuTriangleAlert, LuCopy, LuCheck, LuCircleCheck } from "react-icons/lu";
 import { useStore } from "../../store/useStore";
 import { notify } from "../../utils/notify";
+import { useFloatingClose } from "../../hooks/useFloatingClose";
 import { RIP_ERROR_SCOPE } from "../../../shared/constants";
 import style from "./RipErrorPopover.module.css";
 
@@ -52,6 +53,9 @@ const RipErrorPopover = ({ error, anchorX, anchorY, onClose }) => {
 
   // Clear the "Copied!" revert timer on unmount.
   useEffect(() => () => clearTimeout(copyTimerRef.current), []);
+
+  // Ctrl+F opening the order search closes every floating layer (D59)
+  useFloatingClose(onClose);
 
   if (!error) return null;
 

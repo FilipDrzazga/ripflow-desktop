@@ -30,6 +30,7 @@ import SetupWizard from "./components/SetupWizard/SetupWizard";
 import { usePollingPaused, useOnPollingResume } from "./hooks/usePollingPaused";
 import OrderSearch from "./components/OrderSearch/OrderSearch";
 import { ORDER_SEARCH_INPUT_ID, isOrderSearchShortcut, orderSearchBlockedBy } from "./utils/orderSearchWindow";
+import { closeFloatingLayers } from "./utils/floatingLayers";
 import { APP_VIEW } from "./constants/appViews";
 
 const RIP_ERROR_POLL_INTERVAL = 30_000;
@@ -250,6 +251,8 @@ const App = () => {
         return;
       }
       if (orderSearchBlockedBy({ isLoading, showSetup, doc: document })) return;
+      // menus / popovers / dropdowns are not modals: ask them to close, none stays open under the window (D59)
+      closeFloatingLayers();
       setOrderSearchOpen(true);
     };
     document.addEventListener("keydown", onKeyDown);

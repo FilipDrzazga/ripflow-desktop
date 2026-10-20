@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { HiChevronDown } from "react-icons/hi2";
+import { useFloatingClose } from "../../hooks/useFloatingClose";
 import styles from "./Select.module.css";
 
 const OPTION_HEIGHT = 38; // px, one row of the menu - only used to decide whether it fits below
@@ -29,6 +30,9 @@ const Select = ({ value, options, onChange, title, warn = false, disabled = fals
       ...(fitsBelow ? { top: rect.bottom + MENU_GAP } : { bottom: window.innerHeight - rect.top + MENU_GAP }),
     });
   }, [open, options.length]);
+
+  // Ctrl+F opening the order search closes every floating layer (D59)
+  useFloatingClose(() => setOpen(false), open);
 
   useEffect(() => {
     if (!open) return;

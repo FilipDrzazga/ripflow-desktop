@@ -18,6 +18,7 @@ import { PiPolygon, PiPolygonFill } from "react-icons/pi";
 import { PRINT_TYPE_MAP } from "@/constants/printTypeMap";
 import { withSlotLooks } from "@/utils/materialClasses";
 import { printTypeOptions } from "@/utils/printTypeOptions";
+import { useFloatingClose } from "@/hooks/useFloatingClose";
 import { SORT_ORDER, countByPrintType, activeFilterCount } from "@/utils/printFilters";
 import styles from "./DataFilters.module.css";
 
@@ -61,6 +62,9 @@ const DataFilters = () => {
 
   const [panelOpen, setPanelOpen] = useState(false);
   const panelRef = useRef(null);
+
+  // Ctrl+F opening the order search closes every floating layer (D59)
+  useFloatingClose(() => setPanelOpen(false), panelOpen);
 
   useEffect(() => {
     if (!panelOpen) return;
