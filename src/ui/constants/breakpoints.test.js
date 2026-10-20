@@ -35,6 +35,12 @@ const collectConditions = (css) => {
       const unit = s[4] ?? s[8];
       found.push({ at: m[1], condition: condition.trim(), dimension, value: Number(value), unit });
     }
+    // the number written BEFORE the dimension: "(800px <= width)" and the first bound of "(800px < width < 1200px)" (D44)
+    const before = /([\d.]+)\s*([a-z%]*)\s*(?:<=|>=|<|>)\s*(?=(width|height)\b)/g;
+    let b;
+    while ((b = before.exec(condition))) {
+      found.push({ at: m[1], condition: condition.trim(), dimension: b[3], value: Number(b[1]), unit: b[2] });
+    }
   }
   return found;
 };
@@ -56,6 +62,25 @@ describe("collectConditions", () => {
       ["media", "width", 1100, "px"],
       ["media", "width", 900, "px"],
       ["container", "width", 40, "rem"],
+    ]);
+  });
+});
+
+describe("collectConditions - the number before the dimension (D44)", () => {
+  it("reads a reversed range and both bounds of a double range", () => {
+    const css = `
+      @media (800px <= width) { .a {} }
+      @media (800px < width < 1200px) { .b {} }
+      @media (height >= 600px) { .c {} }
+      @container (20rem < width) { .d {} }
+    `;
+    const rows = collectConditions(css).map((r) => [r.at, r.dimension, r.value, r.unit]);
+    expect(rows).toEqual([
+      ["media", "width", 800, "px"],
+      ["media", "width", 1200, "px"],
+      ["media", "width", 800, "px"],
+      ["media", "height", 600, "px"],
+      ["container", "width", 20, "rem"],
     ]);
   });
 });

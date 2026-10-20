@@ -86,6 +86,8 @@ const layout = demoLayout(demoHome);
 const { inputs, missing, hits } = runLeakCheck({
   treeRoot: here,
   explicit: [path.join(dir, "opisy.md"), path.join(dir, "katalog.md"), layout.configPath, path.join(layout.storagePath, "ripflow.db")],
+  // a run that ended without a clean close leaves its last writes in the -wal, not in ripflow.db (D26)
+  optional: [path.join(layout.storagePath, "ripflow.db-wal")],
   manifestsDir: shotsDir,
   deny,
 });

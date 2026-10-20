@@ -9,6 +9,24 @@ const LIST = '[class*="list_container"]';
 const FILE_NAME = '[class*="file_name_text"]';
 const SEARCH = 'input[placeholder="Search..."]';
 
+const FILTER_PANEL = '[class*="filter_panel"]';
+const FILTER_BUTTON = '[class*="panel_button"]';
+// the chips that would show files (an empty one would leave the list blank in the shot)
+const TYPE_CHIP = 'button[class*="type_chip"]:not([class*="type_chip_empty"])';
+const SORT_SEGMENT = '[class*="filter_panel"] button[role="radio"]';
+
+const openFilterPanel = async (page) => {
+  if (await page.exists(FILTER_PANEL)) return;
+  await page.clickSelector(FILTER_BUTTON);
+  await page.sleep(400);
+};
+
+const closeFilterPanel = async (page) => {
+  if (!(await page.exists(FILTER_PANEL))) return;
+  await page.clickSelector(FILTER_BUTTON);
+  await page.sleep(300);
+};
+
 const clearSelection = async (page) => {
   if (await page.exists('[class*="selection_container"][class*="active"]')) {
     await page.clickText("Clear Selection", { selector: "button" });
@@ -61,52 +79,46 @@ export const run = async ({ page, step, skip }) => {
     await page.sleep(500);
   });
 
+  // Since 1.0.32 the type filter and the sort live in ONE "Filter" panel (DataFilters): Sort as a radio row, Types as chips.
   await step("PR-06", async ({ shot }) => {
-    await page.clickText("All Types", { selector: "button" });
-    await page.sleep(400);
+    await openFilterPanel(page);
     await shot("type-dropdown");
   });
 
   await step("PR-07", async ({ shot }) => {
-    const option = '[class*="type_dropdown"] button[class*="sort_option"]';
-    if (!(await page.exists('[class*="type_dropdown"]'))) {
-      await page.clickText("All Types", { selector: "button" });
-      await page.sleep(400);
-    }
-    await page.clickSelector(option, { nth: 1 });
+    await openFilterPanel(page);
+    await page.clickSelector(TYPE_CHIP, { nth: 0 });
     await page.sleep(500);
     await shot("type-one");
-    await page.clickSelector(option, { nth: 2 });
+    await page.clickSelector(TYPE_CHIP, { nth: 1 });
     await page.sleep(500);
     await shot("type-several", "PR-08");
-    // All Types clears the filter and closes the dropdown.
-    await page.clickSelector(option, { nth: 0 });
+    // Clear all drops the type filter (and any sort) again.
+    await page.clickText("Clear all", { selector: "button" });
     await page.sleep(500);
   });
 
   await step("PR-09", async ({ shot }) => {
-    await page.clickText("Sort by", { selector: "button" });
-    await page.sleep(400);
+    await openFilterPanel(page);
     await shot("sort-dropdown");
   });
 
   await step("PR-10", async ({ shot }) => {
-    await page.clickText("Meters", { selector: "[class*=sort_dropdown] button" });
+    await openFilterPanel(page);
+    await page.clickText("Meters", { selector: SORT_SEGMENT });
     await page.sleep(700);
     await shot("sort-meters");
   });
 
   await step("PR-14", async ({ shot }) => {
-    await page.clickSelector('[class*="sort_button"]');
-    await page.sleep(300);
-    await page.clickText("Oldest", { selector: "[class*=sort_dropdown] button" });
+    await openFilterPanel(page);
+    await page.clickText("Oldest", { selector: SORT_SEGMENT });
     await page.sleep(700);
     await shot("ages-oldest-first");
-    // back to the default order
-    await page.clickSelector('[class*="sort_button"]');
-    await page.sleep(300);
-    await page.clickText("Sort by", { selector: "[class*=sort_dropdown] button" });
+    // back to the default order, panel closed
+    await page.clickText("Default", { selector: SORT_SEGMENT });
     await page.sleep(600);
+    await closeFilterPanel(page);
   });
 
   await step("PR-11", async ({ shot }) => {

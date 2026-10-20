@@ -84,6 +84,18 @@ describe("runLeakCheck", () => {
     expect(missing).toEqual([gone]);
   });
 
+  it("an optional input is read when it exists and is not reported when it does not (the -wal, D26)", () => {
+    const { root, tree, explicit, manifestsDir } = fixture();
+    const wal = path.join(root, "ripflow.db-wal");
+    const absent = runLeakCheck({ treeRoot: tree, explicit, manifestsDir, deny: ["secret client"], optional: [wal] });
+    expect(absent.missing).toEqual([]);
+    expect(absent.inputs).toHaveLength(3 + 2 + 1);
+    write(wal, "row: Secret Client");
+    const present = runLeakCheck({ treeRoot: tree, explicit, manifestsDir, deny: ["secret client"], optional: [wal] });
+    expect(present.inputs).toContain(wal);
+    expect(present.hits).toEqual(['ripflow.db-wal: "secret client"']);
+  });
+
   it("no manifest at all is reported, and so is a missing tree", () => {
     const { root, tree, explicit } = fixture();
     const noManifests = path.join(root, "empty-shots");

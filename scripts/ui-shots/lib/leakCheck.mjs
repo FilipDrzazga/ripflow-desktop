@@ -24,8 +24,10 @@ const listManifests = (dir) =>
   fs.existsSync(dir) ? fs.readdirSync(dir).filter((f) => /^manifest-.*\.json$/.test(f)).map((f) => path.join(dir, f)) : [];
 
 // treeRoot: the scripts/ui-shots folder; explicit: files that must exist; manifestsDir: where manifest-*.json live
-// (at least one is required). Returns { inputs, missing, hits } - the caller fails on any missing or hit.
-export const runLeakCheck = ({ treeRoot, explicit, manifestsDir, deny }) => {
+// (at least one is required); optional: files that are read when they exist and never reported missing (the -wal of the
+// demo database: text still in it has not reached ripflow.db, D26). Returns { inputs, missing, hits } - the caller fails
+// on any missing or hit.
+export const runLeakCheck = ({ treeRoot, explicit, manifestsDir, deny, optional = [] }) => {
   const missing = [];
   const files = [];
   if (fs.existsSync(treeRoot)) files.push(...walkFiles(treeRoot));
@@ -34,6 +36,7 @@ export const runLeakCheck = ({ treeRoot, explicit, manifestsDir, deny }) => {
     if (fs.existsSync(file)) files.push(file);
     else missing.push(file);
   }
+  for (const file of optional) if (fs.existsSync(file)) files.push(file);
   const manifests = listManifests(manifestsDir);
   if (manifests.length === 0) missing.push(path.join(manifestsDir, "manifest-*.json"));
   files.push(...manifests);
