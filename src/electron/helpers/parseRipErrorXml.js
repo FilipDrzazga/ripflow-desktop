@@ -19,6 +19,11 @@ import { RIP_ERROR_SCOPE } from "../../shared/constants.js";
 //     matched no file and only the Overview counter showed it.
 //   NONE (pre-split, e.g. "File not found or not accesible"): also BATCH, one row per batch
 //     document.
+//   SEVERAL BUT FEWER THAN THE BATCH (D34 - e.g. a failure after a node that merged only some
+//     files; shape not seen live yet): the job-level list is a PART of the batch - every name in it
+//     is a file of RipFlowJob.Documents and some batch files are missing from it. One FILE row per
+//     job-level document, so only the files that failed get the badge. A job-level list with a
+//     name the batch does not know stays on the BATCH side (visible everywhere, never lost).
 // BATCH rows are taken from RipFlowJob.Documents - the list RipFlow itself wrote, so its names
 // are exactly the file stems - and from the job-level list only when that one is missing.
 // XWD/documentId is taken from the filename (UserData.DocumentId is unreliable across
@@ -162,6 +167,22 @@ export const parseRipErrorXml = (xmlString) => {
       rows.push({ ...base, scope: RIP_ERROR_SCOPE.FILE, fileId: stemOf(name), documentId: xwdFromName(name) });
     } else {
       const batchDocs = docList(ripFlowJob?.Documents);
+      const batchStems = new Set(batchDocs.map((d) => stemOf(docName(d))).filter(Boolean));
+      const jobStems = new Set(jobDocs.map((d) => stemOf(docName(d))).filter(Boolean));
+      const isPartOfBatch =
+        jobStems.size > 1 && jobStems.size < batchStems.size && [...jobStems].every((stem) => batchStems.has(stem));
+      if (isPartOfBatch) {
+        for (const doc of jobDocs) {
+          const name = docName(doc);
+          rows.push({
+            ...base,
+            scope: RIP_ERROR_SCOPE.FILE,
+            fileId: stemOf(name),
+            documentId: xwdFromName(name) ?? docDocId(doc) ?? null,
+          });
+        }
+        return rows.filter((r) => r.fileId);
+      }
       for (const doc of batchDocs.length > 0 ? batchDocs : jobDocs) {
         const name = docName(doc);
         rows.push({

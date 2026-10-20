@@ -13,9 +13,13 @@ import { PDF_STATE } from "../../shared/inboxReadiness.js";
 // "%PDF-" header while its tail is still zeros. A complete PDF carries %%EOF in its last 1 KB
 // (the tolerance Acrobat itself uses).
 //
-//   %PDF- + %%EOF in the last 1 KB            -> READY
+//   %PDF- + %%EOF in the last 1 KB            -> READY, unless this station saw the file with another size or
+//                                                mtime at its previous look: it is still growing (a %%EOF in the
+//                                                middle of a linearized or incrementally updated PDF, D40) and
+//                                                is COPYING until two looks agree
 //   %PDF- + a tail of nothing but zeros       -> COPYING, for good: a reserved size that never fills
 //                                                (a torn copy) must not be let through by waiting
+//   %PDF- + data, no %%EOF, last 64 bytes zero -> the same: a reserved size cut off inside the data (D39)
 //   %PDF- + data but no %%EOF                 -> COPYING until the file has stayed unchanged for
 //                                                STABLE_MS, then READY_NO_EOF (a generator that
 //                                                writes no %%EOF would otherwise stay "Copying..." forever)
@@ -28,12 +32,15 @@ import { PDF_STATE } from "../../shared/inboxReadiness.js";
 // PC's (the same reason the lock's staleness is measured on the NAS clock, createBatch.js).
 
 export const TAIL_BYTES = 1024;
+export const ZERO_END_BYTES = 64;
 export const STABLE_MS = 2 * 60 * 1000;
 const HEADER = "%PDF-";
 const EOF_MARK = "%%EOF";
 
 export const createStabilityTracker = ({ now = () => performance.now() } = {}) => {
   const seen = new Map();
+  // size + mtime of the last look at a file that ended in %%EOF (D40); NOT counted by size(), which is the no-EOF watch
+  const finished = new Map();
   return {
     // How long (ms) this size + mtime has been seen unchanged; 0 at the first look and on any change.
     observe(filePath, size, mtimeMs) {
@@ -46,9 +53,17 @@ export const createStabilityTracker = ({ now = () => performance.now() } = {}) =
     forget(filePath) {
       seen.delete(filePath);
     },
+    // Records this look at a file that ends in %%EOF. false = the previous look saw another size or mtime (the file is
+    // still being written); the first look is never a "change".
+    confirmFinished(filePath, size, mtimeMs) {
+      const prev = finished.get(filePath);
+      finished.set(filePath, { size, mtimeMs });
+      return !prev || (prev.size === size && prev.mtimeMs === mtimeMs);
+    },
     // Keeps the map to the files still being watched: the scan passes the paths it just saw.
     retainOnly(paths) {
       for (const key of seen.keys()) if (!paths.has(key)) seen.delete(key);
+      for (const key of finished.keys()) if (!paths.has(key)) finished.delete(key);
     },
     size: () => seen.size,
   };
@@ -65,7 +80,8 @@ const readAt = async (handle, length, position) => {
 };
 
 // -> { state: PDF_STATE.*, reason?: string, tracked?: true }. `tracked` = the verdict rests on the
-// stability tracker, so the caller keeps that path watched (tracker.retainOnly).
+// stability tracker (the no-EOF wait, or the size/mtime of the last look at a finished file), so the caller keeps that
+// path watched (tracker.retainOnly).
 export const checkPdf = async (filePath, { tracker = stabilityTracker, fsp = fs.promises } = {}) => {
   let handle;
   try {
@@ -94,9 +110,12 @@ export const checkPdf = async (filePath, { tracker = stabilityTracker, fsp = fs.
     const tail = await readAt(handle, tailLength, size - tailLength);
     if (tail.includes(EOF_MARK, 0, "latin1")) {
       tracker.forget(filePath);
-      return { state: PDF_STATE.READY };
+      if (!tracker.confirmFinished(filePath, size, mtimeMs)) {
+        return { state: PDF_STATE.COPYING, reason: "the file changed since it was last looked at", tracked: true };
+      }
+      return { state: PDF_STATE.READY, tracked: true };
     }
-    if (allZero(tail)) {
+    if (allZero(tail) || allZero(tail.subarray(Math.max(0, tail.length - ZERO_END_BYTES)))) {
       tracker.forget(filePath);
       return { state: PDF_STATE.COPYING, reason: "the end of the file is still empty" };
     }
