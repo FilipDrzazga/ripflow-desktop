@@ -554,6 +554,14 @@
   color: var(--text-secondary);
 }
 
+/* The reason is a text node inside a flex row, which text-overflow on the row cannot cut: it needs an element of its own. */
+.col_reason_text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .empty_cell {
   color: var(--text-secondary);
   opacity: 0.3;

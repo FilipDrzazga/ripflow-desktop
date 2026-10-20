@@ -412,7 +412,9 @@ const AnalyticsCard = ({ row, getDisplayReason, reasonIconMap, onDelete }) => {
     <span className={`${style.col_cell} ${style.col_printer}`}><PrinterBadge printer={row.printer} /></span>
     <span className={style.col_reason}>
       {Icon && <Icon size={13} className={style.col_reason_icon} />}
-      {getDisplayReason(row.reason_code, row.reason_label)}
+      <span className={style.col_reason_text} title={getDisplayReason(row.reason_code, row.reason_label)}>
+        {getDisplayReason(row.reason_code, row.reason_label)}
+      </span>
     </span>
     <span className={`${style.col_cell} ${style.col_type}`}><TypeBadge printType={row.print_type} /></span>
     <span className={style.col_meters}>{row.meters != null ? `${row.meters.toFixed(2)} m` : <Empty />}</span>
