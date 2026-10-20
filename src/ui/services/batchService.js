@@ -8,7 +8,7 @@ export const readPrintedDay = (dayFolder) =>
   withTimeout(window.api.readPrintedDay(dayFolder), 15_000, "readPrintedDay");
 export const readPrintedDayNames = (dayFolder) =>
   withTimeout(window.api.readPrintedDayNames(dayFolder), 15_000, "readPrintedDayNames");
-export const getRollbackReasonsByBatch =(batchPath) =>
+export const getRollbackReasonsByBatch = (batchPath) =>
   withTimeout(window.api.getRollbackReasonsByBatch(batchPath), 5_000, "getRollbackReasonsByBatch");
 export const startBatchWatcher = () =>
   withTimeout(window.api.startBatchWatcher(), 5_000, "startBatchWatcher");
