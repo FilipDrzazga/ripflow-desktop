@@ -1,5 +1,31 @@
 [
   {
+    "version": "1.0.39",
+    "date": "2026-10-20",
+    "changes": [
+      {
+        "text": "Settings > Fabrics: a new \"Length allowance\" (0-100 %) per material. A file of that material is printed longer by the percentage - the <Height> in the PrintFactory XML grows (rounded to whole mm, every print type) and the metres in the app follow. With no allowance set nothing changes. IMPORTANT: this changes the physical print, so update every station to 1.0.39 before anyone sets a percentage - an older build prints the nominal length",
+        "clients": ["all"]
+      },
+      {
+        "text": "Order search (Ctrl+F) also looks in the PRINTED folders: after 3 characters older batches are searched in the background and listed under the results as History rows; a click opens Batch history on that day and batch and flashes the file. A file still waiting in Inbox or Held that was printed before shows one row with an \"also printed\" note",
+        "clients": ["all"]
+      },
+      {
+        "text": "Print: the Filter button moved to the right, next to the search bar, and the active-filter chips sit beside it (a narrow window folds them into \"+N\"). The Print row flash and Ctrl+F closing open menus were tidied",
+        "clients": ["all"]
+      },
+      {
+        "text": "Inbox: a PDF that changed since the last look, or that ends in empty bytes without the %%EOF marker, stays \"Copying\" until it settles, so a half-written file is not sent to Rip. RIP error import: a job list that covers part of a batch now gives the right file rows",
+        "clients": ["all"]
+      },
+      {
+        "text": "Small fixes: long sewing-company names and Analytics reasons are cut with an ellipsis (full text in the tooltip), the rollback reason list closes when the file list scrolls, and the highlight of a found Production card no longer leaves a white card behind",
+        "clients": ["all"]
+      }
+    ]
+  },
+  {
     "version": "1.0.38",
     "date": "2026-10-19",
     "changes": [
