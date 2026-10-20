@@ -3,6 +3,7 @@ import { randomUUID } from "crypto";
 import path from "path";
 import fs from "fs";
 import { estimatePrintLength } from "../../shared/estimatePrintLength.js";
+import { stretchedHeight } from "../../shared/lengthAllowance.js";
 import { isFolderName } from "../../shared/folderName.js";
 import { toIpcError } from "../helpers/ipcError.js";
 import { getFabricByName, getEstimateConfig } from "../helpers/fabricCache.js";
@@ -254,6 +255,13 @@ const assertKnownMaterialClass = (batch) => {
   }
 };
 
+// The height PrintFactory prints: the file's height plus the length allowance of its fabric (Settings >
+// Fabrics, for material that shrinks in the heat press), for every print type. The same
+// stretchedHeight the metres use (estimatePrintLength), so the XML and the counters agree. A fabric
+// with no allowance (or one the catalogue cannot answer) gets item.height untouched.
+const printedHeight = (item) =>
+  stretchedHeight(item.height, getFabricByName((item?.material ?? "").toString().trim())?.lengthExtraPercent);
+
 const buildPFJobXML = (batch, batchId) => {
   assertPrintableDimensions(batch);
   assertKnownMaterialClass(batch);
@@ -291,7 +299,7 @@ const buildPFJobXML = (batch, batchId) => {
           <Copies>${escapeXml(item.printTypeCode) === "LM" ? 1 : escapeXml(item.qty)}</Copies>
           <DocumentId>${escapeXml(item.artworkId)}</DocumentId>
           <Width>${escapeXml(item.width)}</Width>
-          <Height>${escapeXml(item.height)}</Height>
+          <Height>${escapeXml(printedHeight(item))}</Height>
           <Material>${escapeXml(item.material)}</Material>
           <MaterialType>${escapeXml(item.materialType)}</MaterialType>
           <OrderId>${escapeXml(item.orderId)}</OrderId>

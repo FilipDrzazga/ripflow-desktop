@@ -4,6 +4,7 @@ import {
   MARGIN_COTTON,
   MARGIN_POLY,
 } from "./printWidths.js";
+import { stretchedHeight, validLengthExtraPercent } from "./lengthAllowance.js";
 
 // The class constants of printWidths.js, for the two class names it knows. ETAP 4 (4-types-a):
 // the numbers of a class come from the profile BY NAME (config.classes, built by
@@ -44,17 +45,14 @@ export const estimatePrintLength = (files, config = null) => {
     return classNumber(classes, file.materialType, "defaultRollWidth");
   };
 
-  // The length allowance of the file's fabric, in percent (a material that shrinks in the heat press
-  // is printed longer). 0 for a fabric outside the catalogue, with no allowance, or with no catalogue.
+  // The length allowance of the file's fabric (percent): the file is printed that much longer.
+  // 0 for a fabric outside the catalogue, with no allowance, or with no catalogue.
   const getExtraPercent = (file) => {
     if (!allFabrics) return 0;
     const material = (file.material ?? "").toString().trim();
-    const percent = allFabrics.find((f) => f.name === material)?.lengthExtraPercent;
-    return Number.isFinite(percent) && percent > 0 ? percent : 0;
+    return validLengthExtraPercent(allFabrics.find((f) => f.name === material)?.lengthExtraPercent);
   };
 
-  // Nested per roll width AND allowance: two fabrics on the same roll width but with different
-  // allowances are different rolls. With no allowance anywhere the key is the roll width alone, as before.
   const groupsByWidth = new Map();
 
   for (const file of files) {
@@ -72,28 +70,21 @@ export const estimatePrintLength = (files, config = null) => {
     // a class with no numbers (4-types-a): not measured with someone else's
     if (margin === null || rollWidth === null || rollWidth === undefined) continue;
 
-    const extraPercent = getExtraPercent(file);
-    const key = extraPercent === 0 ? rollWidth : `${rollWidth}|${extraPercent}`;
-    if (!groupsByWidth.has(key)) groupsByWidth.set(key, { rollWidth, extraPercent, items: [] });
+    if (!groupsByWidth.has(rollWidth)) groupsByWidth.set(rollWidth, []);
 
+    // the SAME stretched height the XML <Height> carries (createXML.js), plus the gap
+    const rowHeight = stretchedHeight(height, getExtraPercent(file)) + margin;
     for (let i = 0; i < quantity; i++) {
-      groupsByWidth.get(key).items.push({ width, height: height + margin });
+      groupsByWidth.get(rollWidth).push({ width, height: rowHeight });
     }
   }
 
   let totalLengthMm = 0;
   let rowsCount = 0;
 
-  for (const { rollWidth, extraPercent, items } of groupsByWidth.values()) {
+  for (const [rollWidth, items] of groupsByWidth) {
     items.sort((a, b) => b.height - a.height);
 
-    // rows go straight into the total when there is no allowance (the sum is added in the same
-    // order as before the feature), else into the group's own length, scaled once at the end
-    let groupLengthMm = 0;
-    const addRow = (heightMm) => {
-      if (extraPercent === 0) totalLengthMm += heightMm;
-      else groupLengthMm += heightMm;
-    };
     let currentRowWidth = 0;
     let currentRowHeight = 0;
 
@@ -102,7 +93,7 @@ export const estimatePrintLength = (files, config = null) => {
         currentRowWidth += item.width;
         currentRowHeight = Math.max(currentRowHeight, item.height);
       } else {
-        addRow(currentRowHeight);
+        totalLengthMm += currentRowHeight;
         rowsCount += 1;
         currentRowWidth = item.width;
         currentRowHeight = item.height;
@@ -110,11 +101,9 @@ export const estimatePrintLength = (files, config = null) => {
     }
 
     if (currentRowWidth > 0) {
-      addRow(currentRowHeight);
+      totalLengthMm += currentRowHeight;
       rowsCount += 1;
     }
-
-    if (extraPercent !== 0) totalLengthMm += groupLengthMm * (1 + extraPercent / 100);
   }
 
   const totalLengthM = totalLengthMm / 1000;

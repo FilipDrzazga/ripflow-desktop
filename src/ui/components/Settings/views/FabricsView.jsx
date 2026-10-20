@@ -260,7 +260,7 @@ const EditPanel = ({ fabric, title, onSave, onCancel, isSaving }) => {
               className={`${styles.width_input} ${lengthExtraInvalid(draft.lengthExtraPercent) ? styles.globals_input_error : ""}`}
               value={draft.lengthExtraPercent ?? ""}
               onChange={(e) => set("lengthExtraPercent", e.target.value)}
-              title="Percent added to the estimated print length of this material, for fabric that shrinks in the heat press. 0 = none."
+              title="Percent every file of this material is printed longer (the XML height) - for fabric that shrinks in the heat press. The metres follow. 0 = none."
             />
             <span className={styles.width_unit}>%</span>
           </div>
@@ -495,7 +495,7 @@ const MaterialsCard = () => {
                             </span>
                           ) : null}
                           {fabric.lengthExtraPercent > 0 ? (
-                            <span className={styles.mat_flag} title="Length allowance - added to the estimated print length">
+                            <span className={styles.mat_flag} title="Length allowance - every file of this material is printed this much longer">
                               {`+${fabric.lengthExtraPercent}% length`}
                             </span>
                           ) : null}
