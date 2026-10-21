@@ -3,7 +3,7 @@ import { readFileSync } from "fs";
 import { fileURLToPath } from "url";
 import { SECTION_GROUPS, DEFAULT_SECTION, sectionIds } from "./settingsSections.js";
 
-// ETAP 4 (4-ui-nav): the sidebar is only a new ORDER of the same eight sections. Pinned: every
+// ETAP 4 (4-ui-nav): the sidebar is only a new ORDER of the same eight sections (nine since plan E2: Etsy, a station section). Pinned: every
 // view Settings.jsx can open is in exactly one group (a section left out of the groups would be
 // unreachable), the everyday groups come first and System is the one group at the bottom.
 
@@ -19,7 +19,7 @@ describe("Settings sections", () => {
     const ids = sectionIds();
     expect(new Set(ids).size).toBe(ids.length);
     expect([...ids].sort()).toEqual([...viewKeys()].sort());
-    expect(ids).toHaveLength(8);
+    expect(ids).toHaveLength(9);
   });
 
   it("Station, then Shop, then System at the bottom", () => {
@@ -28,7 +28,7 @@ describe("Settings sections", () => {
       ["shop", false],
       ["system", true],
     ]);
-    expect(SECTION_GROUPS[0].sections.map((s) => s.id)).toEqual(["general", "paths"]);
+    expect(SECTION_GROUPS[0].sections.map((s) => s.id)).toEqual(["general", "paths", "etsy"]);
     expect(SECTION_GROUPS[1].sections.map((s) => s.id)).toEqual(["fabrics", "rollbackReasons", "shopProfile"]);
     expect(SECTION_GROUPS[2].sections.map((s) => s.id)).toEqual(["updates", "database", "maintenance"]);
   });
