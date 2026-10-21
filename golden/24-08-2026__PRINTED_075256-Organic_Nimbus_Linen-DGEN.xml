@@ -22,6 +22,8 @@
           <IsVelvet>false</IsVelvet>
           <IsLinen>true</IsLinen>
           <IsBlossom>false</IsBlossom>
+          <RepeatType>None</RepeatType>
+          <Dpi></Dpi>
         </Document>
       </Documents>
     </RipFlowJob>
