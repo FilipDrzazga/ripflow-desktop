@@ -539,18 +539,16 @@ function parseXwdBased(tokens, baseOut, shopConfig) {
 
 /**
  * An image is one tile of a pattern (src/shared/artworkFile.js): its name carries how the tile
- * repeats and the resolution it was prepared at, right after the XWD token:
+ * repeats, right after the XWD token, followed by the library's DPI number:
  * ETxxxx _ ... _ XWD... _ repeat _ dpi _ ETSY(.jpg)   e.g. XWD173706_Half-Drop_211.67_ETSY.jpg
- * A PDF is a finished print and keeps both null.
+ * The number is NOT read: the RIP uses the DPI stored in the image (FILIP 2026-10-21, P104),
+ * and in 204 of 1082 library files the two differ. A PDF is a finished print and keeps
+ * repeatType null.
  */
 function parseTileTokens(tokens, out) {
   const xwdIndex = findIndex(tokens, (t) => /^XWD[0-9a-f]+$/i.test(t));
   const repeatIndex = xwdIndex >= 0 ? findIndex(tokens, (t, i) => i > xwdIndex && repeatTypeOf(t) !== null) : -1;
   out.repeatType = repeatIndex >= 0 ? repeatTypeOf(tokens[repeatIndex]) : null;
-
-  const dpiToken = repeatIndex >= 0 ? tokens[repeatIndex + 1] : null;
-  const dpi = /^\d+(\.\d+)?$/.test(dpiToken ?? "") ? Number(dpiToken) : null;
-  out.dpi = dpi > 0 ? dpi : null;
 }
 
 function validateTile(out) {
@@ -560,8 +558,6 @@ function validateTile(out) {
       "MISSING_REPEAT_TYPE",
       "Image file without a repeat type after the XWD token (expected Basic, Half-Drop, Half-Brick, Center or Mirror)."
     );
-  } else if (out.dpi == null) {
-    addWarning(out, "No DPI after the repeat type - the RIP uses the resolution stored in the image.");
   }
 }
 
@@ -678,9 +674,8 @@ function parsePrintFileName(fileName, options = {}) {
     productName: null,
     artworkId: null,
     internalId: null,
-    // An image tile only (src/shared/artworkFile.js): REPEAT_TYPES value and the DPI from the name
+    // An image tile only (src/shared/artworkFile.js): REPEAT_TYPES value from the name
     repeatType: null,
-    dpi: null,
     // ORDER_SOURCE (src/shared/orderSource.js) read from orderId: SHOPIFY | ETSY | null
     source: null,
     ff: false,

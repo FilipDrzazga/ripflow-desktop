@@ -42,14 +42,15 @@ describe("<RepeatType> and <Dpi>", () => {
     }
   });
 
-  it("an image carries the repeat type and the DPI of its name", () => {
+  it("an image carries the repeat type of its name and NEVER the DPI number of its name (P104)", () => {
     const [doc] = docs([ET_TILE]);
     expect(field(doc, "RepeatType")).toBe("Half-Drop");
-    expect(field(doc, "Dpi")).toBe("211.67");
+    expect(doc).toContain("<Dpi></Dpi>");
+    expect(doc).not.toContain("211.67</");
     expect(field(doc, "Path")).toBe("X:/root\\PRINTED\\21-10-2026\\PRINTED_101010-Drill-DGEN\\" + ET_TILE);
   });
 
-  it("an image without a DPI in its name leaves <Dpi> empty", () => {
+  it("an image without a DPI in its name leaves <Dpi> empty too", () => {
     const [doc] = docs([ET_TILE_NO_DPI]);
     expect(field(doc, "RepeatType")).toBe("Mirror");
     expect(doc).toContain("<Dpi></Dpi>");

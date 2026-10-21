@@ -3,10 +3,10 @@
 // A PDF is a FINISHED print: the platform that renders it (Shopify, for the ON files) has already
 // scaled the pattern and repeated it across the fabric width. An image is ONE tile of a pattern,
 // taken as it lies from the Etsy library folder (FILIP 2026-10-21: no PDF is built for Etsy, the
-// PrintFactory workflow scales and repeats the tile itself). So an image needs two more facts the
-// PDF does not: how the tile repeats and the resolution it was prepared at. Both travel in the
-// file name, copied from the library name "<TITLE> XWD<n>_<designer>_<repeat>_<dpi>_<date>.<ext>",
-// and leave in the XML as <RepeatType> and <Dpi>.
+// PrintFactory workflow scales and repeats the tile itself). So an image needs one more fact the
+// PDF does not: how the tile repeats. It travels in the file name, copied from the library name
+// "<TITLE> XWD<n>_<designer>_<repeat>_<dpi>_<date>.<ext>", and leaves in the XML as <RepeatType>.
+// The <dpi> number of the name is not used: the RIP takes the DPI stored in the image (P104).
 
 export const PDF_EXT = "pdf";
 

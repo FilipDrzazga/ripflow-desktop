@@ -37,14 +37,15 @@ from the Etsy library (jpg/jpeg/png/tif/tiff/gif/webp - `IMAGE_EXTS` in `src/sha
 the one list), NOT a PDF: no PDF is built, the PrintFactory workflow scales and repeats the tile.
 Its name carries two more tokens right after the XWD token, copied from the library name
 `<TITLE> XWD<n>_<designer>_<repeat>_<dpi>_<date>.<ext>`: `..._XWD<id>_<repeat>_<dpi>_ETSY.<ext>`.
-The parser sets `repeatType` (`REPEAT_TYPES`, the library spelling, any case in) and `dpi`
-(a positive number) for an image only; a PDF keeps both `null` whatever its name says, because a
-PDF is a finished print. An image with no repeat type is INVALID (`MISSING_REPEAT_TYPE`); with no
-DPI it is READY with a warning. Every `<Document>` of the batch XML ends with `<RepeatType>` and
-`<Dpi>` (FILIP: in the general XML): a PDF `None` and empty, an image its two values. The DPI is
-the NAME's number and is sent as is - in 204 of 1082 library files it differs from the one
-stored in the image (`agents/chat/artefakty/etsy-e3a/dpi-probe.out`) and the workflow decides
-which wins. `assertTileRepeat` in `createXML.js` refuses an image with no repeat type at the
+The parser sets `repeatType` (`REPEAT_TYPES`, the library spelling, any case in) for an image
+only; a PDF keeps it `null` whatever its name says, because a PDF is a finished print. An image
+with no repeat type is INVALID (`MISSING_REPEAT_TYPE`). The `<dpi>` number of the name is NOT
+read: the RIP uses the DPI stored in the image (FILIP 2026-10-21, P104 "Pliku"), and in 204 of
+1082 library files the two differ (`agents/chat/artefakty/etsy-e3a/dpi-probe.out`). Every
+`<Document>` of the batch XML ends with `<RepeatType>` and `<Dpi>` (FILIP: in the general XML):
+`<RepeatType>` is `None` for a PDF and the name's value for an image; `<Dpi>` is EMPTY for every
+document - never the name's number. The image's own DPI may fill it in E3a-2, the step that reads
+the file. `assertTileRepeat` in `createXML.js` refuses an image with no repeat type at the
 source (`ERR_MISSING_REPEAT_TYPE`), after the size and class guards. `customOrderXml.js` is a
 separate builder and carries neither field. Pinned by `parseFileName.tile.test.js` and
 `createXML.tile.test.js`. The pipeline past the parser (scan, readiness, PRINTED copy, rollback,

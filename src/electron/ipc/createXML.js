@@ -283,12 +283,13 @@ const assertTileRepeat = (batch) => {
 };
 
 // <RepeatType> and <Dpi> of every document (FILIP 2026-10-21: in the general XML, for every
-// job). A PDF is a finished print: None and an empty <Dpi>. An image carries both from its
-// name; the DPI is the number in the Etsy library name, which in 204 of 1082 files differs
-// from the one stored in the image (agents/chat/artefakty/etsy-e3a) - the workflow decides
-// which one wins, the app converts nothing.
+// job). A PDF is a finished print: None. An image carries the repeat type of its name.
+// <Dpi> is EMPTY for every document: the RIP uses the DPI stored in the image (FILIP, P104
+// "Pliku"). The number in the Etsy library name is never sent - in 204 of 1082 files it
+// differs from the image's own (agents/chat/artefakty/etsy-e3a/dpi-probe.out), and an element
+// carrying it would print those files at the wrong size the day the workflow starts reading it.
+// The image's own DPI comes with the pipeline step that reads the file (E3a-2).
 const repeatTypeOfItem = (item) => (isTile(item) ? item.repeatType : REPEAT_NONE);
-const dpiOfItem = (item) => (isTile(item) ? (item.dpi ?? "") : "");
 
 // The height PrintFactory prints: the file's height plus the length allowance of its fabric (Settings >
 // Fabrics, for material that shrinks in the heat press), for every print type. The same
@@ -344,7 +345,7 @@ const buildPFJobXML = (batch, batchId) => {
           <IsLinen>${isLinen(item)}</IsLinen>
           <IsBlossom>${isBlossom(item)}</IsBlossom>
           <RepeatType>${escapeXml(repeatTypeOfItem(item))}</RepeatType>
-          <Dpi>${escapeXml(dpiOfItem(item))}</Dpi>
+          <Dpi></Dpi>
         </Document>`;
             })
             .join("\n")}
