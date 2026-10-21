@@ -7,6 +7,7 @@ import { stretchedHeight } from "../../shared/lengthAllowance.js";
 import { isFolderName } from "../../shared/folderName.js";
 import { toIpcError } from "../helpers/ipcError.js";
 import { getFabricByName, getEstimateConfig } from "../helpers/fabricCache.js";
+import { isImageExt, REPEAT_NONE } from "../../shared/artworkFile.js";
 
 const STAGES = {
   INIT: "init",
@@ -255,6 +256,40 @@ const assertKnownMaterialClass = (batch) => {
   }
 };
 
+// An image is ONE tile of a pattern that the PrintFactory workflow repeats across the print
+// area (src/shared/artworkFile.js), so a tile without a repeat type cannot be printed: sent
+// as <RepeatType>None</RepeatType> it would come out as a single tile on a metre of fabric.
+// The parser already marks such a file INVALID (MISSING_REPEAT_TYPE); this guard is the
+// source-side refusal for anything that reaches the XML anyway, like the two guards above.
+const isTile = (item) => isImageExt(path.extname(String(item?.file?.name ?? "")));
+
+const assertTileRepeat = (batch) => {
+  for (const item of batch ?? []) {
+    if (!isTile(item) || item?.repeatType) continue;
+    const { fileName } = describeItem(item);
+    throw Object.assign(
+      new Error(
+        `Cannot build the job: ${fileName} is an image without a repeat type. ` +
+          "The file name needs Basic, Half-Drop, Half-Brick, Center or Mirror after the XWD token.",
+      ),
+      {
+        code: "ERR_MISSING_REPEAT_TYPE",
+        stage: "validate",
+        title: "Missing repeat type",
+        type: "Error",
+      },
+    );
+  }
+};
+
+// <RepeatType> and <Dpi> of every document (FILIP 2026-10-21: in the general XML, for every
+// job). A PDF is a finished print: None and an empty <Dpi>. An image carries both from its
+// name; the DPI is the number in the Etsy library name, which in 204 of 1082 files differs
+// from the one stored in the image (agents/chat/artefakty/etsy-e3a) - the workflow decides
+// which one wins, the app converts nothing.
+const repeatTypeOfItem = (item) => (isTile(item) ? item.repeatType : REPEAT_NONE);
+const dpiOfItem = (item) => (isTile(item) ? (item.dpi ?? "") : "");
+
 // The height PrintFactory prints: the file's height plus the length allowance of its fabric (Settings >
 // Fabrics, for material that shrinks in the heat press), for every print type. The same
 // stretchedHeight the metres use (estimatePrintLength), so the XML and the counters agree. A fabric
@@ -265,6 +300,7 @@ const printedHeight = (item) =>
 const buildPFJobXML = (batch, batchId) => {
   assertPrintableDimensions(batch);
   assertKnownMaterialClass(batch);
+  assertTileRepeat(batch);
   const ROOT_PATH = getXmlRootPath();
   const PRINTED_ROOT_PATH = `${ROOT_PATH}\\PRINTED`;
   const normalizedBatchId = batchId.replace(/\//g, "\\");
@@ -307,6 +343,8 @@ const buildPFJobXML = (batch, batchId) => {
           <IsVelvet>${isVelvet(item)}</IsVelvet>
           <IsLinen>${isLinen(item)}</IsLinen>
           <IsBlossom>${isBlossom(item)}</IsBlossom>
+          <RepeatType>${escapeXml(repeatTypeOfItem(item))}</RepeatType>
+          <Dpi>${escapeXml(dpiOfItem(item))}</Dpi>
         </Document>`;
             })
             .join("\n")}

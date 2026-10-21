@@ -6,6 +6,7 @@ import {
   DIMS_TEA_TOWEL,
 } from "../../shared/printWidths.js";
 import { ORDER_ID_RE, SHOP_MARKER, orderSourceOf } from "../../shared/orderSource.js";
+import { PDF_EXT, IMAGE_EXTS, isImageExt, repeatTypeOf } from "../../shared/artworkFile.js";
 
 function nowIso() {
   return new Date().toISOString();
@@ -32,6 +33,9 @@ const PRINT_TYPE_LABEL = {
 function toPrintTypeLabel(code) {
   return PRINT_TYPE_LABEL[code] || "UNKNOWN";
 }
+
+// The extensions stripped from the last token: a PDF, or an image tile (src/shared/artworkFile.js).
+const PRINT_EXT_RE = new RegExp(`\\.(${[PDF_EXT, ...IMAGE_EXTS].join("|")})$`, "i");
 
 function tokenizeFilename(fileName) {
   // Keep original for meta, but parse using base name
@@ -63,11 +67,11 @@ function tokenizeFilename(fileName) {
     if (m) ext = m[1].toLowerCase();
   }
 
-  // For tokens array, strip ".pdf" ONLY from the last token to make internalId easier,
-  // but keep ext separately in file meta.
+  // For tokens array, strip ".pdf" (or an image extension) ONLY from the last token to make
+  // internalId easier, but keep ext separately in file meta.
   const tokens = mergedTokens.slice();
   if (tokens.length) {
-    tokens[tokens.length - 1] = tokens[tokens.length - 1].replace(/\.pdf$/i, "");
+    tokens[tokens.length - 1] = tokens[tokens.length - 1].replace(PRINT_EXT_RE, "");
   }
 
   return { tokens, ext: ext || "pdf" };
@@ -533,6 +537,34 @@ function parseXwdBased(tokens, baseOut, shopConfig) {
   return out;
 }
 
+/**
+ * An image is one tile of a pattern (src/shared/artworkFile.js): its name carries how the tile
+ * repeats and the resolution it was prepared at, right after the XWD token:
+ * ETxxxx _ ... _ XWD... _ repeat _ dpi _ ETSY(.jpg)   e.g. XWD173706_Half-Drop_211.67_ETSY.jpg
+ * A PDF is a finished print and keeps both null.
+ */
+function parseTileTokens(tokens, out) {
+  const xwdIndex = findIndex(tokens, (t) => /^XWD[0-9a-f]+$/i.test(t));
+  const repeatIndex = xwdIndex >= 0 ? findIndex(tokens, (t, i) => i > xwdIndex && repeatTypeOf(t) !== null) : -1;
+  out.repeatType = repeatIndex >= 0 ? repeatTypeOf(tokens[repeatIndex]) : null;
+
+  const dpiToken = repeatIndex >= 0 ? tokens[repeatIndex + 1] : null;
+  const dpi = /^\d+(\.\d+)?$/.test(dpiToken ?? "") ? Number(dpiToken) : null;
+  out.dpi = dpi > 0 ? dpi : null;
+}
+
+function validateTile(out) {
+  if (!out.repeatType) {
+    addError(
+      out,
+      "MISSING_REPEAT_TYPE",
+      "Image file without a repeat type after the XWD token (expected Basic, Half-Drop, Half-Brick, Center or Mirror)."
+    );
+  } else if (out.dpi == null) {
+    addWarning(out, "No DPI after the repeat type - the RIP uses the resolution stored in the image.");
+  }
+}
+
 function validateCommon(out) {
   // orderId
   if (!out.orderId) {
@@ -646,6 +678,9 @@ function parsePrintFileName(fileName, options = {}) {
     productName: null,
     artworkId: null,
     internalId: null,
+    // An image tile only (src/shared/artworkFile.js): REPEAT_TYPES value and the DPI from the name
+    repeatType: null,
+    dpi: null,
     // ORDER_SOURCE (src/shared/orderSource.js) read from orderId: SHOPIFY | ETSY | null
     source: null,
     ff: false,
@@ -688,10 +723,13 @@ function parsePrintFileName(fileName, options = {}) {
   }
 
   out.source = orderSourceOf(out.orderId);
+  const isTile = isImageExt(ext);
+  if (isTile) parseTileTokens(tokens, out);
 
   // Validation
   validateCommon(out);
   validateByType(out);
+  if (isTile) validateTile(out);
 
   out.status = out.errors.length ? "INVALID" : "READY";
 
