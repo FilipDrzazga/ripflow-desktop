@@ -9,6 +9,7 @@ import { submitBatch } from "./submitBatch.js";
 import { openPreview } from "./openPreview.js";
 import { openInFolder } from "./openInFolder.js";
 import { openInShopify } from "./openInShopify.js";
+import { openInEtsy } from "./openInEtsy.js";
 import { readPrintedFolder, readPrintedDays, readPrintedDay, readPrintedDayNames, readSingleBatch, parseBatchFolderName, setDiagWorkstationResolver, getPrintedRootUnreachable } from "./readPrintedFolder.js";
 import { sweepOrphanTemps } from "./createBatch.js";
 import { rollbackBatchFromHistory, rollbackFileFromHistory, regenerateXmlForBatch, deleteBatchFolder } from "./batchHistoryHandlers.js";
@@ -310,6 +311,10 @@ export async function registerIpcHandlers() {
 
   ipcMain.handle("open-in-shopify", async (_event, orderName) => {
     return openInShopify(orderName);
+  });
+
+  ipcMain.handle("open-in-etsy", async (_event, orderName) => {
+    return openInEtsy(orderName);
   });
 
   // Tell the PRINTED-read diagnostics which station they are on. A resolver, not a value:

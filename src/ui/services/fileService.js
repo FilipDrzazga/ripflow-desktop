@@ -20,5 +20,7 @@ export const openInFolder = (filePath) =>
   withTimeout(window.api.openInFolder(filePath), 5_000, "openInFolder");
 export const openInShopify = (orderName) =>
   withTimeout(window.api.openInShopify(orderName), 5_000, "openInShopify");
+export const openInEtsy = (orderName) =>
+  withTimeout(window.api.openInEtsy(orderName), 5_000, "openInEtsy");
 export const readFileBuffer = (filePath) =>
   withTimeout(window.api.readFileBuffer(filePath), 15_000, "readFileBuffer");

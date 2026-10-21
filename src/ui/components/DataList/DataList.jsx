@@ -9,7 +9,8 @@ import { estimatePrintLength } from "../../../shared/estimatePrintLength";
 import { FILE_STATUS } from "../../../shared/constants";
 import { resolveIcon } from "../../constants/rollbackReasonIcons";
 import { openInFolder as openInFolderApi, openInShopify as openInShopifyApi } from "../../services/fileService";
-import { isFeatureEnabled } from "../../utils/featureVisibility";
+import { ORDER_LINK, orderIdOf, orderLinkFor, openEtsyOrder } from "../../utils/orderLink";
+import { ORDER_SOURCE } from "../../../shared/orderSource";
 import { materialClassSlot } from "../../utils/materialClasses";
 import { FiInbox, FiLock, FiUnlock } from "react-icons/fi";
 import {
@@ -27,6 +28,7 @@ import {
   LuRotateCcw,
 } from "react-icons/lu";
 import { PiPolygon } from "react-icons/pi";
+import { SiEtsy } from "react-icons/si";
 import { PRINT_TYPE_MAP } from "@/constants/printTypeMap";
 import style from "./DataList.module.css";
 import { runBulkUnhold } from "../../utils/bulkUnhold";
@@ -421,7 +423,11 @@ const DataList = () => {
                           checked={isChecked}
                           onChange={(e) => handleItemCheckboxChange(e, item)}
                         />
-                        <LuFileText className={style.file_icon} />
+                        {item.source === ORDER_SOURCE.ETSY ? (
+                          <SiEtsy className={`${style.file_icon} ${style.etsy_icon}`} title="Etsy order" aria-label="Etsy order" />
+                        ) : (
+                          <LuFileText className={style.file_icon} />
+                        )}
                         <span className={style.file_name_text}>{item.file.name}</span>
                         {rollbackReason &&
                           (() => {
@@ -542,9 +548,25 @@ const DataList = () => {
               },
               // Hidden, not greyed out, like the label-printing entries elsewhere: a
               // shop without features.shopify has no store to open, so a disabled row
-              // would only advertise something it cannot use.
-              ...(isFeatureEnabled("shopify", shopProfile)
-                ? [
+              // would only advertise something it cannot use. An Etsy order opens in
+              // Etsy instead (utils/orderLink.js decides for every menu).
+              ...(() => {
+                const orderId = orderIdOf(contextMenu.item.orderId, contextMenu.item.file?.name);
+                const link = orderLinkFor(orderId, shopProfile);
+                if (link === ORDER_LINK.ETSY) {
+                  return [
+                    {
+                      id: "etsy",
+                      label: "Open in Etsy",
+                      onClick: () => {
+                        closeContextMenu();
+                        openEtsyOrder(orderId);
+                      },
+                    },
+                  ];
+                }
+                if (link === ORDER_LINK.SHOPIFY) {
+                  return [
                     {
                       id: "shopify",
                       label: "Open in Shopify",
@@ -553,8 +575,10 @@ const DataList = () => {
                         handleOpenInShopify(contextMenu.item);
                       },
                     },
-                  ]
-                : []),
+                  ];
+                }
+                return [];
+              })(),
               { id: "sep-hold", separator: true },
               (() => {
                 const item = contextMenu.item;

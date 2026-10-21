@@ -33,6 +33,7 @@ import { showConfirm } from "../../services/systemService";
 import { getSettings } from "../../services/settingsService";
 import { printBatchLabel } from "../../services/productionService";
 import { isFeatureEnabled } from "../../utils/featureVisibility";
+import { ORDER_LINK, orderIdOf, orderLinkFor, openEtsyOrder } from "../../utils/orderLink";
 import { getPrinters } from "../../utils/shopProfileData";
 import { shouldTick, pickDaysToPoll, mergePolledDays } from "../../utils/batchHistoryPoll";
 import { anchorAfterSelection, nextFileSelection, visibleHistoryFiles } from "../../utils/rangeSelect";
@@ -1230,9 +1231,25 @@ const BatchHistory = () => {
                   },
                   // Hidden, not greyed out, like the label-printing entries: a shop
                   // without features.shopify has no store to open. Fail-closed via
-                  // isFeatureEnabled - an unreadable profile grants nothing.
-                  ...(isFeatureEnabled("shopify", shopProfile)
-                    ? [
+                  // isFeatureEnabled - an unreadable profile grants nothing. An Etsy order
+                  // opens in Etsy instead (utils/orderLink.js decides for every menu).
+                  ...(() => {
+                    const orderId = orderIdOf(contextMenu.file.orderId, contextMenu.file.name);
+                    const link = orderLinkFor(orderId, shopProfile);
+                    if (link === ORDER_LINK.ETSY) {
+                      return [
+                        {
+                          id: "etsy",
+                          label: "Open in Etsy",
+                          onClick: async () => {
+                            setContextMenu(null);
+                            await openEtsyOrder(orderId);
+                          },
+                        },
+                      ];
+                    }
+                    if (link === ORDER_LINK.SHOPIFY) {
+                      return [
                         {
                           id: "shopify",
                           label: "Open in Shopify",
@@ -1242,8 +1259,10 @@ const BatchHistory = () => {
                             await handleOpenInShopify(file);
                           },
                         },
-                      ]
-                    : []),
+                      ];
+                    }
+                    return [];
+                  })(),
                   { id: "sep-1", separator: true },
                   {
                     id: "rollback-file",

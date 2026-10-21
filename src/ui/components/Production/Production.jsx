@@ -45,6 +45,7 @@ import { APP_VIEW } from "../../constants/appViews";
 import { isSearchTargetFor } from "../../utils/searchTarget";
 import { revealElement } from "../../utils/revealElement";
 import { isFeatureEnabled } from "../../utils/featureVisibility";
+import { ORDER_LINK, orderLinkFor, openEtsyOrder } from "../../utils/orderLink";
 import { canMarkShipped, isShippableRow } from "../../utils/markShipped";
 import { canRollbackRows } from "../../utils/productionRollback";
 import { batchRipErrorOf } from "../../utils/ripErrorsByFile";
@@ -261,11 +262,11 @@ const Production = () => {
   // via isFeatureEnabled — a profile we could not read grants nothing.
   const labelPrintingEnabled = isFeatureEnabled("labelPrinting", shopProfile);
 
-  // Two of the four renderer entries to Shopify live in this file (the Receive-lens
+  // Two of the four renderer entries to Shopify / Etsy live in this file (the Receive-lens
   // menu and the Batches/Orders menu); the other two are in DataList and BatchHistory.
-  // Same rule as above: gated at the call site, fail-closed, hidden rather than greyed
-  // out — a shop without the integration has no Shopify to open.
-  const shopifyEnabled = isFeatureEnabled("shopify", shopProfile);
+  // All four ask orderLinkFor (utils/orderLink.js): an Etsy order gets "Open in Etsy",
+  // anything else "Open in Shopify" only with features.shopify - fail-closed, hidden
+  // rather than greyed out, a shop without the integration has no Shopify to open.
 
   // Every renderer entry to the sewing round-trip lives in this file: the Receive
   // lens (its toggle button and its render branch) and two context-menu items,
@@ -1554,7 +1555,17 @@ const Production = () => {
       }
       if (receiveItems.length > 0) receiveItems.push({ id: "sep-receive", separator: true });
 
-      if (shopifyEnabled) {
+      const receiveOrderLink = orderLinkFor(row.order_id, shopProfile);
+      if (receiveOrderLink === ORDER_LINK.ETSY) {
+        receiveItems.push({
+          id: "etsy",
+          label: "Open in Etsy",
+          onClick: () => {
+            setContextMenu(null);
+            openEtsyOrder(row.order_id);
+          },
+        });
+      } else if (receiveOrderLink === ORDER_LINK.SHOPIFY) {
         receiveItems.push({
           id: "shopify",
           label: "Open in Shopify",
@@ -1753,7 +1764,18 @@ const Production = () => {
         },
       });
     }
-    if (shopifyEnabled) {
+    // An Etsy order opens in Etsy instead (utils/orderLink.js decides for every menu).
+    const orderLink = orderLinkFor(row.order_id, shopProfile);
+    if (orderLink === ORDER_LINK.ETSY) {
+      items.push({
+        id: "etsy",
+        label: "Open in Etsy",
+        onClick: () => {
+          setContextMenu(null);
+          openEtsyOrder(row.order_id);
+        },
+      });
+    } else if (orderLink === ORDER_LINK.SHOPIFY) {
       items.push({
         id: "shopify",
         label: "Open in Shopify",
@@ -1795,7 +1817,7 @@ const Production = () => {
     // NOTE: the deps below are MANUAL (exhaustive-deps is disabled on this line), so a
     // new gate variable read inside this memo must be added by hand — lint will not
     // catch its absence and the menu would keep the last computed shape.
-  }, [contextMenu, selectedFileIds, productionStages, viewMode, session, labelPrintingEnabled, shopifyEnabled, sewingEnabled, sewingCompanies]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [contextMenu, selectedFileIds, productionStages, viewMode, session, labelPrintingEnabled, shopProfile, sewingEnabled, sewingCompanies]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className={style.container}>

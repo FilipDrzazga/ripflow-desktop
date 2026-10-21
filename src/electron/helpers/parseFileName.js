@@ -5,6 +5,7 @@ import {
   DIMS_FQ,
   DIMS_TEA_TOWEL,
 } from "../../shared/printWidths.js";
+import { ORDER_ID_RE, SHOP_MARKER, orderSourceOf } from "../../shared/orderSource.js";
 
 function nowIso() {
   return new Date().toISOString();
@@ -87,9 +88,15 @@ function findLastIndex(tokens, predicate) {
 }
 
 function parseOrderId(tokens) {
-  // Usually token[0] but safer to search
-  const i = findIndex(tokens, (t) => /^ON\d+$/i.test(t));
+  // Usually token[0] but safer to search. ON<digits> (Shopify) or ET<digits> (Etsy receipt id).
+  const i = findIndex(tokens, (t) => ORDER_ID_RE.test(t));
   return i >= 0 ? tokens[i].toUpperCase() : null;
+}
+
+// The token that closes the name for this order's source: "ETSY" for an Etsy order, "FF" for
+// everything else - a Shopify order, or a name with no order number at all, as before Etsy.
+function shopMarkerOf(orderId) {
+  return SHOP_MARKER[orderSourceOf(orderId)] ?? SHOP_MARKER.SHOPIFY;
 }
 
 function parseXOfY(tokens) {
@@ -319,7 +326,7 @@ function parseCushion(tokens, baseOut) {
   out.artworkId = null;
 
   // nameParts: tokens between orderId token and xOfY token.
-  const orderIndex = findIndex(tokens, (t) => /^ON\d+$/i.test(t));
+  const orderIndex = findIndex(tokens, (t) => ORDER_ID_RE.test(t));
   if (orderIndex >= 0 && xOfYIndex > orderIndex + 1) {
     const parts = tokens.slice(orderIndex + 1, xOfYIndex);
     out.customerName = parts.join(" ").trim() || null;
@@ -397,7 +404,7 @@ function parseTeaTowel(tokens, baseOut, shopConfig) {
   out.artworkId = null;
 
   // customerName between orderId and xOfY
-  const orderIndex = findIndex(tokens, (t) => /^ON\d+$/i.test(t));
+  const orderIndex = findIndex(tokens, (t) => ORDER_ID_RE.test(t));
   if (orderIndex >= 0 && xOfYIndex > orderIndex + 1) {
     out.customerName =
       tokens
@@ -448,6 +455,7 @@ function parseTeaTowel(tokens, baseOut, shopConfig) {
 /**
  * XWD-based format:
  * ONxxxx _ nameParts... _ xOfY _ material _ qty(x) _ type+variant _ XWD... _ FF(.pdf)
+ * ETxxxx _ nameParts... _ xOfY _ material _ qty(x) _ type+variant _ XWD... _ ETSY(.pdf)  (Etsy order)
  */
 function parseXwdBased(tokens, baseOut, shopConfig) {
   const out = baseOut;
@@ -463,14 +471,15 @@ function parseXwdBased(tokens, baseOut, shopConfig) {
   const xwdIndex = findIndex(tokens, (t) => /^XWD[0-9a-f]+$/i.test(t));
   out.artworkId = xwdIndex >= 0 ? tokens[xwdIndex] : null;
 
-  // FF token
-  const ffIndex = findLastIndex(tokens, (t) => t.toUpperCase() === "FF");
-  if (ffIndex < 0) addWarning(out, "FF token not found (expected 'FF')");
+  // Shop marker token: FF, or ETSY for an Etsy order
+  const marker = shopMarkerOf(out.orderId);
+  const markerIndex = findLastIndex(tokens, (t) => t.toUpperCase() === marker);
+  if (markerIndex < 0) addWarning(out, `${marker} token not found (expected '${marker}')`);
 
   out.internalId = null;
 
   // customerName: between orderId token and xOfY
-  const orderIndex = findIndex(tokens, (t) => /^ON\d+$/i.test(t));
+  const orderIndex = findIndex(tokens, (t) => ORDER_ID_RE.test(t));
   if (orderIndex >= 0 && xOfYIndex > orderIndex + 1) {
     out.customerName =
       tokens
@@ -527,7 +536,7 @@ function parseXwdBased(tokens, baseOut, shopConfig) {
 function validateCommon(out) {
   // orderId
   if (!out.orderId) {
-    addError(out, "MISSING_ORDER_ID", "OrderId not found (expected ON123456).");
+    addError(out, "MISSING_ORDER_ID", "OrderId not found (expected ON123456 or ET123456).");
   }
 
   // xOfY
@@ -561,9 +570,11 @@ function validateCommon(out) {
     addError(out, "BAD_QTY", `Quantity invalid: "${out.qty}".`);
   }
 
-  // ff is optional; treat missing as warning only
-  if (!out.ff) {
-    addWarning(out, "FF token missing (treated as warning).");
+  // The shop marker is optional; treat missing as warning only. An Etsy order closes with
+  // ETSY instead of FF, so out.ff stays what it says (an FF token is present).
+  const marker = shopMarkerOf(out.orderId);
+  if (!out.tokens.some((t) => t.toUpperCase() === marker)) {
+    addWarning(out, `${marker} token missing (treated as warning).`);
   }
 }
 
@@ -635,6 +646,8 @@ function parsePrintFileName(fileName, options = {}) {
     productName: null,
     artworkId: null,
     internalId: null,
+    // ORDER_SOURCE (src/shared/orderSource.js) read from orderId: SHOPIFY | ETSY | null
+    source: null,
     ff: false,
     tokens,
     warnings: [],
@@ -673,6 +686,8 @@ function parsePrintFileName(fileName, options = {}) {
   if (kind === "XWD_BASED" && out.printTypeCode === "UNKNOWN") {
     addError(out, "MISSING_PRINT_TYPE", "Could not detect LM/FQ/SAMPLE from filename text.");
   }
+
+  out.source = orderSourceOf(out.orderId);
 
   // Validation
   validateCommon(out);

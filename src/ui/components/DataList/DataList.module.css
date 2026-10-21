@@ -277,6 +277,12 @@
   height: 17px;
 }
 
+/* An Etsy order (ET<receipt>_..._ETSY.pdf) shows the Etsy mark in place of the file icon,
+   in Etsy's own orange so it reads at a glance in a long list. */
+.file_icon.etsy_icon {
+  color: #f1641e;
+}
+
 .list_item.list_item_selected {
   background-color: #eef2ff;
 }

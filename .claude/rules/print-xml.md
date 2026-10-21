@@ -25,12 +25,20 @@ paths:
 
 Tokenize by `_`, detect CUSHION/TEA_TOWEL by keyword, others by XWD hex token.
 
+**Etsy names (FILIP 2026-10-21):** `ET<receipt id>_<name>_<x>of<y>_<material>_<qty>x_<type>_XWD<id>_ETSY.pdf` -
+the ON layout with `ET<digits>` for `ON<digits>` and `ETSY` for `FF`, so an Etsy file takes the same
+route (`createXML.etsyRoute.test.js`: same XML as its ON twin bar the names and `<OrderId>`). The prefixes
+and markers live in ONE place, `src/shared/orderSource.js` (`ORDER_ID_RE`, `SHOP_MARKER`, `orderSourceOf`);
+the parser sets `source` from the order number and expects `ETSY` instead of `FF` for an Etsy order.
+`out.ff` still means "an FF token is present".
+
 **Return shape — CRITICAL (`file` is nested):**
 
 ```js
 {
   file: { name, ext, dir, fullPath },  // access as item.file.name, NOT item.name
   orderId, customerName, xOfY,
+  source,                              // "SHOPIFY" | "ETSY" | null (ORDER_SOURCE, from orderId)
   printTypeCode, printType,
   qty, material, size, width, height,
   status: "READY" | "INVALID",
