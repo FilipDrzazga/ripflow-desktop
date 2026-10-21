@@ -7,6 +7,7 @@ import { DEFAULT_FABRICS } from "./defaultFabrics.js";
 import { DEFAULT_PROFILE } from "./defaultProfile.js";
 import { printerOfBatch } from "../../shared/batchFolderName.js";
 import { preferredPrinterToStore, storesPreferredPrinter, lengthExtraToStore } from "./fabricInput.js";
+import { stageExtToStore } from "../../shared/artworkFile.js";
 
 let db = null;
 let stmtInsert = null;
@@ -426,8 +427,11 @@ export const initDb = () => {
     try { db.exec("ALTER TABLE file_stages ADD COLUMN qty_override INTEGER"); } catch { /* already exists */ }
     try { db.exec("ALTER TABLE file_stages ADD COLUMN meters_override REAL"); } catch { /* already exists */ }
 
+    fileStagesHaveExt = ensureFileStageExtColumn();
     stmtInsertFileStage = db.prepare(
-      "INSERT OR REPLACE INTO file_stages (file_id, batch_path, print_type, customer_name, order_id, material, meters, qty, qty_override, meters_override, stage, prev_stage, updated_at, updated_by, sewing_sent_at, sewing_received_at, sewing_company) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+      fileStagesHaveExt
+        ? "INSERT OR REPLACE INTO file_stages (file_id, batch_path, print_type, customer_name, order_id, material, meters, qty, qty_override, meters_override, stage, prev_stage, updated_at, updated_by, sewing_sent_at, sewing_received_at, sewing_company, ext) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+        : "INSERT OR REPLACE INTO file_stages (file_id, batch_path, print_type, customer_name, order_id, material, meters, qty, qty_override, meters_override, stage, prev_stage, updated_at, updated_by, sewing_sent_at, sewing_received_at, sewing_company) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
     );
     stmtGetFileStagesByBatch = db.prepare("SELECT * FROM file_stages WHERE batch_path = ?");
     stmtGetAllFileStages = db.prepare("SELECT * FROM file_stages ORDER BY updated_at DESC");
@@ -555,6 +559,7 @@ export const initDb = () => {
     stmtInsertRipError = null;
     stmtGetOpenRipErrors = null;
     ripErrorsHaveScope = false;
+    fileStagesHaveExt = false;
   }
 };
 
@@ -1137,16 +1142,40 @@ export const getAllStageHistory = () => {
 
 // ── file_stages ───────────────────────────────────────────────────────────────
 
+// file_stages.ext (E3a-2): the extension of the tracked file, written ONLY here (by submitBatch) and only
+// for an IMAGE - NULL means a PDF, which is also what a row written by an older build reads as. Added at
+// start by ensureFileStageExtColumn. Returns whether the column is there; when the ALTER fails
+// (SQLITE_BUSY on a busy share) the insert is prepared without it, so a PDF row still registers and an
+// IMAGE row is refused (insertFileStage returns false: Production would look for X.pdf and never find it).
+let fileStagesHaveExt = false;
+const ensureFileStageExtColumn = () => {
+  try {
+    const has = db
+      .prepare("PRAGMA table_info(file_stages)")
+      .all()
+      .some((col) => col.name === "ext");
+    if (!has) db.exec("ALTER TABLE file_stages ADD COLUMN ext TEXT");
+    return true;
+  } catch (err) {
+    console.error("[db] ensureFileStageExtColumn failed:", err);
+    return false;
+  }
+};
+
 export const insertFileStage = (row) => {
   if (!stmtInsertFileStage) return false; // DB down — caller can surface a tracking warning
+  const ext = stageExtToStore(row.ext);
+  if (ext !== null && !fileStagesHaveExt) return false; // an image row cannot be tracked without the column
   try {
-    stmtInsertFileStage.run(
+    const values = [
       row.file_id, row.batch_path, row.print_type ?? null, row.customer_name ?? null,
       row.order_id ?? null, row.material ?? null, row.meters ?? null, row.qty ?? null,
       row.qty_override ?? null, row.meters_override ?? null,
       row.stage ?? "printed", row.prev_stage ?? null,
       row.updated_at, row.updated_by ?? null, row.sewing_sent_at ?? null, row.sewing_received_at ?? null, row.sewing_company ?? null,
-    );
+    ];
+    if (fileStagesHaveExt) values.push(ext);
+    stmtInsertFileStage.run(...values);
     _insertStageHistory(row.file_id, row.stage ?? "printed", row.updated_at);
     return true;
   } catch (err) {

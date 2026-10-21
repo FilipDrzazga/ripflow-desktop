@@ -3,6 +3,7 @@ import { LuCheck, LuPackageCheck, LuTruck, LuTrash2, LuScanBarcode, LuMousePoint
 import { HiXMark } from "react-icons/hi2";
 import { useStore } from "../../store/useStore";
 import { PRODUCTION_STAGE } from "../../../shared/constants";
+import { stageFilePath } from "../../../shared/artworkFile";
 import { groupByOrder, UNKNOWN_ORDER_KEY, UNKNOWN_ORDER_LABEL } from "../../utils/groupByOrder";
 import { notify } from "@/utils/notify";
 import { shipTargetIds, otherUnpackedCount } from "../../utils/receiveShip";
@@ -301,7 +302,7 @@ const SewingReceive = ({
                     ripError={ripErrors[row.file_id]}
                     // Only the ACTIVE order's items are on screen (usually 2-3),
                     // which is laziness enough — no observer, no prefetch.
-                    thumbnail={<PdfThumb filePath={`${row.batch_path}\\${row.file_id}.pdf`} />}
+                    thumbnail={<PdfThumb filePath={stageFilePath(row)} />}
                     onRipBadgeClick={onRipBadgeClick}
                     onSelect={handleSelectItem}
                     onContextMenu={onContextMenu}

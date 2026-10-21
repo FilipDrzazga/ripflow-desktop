@@ -31,6 +31,7 @@ import {
   STAGE_COLOR,
 } from "../../../shared/constants";
 import { printerOfBatch } from "../../../shared/batchFolderName";
+import { stageFileName, stageFilePath } from "../../../shared/artworkFile";
 import { advanceStage, setSewingSent, setSewingReceived, printBatchLabel } from "../../services/productionService";
 import { rollbackFile } from "../../services/batchService";
 import { openInFolder as openInFolderApi, openInShopify as openInShopifyApi } from "../../services/fileService";
@@ -652,7 +653,7 @@ const Production = () => {
         failCount++;
         continue;
       }
-      const filePath = `${row.batch_path}\\${fileId}.pdf`;
+      const filePath = stageFilePath(row);
       const qtyAffected = override?.meters ?? override?.qty ?? null;
       // qtyOriginal must match qtyAffected's unit: this run's meters for LM, pieces otherwise
       const qtyOriginal =
@@ -729,10 +730,10 @@ const Production = () => {
   } = usePdfPreview();
 
   const handleOpenPreview = (row) => {
-    const filePath = `${row.batch_path}\\${row.file_id}.pdf`;
+    const filePath = stageFilePath(row);
     const batchFileList = Object.values(productionStages)
       .filter((r) => r.batch_path === row.batch_path)
-      .map((r) => ({ path: `${r.batch_path}\\${r.file_id}.pdf`, name: `${r.file_id}.pdf` }));
+      .map((r) => ({ path: stageFilePath(r), name: stageFileName(r) }));
     openPreview(filePath, batchFileList);
   };
 
@@ -1490,7 +1491,7 @@ const Production = () => {
     const row = contextMenu.row;
     const fileId = row.file_id;
     const batchPath = row.batch_path;
-    const filePath = batchPath ? `${batchPath}\\${fileId}.pdf` : null;
+    const filePath = batchPath ? stageFilePath(row) : null;
 
     // The Receive lens gets its own, deliberately different menu — the
     // stage-pipeline actions below (Pass / Send to sewing / Go back / bulk

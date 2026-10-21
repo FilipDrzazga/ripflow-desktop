@@ -122,6 +122,7 @@ export const submitBatch = async (batch) => {
       const qty = item._qtyOverridden ? (item._originalQty ?? null) : (item.qty ?? null);
       const ok = insertFileStage({
         file_id:         path.parse(item.file.name).name,
+        ext:             path.parse(item.file.name).ext, // as on the disk; db.insertFileStage stores NULL for a PDF
         batch_path:      batchPath,
         print_type:      item.printTypeCode ?? null,
         customer_name:   item.customerName ?? null,

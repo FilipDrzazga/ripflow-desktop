@@ -37,3 +37,26 @@ export const repeatTypeOf = (token) => {
   const t = String(token ?? "").trim().toLowerCase();
   return REPEAT_TYPES.find((r) => r.toLowerCase() === t) ?? null;
 };
+
+// The extension of a tracked file, from file_stages.ext (E3a-2). The column is NULL for every PDF (and
+// for every row an older build wrote), so anything that is not an image extension of the list above -
+// NULL, "", an unknown word, a path fragment - is a PDF. The value of the database never reaches a
+// path raw: only a member of IMAGE_EXTS (compared without case) comes through, spelled as it was
+// stored (the spelling of the file on the disk), without the dot.
+export const stageFileExt = (ext) => {
+  const clean = String(ext ?? "")
+    .trim()
+    .replace(/^\./, "");
+  return IMAGE_EXT_SET.has(clean.toLowerCase()) ? clean : PDF_EXT;
+};
+
+// What file_stages.ext stores for a file whose extension the parser read: NULL for a PDF.
+export const stageExtToStore = (ext) => {
+  const clean = stageFileExt(ext);
+  return clean === PDF_EXT ? null : clean;
+};
+
+// The file of a file_stages row inside its batch folder. `row` needs file_id and ext (batch_path only
+// for stageFilePath).
+export const stageFileName = (row) => `${row.file_id}.${stageFileExt(row.ext)}`;
+export const stageFilePath = (row) => `${row.batch_path}\\${stageFileName(row)}`;

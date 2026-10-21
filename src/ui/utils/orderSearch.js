@@ -21,6 +21,7 @@
 
 import { APP_VIEW } from "../constants/appViews";
 import { dayKeyFromBatchPath } from "./dayKey";
+import { stageFileName } from "../../shared/artworkFile";
 import { ORDER_STAGE_PIPELINE, UNKNOWN_ORDER_KEY, UNKNOWN_ORDER_LABEL } from "./groupByOrder";
 
 // Where a file is now: the two pre-print places, a PRODUCTION_STAGE value verbatim, or HISTORY - printed and
@@ -127,7 +128,7 @@ const stageRow = ({ row, history }) => {
   const dayKey = dayKeyFromBatchPath(batchPath);
   return {
     fileId: row.file_id,
-    fileName: `${row.file_id}.pdf`,
+    fileName: stageFileName(row),
     orderKey: orderKeyOf(row.order_id),
     customerName: text(row.customer_name) || null,
     where: row.stage,
