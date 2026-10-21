@@ -7,6 +7,7 @@ import ShopProfileView from "./views/ShopProfileView";
 import DatabaseView from "./views/DatabaseView";
 import MaintenanceView from "./views/MaintenanceView";
 import UpdatesView from "./views/UpdatesView";
+import EtsyView from "./views/EtsyView";
 import { SECTION_GROUPS, DEFAULT_SECTION } from "./settingsSections";
 import { getSettings } from "../../services/settingsService";
 import { getAppVersion } from "../../services/updateService";
@@ -15,6 +16,7 @@ import styles from "./Settings.module.css";
 const VIEWS = {
   general: GeneralView,
   paths: PathsView,
+  etsy: EtsyView,
   fabrics: FabricsView,
   rollbackReasons: RollbackReasonsView,
   shopProfile: ShopProfileView,

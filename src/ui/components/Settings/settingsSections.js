@@ -1,4 +1,4 @@
-import { LuSettings2, LuFolderOpen, LuLayers, LuRotateCcw, LuStore, LuDatabase, LuWrench, LuDownload } from "react-icons/lu";
+import { LuSettings2, LuFolderOpen, LuLayers, LuRotateCcw, LuStore, LuDatabase, LuWrench, LuDownload, LuShoppingBag } from "react-icons/lu";
 
 // Settings sidebar (ETAP 4, 4-ui-nav): the sections in three groups, most used first. STATION is
 // this machine (electron-store), SHOP is the configuration every station shares (the database),
@@ -11,6 +11,8 @@ export const SECTION_GROUPS = [
     sections: [
       { id: "general", label: "General", icon: LuSettings2 },
       { id: "paths", label: "Paths", icon: LuFolderOpen },
+      // plan E2: the Etsy key and sign-in belong to this station, never to the shared profile
+      { id: "etsy", label: "Etsy", icon: LuShoppingBag },
     ],
   },
   {

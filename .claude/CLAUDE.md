@@ -80,6 +80,7 @@ INBOX → PARSE FILENAME → UI → SELECT FILES+PRINTER → CREATE BATCH+XML �
 
 - `storagePath`, `xmlPath`, `workstationName`, `customOrderFolderPath`, `workstationRole`, `labelPrinterName`, `shippedRetentionDays`, `batchHistoryEagerDays`, `labelPrintMode`, `clientId`
 - `batchHistoryEagerDays` — per-machine, default 7, min 1; how many most-recent days BatchHistory eager-loads (rest are lazy skeletons, loaded on expand)
+- **Etsy connection (plan E2)** — a SEPARATE file `%APPDATA%\ripflow-desktop\etsy.json` (`new Store({ name: "etsy" })` in `ipc/etsyHandlers.js`): keystring, shared secret and the 90-day refresh token, each encrypted with `safeStorage` (DPAPI, bound to the Windows user; no encryption = nothing written). Never in `config.json` (`settings:get` / `settings:set` cannot see it) and never in the shared DB (rule 25). Settings -> Etsy; sign-in in its own window with an in-memory session that catches the https redirect (`helpers/etsyConnectWindow.js`, `ETSY_REDIRECT_URI` in `helpers/etsyOAuth.js` - the same address goes into the app's "Callback URLs" on Etsy).
 
 **ripflow.db** (shared across all PCs via network `storagePath`):
 

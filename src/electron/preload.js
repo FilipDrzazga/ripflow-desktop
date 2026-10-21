@@ -285,6 +285,23 @@ const api = Object.freeze({
     resolveJob: (jobGuid) => ipcRenderer.invoke("rip-errors:resolveJob", jobGuid),
   }),
 
+  // Settings -> Etsy (plan E2): this station's Etsy key and sign-in. Main keeps the secrets;
+  // every answer carries only the public status.
+  etsy: Object.freeze({
+    status: () => ipcRenderer.invoke("etsy:status"),
+    saveKey: (key) => {
+      if (!isPlainObject(key)) throw new TypeError("Etsy key must be a plain object.");
+      if (!isNonEmptyString(key.keystring) || !isNonEmptyString(key.sharedSecret)) {
+        throw new TypeError("Etsy keystring and shared secret must be non-empty strings.");
+      }
+      return ipcRenderer.invoke("etsy:saveKey", { keystring: key.keystring, sharedSecret: key.sharedSecret });
+    },
+    connect: () => ipcRenderer.invoke("etsy:connect"),
+    test: () => ipcRenderer.invoke("etsy:test"),
+    disconnect: () => ipcRenderer.invoke("etsy:disconnect"),
+    removeKey: () => ipcRenderer.invoke("etsy:removeKey"),
+  }),
+
   update: Object.freeze({
     check: () => ipcRenderer.invoke("update:check"),
     install: () => ipcRenderer.invoke("update:install"),
