@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { getRootPath } from "../helpers/getRootPath.js";
+import { isArtworkFileName } from "../../shared/artworkFile.js";
 
 // ETAP 4 (4-inbox): the LIGHT look at the inbox behind "N new files - click to refresh". Every
 // 30 s the Print view asks main which PDF names are in the inbox folders, to tell the operator
@@ -29,7 +30,7 @@ export const peekInbox = async ({ root = getRootPath, fsp = fs.promises } = {}) 
       } catch {
         continue; // a folder that vanished or cannot be read: readFolders skips it as well
       }
-      for (const f of files) if (f.isFile() && /\.pdf$/i.test(f.name)) ids.push(`${folder.name}_${f.name}`);
+      for (const f of files) if (f.isFile() && isArtworkFileName(f.name)) ids.push(`${folder.name}_${f.name}`);
     }
     return { success: true, ids };
   } catch (err) {

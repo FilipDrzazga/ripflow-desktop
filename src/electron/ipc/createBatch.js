@@ -5,6 +5,7 @@ import { createBatchIds } from "../helpers/createBatchIds.js";
 import { getStorageRootPath } from "../helpers/getRootPath.js";
 import { toIpcError } from "../helpers/ipcError.js";
 import { checkPdf } from "../helpers/pdfReadiness.js";
+import { isImageExt } from "../../shared/artworkFile.js";
 import { PDF_STATE, NO_EOF_WARNING } from "../../shared/inboxReadiness.js";
 import { getWorkflowFolderName } from "./createXML.js";
 
@@ -115,6 +116,14 @@ export const sweepOrphanTemps = async () => {
 
   if (removed > 0) console.log(`[sweep] removed ${removed} orphan temp folder(s)`);
   return removed;
+};
+
+// An image tile (the Etsy route) is NOT cut to a first page: it is one picture and PrintFactory reads the
+// whole file, so it is copied as it lies, byte for byte (COPYFILE_EXCL: never over an existing file).
+const copyWhole = async (srcPath, destPath) => {
+  await fs.promises.copyFile(srcPath, destPath, fs.constants.COPYFILE_EXCL);
+  const stat = await fs.promises.stat(destPath);
+  return stat.size;
 };
 
 const copyPdfFirstPage = async (srcPath, destPath) => {
@@ -387,7 +396,14 @@ export const createBatch = async (batch) => {
 
       let writtenSize;
       try {
-        writtenSize = await copyPdfFirstPage(entry.sourcePath, tempTargetPath);
+        const isImage = isImageExt(path.extname(entry.fileName));
+        writtenSize = isImage
+          ? await copyWhole(entry.sourcePath, tempTargetPath)
+          : await copyPdfFirstPage(entry.sourcePath, tempTargetPath);
+        // A whole-file copy must be as long as the source VALIDATE measured (a PDF is rewritten, so its size differs)
+        if (isImage && writtenSize !== entry.size) {
+          throw Object.assign(new Error(`copied ${writtenSize} of ${entry.size} bytes`), { code: "EIO" });
+        }
       } catch (err) {
         throw Object.assign(new Error(`Failed to copy file ${entry.fileName}: ${err.message}`), {
           code: err.code || "EIO",

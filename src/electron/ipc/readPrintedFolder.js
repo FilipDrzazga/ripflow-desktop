@@ -9,6 +9,7 @@ import { estimatePrintLength } from "../../shared/estimatePrintLength.js";
 import { getOpenReprintRequestsByFileIds, insertLog, getDbDegraded } from "../helpers/db.js";
 import { BATCH_STATUS, FILE_STATUS } from "../../shared/constants.js";
 import { BATCH_FOLDER_RE, parseBatchFolderName } from "../../shared/batchFolderName.js";
+import { isArtworkFileName } from "../../shared/artworkFile.js";
 import { createLogOnce } from "../helpers/logOnce.js";
 
 // Re-exported: batchHistoryHandlers.js and ipc/index.js import it from here.
@@ -166,7 +167,7 @@ export const readSingleBatch = async (batchPath, meta) => {
       xmlExists = true;
       continue;
     }
-    if (lower.endsWith(".pdf")) {
+    if (isArtworkFileName(lower)) {
       const filePath = path.join(batchPath, f.name);
       const parsed = parsePrintFileName(f.name, { fullPath: filePath, dir: batchPath, shopConfig: getProfile() });
       const stem = path.parse(f.name).name;
@@ -513,7 +514,7 @@ export const readPrintedDayNames = async (dayFolder) => {
               return null;
             }
             const files = entries
-              .filter((f) => f.isFile() && f.name.toLowerCase().endsWith(".pdf"))
+              .filter((f) => f.isFile() && isArtworkFileName(f.name))
               .map((f) => {
                 const parsed = parsePrintFileName(f.name, { fullPath: path.join(batchPath, f.name), dir: batchPath, shopConfig: getProfile() });
                 return { name: f.name, orderId: parsed?.orderId || null, customerName: parsed?.customerName || null };

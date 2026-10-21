@@ -1,5 +1,6 @@
 import { readFileBuffer } from "../services/fileService";
 import * as pdfjsLib from "pdfjs-dist";
+import { isImageExt } from "../../shared/artworkFile";
 
 // Worker setup lives with the rendering code — any module that renders a PDF gets
 // it by importing from here, instead of depending on some other module having been
@@ -67,7 +68,45 @@ async function readFileAsUint8Array(filePath) {
   return bytes;
 }
 
+// An image tile (the Etsy route, E3a-2) is drawn by the browser itself: jpg / png / gif / webp. A TIFF has no
+// decoder in Chromium, so it has no preview (the callers already show "unavailable" for any throw). A tile can
+// be 6000 px or more on a side, and a preview scale of 0.75 would then be a canvas of 80 MB: the longest side of
+// a rendered image is capped.
+const IMAGE_MAX_SIDE = 2000;
+const IMAGE_MIME = { jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", gif: "image/gif", webp: "image/webp" };
+
+const extOfPath = (filePath) => filePath.slice(filePath.lastIndexOf(".") + 1).toLowerCase();
+
+async function renderImageToDataUrl(filePath, { targetWidth, scale, quality }) {
+  const mime = IMAGE_MIME[extOfPath(filePath)];
+  if (!mime) throw new Error("No preview for this image format");
+  const data = await readFileAsUint8Array(filePath);
+  const bitmap = await createImageBitmap(new Blob([data], { type: mime }));
+  try {
+    const wanted = targetWidth != null ? targetWidth / bitmap.width : scale;
+    const effectiveScale = Math.min(wanted, IMAGE_MAX_SIDE / Math.max(bitmap.width, bitmap.height));
+    const canvas = document.createElement("canvas");
+    try {
+      canvas.width = Math.max(1, Math.round(bitmap.width * effectiveScale));
+      canvas.height = Math.max(1, Math.round(bitmap.height * effectiveScale));
+      const ctx = canvas.getContext("2d");
+      // JPEG has no alpha: a transparent PNG would turn black
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+      return canvas.toDataURL("image/jpeg", quality);
+    } finally {
+      // Release GPU-backed canvas memory
+      canvas.width = 0;
+      canvas.height = 0;
+    }
+  } finally {
+    bitmap.close();
+  }
+}
+
 async function renderToDataUrl(filePath, { targetWidth, scale, quality }) {
+  if (isImageExt(extOfPath(filePath))) return renderImageToDataUrl(filePath, { targetWidth, scale, quality });
   const data = await readFileAsUint8Array(filePath);
   const pdf = await pdfjsLib.getDocument({ data }).promise;
   try {

@@ -60,3 +60,13 @@ export const stageExtToStore = (ext) => {
 // for stageFilePath).
 export const stageFileName = (row) => `${row.file_id}.${stageFileExt(row.ext)}`;
 export const stageFilePath = (row) => `${row.batch_path}\\${stageFileName(row)}`;
+
+// Is this file name a print file the app handles - a PDF or an image tile? The one test the inbox peek,
+// the folder watcher, the PRINTED readers and the rollback / regenerate handlers share, where each
+// used to ask for ".pdf" on its own.
+export const isArtworkFileName = (name) => {
+  const dot = String(name ?? "").lastIndexOf(".");
+  if (dot < 0) return false;
+  const ext = normExt(String(name).slice(dot));
+  return ext === PDF_EXT || IMAGE_EXT_SET.has(ext);
+};

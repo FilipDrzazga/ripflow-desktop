@@ -13,6 +13,7 @@ import { getSettings } from "../helpers/getSettings.js";
 import { GROUP_NAME_OVERRIDES_REVERSE } from "../helpers/createBatchIds.js";
 import { getEstimateConfig } from "../helpers/fabricCache.js";
 import { estimatePrintLength } from "../../shared/estimatePrintLength.js";
+import { isArtworkFileName } from "../../shared/artworkFile.js";
 
 const toError = (err, title = "Operation failed") => toIpcError(err, "unknown", title);
 
@@ -75,7 +76,7 @@ export const rollbackBatchFromHistory = async ({ batchPath, reason } = {}) => {
 
     const entries = await fs.promises.readdir(validatedBatchPath, { withFileTypes: true });
     // PO
-    const pdfNames = entries.filter((f) => f.isFile() && f.name.toLowerCase().endsWith(".pdf")).map((f) => f.name);
+    const pdfNames = entries.filter((f) => f.isFile() && isArtworkFileName(f.name)).map((f) => f.name);
 
     try {
       const snapshotPath = path.join(validatedBatchPath, "_rollback_snapshot.json");
@@ -98,7 +99,7 @@ export const rollbackBatchFromHistory = async ({ batchPath, reason } = {}) => {
     }
     const workstation = reason ? getSettings().workstationName : null;
     for (const f of entries) {
-      if (!f.isFile() || !f.name.toLowerCase().endsWith(".pdf")) continue;
+      if (!f.isFile() || !isArtworkFileName(f.name)) continue;
       const stem = f.name.replace(/\.[^.]+$/, "");
       const group = resolveGroupFromInfo(batchInfo, meta.group, stem);
       const destDir = path.join(storageRoot, group);
@@ -285,9 +286,9 @@ export const deleteBatchFolder = async (batchPath) => {
     }
 
     const entries = await fs.promises.readdir(validatedBatchPath, { withFileTypes: true });
-    const hasPdfs = entries.some((e) => e.isFile() && e.name.toLowerCase().endsWith(".pdf"));
+    const hasPdfs = entries.some((e) => e.isFile() && isArtworkFileName(e.name));
     if (hasPdfs) {
-      throw Object.assign(new Error("Batch folder still contains PDF files."), {
+      throw Object.assign(new Error("Batch folder still contains print files."), {
         code: "ENOTEMPTY",
         title: "Cannot delete non-empty batch",
       });
@@ -318,10 +319,10 @@ export const regenerateXmlForBatch = async (batchPath) => {
     }
 
     const entries = await fs.promises.readdir(validatedBatchPath, { withFileTypes: true });
-    const pdfs = entries.filter((f) => f.isFile() && f.name.toLowerCase().endsWith(".pdf"));
+    const pdfs = entries.filter((f) => f.isFile() && isArtworkFileName(f.name));
 
     if (pdfs.length === 0) {
-      throw Object.assign(new Error("No PDF files found in batch folder."), {
+      throw Object.assign(new Error("No print files found in batch folder."), {
         code: "ENOENT",
         title: "No files to regenerate XML for",
       });
@@ -359,7 +360,7 @@ export const regenerateXmlForBatch = async (batchPath) => {
       .filter((item) => item.printTypeCode && item.printTypeCode !== "UNKNOWN");
 
     if (batchItems.length === 0) {
-      throw Object.assign(new Error("Could not parse any PDF files in the batch."), {
+      throw Object.assign(new Error("Could not parse any print files in the batch."), {
         code: "EINVAL",
         title: "XML regeneration failed",
       });

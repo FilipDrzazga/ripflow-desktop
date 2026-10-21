@@ -1,7 +1,9 @@
 import fs from "fs";
+import path from "path";
 import { Buffer } from "node:buffer";
 import { performance } from "node:perf_hooks";
 import { PDF_STATE } from "../../shared/inboxReadiness.js";
+import { isImageExt } from "../../shared/artworkFile.js";
 
 // The ONE answer to "is this inbox PDF finished being written". The inbox scan (readFolders) and
 // createBatch's VALIDATE both ask it - two copies of the condition is how a file could be listed
@@ -72,6 +74,104 @@ export const createStabilityTracker = ({ now = () => performance.now() } = {}) =
 // One tracker per process: createBatch must see the same observations the scan made.
 export const stabilityTracker = createStabilityTracker();
 
+// An image tile (E3a-2, the Etsy route) is "finished" by the same ONE function; the name stays checkPdf
+// because the scan, createBatch and recheckCopying import it by that name (pdfReadiness.wiring.test.js).
+// The extension picks the check, the answer has the same shape.
+//
+//   signature of the extension     -> else NOT_PDF (not listed, like a text file in the inbox)
+//   zeros where the signature goes -> COPYING (the data has not started)
+//   PNG IEND / JPEG EOI / GIF trailer / WebP RIFF size at the end -> the end of the data is there; READY unless this
+//                                     station saw another size or mtime at its previous look (D40, the same tracker)
+//   a tail that is nothing but zeros, or no end marker -> COPYING (a reserved size not filled yet, or a cut-off copy)
+//   TIFF has no end marker, and a legitimate one may end in zeros -> COPYING until a SECOND look (IMAGE_SETTLE_MS later) sees
+//                                     the same size + mtime. Known edge: a copy paused between two looks passes.
+export const IMAGE_SETTLE_MS = 10 * 1000;
+
+const startsWithBytes = (buf, bytes) => bytes.every((b, i) => buf[i] === b);
+const ascii = (buf, from, to) => buf.subarray(from, to).toString("latin1");
+
+// -> true when the first bytes are those of the format the extension names
+const hasImageSignature = (ext, head) => {
+  switch (ext) {
+    case "jpg":
+    case "jpeg":
+      return startsWithBytes(head, [0xff, 0xd8, 0xff]);
+    case "png":
+      return startsWithBytes(head, [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+    case "gif":
+      return ascii(head, 0, 4) === "GIF8";
+    case "webp":
+      return ascii(head, 0, 4) === "RIFF" && ascii(head, 8, 12) === "WEBP";
+    case "tif":
+    case "tiff":
+      return startsWithBytes(head, [0x49, 0x49, 0x2a, 0x00]) || startsWithBytes(head, [0x4d, 0x4d, 0x00, 0x2a]);
+    default:
+      return false;
+  }
+};
+
+const lastNonZero = (buf) => {
+  for (let i = buf.length - 1; i >= 0; i--) if (buf[i] !== 0) return i;
+  return -1;
+};
+
+// -> whether the end of the data is there, or null for a format with no end marker (TIFF). Trailing zeros
+// after the marker are tolerated (padding); a tail of nothing but zeros is never an end.
+const hasImageEnd = (ext, tail, size, head) => {
+  const trimmed = tail.subarray(0, lastNonZero(tail) + 1);
+  switch (ext) {
+    case "jpg":
+    case "jpeg":
+      return trimmed.length >= 2 && trimmed[trimmed.length - 2] === 0xff && trimmed[trimmed.length - 1] === 0xd9;
+    case "png":
+      return trimmed.length >= 8 && ascii(trimmed, trimmed.length - 8, trimmed.length - 4) === "IEND";
+    case "gif":
+      return trimmed.length > 0 && trimmed[trimmed.length - 1] === 0x3b;
+    case "webp":
+      // The RIFF size is the file size - 8, but a copy that reserved its full size says so too: the last
+      // 64 bytes must not be zeros (the same test as the PDF's D39).
+      return (
+        head.length >= 8 &&
+        head.readUInt32LE(4) + 8 <= size &&
+        !allZero(tail.subarray(Math.max(0, tail.length - ZERO_END_BYTES)))
+      );
+    default:
+      return null;
+  }
+};
+
+const checkImage = async (handle, filePath, ext, tracker) => {
+  const { size, mtimeMs } = await handle.stat();
+  if (size === 0) return { state: PDF_STATE.COPYING, reason: "the file is still empty" };
+
+  const head = await readAt(handle, 16, 0);
+  if (!hasImageSignature(ext, head)) {
+    if (head.length > 0 && allZero(head)) return { state: PDF_STATE.COPYING, reason: "the data has not started yet" };
+    return { state: PDF_STATE.NOT_PDF };
+  }
+
+  const tailLength = Math.min(TAIL_BYTES, size);
+  const tail = await readAt(handle, tailLength, size - tailLength);
+  const end = hasImageEnd(ext, tail, size, head);
+
+  if (end === null) {
+    // TIFF: no end marker to look for. Two looks that agree.
+    const unchangedMs = tracker.observe(filePath, size, mtimeMs);
+    if (unchangedMs >= IMAGE_SETTLE_MS) return { state: PDF_STATE.READY, tracked: true };
+    return { state: PDF_STATE.COPYING, reason: "waiting for the file to stop changing", tracked: true };
+  }
+  if (!end) {
+    tracker.forget(filePath);
+    if (allZero(tail)) return { state: PDF_STATE.COPYING, reason: "the end of the file is still empty" };
+    return { state: PDF_STATE.COPYING, reason: "the end of the image is not there yet" };
+  }
+  tracker.forget(filePath);
+  if (!tracker.confirmFinished(filePath, size, mtimeMs)) {
+    return { state: PDF_STATE.COPYING, reason: "the file changed since it was last looked at", tracked: true };
+  }
+  return { state: PDF_STATE.READY, tracked: true };
+};
+
 const allZero = (buf) => buf.length > 0 && buf.every((byte) => byte === 0);
 
 const readAt = async (handle, length, position) => {
@@ -95,6 +195,9 @@ export const checkPdf = async (filePath, { tracker = stabilityTracker, fsp = fs.
     throw err; // unexpected -> the scan's per-file catch reports it as skipped
   }
   try {
+    const ext = path.extname(filePath).slice(1).toLowerCase();
+    if (isImageExt(ext)) return await checkImage(handle, filePath, ext, tracker);
+
     const { size, mtimeMs } = await handle.stat();
     if (size === 0) return { state: PDF_STATE.COPYING, reason: "the file is still empty" };
 

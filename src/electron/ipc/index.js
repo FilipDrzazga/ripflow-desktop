@@ -33,6 +33,7 @@ import { exportShopProfile, previewShopProfileImport, applyShopProfileImport } f
 import { setPrinterResolver } from "./createXML.js";
 import { runShopProfileMigration } from "../helpers/runShopProfileMigration.js";
 import { describeRollbackFailure, buildRollbackBatchLog } from "../helpers/rollbackFailure.js";
+import { isArtworkFileName } from "../../shared/artworkFile.js";
 
 const DAY_FOLDER_RE = /^\d{2}-\d{2}-\d{4}$/;
 
@@ -89,7 +90,7 @@ const processWatchEvent = async (relativePath) => {
   }
 
   const fileName = rest[0];
-  if (!fileName.toLowerCase().endsWith(".pdf")) return;
+  if (!isArtworkFileName(fileName)) return;
 
   const filePath = path.join(batchPath, fileName);
 
