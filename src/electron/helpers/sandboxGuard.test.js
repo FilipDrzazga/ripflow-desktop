@@ -58,11 +58,12 @@ describe("findUnsafeSettings - everything else is refused, with the reason", () 
   });
 
   it("with no sandbox root every non-empty local path is refused", () => {
-    // Fail-closed: without a root nothing can be proven inside it - all three keys refused.
+    // Fail-closed: without a root nothing can be proven inside it - every path key refused.
     expect(one("storagePath", `${ROOT}\\storage`, null).map((u) => [u.key, u.reason])).toEqual([
       ["storagePath", "no sandbox root"],
       ["xmlPath", "no sandbox root"],
       ["customOrderFolderPath", "no sandbox root"],
+      ["etsyLibraryPath", "no sandbox root"],
     ]);
   });
 
@@ -71,6 +72,7 @@ describe("findUnsafeSettings - everything else is refused, with the reason", () 
       storagePath: "\\\\FAS-LON-SRV01\\Original_files\\SPPrintReadyArtwork",
       xmlPath: "\\\\FAS-LON-SRV01\\Original_files\\SPPrintReadyArtwork",
       customOrderFolderPath: "F:\\Minerva\\HIGH RES\\finals",
+      etsyLibraryPath: "",
       labelPrinterName: "Munbyn RW403B-N",
     };
     expect(findUnsafeSettings(live, ROOT).map((u) => [u.key, u.reason])).toEqual([

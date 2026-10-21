@@ -14,8 +14,10 @@ describe("Etsy wiring", () => {
     expect(src).toContain("safeStorage.isEncryptionAvailable");
   });
 
-  it("settings:get / settings:set (the station config file) never carry anything Etsy", () => {
-    expect(read("../helpers/getSettings.js")).not.toMatch(/etsy|sharedSecret|refreshToken|keystring/i);
+  it("settings:get / settings:set (the station config file) never carry an Etsy secret or credential", () => {
+    const src = read("../helpers/getSettings.js");
+    expect(src).not.toMatch(/secret|token|keystring/i);
+    expect(src).not.toMatch(/etsyCredentials|safeStorage/);
   });
 
   it("nothing Etsy goes to the shared database", () => {

@@ -105,3 +105,15 @@ export const RIP_ERROR_SCOPE = {
 // The code profile:set answers when the stored shop profile is no longer the one this station
 // loaded - another station saved it in between (ETAP 3-1, helpers/saveShopProfile.js).
 export const PROFILE_CHANGED = "PROFILE_CHANGED";
+
+// Where one Etsy order line stands in the import (etsy_imports.state, E3b-2).
+//   PENDING       - claimed; the file is being (or was being) copied into the inbox
+//   DONE          - the file is in the inbox under its name
+//   NEEDS_REVIEW  - not imported, with a reason a person reads (nothing is guessed, nothing is skipped silently)
+//   FAILED        - the copy itself failed after the claim
+export const ETSY_IMPORT_STATE = {
+  PENDING: "pending",
+  DONE: "done",
+  NEEDS_REVIEW: "needs_review",
+  FAILED: "failed",
+};

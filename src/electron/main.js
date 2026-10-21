@@ -12,6 +12,7 @@ import { setPrintedRootSink } from "./ipc/readPrintedFolder.js";
 import { getSettings } from "./helpers/getSettings.js";
 import { findUnsafeSettings } from "./helpers/sandboxGuard.js";
 import { createPowerPause, applyStartupLock } from "./helpers/powerPause.js";
+import { startEtsyImportLoop } from "./ipc/etsyImportLoop.js";
 import { fitStartSize, WINDOW_MIN_WIDTH, WINDOW_MIN_HEIGHT } from "./helpers/windowBounds.js";
 const require = createRequire(import.meta.url);
 const { autoUpdater } = require("electron-updater");
@@ -128,6 +129,8 @@ app.whenReady().then(async () => {
   // Snapshot twin of db:get-degraded: a window that reloads (or loads) while the station is locked
   // or in the wake grace never saw the transition event.
   ipcMain.handle("power:get-paused", () => powerPause.snapshot());
+  // The Etsy import (E3b-2) ticks in the main process, so it asks the same pause the renderer polls do.
+  startEtsyImportLoop({ isPaused: powerPause.isPaused });
 
   autoUpdater.autoDownload = true;
   autoUpdater.autoInstallOnAppQuit = true;

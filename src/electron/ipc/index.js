@@ -660,7 +660,7 @@ export async function registerIpcHandlers() {
   });
 
   ipcMain.handle("settings:set", async (_event, settings) => {
-    const { storagePath, xmlPath, workstationName, customOrderFolderPath, labelPrinterName, workstationRole, shippedRetentionDays, batchHistoryEagerDays, labelPrintMode, clientId } = settings ?? {};
+    const { storagePath, xmlPath, workstationName, customOrderFolderPath, etsyImportEnabled, etsyLibraryPath, labelPrinterName, workstationRole, shippedRetentionDays, batchHistoryEagerDays, labelPrintMode, clientId } = settings ?? {};
     if (!storagePath || !xmlPath) {
       return { success: false, error: "Both paths are required." };
     }
@@ -681,7 +681,14 @@ export async function registerIpcHandlers() {
         return { success: false, error: `Custom Order folder path does not exist: ${customOrderFolderPath}` };
       }
     }
-    setSettings({ storagePath, xmlPath, workstationName, customOrderFolderPath, labelPrinterName, workstationRole, shippedRetentionDays, batchHistoryEagerDays, labelPrintMode, clientId });
+    if (etsyLibraryPath) {
+      try {
+        await fs.promises.access(etsyLibraryPath);
+      } catch {
+        return { success: false, error: `Etsy library folder does not exist: ${etsyLibraryPath}` };
+      }
+    }
+    setSettings({ storagePath, xmlPath, workstationName, customOrderFolderPath, etsyImportEnabled, etsyLibraryPath, labelPrinterName, workstationRole, shippedRetentionDays, batchHistoryEagerDays, labelPrintMode, clientId });
     return { success: true };
   });
 

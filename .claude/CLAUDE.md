@@ -78,14 +78,15 @@ INBOX → PARSE FILENAME → UI → SELECT FILES+PRINTER → CREATE BATCH+XML �
 
 **electron-store** (per-machine, `%APPDATA%\ripflow-desktop\config.json`):
 
-- `storagePath`, `xmlPath`, `workstationName`, `customOrderFolderPath`, `workstationRole`, `labelPrinterName`, `shippedRetentionDays`, `batchHistoryEagerDays`, `labelPrintMode`, `clientId`
+- `storagePath`, `xmlPath`, `workstationName`, `customOrderFolderPath`, `etsyImportEnabled`, `etsyLibraryPath`, `workstationRole`, `labelPrinterName`, `shippedRetentionDays`, `batchHistoryEagerDays`, `labelPrintMode`, `clientId`
+- **Etsy order import (plan E3b-2)** - ONE station imports: `etsyImportEnabled` (this PC's identity, rule 25; turning it on stamps `etsyImportSince`, a separate key that `getSettings` does not return and turning it off deletes) AND `features.etsy` in the shop profile, a connected Etsy sign-in, `etsyLibraryPath` (the folder of pattern images, a PATH key of `sandboxGuard`). `ipc/etsyImportLoop.js` ticks every 5 min from `main.js` with the power pause; the gate is the pure `helpers/etsyImportGate.js` (fail closed), the rules are `helpers/etsyImport.js` (injected parts): a line it cannot read as ONE thing becomes `needs_review` with a reason, never a guess; the order of writes is claim -> copy to `.etsy-<receipt>-<line>.tmp` in the SAME folder -> `renameNoOverwrite` -> `done`; a `pending` row found later is NEVER copied again on its own (the file may already be in a batch). Everything that depends on how the listings are filled in (where XWD sits, which variation is the print type) is in `helpers/etsyTransaction.js` - unconfirmed on a real order. Tables: `.claude/rules/database.md`.
 - `batchHistoryEagerDays` — per-machine, default 7, min 1; how many most-recent days BatchHistory eager-loads (rest are lazy skeletons, loaded on expand)
 - **Etsy connection (plan E2)** — a SEPARATE file `%APPDATA%\ripflow-desktop\etsy.json` (`new Store({ name: "etsy" })` in `ipc/etsyHandlers.js`): keystring, shared secret and the 90-day refresh token, each encrypted with `safeStorage` (DPAPI, bound to the Windows user; no encryption = nothing written). Never in `config.json` (`settings:get` / `settings:set` cannot see it) and never in the shared DB (rule 25). Settings -> Etsy; sign-in in its own window with an in-memory session that catches the https redirect (`helpers/etsyConnectWindow.js`, `ETSY_REDIRECT_URI` in `helpers/etsyOAuth.js` - the same address goes into the app's "Callback URLs" on Etsy).
 
 **ripflow.db** (shared across all PCs via network `storagePath`):
 
-- Operational: `logs`, `held_files`, `rollback_reasons`, `custom_order_history`
-- Shared config: `reason_definitions`, `fabrics`, `shop_profile`
+- Operational: `logs`, `held_files`, `rollback_reasons`, `custom_order_history`, `etsy_imports`
+- Shared config: `reason_definitions`, `fabrics`, `shop_profile`, `etsy_fabric_map`
 
 ```
 storagePath:     ""  (default since 2h-3; Alex's stations: \\FAS-LON-SRV01\... or O:\SPPrintReadyArtwork)

@@ -14,6 +14,7 @@ import { GROUP_NAME_OVERRIDES_REVERSE } from "../helpers/createBatchIds.js";
 import { getEstimateConfig } from "../helpers/fabricCache.js";
 import { estimatePrintLength } from "../../shared/estimatePrintLength.js";
 import { isArtworkFileName } from "../../shared/artworkFile.js";
+import { renameNoOverwrite } from "../helpers/renameNoOverwrite.js";
 
 const toError = (err, title = "Operation failed") => toIpcError(err, "unknown", title);
 
@@ -37,16 +38,6 @@ const resolveOriginalGroup = async (batchPath, shortGroup, stem = null) => {
     // no/corrupt metadata file → resolveGroupFromInfo handles null via fallbacks
   }
   return resolveGroupFromInfo(info, shortGroup, stem);
-};
-
-const renameNoOverwrite = async (src, dest) => {
-  try {
-    await fs.promises.access(dest);
-    throw Object.assign(new Error(`Destination already exists: ${dest}`), { code: "EEXIST" });
-  } catch (e) {
-    if (e.code !== "ENOENT") throw e;   // ENOENT = the name is free; EEXIST / anything else → rethrow
-  }
-  await fs.promises.rename(src, dest);
 };
 
 export const rollbackBatchFromHistory = async ({ batchPath, reason } = {}) => {

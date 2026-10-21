@@ -16,6 +16,9 @@ export const ETSY_API_BASE = "https://api.etsy.com/v3/application";
 // fail a request that had every reason to work.
 const EXPIRY_MARGIN_MS = 60 * 1000;
 
+const RECEIPT_PAGE_SIZE = 100; // Etsy's maximum for getShopReceipts
+const MAX_RECEIPT_PAGES = 50;
+
 const etsyError = (code, message, extra = {}) => Object.assign(new Error(message), { code, title: "Etsy", ...extra });
 
 const readJson = async (response) => {
@@ -58,13 +61,28 @@ export const createEtsyClient = ({ credentials, fetch, now = () => Date.now() })
     return body;
   };
 
-  const accessToken = async () => {
-    if (cached && now() < cached.expiresAt - EXPIRY_MARGIN_MS) return cached.token;
+  // ONE refresh at a time (D74): the import runs in the background beside "Test connection", and two
+  // callers finding the token expired together would send the same refresh token twice. Etsy rotates
+  // refresh tokens, so the second answer can be invalid_grant (ETSY_RECONNECT) and two refresh tokens
+  // would be saved. The second caller waits for the first one's token.
+  let refreshing = null;
+
+  const refresh = async () => {
     const secrets = requireSecrets();
     if (!secrets.refreshToken) throw etsyError("ETSY_NOT_CONNECTED", "This station is not connected to Etsy. Press Connect.");
     const body = await postToken({ keystring: secrets.keystring, refreshToken: secrets.refreshToken });
     if (body.refresh_token && body.refresh_token !== secrets.refreshToken) credentials.saveRefreshToken(body.refresh_token);
     return cached.token;
+  };
+
+  const accessToken = async () => {
+    if (cached && now() < cached.expiresAt - EXPIRY_MARGIN_MS) return cached.token;
+    if (!refreshing) {
+      refreshing = refresh().finally(() => {
+        refreshing = null;
+      });
+    }
+    return refreshing;
   };
 
   // GET <ETSY_API_BASE><path>. token: an explicit bearer (the sign-in, before anything is saved).
@@ -108,10 +126,45 @@ export const createEtsyClient = ({ credentials, fetch, now = () => Date.now() })
   const completeSignIn = async ({ code, verifier }) => {
     const secrets = requireSecrets();
     const body = await postToken({ keystring: secrets.keystring, code, verifier });
-    if (!body.refresh_token) throw etsyError("ETSY_TOKEN_FAILED", "Etsy sent no refresh token.");
-    const who = await whoAmI(body.access_token);
-    credentials.saveConnection({ refreshToken: body.refresh_token, ...who });
-    return who;
+    try {
+      if (!body.refresh_token) throw etsyError("ETSY_TOKEN_FAILED", "Etsy sent no refresh token.");
+      const who = await whoAmI(body.access_token);
+      credentials.saveConnection({ refreshToken: body.refresh_token, ...who });
+      return who;
+    } catch (err) {
+      // postToken cached the new account's access token before the shop was known (D74): a sign-in that
+      // ends here saved nothing, so the memory must not keep a token the disk does not know about.
+      cached = null;
+      throw err;
+    }
+  };
+
+  // The open orders of the connected shop: paid, not shipped, not cancelled, created at or after
+  // `minCreated` (epoch seconds). Etsy pages by 100; every page is read, because an order that is
+  // not listed here is an order that is never imported. A shop with more open orders than the
+  // cap is refused loudly rather than cut short.
+  const listOpenReceipts = async ({ minCreated }) => {
+    const { shopId } = credentials.status();
+    if (!shopId) throw etsyError("ETSY_NOT_CONNECTED", "This station is not connected to Etsy. Press Connect.");
+    const receipts = [];
+    for (let page = 0; page < MAX_RECEIPT_PAGES; page += 1) {
+      const body = await get(`/shops/${shopId}/receipts`, {
+        query: {
+          limit: RECEIPT_PAGE_SIZE,
+          offset: page * RECEIPT_PAGE_SIZE,
+          was_paid: true,
+          was_shipped: false,
+          was_canceled: false,
+          min_created: minCreated,
+          sort_on: "created",
+          sort_order: "asc",
+        },
+      });
+      const results = Array.isArray(body?.results) ? body.results : [];
+      receipts.push(...results);
+      if (results.length < RECEIPT_PAGE_SIZE) return receipts;
+    }
+    throw etsyError("ETSY_TOO_MANY_ORDERS", `More than ${MAX_RECEIPT_PAGES * RECEIPT_PAGE_SIZE} open Etsy orders - the import stopped instead of reading only a part.`);
   };
 
   // "Test connection": the shop and its newest paid order, cut down to what the import will
@@ -131,7 +184,7 @@ export const createEtsyClient = ({ credentials, fetch, now = () => Date.now() })
     cached = null;
   };
 
-  return { accessToken, get, completeSignIn, testConnection, forgetToken };
+  return { accessToken, get, completeSignIn, testConnection, listOpenReceipts, forgetToken };
 };
 
 export const summarizeReceipt = (receipt) => {

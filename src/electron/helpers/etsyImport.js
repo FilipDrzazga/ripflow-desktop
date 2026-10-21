@@ -1,0 +1,311 @@
+import path from "node:path";
+import { ETSY_IMPORT_STATE } from "../../shared/constants.js";
+import { isImageFileName } from "../../shared/artworkFile.js";
+import { isEtsyFileName } from "../../shared/orderSource.js";
+import { resolveEtsyFabric } from "./etsyFabric.js";
+import {
+  xwdOfTransaction,
+  fabricValueOfTransaction,
+  typeTextCandidates,
+  libraryFilesFor,
+  repeatOfLibraryName,
+  buildEtsyTileName,
+} from "./etsyTransaction.js";
+
+// The Etsy import of ONE station (plan E3b-2): open orders of the shop -> one image tile per order line in the
+// inbox folder of its fabric. Everything the world supplies is injected (the API, the database, the disk, the
+// parser, the clock), so the whole of it runs in tests without Electron, a network or a share.
+//
+// The rules it keeps - each one is a test:
+// - FAIL CLOSED (W3): no database, flag off, station not the importer, paths or token missing -> `gate()` says
+//   why and the tick does nothing.
+// - A line that cannot be read as ONE thing (XWD, fabric, print type, library file) is recorded NEEDS_REVIEW
+//   with its reason and no file is written. Never a silent skip, never the nearest guess.
+// - The name is proved before the line is claimed (W4): it is read back through the parser and must give the
+//   same order, fabric, quantity, type, XWD and source - else NEEDS_REVIEW.
+// - ORDER OF WRITES (W5): claim (INSERT OR IGNORE on the UNIQUE) -> copy to a .tmp in the SAME folder -> rename
+//   without overwrite -> DONE. The library is only ever copied from, never moved.
+// - A PENDING row is never copied a second time on its own (W2): the file may have left for a batch before
+//   DONE reached the share. An old PENDING with its file in the folder is DONE, without the file it is
+//   NEEDS_REVIEW.
+// - A problem of the ENVIRONMENT (library unreachable, a folder that cannot be read) is not a verdict on the
+//   order: it ends the tick and leaves the line without a row, so the next tick tries it again.
+
+// A PENDING row younger than this may belong to a copy another process is making right now.
+export const STALE_PENDING_MS = 10 * 60 * 1000;
+
+// Longest full path the import writes. Windows' MAX_PATH is 260 and the PRINTED copy lives deeper.
+const MAX_PATH_LENGTH = 240;
+
+class EtsyEnvironmentError extends Error {}
+
+const env = (message) => new EtsyEnvironmentError(message);
+
+const tmpNameOf = (receiptId, transactionId) => `.etsy-${receiptId}-${transactionId}.tmp`;
+
+const idOf = (value) => (value === null || value === undefined ? "" : String(value).trim());
+
+export const createEtsyImporter = ({
+  gate, // () => null | "reason the tick must not run"
+  listReceipts, // async () => receipts[]
+  getFabrics, // () => [{ name }] | null
+  getFabricMap, // () => [{ etsyKey, fabricName }] | null
+  getProfile, // () => shop profile | null
+  storageRoot, // () => absolute path of the inbox root (storagePath)
+  libraryRoot, // () => absolute path of the Etsy pattern folder
+  imports, // { get, claim, setState } - the three etsy_imports functions of db.js
+  fs, // { readdir, stat, copyFile, unlink, constants }
+  renameNoOverwrite,
+  parse, // parsePrintFileName
+  now = () => Date.now(),
+  log = () => {},
+}) => {
+  const filesOf = async (dir) => {
+    try {
+      const entries = await fs.readdir(dir, { withFileTypes: true });
+      return entries.filter((e) => e.isFile()).map((e) => e.name);
+    } catch (err) {
+      throw env(`Cannot read the folder ${dir} (${err.code ?? err.message}).`);
+    }
+  };
+
+  const folderExists = async (dir) => {
+    try {
+      return (await fs.stat(dir)).isDirectory();
+    } catch (err) {
+      if (err.code === "ENOENT" || err.code === "ENOTDIR") return false;
+      throw env(`Cannot look at the folder ${dir} (${err.code ?? err.message}).`);
+    }
+  };
+
+  // The proof of W4: the name we are about to write reads back as the order line we built it from.
+  const readBackProblem = (name, plan) => {
+    const out = parse(name, { dir: path.join(storageRoot(), plan.fabric.name), fullPath: null, shopConfig: plan.profile });
+    if (!out) return "the parser returned nothing";
+    if (Array.isArray(out.errors) && out.errors.length > 0) return `the parser refuses it (${out.errors.map((e) => e.code ?? e).join(", ")})`;
+    const wrong = [];
+    if (out.orderId !== `ET${plan.receiptId}`) wrong.push("order number");
+    if (out.source !== "ETSY") wrong.push("source");
+    if (out.material !== plan.fabric.name) wrong.push("material");
+    if (out.qty !== plan.qty) wrong.push("quantity");
+    if (out.artworkId !== `XWD${plan.xwd}`) wrong.push("XWD");
+    if (out.x !== plan.index || out.y !== plan.total) wrong.push("x of y");
+    if (out.repeatType !== plan.repeat) wrong.push("repeat type");
+    if (!["LM", "FQ", "SAMPLE"].includes(out.printTypeCode)) wrong.push("print type");
+    if (!isEtsyFileName(name)) wrong.push("Etsy name shape");
+    return wrong.length > 0 ? `it reads back with a different ${wrong.join(", ")}` : null;
+  };
+
+  // -> { plan } or { reason }. Reads the disk only through the folder listings of this tick (`library`).
+  const prepare = async ({ receipt, transaction, index, total, library }) => {
+    const receiptId = idOf(receipt.receipt_id);
+    const transactionId = idOf(transaction.transaction_id);
+
+    const xwd = xwdOfTransaction(transaction);
+    if (xwd.reason) return { reason: xwd.reason };
+
+    const qty = transaction.quantity;
+    if (!Number.isInteger(qty) || qty <= 0) return { reason: `The quantity of the order line is not a whole number above 0 (${qty}).` };
+
+    const fabricText = fabricValueOfTransaction(transaction);
+    if (fabricText.reason) return { reason: fabricText.reason };
+    const fabrics = getFabrics();
+    const map = getFabricMap();
+    if (!Array.isArray(fabrics) || !Array.isArray(map)) throw env("The Fabrics catalogue or the Etsy -> Fabrics table could not be read.");
+    const resolved = resolveEtsyFabric(fabricText.value, { map, fabrics });
+    if (resolved.reason) return { reason: resolved.reason };
+    const fabric = resolved.fabric;
+
+    if (!(await folderExists(path.join(storageRoot(), fabric.name)))) {
+      return { reason: `There is no inbox folder "${fabric.name}" in the storage folder.` };
+    }
+
+    const files = libraryFilesFor(xwd.xwd, await library(), isImageFileName);
+    if (files.length === 0) return { reason: `No image with XWD${xwd.xwd} in the Etsy library folder.` };
+    if (files.length > 1) return { reason: `${files.length} images carry XWD${xwd.xwd} in the Etsy library folder (${files.join(", ")}) - one is expected.` };
+    const libraryFile = files[0];
+
+    const repeat = repeatOfLibraryName(libraryFile, xwd.xwd);
+    if (!repeat) return { reason: `The library file ${libraryFile} has no repeat type (Basic, Half-Drop, Half-Brick, Center, Mirror) after XWD${xwd.xwd}.` };
+
+    const profile = getProfile();
+    if (!profile) throw env("The shop profile is not loaded.");
+
+    const base = {
+      receiptId,
+      transactionId,
+      index,
+      total,
+      qty,
+      xwd: xwd.xwd,
+      repeat,
+      fabric,
+      profile,
+      libraryFile,
+      ext: libraryFile.slice(libraryFile.lastIndexOf(".") + 1),
+    };
+
+    // The print type: whichever variation text makes a name that reads back as a Linear Meter, Fat Quarter or
+    // Sample. Exactly one text may do that - two different ones are an order line we cannot tell apart.
+    const candidates = typeTextCandidates(transaction);
+    const accepted = [];
+    const problems = [];
+    for (const typeText of candidates) {
+      const fileName = buildEtsyTileName({ ...base, customerName: receipt.name, material: fabric.name, typeText });
+      const problem = readBackProblem(fileName, { ...base });
+      if (problem) problems.push(`"${typeText}": ${problem}`);
+      else accepted.push({ typeText, fileName });
+    }
+    if (accepted.length === 0) {
+      return {
+        reason:
+          candidates.length === 0
+            ? "The order line has no variation that could name the print type (Linear Meter, Fat Quarter, Sample Print)."
+            : `No variation reads as a print type - ${problems.join("; ")}.`,
+      };
+    }
+    if (accepted.length > 1) return { reason: `More than one variation reads as a print type (${accepted.map((a) => `"${a.typeText}"`).join(", ")}).` };
+
+    const { fileName } = accepted[0];
+    if (path.join(storageRoot(), fabric.name, fileName).length >= MAX_PATH_LENGTH) {
+      return { reason: `The file name is too long for the inbox path (${fileName.length} characters).` };
+    }
+    return { plan: { ...base, fileName } };
+  };
+
+  const record = (key, state, extra = {}) => imports.claim({ ...key, state, ...extra });
+
+  // A PENDING row found by a later tick (W2). Never copies.
+  const settlePending = async (row, summary) => {
+    const age = now() - Date.parse(row.updatedAt);
+    if (Number.isFinite(age) && age < STALE_PENDING_MS) {
+      summary.skipped += 1;
+      return;
+    }
+    const key = { receiptId: row.receiptId, transactionId: row.transactionId };
+    const target = row.folder && row.fileName ? path.join(storageRoot(), row.folder, row.fileName) : null;
+    let present = false;
+    if (target) {
+      try {
+        await fs.stat(target);
+        present = true;
+      } catch (err) {
+        if (err.code !== "ENOENT" && err.code !== "ENOTDIR") throw env(`Cannot look at ${target} (${err.code ?? err.message}).`);
+      }
+    }
+    if (present) {
+      imports.setState({ ...key, state: ETSY_IMPORT_STATE.DONE, reason: null });
+      summary.imported += 1;
+      return;
+    }
+    // The tmp of the interrupted copy is ours (the claim named it) and half a file: gone, by its own name.
+    if (row.folder) await fs.unlink(path.join(storageRoot(), row.folder, tmpNameOf(row.receiptId, row.transactionId))).catch(() => {});
+    imports.setState({
+      ...key,
+      state: ETSY_IMPORT_STATE.NEEDS_REVIEW,
+      reason: "The import was interrupted and the file is not in the inbox - check PRINTED and Production before importing this line again.",
+    });
+    summary.needsReview += 1;
+  };
+
+  const copyIn = async (plan, summary) => {
+    const key = { receiptId: plan.receiptId, transactionId: plan.transactionId };
+    const folderPath = path.join(storageRoot(), plan.fabric.name);
+    const tmp = path.join(folderPath, tmpNameOf(plan.receiptId, plan.transactionId));
+    const finalPath = path.join(folderPath, plan.fileName);
+    const source = path.join(libraryRoot(), plan.libraryFile);
+
+    const claimed = record(key, ETSY_IMPORT_STATE.PENDING, { fileName: plan.fileName, folder: plan.fabric.name });
+    if (claimed === null) throw env("The import table could not be written.");
+    if (claimed === false) {
+      summary.skipped += 1;
+      return;
+    }
+
+    const fail = async (state, reason) => {
+      await fs.unlink(tmp).catch(() => {});
+      imports.setState({ ...key, state, reason });
+      if (state === ETSY_IMPORT_STATE.NEEDS_REVIEW) summary.needsReview += 1;
+      else summary.failed += 1;
+      log(`[etsy-import] ${plan.fileName}: ${reason}`);
+    };
+
+    try {
+      await fs.copyFile(source, tmp, fs.constants.COPYFILE_EXCL);
+      const [from, to] = await Promise.all([fs.stat(source), fs.stat(tmp)]);
+      if (from.size !== to.size) {
+        await fail(ETSY_IMPORT_STATE.FAILED, `The copy is ${to.size} bytes, the library file ${from.size}.`);
+        return;
+      }
+    } catch (err) {
+      await fail(ETSY_IMPORT_STATE.FAILED, `Copying ${plan.libraryFile} failed (${err.code ?? err.message}).`);
+      return;
+    }
+    try {
+      await renameNoOverwrite(tmp, finalPath);
+    } catch (err) {
+      if (err.code === "EEXIST") await fail(ETSY_IMPORT_STATE.NEEDS_REVIEW, `A file named ${plan.fileName} is already in the inbox folder.`);
+      else await fail(ETSY_IMPORT_STATE.FAILED, `Naming the copy failed (${err.code ?? err.message}).`);
+      return;
+    }
+    imports.setState({ ...key, state: ETSY_IMPORT_STATE.DONE, reason: null });
+    summary.imported += 1;
+    log(`[etsy-import] ${plan.fileName} imported`);
+  };
+
+  const processLine = async ({ receipt, transaction, index, total, library }, summary) => {
+    const receiptId = idOf(receipt.receipt_id);
+    const transactionId = idOf(transaction?.transaction_id);
+    if (!receiptId || !transactionId) {
+      summary.skipped += 1;
+      return;
+    }
+    const key = { receiptId, transactionId };
+
+    const existing = imports.get(receiptId, transactionId);
+    if (existing === undefined) throw env("The import table could not be read.");
+    if (existing) {
+      if (existing.state === ETSY_IMPORT_STATE.PENDING) await settlePending(existing, summary);
+      else summary.skipped += 1;
+      return;
+    }
+
+    const prepared = await prepare({ receipt, transaction, index, total, library });
+    if (prepared.reason) {
+      const claimed = record(key, ETSY_IMPORT_STATE.NEEDS_REVIEW, { reason: prepared.reason });
+      if (claimed === null) throw env("The import table could not be written.");
+      if (claimed) {
+        summary.needsReview += 1;
+        log(`[etsy-import] receipt ${receiptId} line ${transactionId}: ${prepared.reason}`);
+      } else summary.skipped += 1;
+      return;
+    }
+    await copyIn(prepared.plan, summary);
+  };
+
+  // One pass. Never throws: the answer says what happened.
+  return async () => {
+    const summary = { ran: false, reason: null, imported: 0, needsReview: 0, failed: 0, skipped: 0 };
+    const blocked = gate();
+    if (blocked) return { ...summary, reason: blocked };
+    summary.ran = true;
+    try {
+      const receipts = await listReceipts();
+      // The library is listed once per tick, and only when a line gets that far.
+      let listing = null;
+      const library = () => {
+        if (!listing) listing = filesOf(libraryRoot());
+        return listing;
+      };
+      for (const receipt of Array.isArray(receipts) ? receipts : []) {
+        const transactions = Array.isArray(receipt?.transactions) ? receipt.transactions : [];
+        for (let i = 0; i < transactions.length; i += 1) {
+          await processLine({ receipt, transaction: transactions[i], index: i + 1, total: transactions.length, library }, summary);
+        }
+      }
+    } catch (err) {
+      return { ...summary, reason: err instanceof EtsyEnvironmentError ? err.message : `Etsy import stopped: ${err.message ?? err}` };
+    }
+    return summary;
+  };
+};

@@ -30,11 +30,13 @@ const bootSandbox = () => {
     const storagePath = path.join(sandboxRoot, "storage");
     const xmlPath = path.join(sandboxRoot, "xml");
     const customOrderFolderPath = path.join(sandboxRoot, "custom");
-    for (const dir of [storagePath, xmlPath, customOrderFolderPath]) fs.mkdirSync(dir, { recursive: true });
+    const etsyLibraryPath = path.join(sandboxRoot, "etsy");
+    for (const dir of [storagePath, xmlPath, customOrderFolderPath, etsyLibraryPath]) fs.mkdirSync(dir, { recursive: true });
     const seed = {
       storagePath,
       xmlPath,
       customOrderFolderPath,
+      etsyLibraryPath,
       labelPrintMode: "manual",
       labelPrinterName: "",
       workstationName: "DEV-SANDBOX",

@@ -8,6 +8,7 @@ import { DEFAULT_PROFILE } from "./defaultProfile.js";
 import { printerOfBatch } from "../../shared/batchFolderName.js";
 import { preferredPrinterToStore, storesPreferredPrinter, lengthExtraToStore } from "./fabricInput.js";
 import { stageExtToStore } from "../../shared/artworkFile.js";
+import { ETSY_FABRIC_SEED, etsyKey } from "./etsyFabric.js";
 
 let db = null;
 let stmtInsert = null;
@@ -94,6 +95,115 @@ const runWrite = (label, fn) => {
     signalPermanent(label);
     return false;
   }
+};
+
+// The Etsy import's two shared tables (plan E3b-2). Their own try/catch on purpose: a failure here must
+// cost the Etsy import, never the database - initDb's single try would otherwise leave the whole station
+// without one. An older build never reads either table, so rolling back to it is safe.
+//   etsy_imports:    one row per order LINE (receipt_id + transaction_id, UNIQUE) - the idempotency of the
+//                    import across restarts and across stations.
+//   etsy_fabric_map: Etsy's name of a fabric -> the Fabrics row (etsy_key = etsyKey(etsy_name)).
+// The seed runs ONLY at the start that creates etsy_fabric_map (sqlite_master is asked BEFORE the CREATE),
+// and writes only the pairs whose Fabrics name is in `fabrics` to the character: another shop's database
+// gets no row, and a pair the shop deleted later does not come back at the next start (W7).
+let etsyTablesReady = false;
+const ensureEtsyTables = () => {
+  etsyTablesReady = false;
+  try {
+    const mapIsNew = !db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'etsy_fabric_map'").get();
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS etsy_fabric_map (
+        etsy_key    TEXT PRIMARY KEY,
+        etsy_name   TEXT NOT NULL,
+        fabric_name TEXT NOT NULL
+      )
+    `);
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS etsy_imports (
+        receipt_id     TEXT NOT NULL,
+        transaction_id TEXT NOT NULL,
+        state          TEXT NOT NULL,
+        file_name      TEXT,
+        folder         TEXT,
+        reason         TEXT,
+        created_at     TEXT NOT NULL,
+        updated_at     TEXT NOT NULL,
+        UNIQUE (receipt_id, transaction_id)
+      )
+    `);
+    if (mapIsNew) {
+      const hasFabric = db.prepare("SELECT 1 FROM fabrics WHERE name = ?");
+      const insert = db.prepare("INSERT OR IGNORE INTO etsy_fabric_map (etsy_key, etsy_name, fabric_name) VALUES (?, ?, ?)");
+      for (const [etsyName, fabricName] of ETSY_FABRIC_SEED) {
+        if (hasFabric.get(fabricName)) insert.run(etsyKey(etsyName), etsyName, fabricName);
+      }
+    }
+    etsyTablesReady = true;
+  } catch (err) {
+    console.error("[db] ensureEtsyTables failed (the Etsy import stays off):", err);
+  }
+};
+
+// [{ etsyKey, etsyName, fabricName }], or null when it could not be read (no DB, no table, a failed SELECT).
+export const getEtsyFabricMap = () => {
+  if (!db || !etsyTablesReady) return null;
+  try {
+    return db.prepare("SELECT etsy_key AS etsyKey, etsy_name AS etsyName, fabric_name AS fabricName FROM etsy_fabric_map ORDER BY etsy_name").all();
+  } catch (err) {
+    console.error("[db] getEtsyFabricMap failed:", err);
+    return null;
+  }
+};
+
+// The row of one order line: the row, null = never seen, undefined = the database could not be asked.
+// The two absences are different on purpose - "never seen" lets the import claim the line, "could not ask"
+// must never look like it.
+export const getEtsyImport = (receiptId, transactionId) => {
+  if (!db || !etsyTablesReady) return undefined;
+  try {
+    return (
+      db
+        .prepare(
+          "SELECT receipt_id AS receiptId, transaction_id AS transactionId, state, file_name AS fileName, folder, reason, created_at AS createdAt, updated_at AS updatedAt FROM etsy_imports WHERE receipt_id = ? AND transaction_id = ?",
+        )
+        .get(String(receiptId), String(transactionId)) ?? null
+    );
+  } catch (err) {
+    console.error("[db] getEtsyImport failed:", err);
+    return undefined;
+  }
+};
+
+// Takes the key (receipt_id, transaction_id) of one order line: INSERT OR IGNORE against the UNIQUE, so of
+// two stations (or two ticks) exactly one gets `true`. false = the line already has a row; null = the write
+// failed or there is no database - the caller does nothing for the line (fail closed).
+export const claimEtsyImport = ({ receiptId, transactionId, state, fileName = null, folder = null, reason = null }) => {
+  if (!db || !etsyTablesReady) return null;
+  const at = new Date().toISOString();
+  let changes = 0;
+  const written = runWrite("claimEtsyImport", () => {
+    changes = db
+      .prepare(
+        "INSERT OR IGNORE INTO etsy_imports (receipt_id, transaction_id, state, file_name, folder, reason, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+      )
+      .run(String(receiptId), String(transactionId), state, fileName, folder, reason, at, at).changes;
+  });
+  return written ? changes === 1 : null;
+};
+
+// Moves a claimed line to its next state. `fileName` undefined keeps the stored one.
+export const setEtsyImportState = ({ receiptId, transactionId, state, reason = null, fileName }) => {
+  if (!db || !etsyTablesReady) return false;
+  return runWrite("setEtsyImportState", () => {
+    db.prepare("UPDATE etsy_imports SET state = ?, reason = ?, file_name = COALESCE(?, file_name), updated_at = ? WHERE receipt_id = ? AND transaction_id = ?").run(
+      state,
+      reason,
+      fileName ?? null,
+      new Date().toISOString(),
+      String(receiptId),
+      String(transactionId),
+    );
+  });
 };
 
 // Idempotent: add the `alias` column to an existing `fabrics` table if missing.
@@ -364,6 +474,7 @@ export const initDb = () => {
         percent REAL NOT NULL
       )
     `);
+    ensureEtsyTables();
     // Seed the default catalog on first run only — an existing catalog is the shop's own data,
     // so a fabric the operator deleted must not come back on the next startup.
     const fabricsCount = db.prepare("SELECT COUNT(*) AS c FROM fabrics").get().c;

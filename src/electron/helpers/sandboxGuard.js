@@ -16,9 +16,10 @@ const win = path.win32;
 
 // Every key getSettings() returns is classified here; sandboxGuard.test.js fails when a new
 // key appears without a classification, so a new path setting cannot slip past the guard.
-export const PATH_SETTING_KEYS = Object.freeze(["storagePath", "xmlPath", "customOrderFolderPath"]);
+export const PATH_SETTING_KEYS = Object.freeze(["storagePath", "xmlPath", "customOrderFolderPath", "etsyLibraryPath"]);
 export const NON_PATH_SETTING_KEYS = Object.freeze([
   "workstationName",
+  "etsyImportEnabled", // a switch, not a path - the library folder it reads is etsyLibraryPath above
   "labelPrinterName", // a printer device name, not a path - label printing is blocked in labelPrinter.js
   "workstationRole",
   "shippedRetentionDays",

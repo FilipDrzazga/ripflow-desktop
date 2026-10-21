@@ -29,6 +29,9 @@ const parts = () => {
   return { credentials, client };
 };
 
+// The same credentials and client the background import (etsyImportLoop.js) uses - one token cache, one refresh.
+export const getEtsyParts = () => parts();
+
 const answer = (extra = {}) => ({ success: true, status: parts().credentials.status(), redirectUri: ETSY_REDIRECT_URI, ...extra });
 
 const failure = (error, stage, title) => {
