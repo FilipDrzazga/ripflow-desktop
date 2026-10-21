@@ -1,8 +1,10 @@
 import { describe, it, expect, vi } from "vitest";
 
-// E3a-2: the inbox peek (the "N new files" baseline) names an image tile the way it names a PDF, so a tile that
+// E3a-2 (with the E3b switch on): the inbox peek (the "N new files" baseline) names an image tile the way it names a PDF, so a tile that
 // arrives in the inbox is "new" and one that was there at load is "old" - same ids readFolders gives its items.
 vi.mock("../helpers/getRootPath.js", () => ({ getRootPath: () => "C:/root" }));
+// the switch E3b turns on (helpers/inboxFile.js); the default, off, is inboxImageGate.test.js
+vi.mock("../helpers/inboxFile.js", () => ({ inboxSkipsImage: () => false }));
 
 import { peekInbox } from "./peekInbox.js";
 

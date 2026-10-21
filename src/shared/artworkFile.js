@@ -70,3 +70,9 @@ export const isArtworkFileName = (name) => {
   const ext = normExt(String(name).slice(dot));
   return ext === PDF_EXT || IMAGE_EXT_SET.has(ext);
 };
+
+// Is this file name an IMAGE tile (and not a PDF)? Case-insensitive on the last extension.
+export const isImageFileName = (name) => {
+  const dot = String(name ?? "").lastIndexOf(".");
+  return dot >= 0 && IMAGE_EXT_SET.has(normExt(String(name).slice(dot)));
+};

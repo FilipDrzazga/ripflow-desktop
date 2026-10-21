@@ -12,6 +12,9 @@ import { FILE_STATUS } from "../../shared/constants.js";
 
 const h = vi.hoisted(() => ({ root: "" }));
 
+// the inbox does not take images yet (helpers/inboxFile.js, inboxImageGate.test.js); this file is the
+// pipeline UNDER the scan, with the E3b switch on
+vi.mock("../helpers/inboxFile.js", () => ({ inboxSkipsImage: () => false }));
 vi.mock("../helpers/getRootPath.js", () => ({ getRootPath: () => h.root }));
 vi.mock("../helpers/shopProfile.js", () => ({ getProfile: () => ({}) }));
 vi.mock("../helpers/getMaterialType.js", () => ({ getMaterialType: () => "Cottons" }));

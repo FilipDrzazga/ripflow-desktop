@@ -54,3 +54,14 @@ describe("the renderer builds a tracked file's name from the row", () => {
     });
   }
 });
+
+describe("the inbox does not take images yet (one switch, helpers/inboxFile.js)", () => {
+  it("the scan and the inbox peek both ask it", () => {
+    const scan = read("../electron/ipc/readFolders.js");
+    const peek = read("../electron/ipc/peekInbox.js");
+    expect(scan).toContain('import { inboxSkipsImage } from "../helpers/inboxFile.js";');
+    expect(peek).toContain('import { inboxSkipsImage } from "../helpers/inboxFile.js";');
+    expect(scan).toContain("inboxSkipsImage(job.name)");
+    expect(peek).toContain("inboxSkipsImage(f.name)");
+  });
+});

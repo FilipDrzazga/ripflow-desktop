@@ -10,6 +10,7 @@ import { getProfile } from "../helpers/shopProfile.js";
 import { getMaterialType } from "../helpers/getMaterialType.js";
 import { getFileAgeInDays } from "../helpers/getFileAgeInDays.js";
 import { getOpenReprintRequestsByFileIds } from "../helpers/db.js";
+import { inboxSkipsImage } from "../helpers/inboxFile.js";
 
 const STAGES = {
   INIT: "init",
@@ -94,6 +95,7 @@ export const readFolders = async ({ onProgress } = {}) => {
       const jobs = getJobsInside.map(async (job) => {
         try {
           if (!job.isFile()) return null;
+          if (inboxSkipsImage(job.name)) return null; // an image is not an inbox row yet (helpers/inboxFile.js)
           const fullPath = path.join(folderPath, job.name);
           let fileStats;
           try {
