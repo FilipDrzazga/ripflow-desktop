@@ -84,7 +84,8 @@ export const diffProfiles = (current, next) => {
   const after = printerCodes(next);
   const beforeCompanies = companies(current);
   const afterCompanies = companies(next);
-  const flags = Object.keys(next.features ?? {});
+  // the union: a flag the file omits (an optional one, e.g. etsy) but the stored profile has ON is turned off by the import
+  const flags = [...new Set([...Object.keys(current?.features ?? {}), ...Object.keys(next.features ?? {})])];
   const beforeRoles = (current?.scanRules ?? []).map((r) => r?.role);
   const afterRoles = (next.scanRules ?? []).map((r) => r?.role);
   return {

@@ -38,6 +38,9 @@ const STORE_HANDLE_RE = /^[a-z0-9][a-z0-9-]*$/;
 export const PRODUCT_TYPE_CODES = ["SAMPLE", "FQ", "TEA_TOWEL"];
 
 export const FEATURE_FLAGS = ["customOrders", "analytics", "ripErrors", "labelPrinting", "shopify", "sewing"];
+// Flags a profile MAY omit (off then, like getFeature reads a missing one): added after v4 without a schema bump, so
+// every exported v4 file still imports. When present it must be a boolean.
+export const OPTIONAL_FEATURE_FLAGS = ["etsy"];
 
 export const MAX_SEWING_COMPANY_LENGTH = 40;
 
@@ -262,9 +265,12 @@ export const validateShopProfile = (profile, { schemaVersion } = {}) => {
   if (!isPlainObject(features)) {
     if ("features" in profile) err("features: must be an object.");
   } else {
-    onlyKeys(features, FEATURE_FLAGS, "features");
+    onlyKeys(features, [...FEATURE_FLAGS, ...OPTIONAL_FEATURE_FLAGS], "features");
     for (const f of FEATURE_FLAGS) {
       if (typeof features[f] !== "boolean") err(`features.${f}: must be true or false (got ${show(features[f])}).`);
+    }
+    for (const f of OPTIONAL_FEATURE_FLAGS) {
+      if (f in features && typeof features[f] !== "boolean") err(`features.${f}: must be true or false (got ${show(features[f])}).`);
     }
 
     // ── consistency: a feature that is on must have what it needs ───────────

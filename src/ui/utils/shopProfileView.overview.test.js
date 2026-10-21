@@ -71,9 +71,9 @@ describe("profileOverview", () => {
     expect(odd.from).toEqual({ stage: "nowhere", label: "nowhere", color: null }); // unknown stage: as stored, grey
   });
 
-  it("features: all six, on only for a real true", () => {
+  it("features: all seven, on only for a real true (a missing etsy is off)", () => {
     const f = Object.fromEntries(profileOverview(PROFILE).features.map((x) => [x.flag, x.on]));
-    expect(f).toEqual({ customOrders: false, analytics: true, ripErrors: false, labelPrinting: false, shopify: false, sewing: true });
+    expect(f).toEqual({ customOrders: false, analytics: true, ripErrors: false, labelPrinting: false, shopify: false, sewing: true, etsy: false });
   });
 
   it("sewing companies and the Shopify handle (empty = null)", () => {
@@ -100,5 +100,19 @@ describe("profileStatusBadge", () => {
 
   it("loaded with a printer -> Configured", () => {
     expect(profileStatusBadge(PROFILE_STATUS.LOADED, PROFILE)).toEqual({ tone: "ok", label: "Configured" });
+  });
+});
+
+describe("profileOverview - the optional etsy flag (E3b-1)", () => {
+  const etsyOn = (p) => profileOverview(p).features.find((x) => x.flag === "etsy")?.on;
+
+  it("a profile without the key shows it off, not missing", () => {
+    expect(etsyOn(PROFILE)).toBe(false);
+  });
+
+  it("on only for a real true", () => {
+    expect(etsyOn({ ...PROFILE, features: { etsy: true } })).toBe(true);
+    expect(etsyOn({ ...PROFILE, features: { etsy: "true" } })).toBe(false);
+    expect(etsyOn({ ...PROFILE, features: { etsy: 1 } })).toBe(false);
   });
 });

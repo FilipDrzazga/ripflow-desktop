@@ -36,3 +36,14 @@ export const orderSourceOf = (orderId) => {
 
 // The Etsy receipt id of an "ET<digits>" order number, as a digit string, or null.
 export const etsyReceiptId = (orderId) => text(orderId).match(ETSY_ORDER_RE)?.[1] ?? null;
+
+const ETSY_TILE_STEM_RE = /^ET\d+_.+_ETSY$/i;
+
+// Is this file name one an Etsy import writes - "ET<receipt id>_..._ETSY.<ext>"? The shape check only (no
+// parsing): the inbox gate uses it to tell a tile of the Etsy flow from an image an operator keeps in an inbox
+// folder for manual printing.
+export const isEtsyFileName = (name) => {
+  const s = text(name);
+  const dot = s.lastIndexOf(".");
+  return ETSY_TILE_STEM_RE.test(dot < 0 ? s : s.slice(0, dot));
+};

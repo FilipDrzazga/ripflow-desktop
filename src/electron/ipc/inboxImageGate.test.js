@@ -11,10 +11,10 @@ import { FILE_STATUS } from "../../shared/constants.js";
 // only the parser and the database are stubbed. readFolders.image.test.js / peekInbox.image.test.js are the
 // same paths with the switch on.
 
-const h = vi.hoisted(() => ({ root: "" }));
+const h = vi.hoisted(() => ({ root: "", etsy: false }));
 
 vi.mock("../helpers/getRootPath.js", () => ({ getRootPath: () => h.root }));
-vi.mock("../helpers/shopProfile.js", () => ({ getProfile: () => ({}) }));
+vi.mock("../helpers/shopProfile.js", () => ({ getProfile: () => ({}), getFeature: (name) => name === "etsy" && h.etsy }));
 vi.mock("../helpers/getMaterialType.js", () => ({ getMaterialType: () => "Cottons" }));
 vi.mock("../helpers/getFileAgeInDays.js", () => ({ getFileAgeInDays: () => 0 }));
 vi.mock("../helpers/db.js", () => ({ getOpenReprintRequestsByFileIds: () => [] }));
@@ -43,6 +43,7 @@ const pdf = Buffer.concat([Buffer.from("%PDF-1.4\n"), Buffer.alloc(3000, 0x61), 
 
 let folder;
 beforeEach(() => {
+  h.etsy = false;
   h.root = fs.mkdtempSync(path.join(os.tmpdir(), "inbox-image-gate-"));
   folder = path.join(h.root, "GROUP");
   fs.mkdirSync(folder);
@@ -58,8 +59,10 @@ const fill = () => {
 };
 
 describe("the inbox does not take images yet", () => {
-  it("harness guard: the switch is off", () => {
+  it("harness guard: the switch is off while features.etsy is off (or the profile unreadable)", () => {
     expect(inboxTakesImages()).toBe(false);
+    h.etsy = true;
+    expect(inboxTakesImages()).toBe(true);
   });
 
   it("the gate names every image extension, without case, and no PDF or other file", () => {

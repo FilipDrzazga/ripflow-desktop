@@ -33,5 +33,6 @@ export const DEFAULT_PROFILE = {
     labelPrinting: false,
     shopify: false,
     sewing: false,
+    etsy: false,
   },
 };

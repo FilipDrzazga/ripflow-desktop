@@ -15,6 +15,7 @@ const FEATURE_LABELS = {
   labelPrinting: "Label printing",
   shopify: "Open in Shopify",
   sewing: "Sewing",
+  etsy: "Etsy",
 };
 export const featureLabel = (flag) => FEATURE_LABELS[flag] ?? flag;
 
