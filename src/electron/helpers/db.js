@@ -10,6 +10,7 @@ import { preferredPrinterToStore, storesPreferredPrinter, lengthExtraToStore } f
 import { stageExtToStore } from "../../shared/artworkFile.js";
 import { ETSY_FABRIC_SEED, etsyKey } from "./etsyFabric.js";
 import { ETSY_IMPORT_STATE, ETSY_IMPORT_OPEN_STATES } from "../../shared/constants.js";
+import { etsyShipByOf } from "../../shared/etsyShipBy.js";
 
 let db = null;
 let stmtInsert = null;
@@ -153,10 +154,27 @@ const ensureEtsyImportSuggestionColumn = () => {
     return false;
   }
 };
+// The ship-by date of a line (plan ETA): Etsy's expected_ship_date, epoch SECONDS. A column of its OWN with its own
+// flag, like suggested_xwd: a failed ALTER costs the "Ship by" badge only - the import works as before without it.
+let etsyImportsHaveShipBy = false;
+const ensureEtsyImportShipByColumn = () => {
+  try {
+    const have = db
+      .prepare("PRAGMA table_info(etsy_imports)")
+      .all()
+      .some((col) => col.name === "ship_by");
+    if (!have) db.exec("ALTER TABLE etsy_imports ADD COLUMN ship_by INTEGER");
+    return true;
+  } catch (err) {
+    console.error("[db] ensureEtsyImportShipByColumn failed (no ship-by dates for Etsy orders):", err);
+    return false;
+  }
+};
 const ensureEtsyTables = () => {
   etsyTablesReady = false;
   etsyImportsHaveDetails = false;
   etsyImportsHaveSuggestion = false;
+  etsyImportsHaveShipBy = false;
   try {
     const mapIsNew = !db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'etsy_fabric_map'").get();
     db.exec(`
@@ -181,11 +199,13 @@ const ensureEtsyTables = () => {
         listing_id     TEXT,
         manual_xwd     TEXT,
         suggested_xwd  TEXT,
+        ship_by        INTEGER,
         UNIQUE (receipt_id, transaction_id)
       )
     `);
     etsyImportsHaveDetails = ensureEtsyImportDetailColumns();
     etsyImportsHaveSuggestion = ensureEtsyImportSuggestionColumn();
+    etsyImportsHaveShipBy = ensureEtsyImportShipByColumn();
     if (mapIsNew) {
       const hasFabric = db.prepare("SELECT 1 FROM fabrics WHERE name = ?");
       const insert = db.prepare("INSERT OR IGNORE INTO etsy_fabric_map (etsy_key, etsy_name, fabric_name) VALUES (?, ?, ?)");
@@ -233,14 +253,15 @@ const suggestionToStore = (details) => {
 
 // The row of one order line: the row, null = never seen, undefined = the database could not be asked.
 // The two absences are different on purpose - "never seen" lets the import claim the line, "could not ask"
-// must never look like it.
+// must never look like it. `shipBy` is on the row only when the column exists (null = no date stored), so the
+// importer can tell "no date yet" from "nowhere to keep one".
 export const getEtsyImport = (receiptId, transactionId) => {
   if (!db || !etsyTablesReady) return undefined;
   try {
     return (
       db
         .prepare(
-          `SELECT ${ETSY_IMPORT_COLUMNS}${etsyImportsHaveDetails ? `, ${etsyImportDetailSelect()}` : ""} FROM etsy_imports WHERE receipt_id = ? AND transaction_id = ?`,
+          `SELECT ${ETSY_IMPORT_COLUMNS}${etsyImportsHaveDetails ? `, ${etsyImportDetailSelect()}` : ""}${etsyImportsHaveShipBy ? ", ship_by AS shipBy" : ""} FROM etsy_imports WHERE receipt_id = ? AND transaction_id = ?`,
         )
         .get(String(receiptId), String(transactionId)) ?? null
     );
@@ -253,7 +274,8 @@ export const getEtsyImport = (receiptId, transactionId) => {
 // Takes the key (receipt_id, transaction_id) of one order line: INSERT OR IGNORE against the UNIQUE, so of
 // two stations (or two ticks) exactly one gets `true`. false = the line already has a row; null = the write
 // failed or there is no database - the caller does nothing for the line (fail closed).
-// `details` ({ title, quantity, listingId }) is written when the E4 columns exist and left out when they do not.
+// `details` ({ title, quantity, listingId }) is written when the E4 columns exist and left out when they do not;
+// `details.shipBy` (epoch s) when its own column exists - anything but a whole number above 0 is NULL.
 export const claimEtsyImport = ({ receiptId, transactionId, state, fileName = null, folder = null, reason = null, details }) => {
   if (!db || !etsyTablesReady) return null;
   const at = new Date().toISOString();
@@ -268,6 +290,10 @@ export const claimEtsyImport = ({ receiptId, transactionId, state, fileName = nu
         columns.push("suggested_xwd");
         values.push(suggestionToStore(details) ?? null);
       }
+    }
+    if (etsyImportsHaveShipBy) {
+      columns.push("ship_by");
+      values.push(etsyShipByOf(details?.shipBy));
     }
     const sql = `INSERT OR IGNORE INTO etsy_imports (${columns.join(", ")}) VALUES (${columns.map(() => "?").join(", ")})`;
     changes = db.prepare(sql).run(...values).changes;
@@ -293,7 +319,8 @@ export const setEtsyImportState = ({ receiptId, transactionId, state, reason = n
 // A GUARDED move of one line (E4): only from one of `from` - the importer's CAS RETRY -> PENDING and
 // RETRY -> NEEDS_REVIEW. true = this caller moved it, false = the row was not in `from` (another tick, a person
 // who dismissed it meanwhile), null = the write failed. `fileName` / `folder` undefined keep the stored ones;
-// `details` refreshes the E4 columns when they exist.
+// `details` refreshes the E4 columns when they exist, and ship_by when it carries a valid `shipBy` (an invalid or
+// missing one keeps the stored date - never cleared from here).
 export const moveEtsyImport = ({ receiptId, transactionId, from, state, reason = null, fileName, folder, details }) => {
   if (!db || !etsyTablesReady) return null;
   const states = Array.isArray(from) ? from.filter((s) => typeof s === "string") : [];
@@ -311,9 +338,32 @@ export const moveEtsyImport = ({ receiptId, transactionId, from, state, reason =
         values.push(suggestion);
       }
     }
+    const shipBy = etsyImportsHaveShipBy ? etsyShipByOf(details?.shipBy) : null;
+    if (shipBy !== null) {
+      sets.push("ship_by = ?");
+      values.push(shipBy);
+    }
     changes = db
       .prepare(`UPDATE etsy_imports SET ${sets.join(", ")} WHERE receipt_id = ? AND transaction_id = ? AND state IN (${states.map(() => "?").join(", ")})`)
       .run(...values, String(receiptId), String(transactionId), ...states).changes;
+  });
+  return written ? changes === 1 : null;
+};
+
+// The ship-by date of a line that already has a row (plan ETA), whatever its state: the importer calls it when Etsy
+// sends a valid date that differs from the stored one (NULL -> a date = backfill, a date -> another = Etsy moved it).
+// Touches ship_by ONLY - not updated_at, which orders the bar and ages a PENDING row. The WHERE skips an equal value,
+// so a repeated call writes nothing. true = written, false = no row or the same date already, null = could not
+// (no column, a value that is not a whole number above 0, a failed write) - never a cleared date.
+export const setEtsyImportShipBy = ({ receiptId, transactionId, shipBy }) => {
+  if (!db || !etsyTablesReady || !etsyImportsHaveShipBy) return null;
+  const value = etsyShipByOf(shipBy);
+  if (value === null) return null;
+  let changes = 0;
+  const written = runWrite("setEtsyImportShipBy", () => {
+    changes = db
+      .prepare("UPDATE etsy_imports SET ship_by = ? WHERE receipt_id = ? AND transaction_id = ? AND ship_by IS NOT ?")
+      .run(value, String(receiptId), String(transactionId), value).changes;
   });
   return written ? changes === 1 : null;
 };

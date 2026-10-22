@@ -21,6 +21,7 @@ vi.mock("../helpers/db.js", () => ({
   setEtsyImportState: () => true,
   moveEtsyImport: () => true,
   listEtsyImportRetries: () => null,
+  setEtsyImportShipBy: () => null,
 }));
 vi.mock("../helpers/renameNoOverwrite.js", () => ({ renameNoOverwrite: async () => {} }));
 vi.mock("../helpers/parseFileName.js", () => ({ parsePrintFileName: () => null }));

@@ -1,6 +1,7 @@
 // What Settings -> Etsy says (plan E2). Pure, so it can carry tests without rendering.
 
 import { ETSY_TICK_MAX_REQUESTS } from "../../shared/etsyImportInterval";
+import { etsyShipByOf } from "../../shared/etsyShipBy";
 
 const day = (iso) => {
   const ms = Date.parse(iso ?? "");
@@ -106,8 +107,20 @@ export const previewLineView = (line) => {
     rows.push({ label: "Would NOT import", value: line.reason });
     if (line.suggestedXwd) rows.push({ label: "Suggestion", value: `XWD${line.suggestedXwd} - the library file that matches the listing title` });
   }
+  const shipBy = shipByDay(line.shipBy);
+  if (shipBy) rows.push({ label: "Ship by", value: shipBy });
   if (line.recordedState) rows.push({ label: "Already in the import list", value: STATE_WORDS[line.recordedState] ?? line.recordedState });
   return { ok: line.ok === true, headline: what, rows };
+};
+
+// Etsy's expected_ship_date (epoch s) as the day it falls on in this station's time zone, e.g. "Tue 27 Oct 2026";
+// null for anything etsyShipByOf refuses. Built from the parts, so the punctuation does not depend on the ICU build.
+export const shipByDay = (seconds) => {
+  const value = etsyShipByOf(seconds);
+  if (value === null) return null;
+  const format = new Intl.DateTimeFormat("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
+  const parts = Object.fromEntries(format.formatToParts(new Date(value * 1000)).map((p) => [p.type, p.value]));
+  return `${parts.weekday} ${parts.day} ${parts.month} ${parts.year}`;
 };
 
 export const previewDate = (iso) => day(iso);
