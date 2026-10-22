@@ -91,14 +91,14 @@ describe("what the bar says", () => {
     expect(stateChip(row({ state: ETSY_IMPORT_STATE.RETRY }))).toEqual({ tone: "wait", text: "Retry requested" });
     expect(stateHint(row(), false)).toBeNull();
     expect(stateHint(row({ state: ETSY_IMPORT_STATE.RETRY }), true)).toMatch(/this station imports it/);
-    expect(stateHint(row({ state: ETSY_IMPORT_STATE.RETRY }), false)).toMatch(/importer station picks it up within 5 minutes/);
+    expect(stateHint(row({ state: ETSY_IMPORT_STATE.RETRY }), false)).toMatch(/importer station picks it up within 2 minutes/);
   });
 });
 
 describe("answers -> notices", () => {
   it("retry: updated:true is a success that names who copies", () => {
     expect(retryNotice({ success: true, updated: true, importerHere: true }, row())).toMatchObject({ type: "Success" });
-    expect(retryNotice({ success: true, updated: true, importerHere: false }, row()).message).toMatch(/within 5 minutes/);
+    expect(retryNotice({ success: true, updated: true, importerHere: false }, row()).message).toMatch(/within 2 minutes/);
   });
 
   it("updated:false is a Warning, apart from a failure (rule 18's split), and never an Error", () => {

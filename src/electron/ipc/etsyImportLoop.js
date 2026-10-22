@@ -13,7 +13,7 @@ import { parsePrintFileName } from "../helpers/parseFileName.js";
 // switched on as the importer. The rules of the import itself are in helpers/etsyImport.js; this file only
 // supplies the real parts and the pause. Started once from main.js with the power pause of that file.
 
-export const ETSY_IMPORT_INTERVAL_MS = 5 * 60 * 1000;
+export const ETSY_IMPORT_INTERVAL_MS = 2 * 60 * 1000;
 // The first tick waits, so the start-up reads (profile, fabrics, inbox) are not joined by an Etsy call.
 const FIRST_TICK_DELAY_MS = 60 * 1000;
 
@@ -129,7 +129,7 @@ export const startEtsyImportLoop = ({ isPaused }) => {
   };
 };
 
-// A Retry from the Inbox bar of THIS station (E4): one tick now instead of within 5 minutes. On a station that
+// A Retry from the Inbox bar of THIS station (E4): one tick now instead of within 2 minutes. On a station that
 // is not the importer the gate closes the tick at once, so the call is harmless anywhere.
 export const requestEtsyImportTick = () => {
   if (runNow) runNow().catch((err) => console.error("[etsy-import] tick on request failed:", err));

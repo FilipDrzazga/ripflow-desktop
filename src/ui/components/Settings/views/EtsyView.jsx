@@ -319,7 +319,7 @@ const EtsyView = () => {
             </button>
           </div>
           <p className={sharedStyles.hint}>
-            Only ONE station should be On. It checks Etsy every 5 minutes and puts a file for each paid, unshipped order line into the inbox. It also needs the Etsy
+            Only ONE station should be On. It checks Etsy every 2 minutes and puts a file for each paid, unshipped order line into the inbox. It also needs the Etsy
             feature turned on in the shop profile. Turning it Off forgets the moment it was turned On: orders that arrive while it is Off are never imported
             later.
           </p>
