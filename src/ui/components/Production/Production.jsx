@@ -1285,7 +1285,11 @@ const Production = () => {
       if (e.ctrlKey || e.metaKey || e.altKey) return;
       clearTimeout(timer);
       if (e.key === "Enter") {
-        if (buffer.length > 5) handleScanRef.current?.(buffer.trim());
+        if (buffer.length > 5) {
+          // The Enter that ends a scan must never "click" the control that happens to hold focus (a bubble, Groups, Refresh).
+          e.preventDefault();
+          handleScanRef.current?.(buffer.trim());
+        }
         buffer = "";
         return;
       }
