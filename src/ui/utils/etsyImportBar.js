@@ -31,10 +31,15 @@ export const suggestionOf = (row) =>
 
 export const suggestionText = (xwd) => `Suggestion: XWD${xwd} - a library file matches the design and designer in this listing's title. Check the file before you use it.`;
 
+// Does this library file belong to this suggested number? A library file name carries "XWD<six digits>" (D83: an importer on an
+// OLDER build rewrites suggested_xwd and leaves the name of the previous number, which must not be shown beside the new one).
+export const suggestionFileFits = (xwd, fileName) =>
+  typeof xwd === "string" && typeof fileName === "string" && fileName.toUpperCase().includes(`XWD${xwd}`);
+
 // The library file the suggestion names (D76), as the tail of its tooltip - only for a suggestion offered; "" for a row without
-// the name (a row from before D76, or a failed ALTER).
+// the name (a row from before D76, or a failed ALTER) or with a name of another number (D83).
 export const suggestionFileNote = (row) =>
-  suggestionOf(row) !== null && typeof row?.suggestedFile === "string" && row.suggestedFile.trim() !== "" ? ` Library file: "${row.suggestedFile}".` : "";
+  suggestionFileFits(suggestionOf(row), row?.suggestedFile) ? ` Library file: "${row.suggestedFile}".` : "";
 
 export const isInterrupted = (row) => row?.reason === ETSY_IMPORT_INTERRUPTED_REASON;
 

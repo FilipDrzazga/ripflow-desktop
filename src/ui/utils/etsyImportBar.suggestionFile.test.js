@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "fs";
 import { fileURLToPath } from "url";
-import { suggestionFileNote, suggestionText } from "./etsyImportBar";
+import { suggestionFileNote, suggestionFileFits, suggestionText } from "./etsyImportBar";
 import { previewLineView } from "./etsyView";
 import { ETSY_IMPORT_STATE } from "../../shared/constants";
 
@@ -37,6 +37,26 @@ describe("suggestionFileNote", () => {
     ]) {
       expect(suggestionFileNote(r)).toBe("");
     }
+  });
+});
+
+describe("a file name of ANOTHER number is never shown beside the number (D83)", () => {
+  it("the tooltip tail is empty when the name does not carry the suggested number", () => {
+    expect(suggestionFileNote(row({ suggestedXwd: "204411" }))).toBe("");
+    expect(suggestionFileNote(row({ suggestedXwd: "204411", suggestedFile: "FOX xwd204411_a_b.jpg" }))).toBe(' Library file: "FOX xwd204411_a_b.jpg".');
+  });
+
+  it("suggestionFileFits wants the number as XWD<digits> in the name, any case", () => {
+    expect(suggestionFileFits("110328", FILE)).toBe(true);
+    expect(suggestionFileFits("110328", FILE.toLowerCase())).toBe(true);
+    for (const [xwd, name] of [["110329", FILE], ["110328", "BANANA 110328.jpg"], [null, FILE], ["110328", null], [110328, FILE]]) {
+      expect(suggestionFileFits(xwd, name)).toBe(false);
+    }
+  });
+
+  it("the dry run falls back to the plain sentence for a name of another number", () => {
+    const line = { ok: false, title: null, quantity: null, reason: "No XWD pattern number.", suggestedXwd: "204411", suggestedFile: FILE, recordedState: null };
+    expect(previewLineView(line).rows.at(-1)).toEqual({ label: "Suggestion", value: "XWD204411 - the library file that matches the listing title" });
   });
 });
 
