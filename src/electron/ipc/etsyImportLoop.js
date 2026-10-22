@@ -143,7 +143,7 @@ export const startEtsyImportLoop = ({ isPaused }) => {
   };
 };
 
-// A Retry from the Inbox bar of THIS station (E4): one tick now instead of within 2 minutes. On a station that
+// A Retry from the Inbox bar of THIS station (E4): one tick now instead of at the next booked one. On a station that
 // is not the importer the gate closes the tick at once, so the call is harmless anywhere.
 export const requestEtsyImportTick = () => {
   if (runNow) runNow().catch((err) => console.error("[etsy-import] tick on request failed:", err));

@@ -4,7 +4,7 @@
 
 import { ETSY_IMPORT_INTERRUPTED_REASON, ETSY_IMPORT_STATE, ETSY_XWD_INPUT_RE } from "../../shared/constants";
 
-// How often the bar asks for the open lines: a read of one small table, and the importer ticks every 2 minutes.
+// How often the bar asks for the open lines: a read of one small table, and the importer checks Etsy every few minutes (Settings > Etsy on that station).
 export const ETSY_BAR_POLL_MS = 30_000;
 
 export const lineKey = (row) => `${row.receiptId}:${row.transactionId}`;
@@ -49,7 +49,7 @@ export const stateHint = (row, importerHere) => {
   if (row.state !== ETSY_IMPORT_STATE.RETRY) return null;
   return importerHere
     ? "Retry requested - this station imports it in a moment."
-    : "Retry requested - the importer station picks it up within 2 minutes.";
+    : "Retry requested - the importer station picks it up at its next check of Etsy.";
 };
 
 export const lineTitle = (row) => (typeof row.title === "string" && row.title.trim() !== "" ? row.title.trim() : "Order line without a title");
@@ -97,7 +97,7 @@ export const retryNotice = (res, row) => {
     title: "Etsy retry requested",
     message: res.importerHere
       ? `${etsyOrderIdOf(row)} is being imported by this station.`
-      : `${etsyOrderIdOf(row)} - the importer station picks it up within 2 minutes.`,
+      : `${etsyOrderIdOf(row)} - the importer station picks it up at its next check of Etsy.`,
   };
 };
 
