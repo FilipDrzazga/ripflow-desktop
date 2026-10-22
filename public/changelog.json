@@ -1,5 +1,19 @@
 [
   {
+    "version": "1.0.41",
+    "date": "2026-10-22",
+    "changes": [
+      {
+        "text": "Settings > Etsy: \"Check newest order\" shows what the Etsy import WOULD do with the newest paid order - per line the file it would make, or why it would refuse (with a suggested XWD number), whether the order is newer than the moment the import was switched on, and why the background import is not running on this station. A dry run: nothing is imported or saved",
+        "clients": ["all"]
+      },
+      {
+        "text": "Settings > Etsy: one \"Save import settings\" button in the footer saves the On/Off switch and the pattern folder together, and a note shows while something is not saved yet (before, the switch fell back to Off when you left the tab without saving)",
+        "clients": ["all"]
+      }
+    ]
+  },
+  {
     "version": "1.0.40",
     "date": "2026-10-22",
     "changes": [
