@@ -237,15 +237,23 @@
   color: #1c5a99;
 }
 
-/* The two ways out to Etsy - outlined like the app's other secondary buttons (SewingReceive .ghost_btn), each
-   with its own icon. */
-.open_btn {
+/* The two ways out to Etsy - outlined like the app's other secondary buttons (SewingReceive .ghost_btn), icons
+   only, square, in a group of their own before the name (FILIP-3). */
+.line_links {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.icon_btn {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
+  justify-content: center;
+  width: 32px;
   height: 32px;
   box-sizing: border-box;
-  padding: 0 12px;
+  padding: 0;
   line-height: 1;
   border-radius: 8px;
   border: 1px solid var(--border-grey);
@@ -259,7 +267,12 @@
   transition: background-color 0.12s ease, color 0.12s ease, border-color 0.12s ease;
 }
 
-.open_btn:hover {
+.icon_spacer {
+  width: 32px;
+  height: 32px;
+}
+
+.icon_btn:hover {
   background-color: var(--bg-grey);
   border-color: var(--text-secondary);
   color: var(--text-primary);

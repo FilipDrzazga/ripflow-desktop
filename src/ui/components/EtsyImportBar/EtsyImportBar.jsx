@@ -167,6 +167,20 @@ const EtsyImportBarContent = () => {
               return (
                 <li key={key} className={styles.line}>
                   <EtsyThumb listingId={row.listingId} enabled={open} />
+                  {/* The two ways out to Etsy, icons only, before the name (FILIP 2026-10-22, plan FILIP-3); the words are
+                      the tooltip and the accessible name. A line without a listing keeps the place, so names line up. */}
+                  <div className={styles.line_links}>
+                    <button type="button" className={styles.icon_btn} onClick={() => openEtsyOrder(etsyOrderIdOf(row))} title="Open order in Etsy" aria-label="Open order in Etsy">
+                      <SiEtsy size={15} className={styles.open_btn_etsy} />
+                    </button>
+                    {row.listingId ? (
+                      <button type="button" className={styles.icon_btn} onClick={() => handleListing(row)} title="Open listing in Etsy" aria-label="Open listing in Etsy">
+                        <LuTag size={15} />
+                      </button>
+                    ) : (
+                      <span className={styles.icon_spacer} aria-hidden="true" />
+                    )}
+                  </div>
                   <div className={styles.line_text}>
                     <span className={styles.line_title} title={lineTitle(row)}>
                       {lineTitle(row)}
@@ -192,16 +206,6 @@ const EtsyImportBarContent = () => {
                     )}
                   </div>
                   <div className={styles.actions}>
-                    <button type="button" className={styles.open_btn} onClick={() => openEtsyOrder(etsyOrderIdOf(row))}>
-                      <SiEtsy size={15} className={styles.open_btn_etsy} />
-                      Open order in Etsy
-                    </button>
-                    {row.listingId && (
-                      <button type="button" className={styles.open_btn} onClick={() => handleListing(row)}>
-                        <LuTag size={15} />
-                        Open listing
-                      </button>
-                    )}
                     <input
                       className={`${styles.input} ${error ? styles.input_error : ""}`}
                       type="text"

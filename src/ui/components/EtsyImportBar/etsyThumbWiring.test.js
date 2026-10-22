@@ -39,7 +39,7 @@ describe("the Etsy listing picture in the Inbox bar", () => {
   });
 
   it("the picture is an item of the row of its own, before the text - the text keeps its 620px basis", () => {
-    expect(bar).toMatch(/<li key=\{key\} className=\{styles\.line\}>\s+<EtsyThumb [^>]*\/>\s+<div className=\{styles\.line_text\}>/);
+    expect(bar).toMatch(/<li key=\{key\} className=\{styles\.line\}>\s+<EtsyThumb [^>]*\/>\s+(?:\{\/\*[\s\S]*?\*\/\}\s+)?<div className=\{styles\.line_links\}>[\s\S]*?<\/div>\s+<div className=\{styles\.line_text\}>/);
     expect(css).toMatch(/\.thumb\s*\{[^}]*flex-shrink:\s*0;[^}]*width:\s*40px;[^}]*height:\s*40px;/s);
   });
 });
