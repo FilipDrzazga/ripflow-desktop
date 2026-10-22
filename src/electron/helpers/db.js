@@ -316,13 +316,16 @@ export const requestEtsyImportRetry = ({ receiptId, transactionId, manualXwd = n
   return written ? { updated: changes === 1 } : null;
 };
 
-// "Not a print" from the bar (E4): DISMISSED, never imported again. Same guard as the retry. -> { updated } or null.
+// "Not a print" from the bar (E4): DISMISSED, never imported again. From needs_review, failed AND retry: a RETRY
+// of an order Etsy no longer lists (shipped, cancelled, the importer off) is never acted on by the importer, so
+// without this the line would stay in the bar for good. Racing the importer is safe - its CAS from RETRY then
+// matches no row and copies nothing. -> { updated } or null.
 export const dismissEtsyImport = ({ receiptId, transactionId }) => {
   if (!db || !etsyTablesReady || !etsyImportsHaveDetails) return null;
   let changes = 0;
   const written = runWrite("dismissEtsyImport", () => {
     changes = db
-      .prepare("UPDATE etsy_imports SET state = ?, updated_at = ? WHERE receipt_id = ? AND transaction_id = ? AND state IN (?, ?)")
+      .prepare("UPDATE etsy_imports SET state = ?, updated_at = ? WHERE receipt_id = ? AND transaction_id = ? AND state IN (?, ?, ?)")
       .run(
         ETSY_IMPORT_STATE.DISMISSED,
         new Date().toISOString(),
@@ -330,6 +333,7 @@ export const dismissEtsyImport = ({ receiptId, transactionId }) => {
         String(transactionId),
         ETSY_IMPORT_STATE.NEEDS_REVIEW,
         ETSY_IMPORT_STATE.FAILED,
+        ETSY_IMPORT_STATE.RETRY,
       ).changes;
   });
   return written ? { updated: changes === 1 } : null;

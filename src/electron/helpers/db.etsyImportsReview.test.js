@@ -189,6 +189,16 @@ describe("with the columns", () => {
     expect(getEtsyImport("9", "1").state).toBe(state);
   });
 
+  it("dismiss takes a RETRY line too - one of an order Etsy no longer lists would otherwise stay in the bar for good", () => {
+    initDb();
+    claimEtsyImport({ ...LINE, state: "needs_review", details: DETAILS });
+    requestEtsyImportRetry({ ...LINE, manualXwd: "173706" });
+    expect(dismissEtsyImport(LINE)).toEqual({ updated: true });
+    expect(getEtsyImport("9", "1")).toMatchObject({ state: "dismissed", manualXwd: "173706" });
+    // the importer's CAS from RETRY now matches nothing
+    expect(moveEtsyImport({ ...LINE, from: ["retry"], state: "pending", fileName: "a.jpg", folder: "Drill" })).toBe(false);
+  });
+
   it("dismiss moves a needs_review or failed line to dismissed", () => {
     initDb();
     claimEtsyImport({ ...LINE, state: "failed", details: DETAILS });
