@@ -121,7 +121,7 @@ describe("RETRY without a number", () => {
 });
 
 describe("who acts on a RETRY row, and when", () => {
-  it("a RETRY of an order Etsy no longer lists (shipped, cancelled) waits - nothing copied, the row unchanged", async () => {
+  it("a RETRY of an order Etsy no longer lists (shipped, cancelled) waits when the table cannot list RETRY rows (the dry run's) - nothing copied, the row unchanged", async () => {
     const t = setup();
     t.imports.putRetry({ manualXwd: "173706" });
     t.setReceipts([]);
