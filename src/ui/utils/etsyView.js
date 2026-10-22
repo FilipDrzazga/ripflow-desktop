@@ -110,7 +110,7 @@ export const previewLineView = (line) => {
     rows.push({ label: "From library file", value: line.libraryFile });
   } else {
     rows.push({ label: "Would NOT import", value: line.reason });
-    if (line.suggestedXwd) rows.push({ label: "Suggestion", value: `XWD${line.suggestedXwd} - the library file that matches the listing title` });
+    if (line.suggestedXwd) rows.push({ label: "Suggestion", value: line.suggestedFile ? `XWD${line.suggestedXwd} - ${line.suggestedFile}` : `XWD${line.suggestedXwd} - the library file that matches the listing title` });
   }
   const shipBy = shipByDay(line.shipBy);
   if (shipBy) rows.push({ label: "Ship by", value: shipBy });

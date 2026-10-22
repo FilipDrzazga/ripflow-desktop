@@ -137,7 +137,10 @@ describe("the buyer_note column", () => {
 
   it("is added by ALTER to a table an ETA build created, and not again at the next start", () => {
     initDb();
-    expect(sql.filter((s) => /^ALTER TABLE etsy_imports ADD COLUMN/.test(s))).toEqual(["ALTER TABLE etsy_imports ADD COLUMN buyer_note TEXT"]);
+    expect(sql.filter((s) => /^ALTER TABLE etsy_imports ADD COLUMN/.test(s))).toEqual([
+      "ALTER TABLE etsy_imports ADD COLUMN suggested_file TEXT",
+      "ALTER TABLE etsy_imports ADD COLUMN buyer_note TEXT",
+    ]);
     sql = [];
     initDb();
     expect(sql.some((s) => /^ALTER TABLE etsy_imports/.test(s))).toBe(false);

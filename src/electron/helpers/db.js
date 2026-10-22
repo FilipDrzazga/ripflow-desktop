@@ -142,6 +142,22 @@ const ensureEtsyImportDetailColumns = () => {
 // number from. A column of its OWN with its own flag, so a failed ALTER costs the suggestion and nothing else - the
 // bar and the import work as before without it.
 let etsyImportsHaveSuggestion = false;
+// The library file the suggestion names (D76): a column of its OWN with its own flag - a failed ALTER costs the file name in the
+// bar's tooltip and nothing else.
+let etsyImportsHaveSuggestedFile = false;
+const ensureEtsyImportSuggestedFileColumn = () => {
+  try {
+    const have = db
+      .prepare("PRAGMA table_info(etsy_imports)")
+      .all()
+      .some((col) => col.name === "suggested_file");
+    if (!have) db.exec("ALTER TABLE etsy_imports ADD COLUMN suggested_file TEXT");
+    return true;
+  } catch (err) {
+    console.error("[db] ensureEtsyImportSuggestedFileColumn failed (the Etsy bar names no library file):", err);
+    return false;
+  }
+};
 const ensureEtsyImportSuggestionColumn = () => {
   try {
     const have = db
@@ -191,6 +207,7 @@ const ensureEtsyTables = () => {
   etsyTablesReady = false;
   etsyImportsHaveDetails = false;
   etsyImportsHaveSuggestion = false;
+  etsyImportsHaveSuggestedFile = false;
   etsyImportsHaveShipBy = false;
   etsyImportsHaveBuyerNote = false;
   try {
@@ -217,6 +234,7 @@ const ensureEtsyTables = () => {
         listing_id     TEXT,
         manual_xwd     TEXT,
         suggested_xwd  TEXT,
+        suggested_file TEXT,
         ship_by        INTEGER,
         buyer_note     TEXT,
         UNIQUE (receipt_id, transaction_id)
@@ -224,6 +242,7 @@ const ensureEtsyTables = () => {
     `);
     etsyImportsHaveDetails = ensureEtsyImportDetailColumns();
     etsyImportsHaveSuggestion = ensureEtsyImportSuggestionColumn();
+    etsyImportsHaveSuggestedFile = ensureEtsyImportSuggestedFileColumn();
     etsyImportsHaveShipBy = ensureEtsyImportShipByColumn();
     etsyImportsHaveBuyerNote = ensureEtsyImportBuyerNoteColumn();
     if (mapIsNew) {
@@ -253,7 +272,7 @@ export const getEtsyFabricMap = () => {
 const ETSY_IMPORT_COLUMNS =
   "receipt_id AS receiptId, transaction_id AS transactionId, state, file_name AS fileName, folder, reason, created_at AS createdAt, updated_at AS updatedAt";
 const etsyImportDetailSelect = () =>
-  `title, quantity, listing_id AS listingId, manual_xwd AS manualXwd, ${etsyImportsHaveSuggestion ? "suggested_xwd" : "NULL"} AS suggestedXwd`;
+  `title, quantity, listing_id AS listingId, manual_xwd AS manualXwd, ${etsyImportsHaveSuggestion ? "suggested_xwd" : "NULL"} AS suggestedXwd, ${etsyImportsHaveSuggestedFile ? "suggested_file" : "NULL"} AS suggestedFile`;
 
 // What the importer knows of a line, as the E4 columns store it: a title is text, a quantity a whole number, a
 // listing id the digits Etsy sent. Anything else is stored as NULL, never coerced into a value.
@@ -269,6 +288,15 @@ const suggestionToStore = (details) => {
   const value = details?.suggestedXwd;
   if (value === undefined) return undefined;
   return typeof value === "string" && /^\d{6}$/.test(value) ? value : null;
+};
+
+// The library file a suggestion names: a name (text, at most 255 characters - a Windows file name), stored only WITH a
+// stored suggestion (the same undefined / null rule as suggestionToStore: undefined = say nothing, null = clear).
+const suggestedFileToStore = (details) => {
+  const xwd = suggestionToStore(details);
+  if (xwd === undefined) return undefined;
+  const value = details?.suggestedFile;
+  return xwd !== null && typeof value === "string" && value.trim() !== "" && value.length <= 255 ? value : null;
 };
 
 // The row of one order line: the row, null = never seen, undefined = the database could not be asked.
@@ -310,6 +338,10 @@ export const claimEtsyImport = ({ receiptId, transactionId, state, fileName = nu
       if (etsyImportsHaveSuggestion) {
         columns.push("suggested_xwd");
         values.push(suggestionToStore(details) ?? null);
+      }
+      if (etsyImportsHaveSuggestion && etsyImportsHaveSuggestedFile) {
+        columns.push("suggested_file");
+        values.push(suggestedFileToStore(details) ?? null);
       }
     }
     if (etsyImportsHaveShipBy) {
@@ -361,6 +393,10 @@ export const moveEtsyImport = ({ receiptId, transactionId, from, state, reason =
       if (suggestion !== undefined) {
         sets.push("suggested_xwd = ?");
         values.push(suggestion);
+        if (etsyImportsHaveSuggestedFile) {
+          sets.push("suggested_file = ?");
+          values.push(suggestedFileToStore(details));
+        }
       }
     }
     const shipBy = etsyImportsHaveShipBy ? etsyShipByOf(details?.shipBy) : null;

@@ -6,7 +6,7 @@ import { etsyShipByOf } from "../../shared/etsyShipBy.js";
 import { etsyBuyerNoteOf } from "../../shared/etsyBuyerNote.js";
 import { isEtsyFileName } from "../../shared/orderSource.js";
 import { resolveEtsyFabric } from "./etsyFabric.js";
-import { suggestXwdForTitle } from "./etsySuggestion.js";
+import { suggestFromLibrary } from "./etsySuggestion.js";
 import {
   xwdOfTransaction,
   fabricValueOfTransaction,
@@ -238,13 +238,16 @@ export const createEtsyImporter = ({
 
   const record = (key, state, extra = {}) => imports.claim({ ...key, state, ...extra });
 
-  // The bar's suggestion for a line that stopped at the XWD number: a six-digit string, or null. An unreadable
-  // library is not an answer about this line (the tick meets the same folder at the next line that needs it).
+  // The bar's suggestion for a line that stopped at the XWD number: { suggestedXwd, suggestedFile } - a six-digit string
+  // and the library file it names (D76, so a person can see WHICH file before using it) - both null when there is none.
+  // An unreadable library is not an answer about this line (the tick meets the same folder at the next line that needs it).
+  const NO_SUGGESTION = { suggestedXwd: null, suggestedFile: null };
   const suggestionFor = async (transaction, library) => {
     try {
-      return suggestXwdForTitle(transaction?.title, await library(), isImageFileName);
+      const found = suggestFromLibrary(transaction?.title, await library(), isImageFileName);
+      return found ? { suggestedXwd: found.xwd, suggestedFile: found.fileName } : NO_SUGGESTION;
     } catch {
-      return null;
+      return NO_SUGGESTION;
     }
   };
 
@@ -383,8 +386,8 @@ export const createEtsyImporter = ({
 
     const prepared = await prepare({ receipt, transaction, index, total, library });
     if (prepared.reason) {
-      const suggestedXwd = prepared.suggest ? await suggestionFor(transaction, library) : null;
-      const claimed = record(key, ETSY_IMPORT_STATE.NEEDS_REVIEW, { reason: prepared.reason, details: { ...details, suggestedXwd } });
+      const suggestion = prepared.suggest ? await suggestionFor(transaction, library) : NO_SUGGESTION;
+      const claimed = record(key, ETSY_IMPORT_STATE.NEEDS_REVIEW, { reason: prepared.reason, details: { ...details, ...suggestion } });
       if (claimed === null) throw env("The import table could not be written.");
       if (claimed) {
         summary.needsReview += 1;
@@ -404,8 +407,8 @@ export const createEtsyImporter = ({
     const prepared = await prepare({ ...line, manualXwd: row.manualXwd ?? null });
     const from = [ETSY_IMPORT_STATE.RETRY];
     if (prepared.reason) {
-      const suggestedXwd = prepared.suggest ? await suggestionFor(line.transaction, line.library) : null;
-      const moved = imports.move({ ...key, from, state: ETSY_IMPORT_STATE.NEEDS_REVIEW, reason: prepared.reason, details: { ...details, suggestedXwd } });
+      const suggestion = prepared.suggest ? await suggestionFor(line.transaction, line.library) : NO_SUGGESTION;
+      const moved = imports.move({ ...key, from, state: ETSY_IMPORT_STATE.NEEDS_REVIEW, reason: prepared.reason, details: { ...details, ...suggestion } });
       if (moved === null) throw env("The import table could not be written.");
       if (moved) {
         summary.needsReview += 1;
@@ -588,8 +591,8 @@ export const createEtsyImporter = ({
       if (shipBy !== null) line.shipBy = shipBy;
       const prepared = await prepare({ receipt, transaction: transaction ?? {}, index: i + 1, total: transactions.length, library });
       if (prepared.reason) {
-        const suggestedXwd = prepared.suggest ? await suggestionFor(transaction, library) : null;
-        lines.push({ ...line, ok: false, reason: prepared.reason, suggestedXwd });
+        const suggestion = prepared.suggest ? await suggestionFor(transaction, library) : NO_SUGGESTION;
+        lines.push({ ...line, ok: false, reason: prepared.reason, ...suggestion });
       } else {
         const { plan } = prepared;
         lines.push({ ...line, ok: true, fileName: plan.fileName, folder: plan.fabric.name, libraryFile: plan.libraryFile, xwd: plan.xwd });

@@ -138,6 +138,7 @@ describe("the ship_by column", () => {
   it("is added by ALTER to a table an earlier build created, and not again at the next start", () => {
     initDb();
     expect(sql.filter((s) => /^ALTER TABLE etsy_imports ADD COLUMN/.test(s))).toEqual([
+      "ALTER TABLE etsy_imports ADD COLUMN suggested_file TEXT",
       "ALTER TABLE etsy_imports ADD COLUMN ship_by INTEGER",
       "ALTER TABLE etsy_imports ADD COLUMN buyer_note TEXT",
     ]);

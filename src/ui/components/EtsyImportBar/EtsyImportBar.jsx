@@ -29,6 +29,7 @@ import {
   statusText,
   statusTitle,
   suggestionOf,
+  suggestionFileNote,
   suggestionText,
   withoutTyped,
 } from "../../utils/etsyImportBar";
@@ -185,7 +186,7 @@ const EtsyImportBarContent = () => {
                     {suggestion && (
                       <span className={styles.suggestion_slot}>
                         {valueOf(row) !== suggestion && (
-                          <button type="button" className={styles.suggestion} disabled={busy} onClick={() => setValue(row, suggestion)} title={suggestionText(suggestion)}>
+                          <button type="button" className={styles.suggestion} disabled={busy} onClick={() => setValue(row, suggestion)} title={suggestionText(suggestion) + suggestionFileNote(row)}>
                             <LuSparkles size={12} />
                             XWD{suggestion}
                           </button>

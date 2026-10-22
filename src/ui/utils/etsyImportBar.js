@@ -31,6 +31,11 @@ export const suggestionOf = (row) =>
 
 export const suggestionText = (xwd) => `Suggestion: XWD${xwd} - a library file matches the design and designer in this listing's title. Check the file before you use it.`;
 
+// The library file the suggestion names (D76), as the tail of its tooltip - only for a suggestion offered; "" for a row without
+// the name (a row from before D76, or a failed ALTER).
+export const suggestionFileNote = (row) =>
+  suggestionOf(row) !== null && typeof row?.suggestedFile === "string" && row.suggestedFile.trim() !== "" ? ` Library file: "${row.suggestedFile}".` : "";
+
 export const isInterrupted = (row) => row?.reason === ETSY_IMPORT_INTERRUPTED_REASON;
 
 export const isWaitingForImporter = (row) => row?.state === ETSY_IMPORT_STATE.RETRY;
