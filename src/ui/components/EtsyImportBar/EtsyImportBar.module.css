@@ -50,6 +50,38 @@
   color: var(--text-secondary);
 }
 
+.chevron {
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.chevron_open {
+  transform: rotate(180deg);
+}
+
+/* Open / close slides the height: a grid row from 0fr to 1fr animates to the list's own height, which
+   max-height cannot do without a guessed number. The clip holds the list at 0 while the row is closed. */
+.list_wrap {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.list_wrap_open {
+  grid-template-rows: 1fr;
+}
+
+.list_clip {
+  min-height: 0;
+  overflow: hidden;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chevron,
+  .list_wrap {
+    transition: none;
+  }
+}
+
 .list {
   margin: 0;
   padding: 0;

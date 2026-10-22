@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { LuChevronDown, LuChevronUp, LuTag } from "react-icons/lu";
+import { LuChevronDown, LuTag } from "react-icons/lu";
 import { SiEtsy } from "react-icons/si";
 import { useStore } from "../../store/useStore";
 import { usePollingPaused, useOnPollingResume } from "../../hooks/usePollingPaused";
@@ -147,86 +147,90 @@ const EtsyImportBar = () => {
         <span className={styles.header_title}>{barTitle(rows)}</span>
         <span className={styles.header_toggle}>
           {open ? "Hide" : "Show"}
-          {open ? <LuChevronUp size={16} /> : <LuChevronDown size={16} />}
+          <LuChevronDown size={16} className={`${styles.chevron} ${open ? styles.chevron_open : ""}`} />
         </span>
       </button>
-      {open && (
-        <ul className={styles.list}>
-          {rows.map((row) => {
-            const key = lineKey(row);
-            const busy = busyKey === key;
-            const chip = stateChip(row);
-            const hint = stateHint(row, importerHere);
-            const error = fieldError[key];
-            const suggestion = suggestionOf(row);
-            return (
-              <li key={key} className={styles.line}>
-                <div className={styles.line_text}>
-                  <div className={styles.line_head}>
-                    <span className={styles.line_title} title={lineTitle(row)}>
-                      {lineTitle(row)}
-                    </span>
-                    <span className={`${styles.chip} ${styles[`chip_${chip.tone}`]}`}>{chip.text}</span>
-                  </div>
-                  <div className={styles.line_meta}>{lineMeta(row)}</div>
-                  {row.reason && <div className={styles.line_reason}>{row.reason}</div>}
-                  {hint && <div className={styles.line_hint}>{hint}</div>}
-                  {suggestion && (
-                    <div className={styles.line_hint}>
-                      {suggestionText(suggestion)}{" "}
-                      {valueOf(row) !== suggestion && (
-                        <button type="button" className={styles.link} disabled={busy} onClick={() => setValue(row, suggestion)}>
-                          Use {suggestion}
+      {/* Stays mounted so the height can slide (grid rows 0fr <-> 1fr); inert while closed keeps its fields and
+          buttons out of the Tab order and away from the pointer. */}
+      <div className={`${styles.list_wrap} ${open ? styles.list_wrap_open : ""}`} inert={!open}>
+        <div className={styles.list_clip}>
+          <ul className={styles.list}>
+            {rows.map((row) => {
+              const key = lineKey(row);
+              const busy = busyKey === key;
+              const chip = stateChip(row);
+              const hint = stateHint(row, importerHere);
+              const error = fieldError[key];
+              const suggestion = suggestionOf(row);
+              return (
+                <li key={key} className={styles.line}>
+                  <div className={styles.line_text}>
+                    <div className={styles.line_head}>
+                      <span className={styles.line_title} title={lineTitle(row)}>
+                        {lineTitle(row)}
+                      </span>
+                      <span className={`${styles.chip} ${styles[`chip_${chip.tone}`]}`}>{chip.text}</span>
+                    </div>
+                    <div className={styles.line_meta}>{lineMeta(row)}</div>
+                    {row.reason && <div className={styles.line_reason}>{row.reason}</div>}
+                    {hint && <div className={styles.line_hint}>{hint}</div>}
+                    {suggestion && (
+                      <div className={styles.line_hint}>
+                        {suggestionText(suggestion)}{" "}
+                        {valueOf(row) !== suggestion && (
+                          <button type="button" className={styles.link} disabled={busy} onClick={() => setValue(row, suggestion)}>
+                            Use {suggestion}
+                          </button>
+                        )}
+                      </div>
+                    )}
+                    <div className={styles.links}>
+                      <button type="button" className={styles.open_btn} onClick={() => openEtsyOrder(etsyOrderIdOf(row))}>
+                        <SiEtsy size={15} className={styles.open_btn_etsy} />
+                        Open order in Etsy
+                      </button>
+                      {row.listingId && (
+                        <button type="button" className={styles.open_btn} onClick={() => handleListing(row)}>
+                          <LuTag size={15} />
+                          Open listing
                         </button>
                       )}
                     </div>
-                  )}
-                  <div className={styles.links}>
-                    <button type="button" className={styles.open_btn} onClick={() => openEtsyOrder(etsyOrderIdOf(row))}>
-                      <SiEtsy size={15} className={styles.open_btn_etsy} />
-                      Open order in Etsy
-                    </button>
-                    {row.listingId && (
-                      <button type="button" className={styles.open_btn} onClick={() => handleListing(row)}>
-                        <LuTag size={15} />
-                        Open listing
+                  </div>
+                  <div className={styles.actions}>
+                    <label className={styles.field}>
+                      <span className={styles.field_label}>XWD number</span>
+                      <input
+                        className={`${styles.input} ${error ? styles.input_error : ""}`}
+                        type="text"
+                        inputMode="numeric"
+                        autoComplete="off"
+                        placeholder="six digits"
+                        value={valueOf(row)}
+                        disabled={busy || !canRetry(row)}
+                        onChange={(e) => setValue(row, e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && canRetry(row) && !busy) handleRetry(row);
+                        }}
+                        aria-invalid={error ? "true" : undefined}
+                      />
+                    </label>
+                    <div className={styles.buttons}>
+                      <button type="button" className={styles.primary} disabled={busy || !canRetry(row)} onClick={() => handleRetry(row)}>
+                        Retry
                       </button>
-                    )}
+                      <button type="button" className={styles.secondary} disabled={busy} onClick={() => handleDismiss(row)} title="This line is not a print - never import it">
+                        Not a print
+                      </button>
+                    </div>
+                    {error && <div className={styles.field_error}>{error}</div>}
                   </div>
-                </div>
-                <div className={styles.actions}>
-                  <label className={styles.field}>
-                    <span className={styles.field_label}>XWD number</span>
-                    <input
-                      className={`${styles.input} ${error ? styles.input_error : ""}`}
-                      type="text"
-                      inputMode="numeric"
-                      autoComplete="off"
-                      placeholder="six digits"
-                      value={valueOf(row)}
-                      disabled={busy || !canRetry(row)}
-                      onChange={(e) => setValue(row, e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" && canRetry(row) && !busy) handleRetry(row);
-                      }}
-                      aria-invalid={error ? "true" : undefined}
-                    />
-                  </label>
-                  <div className={styles.buttons}>
-                    <button type="button" className={styles.primary} disabled={busy || !canRetry(row)} onClick={() => handleRetry(row)}>
-                      Retry
-                    </button>
-                    <button type="button" className={styles.secondary} disabled={busy} onClick={() => handleDismiss(row)} title="This line is not a print - never import it">
-                      Not a print
-                    </button>
-                  </div>
-                  {error && <div className={styles.field_error}>{error}</div>}
-                </div>
-              </li>
-            );
-          })}
-        </ul>
-      )}
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      </div>
     </section>
   );
 };
