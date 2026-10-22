@@ -30,7 +30,7 @@ const storagePathOrNull = () => {
   }
 };
 
-const gateReason = (isPaused) => {
+export const gateReason = (isPaused) => {
   let etsyStatus = null;
   try {
     etsyStatus = getEtsyParts().credentials.status();

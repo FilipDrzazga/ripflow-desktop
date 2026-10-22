@@ -10,3 +10,6 @@ export const dismissEtsyImport = ({ receiptId, transactionId }) =>
   withTimeout(window.api.etsyImports.dismiss({ receiptId, transactionId }), 10_000, "etsy-imports:dismiss");
 export const openEtsyListing = (listingId) =>
   withTimeout(window.api.etsyImports.openListing(String(listingId)), 5_000, "etsy-imports:openListing");
+// Settings > Etsy > Check newest order: a dry run, nothing is written. -> { receipt, lines, gate } or { success: false, errors }.
+// 60 s: the Etsy call, a listing of the pattern folder on the share and the catalogue.
+export const previewNewestEtsyOrder = () => withTimeout(window.api.etsyImports.previewNewest(), 60_000, "etsy-imports:previewNewest");

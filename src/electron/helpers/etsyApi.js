@@ -180,11 +180,22 @@ export const createEtsyClient = ({ credentials, fetch, now = () => Date.now() })
     return { shop: { id: shopId, name: shop?.shop_name ?? null }, paidOrders: receipts?.count ?? null, latest: summarizeReceipt(receipts?.results?.[0]) };
   };
 
+  // The newest paid order WITH its lines, as Etsy sends it (the dry run of the import reads it; nothing is cut
+  // down here - the caller shows only what it needs). null = the shop has no paid order yet.
+  const newestPaidReceipt = async () => {
+    const { shopId } = credentials.status();
+    if (!shopId) throw etsyError("ETSY_NOT_CONNECTED", "This station is not connected to Etsy. Press Connect.");
+    const receipts = await get(`/shops/${shopId}/receipts`, {
+      query: { limit: 1, was_paid: true, sort_on: "created", sort_order: "desc" },
+    });
+    return receipts?.results?.[0] ?? null;
+  };
+
   const forgetToken = () => {
     cached = null;
   };
 
-  return { accessToken, get, completeSignIn, testConnection, listOpenReceipts, forgetToken };
+  return { accessToken, get, completeSignIn, testConnection, listOpenReceipts, newestPaidReceipt, forgetToken };
 };
 
 export const summarizeReceipt = (receipt) => {
@@ -200,5 +211,18 @@ export const summarizeReceipt = (receipt) => {
       quantity: t.quantity ?? null,
       variations: (Array.isArray(t.variations) ? t.variations : []).map((v) => ({ name: v.formatted_name ?? null, value: v.formatted_value ?? null })),
     })),
+  };
+};
+
+// What the dry run says of the ORDER itself (no buyer data): its number, when it was placed, and whether the
+// background import would list it - placed at or after `since` (epoch seconds the import was switched on) and not
+// shipped. null = Etsy did not say / there is no start date.
+export const receiptFacts = (receipt, since) => {
+  const created = Number.isFinite(receipt?.create_timestamp) ? receipt.create_timestamp : null;
+  return {
+    receiptId: receipt?.receipt_id === undefined || receipt?.receipt_id === null ? null : String(receipt.receipt_id),
+    created: created === null ? null : new Date(created * 1000).toISOString(),
+    afterStart: created !== null && Number.isInteger(since) && since > 0 ? created >= since : null,
+    shipped: typeof receipt?.is_shipped === "boolean" ? receipt.is_shipped : null,
   };
 };

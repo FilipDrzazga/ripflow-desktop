@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
-import { LuSave, LuLink, LuPlugZap, LuUnlink, LuTrash2, LuFolderOpen } from "react-icons/lu";
+import { LuSave, LuLink, LuPlugZap, LuUnlink, LuTrash2, LuFolderOpen, LuScanSearch } from "react-icons/lu";
+import { previewNewestEtsyOrder } from "../../../services/etsyImportService";
 import { getEtsyStatus, saveEtsyKey, connectEtsy, testEtsyConnection, disconnectEtsy, removeEtsyKey } from "../../../services/etsyService";
 import { getSettings, setSettings, selectFolder } from "../../../services/settingsService";
 import { showConfirm } from "../../../services/systemService";
 import { notify } from "@/utils/notify";
-import { etsyStatusLine, etsyResultNotice, etsyTestRows } from "@/utils/etsyView";
+import { etsyStatusLine, etsyResultNotice, etsyTestRows, previewOrderNotes, previewLineView, previewDate } from "@/utils/etsyView";
 import sharedStyles from "./SettingsView.module.css";
 import styles from "./EtsyView.module.css";
 
@@ -19,6 +20,7 @@ const EtsyView = () => {
   const [sharedSecret, setSharedSecret] = useState("");
   const [busy, setBusy] = useState(null);
   const [test, setTest] = useState(null);
+  const [check, setCheck] = useState(null); // the answer of "Check newest order"
   // The order import of THIS station (E3b-2): per-machine settings, not part of the Etsy connection above.
   const [allSettings, setAllSettings] = useState(null);
   const [importEnabled, setImportEnabled] = useState(false);
@@ -105,6 +107,13 @@ const EtsyView = () => {
     setTest(null);
     const res = await run("test", testEtsyConnection, { title: "Etsy connection test", success: "Etsy answered." });
     if (res?.success) setTest(res.test);
+  };
+
+  // A dry run: main reads the newest paid order and says what the import WOULD do. Nothing is written or copied.
+  const handleCheck = async () => {
+    setCheck(null);
+    const res = await run("check", previewNewestEtsyOrder, { title: "Check newest order", success: "Checked - nothing was imported." });
+    if (res?.success) setCheck(res);
   };
 
   const handleDisconnect = async () => {
@@ -205,6 +214,15 @@ const EtsyView = () => {
             <LuUnlink size={14} />
             Disconnect
           </button>
+          <button
+            className={sharedStyles.browse_btn}
+            onClick={handleCheck}
+            disabled={isBusy || !status?.connected}
+            title="Shows what the import would do with the newest paid order - nothing is imported"
+          >
+            <LuScanSearch size={14} />
+            {busy === "check" ? "Checking..." : "Check newest order"}
+          </button>
           <button className={sharedStyles.danger_btn} onClick={handleRemoveKey} disabled={isBusy || !status?.hasKey}>
             <LuTrash2 size={14} />
             Remove key
@@ -220,6 +238,35 @@ const EtsyView = () => {
               </div>
             ))}
           </dl>
+        )}
+
+        {check && (
+          <div className={styles.check} role="region" aria-label="What the import would do with the newest order">
+            <div className={styles.check_title}>
+              Newest paid order{check.receipt ? ` ET${check.receipt.receiptId}${check.receipt.created ? `, ${previewDate(check.receipt.created)}` : ""}` : ""} - dry run, nothing was imported
+            </div>
+            {previewOrderNotes(check).map((note) => (
+              <div key={note.text} className={`${styles.check_note} ${styles[`check_note_${note.tone}`]}`}>
+                {note.text}
+              </div>
+            ))}
+            {check.lines.map((line) => {
+              const view = previewLineView(line);
+              return (
+                <div key={line.transactionId} className={`${styles.check_line} ${view.ok ? styles.check_line_ok : styles.check_line_stop}`}>
+                  <div className={styles.check_line_head}>{view.headline}</div>
+                  <dl className={styles.check_rows}>
+                    {view.rows.map((row) => (
+                      <div key={row.label} style={{ display: "contents" }}>
+                        <dt>{row.label}</dt>
+                        <dd>{row.value}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                </div>
+              );
+            })}
+          </div>
         )}
 
         <div className={sharedStyles.field}>

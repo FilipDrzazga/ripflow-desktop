@@ -62,3 +62,50 @@ export const etsyTestRows = (test) => {
   });
   return rows;
 };
+
+// ---- "Check newest order": the dry run of the import (plan E4c follow-up) ----------------------------------------
+// The answer is { receipt, lines, gate } (main: ipc/etsyPreview.js). Nothing was imported; this only words it.
+
+const STATE_WORDS = {
+  pending: "being copied",
+  done: "already imported",
+  needs_review: "waiting for a person in the Etsy bar",
+  failed: "failed earlier",
+  retry: "waiting for a retry",
+  dismissed: "marked as not a print",
+};
+
+// -> [{ tone: "ok" | "warn" | "off", text }]: would the background tick take this ORDER, and does it run here.
+export const previewOrderNotes = (res) => {
+  if (!res?.receipt) return [{ tone: "off", text: "The shop has no paid order yet." }];
+  const { receipt, gate } = res;
+  const notes = [];
+  if (receipt.shipped === true) notes.push({ tone: "warn", text: "The import skips this order: it is already shipped." });
+  if (receipt.afterStart === false) {
+    notes.push({ tone: "warn", text: "The import skips this order: it was placed before the import was switched on here. A newer order would be taken." });
+  } else if (receipt.afterStart === null) {
+    notes.push({ tone: "off", text: "There is no start date yet (the import was never switched on here), so the import would take nothing." });
+  }
+  notes.push(
+    gate ? { tone: "warn", text: `The background import does not run on this station now: ${gate}.` } : { tone: "ok", text: "The background import is ready on this station." },
+  );
+  return notes;
+};
+
+// One order line -> { ok, headline, rows: [{ label, value }] }.
+export const previewLineView = (line) => {
+  const what = [line.title || "Order line without a title", Number.isInteger(line.quantity) ? `qty ${line.quantity}` : null].filter(Boolean).join(" | ");
+  const rows = [];
+  if (line.ok) {
+    rows.push({ label: "Would make", value: line.fileName });
+    rows.push({ label: "In folder", value: line.folder });
+    rows.push({ label: "From library file", value: line.libraryFile });
+  } else {
+    rows.push({ label: "Would NOT import", value: line.reason });
+    if (line.suggestedXwd) rows.push({ label: "Suggestion", value: `XWD${line.suggestedXwd} - the library file that matches the listing title` });
+  }
+  if (line.recordedState) rows.push({ label: "Already in the import list", value: STATE_WORDS[line.recordedState] ?? line.recordedState });
+  return { ok: line.ok === true, headline: what, rows };
+};
+
+export const previewDate = (iso) => day(iso);

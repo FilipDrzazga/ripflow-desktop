@@ -318,6 +318,7 @@ const api = Object.freeze({
       if (!isNonEmptyString(listingId)) throw new TypeError("Etsy listing number must be a non-empty string.");
       return ipcRenderer.invoke("etsy-imports:openListing", listingId);
     },
+    previewNewest: () => ipcRenderer.invoke("etsy-imports:previewNewest"),
   }),
 
   update: Object.freeze({

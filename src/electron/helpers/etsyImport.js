@@ -353,7 +353,7 @@ export const createEtsyImporter = ({
   };
 
   // One pass. Never throws: the answer says what happened.
-  return async () => {
+  const tick = async () => {
     const summary = { ran: false, reason: null, imported: 0, needsReview: 0, failed: 0, skipped: 0 };
     const blocked = gate();
     if (blocked) return { ...summary, reason: blocked };
@@ -377,4 +377,42 @@ export const createEtsyImporter = ({
     }
     return summary;
   };
+
+  // The DRY RUN (Settings > Etsy > Check newest order): what the import would make of each line of ONE receipt,
+  // through the same prepare() the tick uses. It reads the disk, the catalogue and the import table and writes
+  // NOTHING - no claim, no copy, no state; `imports` is only asked `get`. The gate is not consulted (the caller
+  // reports it): a station that is switched off can still be asked. Throws the environment errors of prepare
+  // (an unreadable library or catalogue) - there is no tick to end here, the caller shows the message.
+  tick.preview = async (receipt) => {
+    const transactions = Array.isArray(receipt?.transactions) ? receipt.transactions : [];
+    let listing = null;
+    const library = () => {
+      if (!listing) listing = filesOf(libraryRoot());
+      return listing;
+    };
+    const lines = [];
+    for (let i = 0; i < transactions.length; i += 1) {
+      const transaction = transactions[i];
+      const receiptId = idOf(receipt.receipt_id);
+      const transactionId = idOf(transaction?.transaction_id);
+      const recorded = receiptId && transactionId ? imports.get(receiptId, transactionId) : null;
+      const line = {
+        transactionId,
+        title: typeof transaction?.title === "string" ? transaction.title : null,
+        quantity: Number.isInteger(transaction?.quantity) ? transaction.quantity : null,
+        recordedState: recorded?.state ?? null,
+      };
+      const prepared = await prepare({ receipt, transaction: transaction ?? {}, index: i + 1, total: transactions.length, library });
+      if (prepared.reason) {
+        const suggestedXwd = prepared.suggest ? await suggestionFor(transaction, library) : null;
+        lines.push({ ...line, ok: false, reason: prepared.reason, suggestedXwd });
+      } else {
+        const { plan } = prepared;
+        lines.push({ ...line, ok: true, fileName: plan.fileName, folder: plan.fabric.name, libraryFile: plan.libraryFile, xwd: plan.xwd });
+      }
+    }
+    return lines;
+  };
+
+  return tick;
 };
