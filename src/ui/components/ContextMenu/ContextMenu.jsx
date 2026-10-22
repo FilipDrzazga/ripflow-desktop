@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import { FiEye, FiFolder, FiShoppingBag, FiX } from "react-icons/fi";
 import { HiChevronRight } from "react-icons/hi2";
+import { SiEtsy } from "react-icons/si";
 import { useFloatingClose } from "../../hooks/useFloatingClose";
 import style from "./ContextMenu.module.css";
 
@@ -11,6 +12,7 @@ const resolveIcon = (option) => {
   if (option.id === "preview") return <FiEye />;
   if (option.id === "folder") return <FiFolder />;
   if (option.id === "shopify") return <FiShoppingBag />;
+  if (option.id === "etsy") return <SiEtsy />;
   return null;
 };
 

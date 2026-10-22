@@ -144,21 +144,21 @@
 }
 
 /* The two ways out to Etsy - outlined like the app's other secondary buttons (SewingReceive .ghost_btn), each
-   with its own icon; the trailing arrow says it leaves the app. */
+   with its own icon. */
 .open_btn {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  height: 28px;
+  gap: 7px;
+  height: 32px;
   box-sizing: border-box;
-  padding: 0 10px;
+  padding: 0 12px;
   line-height: 1;
   border-radius: 8px;
   border: 1px solid var(--border-grey);
   background-color: var(--bg-white);
   color: var(--text-secondary);
   font: inherit;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   white-space: nowrap;
   cursor: pointer;
@@ -173,10 +173,6 @@
 
 .open_btn_etsy {
   color: #d5641c;
-}
-
-.open_btn_out {
-  opacity: 0.6;
 }
 
 .link {

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { LuChevronDown, LuChevronUp, LuExternalLink, LuTag } from "react-icons/lu";
+import { LuChevronDown, LuChevronUp, LuTag } from "react-icons/lu";
 import { SiEtsy } from "react-icons/si";
 import { useStore } from "../../store/useStore";
 import { usePollingPaused, useOnPollingResume } from "../../hooks/usePollingPaused";
@@ -183,15 +183,13 @@ const EtsyImportBar = () => {
                   )}
                   <div className={styles.links}>
                     <button type="button" className={styles.open_btn} onClick={() => openEtsyOrder(etsyOrderIdOf(row))}>
-                      <SiEtsy size={13} className={styles.open_btn_etsy} />
+                      <SiEtsy size={15} className={styles.open_btn_etsy} />
                       Open order in Etsy
-                      <LuExternalLink size={12} className={styles.open_btn_out} />
                     </button>
                     {row.listingId && (
                       <button type="button" className={styles.open_btn} onClick={() => handleListing(row)}>
-                        <LuTag size={13} />
+                        <LuTag size={15} />
                         Open listing
-                        <LuExternalLink size={12} className={styles.open_btn_out} />
                       </button>
                     )}
                   </div>
