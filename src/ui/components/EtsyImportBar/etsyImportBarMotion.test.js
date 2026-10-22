@@ -25,6 +25,12 @@ describe("the Etsy bar slides open and shut", () => {
     expect(css).toMatch(/\.list_clip\s*\{[^}]*min-height:\s*0;[^}]*overflow:\s*hidden;/s);
   });
 
+  it("grows the open bar's floor with the list, so opening shows no empty frame first (S2 2026-10-22 13:38)", () => {
+    expect(css).toMatch(/\.bar\s*\{[^}]*transition:\s*min-height 0\.25s cubic-bezier\(0\.4, 0, 0\.2, 1\);/s);
+    expect(css).toMatch(/\.list_wrap\s*\{[^}]*transition:\s*grid-template-rows 0\.25s cubic-bezier\(0\.4, 0, 0\.2, 1\);/s);
+    expect(css).toMatch(/@media \(prefers-reduced-motion: reduce\)\s*\{[^@]*\.bar\s*\{\s*transition:\s*none;/);
+  });
+
   it("turns the motion off for a person who asked the system for less of it", () => {
     expect(css).toMatch(/@media \(prefers-reduced-motion: reduce\)\s*\{\s*\.chevron,\s*\.list_wrap\s*\{\s*transition:\s*none;/);
   });

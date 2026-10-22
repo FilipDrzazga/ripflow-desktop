@@ -1,17 +1,31 @@
 /* Plan E4b: the Etsy lines that wait for a person, between the Inbox filters and the table. In the flow (not a
    floating layer): the open list is capped to part of the window and scrolls inside itself, so at 960x560 the
-   table stays reachable. */
+   table stays reachable. The open bar is the one item of the Print column that gives way when the column runs
+   short (the table keeps its floor, the cards do not shrink): its list scrolls inside instead of the column
+   growing a second scrollbar beside the table's (FILIP 2026-10-22). The floor of the open bar keeps one line in
+   sight; below that the column scrolls, as before. */
 .bar {
-  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  flex: 0 1 auto;
+  min-height: 0;
   margin: 0 20px;
   border-radius: 12px;
   border: 1px solid #f0c987;
   background-color: #fff8ea;
   color: var(--text-primary);
   overflow: hidden;
+  /* The floor of the open bar grows with the list (same time and curve as .list_wrap), so opening never shows
+     an empty 180px frame before the rows slide in. */
+  transition: min-height 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.bar_open {
+  min-height: 180px;
 }
 
 .header {
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -61,6 +75,8 @@
 /* Open / close slides the height: a grid row from 0fr to 1fr animates to the list's own height, which
    max-height cannot do without a guessed number. The clip holds the list at 0 while the row is closed. */
 .list_wrap {
+  flex: 0 1 auto;
+  min-height: 0;
   display: grid;
   grid-template-rows: 0fr;
   transition: grid-template-rows 0.25s cubic-bezier(0.4, 0, 0.2, 1);
@@ -70,7 +86,11 @@
   grid-template-rows: 1fr;
 }
 
+/* A column, so the list (a scroll container, minimum height 0) shrinks to the clip when the bar gives way and
+   scrolls itself - one scrollbar, never the clip's and the list's nested. */
 .list_clip {
+  display: flex;
+  flex-direction: column;
   min-height: 0;
   overflow: hidden;
 }
@@ -78,6 +98,10 @@
 @media (prefers-reduced-motion: reduce) {
   .chevron,
   .list_wrap {
+    transition: none;
+  }
+
+  .bar {
     transition: none;
   }
 }
@@ -89,6 +113,8 @@
   max-height: 42vh;
   overflow-y: auto;
   border-top: 1px solid #f0c987;
+  /* White like the lines, so the scrollbar's track is not the bar's yellow (FILIP 2026-10-22). */
+  background-color: var(--bg-white);
 }
 
 .line {

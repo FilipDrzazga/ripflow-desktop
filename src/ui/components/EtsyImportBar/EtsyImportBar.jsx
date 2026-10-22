@@ -141,7 +141,7 @@ const EtsyImportBar = () => {
   };
 
   return (
-    <section className={styles.bar} aria-label="Etsy order lines that need a person">
+    <section className={`${styles.bar} ${open ? styles.bar_open : ""}`} aria-label="Etsy order lines that need a person">
       <button type="button" className={styles.header} onClick={() => setOpen((v) => !v)} aria-expanded={open}>
         <SiEtsy size={16} className={styles.header_icon} />
         <span className={styles.header_title}>{barTitle(rows)}</span>

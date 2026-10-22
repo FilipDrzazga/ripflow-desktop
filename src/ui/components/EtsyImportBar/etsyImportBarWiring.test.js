@@ -62,7 +62,8 @@ describe("the Etsy bar of the Inbox", () => {
 
   it("the table stays reachable on a small window: the open list scrolls inside itself", () => {
     expect(css).toMatch(/\.list\s*\{[^}]*max-height:\s*42vh;[^}]*overflow-y:\s*auto;/s);
-    expect(css).toMatch(/\.bar\s*\{[^}]*flex-shrink:\s*0;/s);
+    expect(css).toMatch(/\.bar\s*\{[^}]*flex:\s*0 1 auto;[^}]*min-height:\s*0;/s);
+    expect(css).toMatch(/\.bar_open\s*\{[^}]*min-height:\s*180px;/s);
   });
 });
 
