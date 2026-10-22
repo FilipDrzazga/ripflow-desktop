@@ -4,8 +4,9 @@ import { fileURLToPath } from "url";
 
 // FILIP 2026-10-22 14:19: opening the Etsy bar took the whole window down - the DEV app's preload predated the
 // listing-picture channel, so the call threw at once inside the effect and React had nothing to catch it. The bar
-// has no ErrorBoundary of its own, so the picture must turn ANY failure into the grey square. No React harness
-// here (50f64c8): pinned by reading the source (comment lines dropped).
+// has its own ErrorBoundary since e443895, but a caught error replaces the whole bar with a strip - the picture
+// must still turn ANY failure into the grey square. No React harness here (50f64c8): pinned by reading the source
+// (comment lines dropped).
 const thumb = readFileSync(fileURLToPath(new URL("./EtsyThumb.jsx", import.meta.url)), "utf8")
   .split("\n")
   .filter((line) => !line.trim().startsWith("//"))
