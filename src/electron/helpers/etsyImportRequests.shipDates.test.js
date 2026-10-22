@@ -13,7 +13,7 @@ const make = (over = {}) => {
     dismiss: vi.fn(),
     requestTick: vi.fn(),
     openExternal: vi.fn(),
-    shipDates: vi.fn(() => ({ 123: 1761523200 })),
+    shipDates: vi.fn(() => ({ 123: { shipBy: 1761523200, buyerNote: null } })),
     ...over,
   };
   return { parts, requests: createEtsyImportRequests(parts) };
@@ -22,7 +22,7 @@ const make = (over = {}) => {
 describe("shipDates", () => {
   it("asks the database for the digits, once each, and answers its dates", () => {
     const { parts, requests } = make();
-    expect(requests.shipDates(["123", " 123 ", "456"])).toEqual({ success: true, data: { 123: 1761523200 } });
+    expect(requests.shipDates(["123", " 123 ", "456"])).toEqual({ success: true, data: { 123: { shipBy: 1761523200, buyerNote: null } } });
     expect(parts.shipDates).toHaveBeenCalledWith(["123", "456"]);
   });
 
@@ -65,7 +65,7 @@ describe("shipDates", () => {
   });
 
   it("drops a value that is not a date, whatever the database sent", () => {
-    const { requests } = make({ shipDates: () => ({ 1: 1761523200, 2: 0, 3: "1761523200", 4: 1761523200000, 5: null }) });
-    expect(requests.shipDates(["1", "2", "3", "4", "5"])).toEqual({ success: true, data: { 1: 1761523200 } });
+    const { requests } = make({ shipDates: () => ({ 1: { shipBy: 1761523200 }, 2: { shipBy: 0 }, 3: { shipBy: "1761523200" }, 4: { shipBy: 1761523200000 }, 5: { shipBy: null } }) });
+    expect(requests.shipDates(["1", "2", "3", "4", "5"])).toEqual({ success: true, data: { 1: { shipBy: 1761523200, buyerNote: null } } });
   });
 });

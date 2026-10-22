@@ -67,15 +67,15 @@ describe("listEtsyShipDates", () => {
   it("answers { receiptId: earliest date } from ONE grouped SELECT, dismissed first then one placeholder per number", () => {
     initDb();
     shipDateRows = [
-      { receiptId: "123", shipBy: 1761523200 },
-      { receiptId: "456", shipBy: 1761696000 },
+      { receiptId: "123", shipBy: 1761523200, buyerNote: null },
+      { receiptId: "456", shipBy: 1761696000, buyerNote: null },
     ];
-    expect(listEtsyShipDates(["123", "456"])).toEqual({ 123: 1761523200, 456: 1761696000 });
+    expect(listEtsyShipDates(["123", "456"])).toEqual({ 123: { shipBy: 1761523200, buyerNote: null }, 456: { shipBy: 1761696000, buyerNote: null } });
     expect(shipDateSelects).toHaveLength(1);
     const { text, values } = shipDateSelects[0];
     expect(text).toContain("MIN(ship_by) AS shipBy");
     // ANDed all the way: an OR here would let a dismissed line (or any line of any order) through
-    expect(text).toContain("WHERE state != ? AND ship_by IS NOT NULL AND receipt_id IN (?, ?) GROUP BY");
+    expect(text).toContain("WHERE state != ? AND receipt_id IN (?, ?) GROUP BY receipt_id HAVING shipBy IS NOT NULL OR buyerNote IS NOT NULL");
     expect(text).toContain("GROUP BY receipt_id");
     expect(values).toEqual(["dismissed", "123", "456"]);
   });

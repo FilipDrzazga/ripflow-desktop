@@ -12,8 +12,9 @@ import { openInFolder as openInFolderApi, openInShopify as openInShopifyApi } fr
 import { ORDER_LINK, orderIdOf, orderLinkFor, openEtsyOrder } from "../../utils/orderLink";
 import { ORDER_SOURCE } from "../../../shared/orderSource";
 import ShipByBadge from "../ShipByBadge/ShipByBadge";
+import BuyerNoteBubble from "../BuyerNoteBubble/BuyerNoteBubble";
 import { useEtsyShipDates } from "../../hooks/useEtsyShipDates";
-import { shipByOfOrder } from "../../utils/etsyShipBadge";
+import { shipByOfOrder, buyerNoteOfOrder } from "../../utils/etsyShipBadge";
 import { materialClassSlot } from "../../utils/materialClasses";
 import { FiInbox, FiLock, FiUnlock } from "react-icons/fi";
 import {
@@ -438,6 +439,7 @@ const DataList = () => {
                         )}
                         <span className={style.file_name_text}>{item.file.name}</span>
                         <ShipByBadge className={style.ship_by_badge} seconds={shipByOfOrder(etsyShipDates, item.orderId)} />
+                        <BuyerNoteBubble note={buyerNoteOfOrder(etsyShipDates, item.orderId)} onOpen={() => openEtsyOrder(item.orderId)} />
                         {rollbackReason &&
                           (() => {
                             const def = reasonDefinitions.find((r) => r.code === rollbackReason.reasonCode);

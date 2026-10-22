@@ -68,8 +68,14 @@ export const shipDateReceiptIds = (orderIds) => {
   return [...ids].sort((a, b) => a.length - b.length || (a < b ? -1 : a > b ? 1 : 0)).slice(-ETSY_SHIP_DATES_MAX);
 };
 
-// The date of one order number, looked up in the answer ({ [receiptId]: seconds }); null when it has none.
-export const shipByOfOrder = (dates, orderId) => {
+// The facts of one order number, looked up in the answer ({ [receiptId]: { shipBy, buyerNote } }).
+const factOfOrder = (facts, orderId, key) => {
   const receiptId = etsyReceiptId(orderId);
-  return receiptId ? (dates?.[receiptId] ?? null) : null;
+  return receiptId ? (facts?.[receiptId]?.[key] ?? null) : null;
 };
+
+// The date (epoch s) of one order number; null when it has none.
+export const shipByOfOrder = (facts, orderId) => factOfOrder(facts, orderId, "shipBy");
+
+// The buyer's note of one order number (text for React, never markup); null when it has none.
+export const buyerNoteOfOrder = (facts, orderId) => factOfOrder(facts, orderId, "buyerNote");

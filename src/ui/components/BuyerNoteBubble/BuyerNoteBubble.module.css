@@ -1,0 +1,21 @@
+/* Same footprint as the row badges beside it (ShipByBadge): 6px radius, 1px border, icon only. Grey tokens of global.css,
+   no colour of its own. */
+.bubble {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  padding: 2px 6px;
+  margin-left: 6px;
+  border-radius: 6px;
+  border: 1px solid var(--border-grey);
+  background: var(--bg-grey);
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.bubble:hover,
+.bubble:focus-visible {
+  color: var(--text-primary);
+  border-color: var(--text-secondary);
+}

@@ -1,6 +1,7 @@
 import { toIpcError } from "./ipcError.js";
 import { ETSY_XWD_INPUT_RE } from "../../shared/constants.js";
 import { ETSY_SHIP_DATES_MAX, etsyShipByOf } from "../../shared/etsyShipBy.js";
+import { etsyBuyerNoteOf } from "../../shared/etsyBuyerNote.js";
 
 // What the Inbox bar of ANY station may ask about the Etsy import (plan E4): the open lines, a Retry (optionally
 // with the XWD number typed in) and a Dismiss. It only reads and WRITES REQUESTS in etsy_imports - the copy is
@@ -51,7 +52,7 @@ export const createEtsyImportRequests = ({
   requestTick, // () => one tick now on this station
   openExternal, // async (url) => opens the address in the browser (shell.openExternal)
   listingImage = async () => null, // async (listingId) => data: URL | null (helpers/etsyThumbnail.js)
-  shipDates = () => null, // (receiptIds) => { receiptId: epoch s } | null (listEtsyShipDates)
+  shipDates = () => null, // (receiptIds) => { receiptId: { shipBy: epoch s | null, buyerNote: text | null } } | null (listEtsyShipDates)
 }) => {
   const guard = () => {
     if (!featureOn()) throw refusal("ETSY_DISABLED", "The Etsy import is not switched on for this shop.");
@@ -116,9 +117,10 @@ export const createEtsyImportRequests = ({
         return {};
       }),
 
-    // The "Ship by" badge of Inbox / Production (plan ETA-2): the earliest ship-by date of each of the asked orders.
+    // The "Ship by" badge and the buyer's-note bubble of Inbox / Production (plans ETA-2 / MSG-2): the earliest ship-by
+    // date and the buyer's note of each of the asked orders, { [receiptId]: { shipBy, buyerNote } }.
     // Only a list of receipt numbers (digits, at most ETSY_SHIP_DATES_MAX) crosses - never the whole table, which grows
-    // with every order. An order without a date is simply not in the answer; null from the database is an error.
+    // with every order. An order with neither is simply not in the answer; null from the database is an error.
     shipDates: (receiptIds) =>
       answer("etsy-imports:shipDates", "Reading the Etsy ship-by dates failed", () => {
         if (!Array.isArray(receiptIds)) throw refusal("INVALID_ETSY_RECEIPT", "The Etsy orders are not named by a list of numbers.");
@@ -126,8 +128,15 @@ export const createEtsyImportRequests = ({
         if (ids.length > ETSY_SHIP_DATES_MAX) throw refusal("TOO_MANY_ETSY_RECEIPTS", `At most ${ETSY_SHIP_DATES_MAX} Etsy orders can be asked at once.`);
         const found = ids.length === 0 ? {} : shipDates(ids);
         if (!found) throw Object.assign(new Error("The Etsy ship-by dates could not be read."), { code: "DB_READ_FAILED" });
-        // A value that is not a date is dropped here as well - the badge only ever sees what etsyShipByOf accepts.
-        return { data: Object.fromEntries(Object.entries(found).filter(([, value]) => etsyShipByOf(value) !== null)) };
+        // A value that is not usable is dropped here as well - the screens only ever see what etsyShipByOf /
+        // etsyBuyerNoteOf accept; an order left with neither is not in the answer.
+        const data = {};
+        for (const [receiptId, fact] of Object.entries(found)) {
+          const shipBy = etsyShipByOf(fact?.shipBy);
+          const buyerNote = etsyBuyerNoteOf(fact?.buyerNote);
+          if (shipBy !== null || buyerNote !== null) data[receiptId] = { shipBy, buyerNote };
+        }
+        return { data };
       }),
 
     // The listing's small picture for a line of the bar, as a data: URL (null: none, or not reachable now). Only the

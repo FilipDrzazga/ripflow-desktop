@@ -8,7 +8,8 @@ import { ETSY_SHIP_DATES_POLL_MS, shipDateReceiptIds } from "../utils/etsyShipBa
 const NONE = Object.freeze({});
 
 // The ONE hook behind the "Ship by" badge of Inbox and Production (plan ETA-2): the order numbers on screen in, the
-// answer { [receiptId]: epoch s } out. Asks main (only the digits cross, never the table) when the set of Etsy
+// answer { [receiptId]: { shipBy: epoch s | null, buyerNote: text | null } } out (the "Ship by" badge and the buyer's-note
+// bubble read the same answer - plan MSG-2, no second ask). Asks main (only the digits cross, never the table) when the set of Etsy
 // numbers changes and then on a slow poll that stands while the polls stand (usePollingPaused / useOnPollingResume).
 // features.etsy off, a profile that could not be read or a failed answer: nothing - a badge is information, so it
 // fails closed by being absent, and the last good answer stays until a better one arrives (no flicker between asks).

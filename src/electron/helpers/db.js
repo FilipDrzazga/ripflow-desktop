@@ -415,22 +415,27 @@ export const setEtsyImportBuyerNote = ({ receiptId, transactionId, buyerNote }) 
   return written ? changes === 1 : null;
 };
 
-// The ship-by date of each Etsy ORDER among `receiptIds` (plan ETA-2): the EARLIEST ship_by of its lines, whatever their
-// state but dismissed (a "not a print" line is not part of what has to leave). { receiptId: epoch s } with only the
-// orders that have a date; null = could not ask (no database, no table, no column, a failed SELECT) - the badge then
-// simply is not there, which is not the same as "no order has a date".
+// What the screens know of each Etsy ORDER among `receiptIds` (plans ETA-2 / MSG-2): the EARLIEST ship_by of its lines
+// and the buyer's note, whatever the state of the lines but dismissed (a "not a print" line is not part of what has to
+// leave). The note is the RECEIPT's, kept on every line, so the lines agree; should they differ for a moment (a refresh
+// that has reached only some of them), the greatest wins - any is a note Etsy sent. { receiptId: { shipBy, buyerNote } }
+// (each epoch s / text, or null) with only the orders that have at least one of the two; null = could not ask (no
+// database, no table, no ship_by column, a failed SELECT) - the badge then simply is not there, which is not the same as
+// "no order has a date". ship_by stays the gate it was in ETA-2; a missing buyer_note column (its own failed ALTER) costs
+// only the notes.
 export const listEtsyShipDates = (receiptIds) => {
   if (!db || !etsyTablesReady || !etsyImportsHaveShipBy) return null;
   if (!Array.isArray(receiptIds)) return null;
   const ids = [...new Set(receiptIds.map(String))];
   if (ids.length === 0) return {};
   try {
+    const buyerNote = etsyImportsHaveBuyerNote ? "MAX(buyer_note)" : "NULL";
     const rows = db
       .prepare(
-        `SELECT receipt_id AS receiptId, MIN(ship_by) AS shipBy FROM etsy_imports WHERE state != ? AND ship_by IS NOT NULL AND receipt_id IN (${ids.map(() => "?").join(", ")}) GROUP BY receipt_id`,
+        `SELECT receipt_id AS receiptId, MIN(ship_by) AS shipBy, ${buyerNote} AS buyerNote FROM etsy_imports WHERE state != ? AND receipt_id IN (${ids.map(() => "?").join(", ")}) GROUP BY receipt_id HAVING shipBy IS NOT NULL OR buyerNote IS NOT NULL`,
       )
       .all(ETSY_IMPORT_STATE.DISMISSED, ...ids);
-    return Object.fromEntries(rows.map((row) => [row.receiptId, row.shipBy]));
+    return Object.fromEntries(rows.map((row) => [row.receiptId, { shipBy: row.shipBy ?? null, buyerNote: row.buyerNote ?? null }]));
   } catch (err) {
     console.error("[db] listEtsyShipDates failed:", err);
     return null;

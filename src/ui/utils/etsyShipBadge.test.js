@@ -98,7 +98,7 @@ describe("shipDateReceiptIds", () => {
 });
 
 describe("shipByOfOrder", () => {
-  const dates = { 123: 1761523200 };
+  const dates = { 123: { shipBy: 1761523200, buyerNote: null } };
 
   it("looks the order up by its receipt digits", () => {
     expect(shipByOfOrder(dates, "ET123")).toBe(1761523200);
