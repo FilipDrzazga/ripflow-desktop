@@ -11,7 +11,7 @@ import { stageExtToStore } from "../../shared/artworkFile.js";
 import { ETSY_FABRIC_SEED, etsyKey } from "./etsyFabric.js";
 import { ETSY_IMPORT_STATE, ETSY_IMPORT_OPEN_STATES } from "../../shared/constants.js";
 import { etsyShipByOf } from "../../shared/etsyShipBy.js";
-import { etsyBuyerNoteOf } from "../../shared/etsyBuyerNote.js";
+import { etsyBuyerNoteOf, ETSY_BUYER_NOTE_RETENTION_DAYS } from "../../shared/etsyBuyerNote.js";
 
 let db = null;
 let stmtInsert = null;
@@ -413,6 +413,26 @@ export const setEtsyImportBuyerNote = ({ receiptId, transactionId, buyerNote }) 
       .run(value, String(receiptId), String(transactionId), value).changes;
   });
   return written ? changes === 1 : null;
+};
+
+// D81: empties (SET NULL, the row stays) the buyer's note of every FINISHED line (done / dismissed) whose latest date -
+// the later of ship_by and updated_at - is older than ETSY_BUYER_NOTE_RETENTION_DAYS. An open line keeps its note: the
+// order is still being worked on. updated_at is not touched. -> the number of notes emptied (0 included), or null when
+// it could not run (no DB, no column, a failed write). Never logs a note. Called after every tick of the import loop (the first
+// one a minute after start-up), on every station - an UPDATE that matches nothing writes nothing.
+export const purgeOldEtsyBuyerNotes = (nowMs = Date.now()) => {
+  if (!db || !etsyTablesReady || !etsyImportsHaveBuyerNote) return null;
+  const cutoffSec = Math.floor(nowMs / 1000) - ETSY_BUYER_NOTE_RETENTION_DAYS * 24 * 60 * 60;
+  let changes = 0;
+  const written = runWrite("purgeOldEtsyBuyerNotes", () => {
+    changes = db
+      .prepare(
+        `UPDATE etsy_imports SET buyer_note = NULL WHERE buyer_note IS NOT NULL AND state IN (?, ?) AND MAX(COALESCE(ship_by, 0), COALESCE(CAST(strftime('%s', updated_at) AS INTEGER), 0)) < ?`,
+      )
+      .run(ETSY_IMPORT_STATE.DONE, ETSY_IMPORT_STATE.DISMISSED, cutoffSec).changes;
+  });
+  if (written && changes > 0) console.log(`[db] emptied ${changes} buyer note(s) past the ${ETSY_BUYER_NOTE_RETENTION_DAYS}-day retention`);
+  return written ? changes : null;
 };
 
 // What the screens know of each Etsy ORDER among `receiptIds` (plans ETA-2 / MSG-2): the EARLIEST ship_by of its lines

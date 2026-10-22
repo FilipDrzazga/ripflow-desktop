@@ -16,6 +16,7 @@ import {
   listEtsyImportRetries,
   setEtsyImportShipBy,
   setEtsyImportBuyerNote,
+  purgeOldEtsyBuyerNotes,
 } from "../helpers/db.js";
 import { renameNoOverwrite } from "../helpers/renameNoOverwrite.js";
 import { parsePrintFileName } from "../helpers/parseFileName.js";
@@ -94,6 +95,7 @@ export const startEtsyImportLoop = ({ isPaused }) => {
     running = true;
     try {
       const result = await tick();
+      purgeOldEtsyBuyerNotes(); // D81: long-finished orders lose their buyer's note (never throws; null = could not)
       // One line per CHANGE of the reason, never one per tick: a switched-off station is quiet.
       const note = result.reason ?? null;
       if (note !== lastNote) {

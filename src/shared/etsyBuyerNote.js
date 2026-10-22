@@ -2,6 +2,11 @@
 // checkout, as Etsy sends it in the receipt the import already fetches. Used by both processes: main decides what
 // it stores, the renderer (MSG-2) what it shows. A CUSTOMER's words: shown as plain text, never logged.
 
+// How long a note of a FINISHED line (done / dismissed) is kept, in days, counted from its latest date (the ship-by
+// date or the last update of the row). A buyer's free text can carry a name, an address or a phone number, and
+// etsy_imports rows are never deleted, so the notes are emptied (the row stays) once the order is long gone (D81).
+export const ETSY_BUYER_NOTE_RETENTION_DAYS = 90;
+
 // The longest note kept, in characters (code points). Etsy's own limit is not documented; a longer one is cut here.
 export const ETSY_BUYER_NOTE_MAX = 2000;
 
