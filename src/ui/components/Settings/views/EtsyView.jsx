@@ -267,14 +267,18 @@ const EtsyView = () => {
               <LuFolderOpen size={14} />
               Browse
             </button>
-            <button className={sharedStyles.browse_btn} onClick={handleSaveImport} disabled={savingImport || !importChanged || importNeedsFolder}>
-              <LuSave size={14} />
-              {savingImport ? "Saving..." : "Save"}
-            </button>
           </div>
           {importNeedsFolder && <p className={sharedStyles.field_error}>Choose the pattern folder before turning the import On.</p>}
           <p className={sharedStyles.hint}>Patterns are only copied from here, never moved. Each order line needs exactly one image with its XWD number in the name.</p>
         </div>
+      </div>
+      {/* The footer Save is the one for every import option above (On/Off and the folder), like General and Paths: leaving the tab drops what is not saved. */}
+      <div className={sharedStyles.view_footer}>
+        {importChanged && <span className={styles.unsaved}>Not saved yet - press Save import settings</span>}
+        <button className={sharedStyles.save_btn} onClick={handleSaveImport} disabled={savingImport || !importChanged || importNeedsFolder}>
+          <LuSave size={14} />
+          {savingImport ? "Saving..." : "Save import settings"}
+        </button>
       </div>
     </div>
   );
