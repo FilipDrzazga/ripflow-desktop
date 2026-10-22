@@ -118,8 +118,10 @@
 }
 
 /* One order line = one row (FILIP 2026-10-22): what it is and why it stopped on the left, cut with an ellipsis
-   (the whole text on hover), the ways out and the actions on the right. A window too narrow for both wraps the
-   actions under the text. */
+   (the whole text on hover), the ways out and the actions on the right. The text never wraps inside itself: its
+   basis (620px) holds title + chip + order + suggestion at their narrowest, so a row with less room than that
+   for the text moves the actions to a line of their own, right-aligned, instead of letting the text run under
+   them (S2 2026-10-22: "Use" under "Open order in Etsy" at 1280-1366). One row from ~1600px of window. */
 .line {
   display: flex;
   align-items: center;
@@ -134,7 +136,7 @@
 }
 
 .line_text {
-  flex: 1 1 360px;
+  flex: 1 1 620px;
   min-width: 0;
   display: flex;
   align-items: center;
@@ -263,6 +265,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  margin-left: auto;
 }
 
 .input {
