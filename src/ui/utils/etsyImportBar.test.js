@@ -7,7 +7,6 @@ import {
   initialXwdInput,
   isInterrupted,
   lineKey,
-  lineMeta,
   lineTitle,
   listingNotice,
   readXwdInput,
@@ -69,12 +68,10 @@ describe("what the bar says", () => {
     expect(etsyOrderIdOf(row())).toBe("ET3456789012");
   });
 
-  it("title, and the meta line with only the parts the row has", () => {
+  it("the title, with a fallback for a line without one", () => {
     expect(lineTitle(row())).toBe("Peony Garden Velvet");
     expect(lineTitle(row({ title: "  " }))).toBe("Order line without a title");
     expect(lineTitle(row({ title: null }))).toBe("Order line without a title");
-    expect(lineMeta(row())).toBe("Order ET3456789012 - qty 2 - listing 1234567890");
-    expect(lineMeta(row({ quantity: null, listingId: null }))).toBe("Order ET3456789012");
   });
 
   it("the title counts lines and names how many wait for the importer", () => {

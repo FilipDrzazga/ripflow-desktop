@@ -23,8 +23,8 @@ describe("an Etsy line never runs under its own buttons", () => {
     expect(rule(".actions")).toMatch(/margin-left:\s*auto;/);
   });
 
-  it("the text keeps one line and asks for 620px - enough for title, chip, order and suggestion at their narrowest", () => {
-    expect(rule(".line_text")).toMatch(/flex:\s*1 1 620px;/);
+  it("the text keeps one line and asks for 520px - enough for the name and its state badge", () => {
+    expect(rule(".line_text")).toMatch(/flex:\s*1 1 520px;/);
     expect(rule(".line_text")).toMatch(/white-space:\s*nowrap;/);
     expect(rule(".line_text")).not.toMatch(/flex-wrap:\s*wrap/);
   });

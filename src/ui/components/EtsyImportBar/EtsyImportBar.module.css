@@ -116,12 +116,11 @@
   /* White like the lines, so the scrollbar's track is not the bar's yellow (FILIP 2026-10-22). */
   background-color: var(--bg-white);
 }
-
-/* One order line = one row (FILIP 2026-10-22): what it is and why it stopped on the left, cut with an ellipsis
-   (the whole text on hover), the ways out and the actions on the right. The text never wraps inside itself: its
-   basis (620px) holds title + chip + order + suggestion at their narrowest, so a row with less room than that
-   for the text moves the actions to a line of their own, right-aligned, instead of letting the text run under
-   them (S2 2026-10-22: "Use" under "Open order in Etsy" at 1280-1366). One row from ~1600px of window. */
+/* One order line = one row (FILIP 2026-10-22): picture, the name with its state badge (the reason cut with an
+   ellipsis, everything in the badge's tooltip), the actions on the right with the ways out to Etsy at the very end
+   (FILIP 16:33). The text never wraps inside itself: its basis (520px) holds the name and a readable reason, so a
+   row with less room than that for the text moves the actions to a line of their own, right-aligned, instead of
+   letting the text run under them (S2 2026-10-22). One row from ~1280px of window, suggestion included. */
 .line {
   display: flex;
   align-items: center;
@@ -136,7 +135,7 @@
 }
 
 .line_text {
-  flex: 1 1 620px;
+  flex: 1 1 520px;
   min-width: 0;
   display: flex;
   align-items: center;
@@ -145,7 +144,7 @@
 }
 
 /* The listing's picture (EtsyThumb): a small rounded square, grey until it arrives or when there is none. An item of
-   the row of its own, before the text - not inside it, so the text keeps its measured 620px basis. */
+   the row of its own, before the text - not inside it, so the text keeps its basis. */
 .thumb {
   flex-shrink: 0;
   display: inline-flex;
@@ -174,150 +173,102 @@
 .line_title {
   flex: 0 1 auto;
   min-width: 60px;
-  max-width: 40%;
+  max-width: 50%;
   overflow: hidden;
   text-overflow: ellipsis;
   font-size: 14px;
   font-weight: 600;
 }
 
-/* The app's badge shape (DataList .rollback_badge / .override_badge): 6px corners, a 1px border a shade of the
-   text colour, 11px/600 (FILIP 2026-10-22, plan FILIP-2). */
-.chip {
-  flex-shrink: 0;
-  display: inline-flex;
-  align-items: center;
-  padding: 2px 7px;
-  border-radius: 6px;
-  border: 1px solid transparent;
-  font-size: 11px;
-  font-weight: 600;
-  white-space: nowrap;
-}
-
-.chip_warn {
-  background-color: #fffbeb;
-  border-color: rgba(253, 211, 77, 0.6);
-  color: #b45309;
-}
-
-.chip_bad {
-  background-color: #fef2f2;
-  border-color: rgba(220, 38, 38, 0.35);
-  color: #b91c1c;
-}
-
-.chip_wait {
-  background-color: #eff6ff;
-  border-color: rgba(37, 99, 235, 0.3);
-  color: #1d4ed8;
-}
-
-.line_meta {
-  flex-shrink: 0;
-  font-size: 12px;
-  color: var(--text-secondary);
-}
-
-.line_reason {
-  flex: 1 1 auto;
+/* The state badge (FILIP 2026-10-22 16:33: the icon with its words inside, not alone; 16:42: white and grey, minimal):
+   6px corners, a grey frame, grey words. Only the small icon carries the state's colour. It gives way before the name. */
+.status {
+  flex: 0 1 auto;
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  font-size: 13px;
-}
-
-.suggestion {
-  flex-shrink: 0;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  font-size: 12px;
-  font-weight: 600;
-  color: #1c5a99;
-}
-
-/* The two ways out to Etsy - outlined like the app's other secondary buttons (SewingReceive .ghost_btn), icons
-   only, square, in a group of their own before the name (FILIP-3). */
-.line_links {
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.icon_btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  box-sizing: border-box;
-  padding: 0;
-  line-height: 1;
-  border-radius: 8px;
+  gap: 5px;
+  padding: 3px 8px 3px 6px;
+  border-radius: 6px;
   border: 1px solid var(--border-grey);
   background-color: var(--bg-white);
   color: var(--text-secondary);
-  font: inherit;
-  font-size: 13px;
-  font-weight: 600;
-  white-space: nowrap;
-  cursor: pointer;
-  transition: background-color 0.12s ease, color 0.12s ease, border-color 0.12s ease;
-}
-
-.icon_spacer {
-  width: 32px;
-  height: 32px;
-}
-
-.icon_btn:hover {
-  background-color: var(--bg-grey);
-  border-color: var(--text-secondary);
-  color: var(--text-primary);
-}
-
-.open_btn_etsy {
-  color: #d5641c;
-}
-
-.link {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 0;
-  border: none;
-  background: none;
-  color: #2570c2;
-  font: inherit;
   font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
+  font-weight: 500;
 }
 
-.link:hover {
-  text-decoration: underline;
+.status_icon {
+  flex-shrink: 0;
+}
+
+.status_warn .status_icon {
+  color: #d97706;
+}
+
+.status_bad .status_icon {
+  color: #dc2626;
+}
+
+.status_wait .status_icon {
+  color: #2563eb;
+}
+
+.line_reason {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .actions {
   flex: 0 0 auto;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 4px;
   margin-left: auto;
 }
 
+/* The library's suggestion (E4c) beside the field it fills; the click only fills the field. */
+.suggestion_slot {
+  display: contents;
+}
+
+.suggestion {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 28px;
+  padding: 0 9px;
+  border-radius: 6px;
+  border: 1px solid var(--border-grey);
+  background-color: var(--bg-white);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  transition: background-color 0.12s ease;
+}
+
+.suggestion:hover:not(:disabled) {
+  background-color: var(--bg-grey);
+  color: var(--text-primary);
+}
+
+.suggestion:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
 .input {
-  width: 130px;
-  height: 32px;
+  width: 112px;
+  height: 30px;
   padding: 0 10px;
   border-radius: 8px;
   border: 1px solid var(--border-grey);
   background-color: var(--bg-white);
   color: var(--text-primary);
   font: inherit;
-  font-size: 14px;
+  font-size: 13px;
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.04em;
 }
@@ -342,36 +293,66 @@
   color: #a32d2d;
 }
 
-.primary,
-.secondary {
-  height: 32px;
-  padding: 0 14px;
+/* Icon buttons in the Batch tab's style (BatchHistory .action_btn, FILIP 2026-10-22 16:33), smaller (16:42): 28px, no
+   frame, grey, tinted on hover in the colour of what they do. */
+.action_btn {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
   border-radius: 8px;
-  font: inherit;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.primary {
-  border: 1px solid var(--bg-black);
-  background-color: var(--bg-black);
-  color: var(--text-white);
-}
-
-.secondary {
-  border: 1px solid var(--border-grey);
-  background-color: var(--bg-white);
   color: var(--text-secondary);
+  transition:
+    background-color 0.12s ease,
+    color 0.12s ease;
 }
 
-.secondary:hover:not(:disabled) {
-  background-color: var(--bg-grey);
-  color: var(--text-primary);
-}
-
-.primary:disabled,
-.secondary:disabled {
-  opacity: 0.45;
+.action_btn:disabled {
+  opacity: 0.35;
   cursor: default;
+}
+
+.action_success:hover:not(:disabled) {
+  background-color: #d1fae5;
+  color: #047857;
+}
+
+.action_danger:hover:not(:disabled) {
+  background-color: #ffe7e5;
+  color: #e63641;
+}
+
+.action_info:hover:not(:disabled) {
+  background-color: #dbeafe;
+  color: #1d4ed8;
+}
+
+/* The Etsy mark is grey like the rest and turns Etsy's orange on hover. */
+.action_etsy:hover:not(:disabled) {
+  background-color: #fdebd9;
+  color: #b4500f;
+}
+
+.actions_divider {
+  flex-shrink: 0;
+  width: 1px;
+  height: 20px;
+  margin: 0 2px;
+  background-color: var(--border-grey);
+}
+
+/* The two ways out to Etsy, at the right end of the actions (FILIP 2026-10-22 16:33). */
+.line_links {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.icon_spacer {
+  width: 28px;
+  height: 28px;
 }

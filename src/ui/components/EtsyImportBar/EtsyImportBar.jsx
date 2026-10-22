@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { LuChevronDown, LuTag } from "react-icons/lu";
+import { LuBan, LuChevronDown, LuCircleX, LuClock, LuRotateCw, LuSparkles, LuTag, LuTriangleAlert } from "react-icons/lu";
 import { SiEtsy } from "react-icons/si";
 import EtsyThumb from "./EtsyThumb";
 import ErrorBoundary from "../ErrorBoundary/ErrorBoundary";
@@ -20,19 +20,21 @@ import {
   initialXwdInput,
   isInterrupted,
   lineKey,
-  lineMeta,
   lineTitle,
   listingNotice,
   readXwdInput,
   retryConfirmMessage,
   retryNotice,
   stateChip,
-  stateHint,
+  statusText,
+  statusTitle,
   suggestionOf,
   suggestionText,
   withoutTyped,
 } from "../../utils/etsyImportBar";
 import styles from "./EtsyImportBar.module.css";
+
+const STATE_ICON = { warn: LuTriangleAlert, bad: LuCircleX, wait: LuClock };
 
 // Plan E4b: the order lines of the Etsy import that wait for a person, above the Inbox table, on EVERY station.
 // It only reads the list and WRITES REQUESTS (Retry with a typed XWD number, Dismiss); the copy into the inbox is
@@ -160,52 +162,36 @@ const EtsyImportBarContent = () => {
             {rows.map((row) => {
               const key = lineKey(row);
               const busy = busyKey === key;
-              const chip = stateChip(row);
-              const hint = stateHint(row, importerHere);
               const error = fieldError[key];
               const suggestion = suggestionOf(row);
+              const chip = stateChip(row);
+              const StateIcon = STATE_ICON[chip.tone] ?? LuTriangleAlert;
               return (
                 <li key={key} className={styles.line}>
                   <EtsyThumb listingId={row.listingId} enabled={open} />
-                  {/* The two ways out to Etsy, icons only, before the name (FILIP 2026-10-22, plan FILIP-3); the words are
-                      the tooltip and the accessible name. A line without a listing keeps the place, so names line up. */}
-                  <div className={styles.line_links}>
-                    <button type="button" className={styles.icon_btn} onClick={() => openEtsyOrder(etsyOrderIdOf(row))} title="Open order in Etsy" aria-label="Open order in Etsy">
-                      <SiEtsy size={15} className={styles.open_btn_etsy} />
-                    </button>
-                    {row.listingId ? (
-                      <button type="button" className={styles.icon_btn} onClick={() => handleListing(row)} title="Open listing in Etsy" aria-label="Open listing in Etsy">
-                        <LuTag size={15} />
-                      </button>
-                    ) : (
-                      <span className={styles.icon_spacer} aria-hidden="true" />
-                    )}
-                  </div>
                   <div className={styles.line_text}>
+                    {/* The name and the state with its reason (FILIP 2026-10-22 15:30 + 16:33): the order number lives behind
+                        the Etsy button and the quantity is not the person's question here. The reason is cut with an
+                        ellipsis; the state, the whole reason and the waiting hint are the badge's tooltip. */}
                     <span className={styles.line_title} title={lineTitle(row)}>
                       {lineTitle(row)}
                     </span>
-                    <span className={`${styles.chip} ${styles[`chip_${chip.tone}`]}`} title={hint ?? undefined}>
-                      {chip.text}
+                    <span className={`${styles.status} ${styles[`status_${chip.tone}`]}`} title={statusTitle(row, importerHere)}>
+                      <StateIcon size={13} className={styles.status_icon} role="img" aria-label={chip.text} />
+                      <span className={styles.line_reason}>{statusText(row, importerHere)}</span>
                     </span>
-                    <span className={styles.line_meta}>{lineMeta(row)}</span>
-                    {row.reason && (
-                      <span className={styles.line_reason} title={row.reason}>
-                        {row.reason}
-                      </span>
-                    )}
+                  </div>
+                  <div className={styles.actions}>
                     {suggestion && (
-                      <span className={styles.suggestion} title={suggestionText(suggestion)}>
-                        Suggestion XWD{suggestion}
+                      <span className={styles.suggestion_slot}>
                         {valueOf(row) !== suggestion && (
-                          <button type="button" className={styles.link} disabled={busy} onClick={() => setValue(row, suggestion)}>
-                            Use
+                          <button type="button" className={styles.suggestion} disabled={busy} onClick={() => setValue(row, suggestion)} title={suggestionText(suggestion)}>
+                            <LuSparkles size={12} />
+                            XWD{suggestion}
                           </button>
                         )}
                       </span>
                     )}
-                  </div>
-                  <div className={styles.actions}>
                     <input
                       className={`${styles.input} ${error ? styles.input_error : ""}`}
                       type="text"
@@ -222,12 +208,29 @@ const EtsyImportBarContent = () => {
                       }}
                       aria-invalid={error ? "true" : undefined}
                     />
-                    <button type="button" className={styles.primary} disabled={busy || !canRetry(row)} onClick={() => handleRetry(row)}>
-                      Retry
+                    {/* Icon buttons in the Batch tab's style (FILIP 2026-10-22 16:33); the words are the tooltip and the
+                        accessible name. */}
+                    <button type="button" className={`${styles.action_btn} ${styles.action_success}`} disabled={busy || !canRetry(row)} onClick={() => handleRetry(row)} title="Retry" aria-label="Retry">
+                      <LuRotateCw size={14} />
                     </button>
-                    <button type="button" className={styles.secondary} disabled={busy} onClick={() => handleDismiss(row)} title="This line is not a print - never import it">
-                      Not a print
+                    <button type="button" className={`${styles.action_btn} ${styles.action_danger}`} disabled={busy} onClick={() => handleDismiss(row)} title="Not a print - never import this line" aria-label="Not a print">
+                      <LuBan size={14} />
                     </button>
+                    <span className={styles.actions_divider} aria-hidden="true" />
+                    {/* The two ways out to Etsy at the right end (FILIP 2026-10-22 16:33). A line without a listing keeps
+                        the place, so the columns line up. */}
+                    <div className={styles.line_links}>
+                      <button type="button" className={`${styles.action_btn} ${styles.action_etsy}`} onClick={() => openEtsyOrder(etsyOrderIdOf(row))} title="Open order in Etsy" aria-label="Open order in Etsy">
+                        <SiEtsy size={13} />
+                      </button>
+                      {row.listingId ? (
+                        <button type="button" className={`${styles.action_btn} ${styles.action_info}`} onClick={() => handleListing(row)} title="Open listing in Etsy" aria-label="Open listing in Etsy">
+                          <LuTag size={14} />
+                        </button>
+                      ) : (
+                        <span className={styles.icon_spacer} aria-hidden="true" />
+                      )}
+                    </div>
                   </div>
                   {error && <div className={styles.field_error}>{error}</div>}
                 </li>

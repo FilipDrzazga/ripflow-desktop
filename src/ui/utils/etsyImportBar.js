@@ -52,17 +52,14 @@ export const stateHint = (row, importerHere) => {
     : "Retry requested - the importer station picks it up at its next check of Etsy.";
 };
 
-export const lineTitle = (row) => (typeof row.title === "string" && row.title.trim() !== "" ? row.title.trim() : "Order line without a title");
+// The words of a line's state badge (FILIP 2026-10-22 16:33): why it stopped - or, once a Retry is requested, who acts
+// next, which is what the person waits for then. The state itself is the badge's icon and colour.
+export const statusText = (row, importerHere) => stateHint(row, importerHere) ?? (typeof row.reason === "string" && row.reason.trim() !== "" ? row.reason : stateChip(row).text);
 
-// "Order ET3456789012 - qty 2 - listing 1234567890" (the parts the row has).
-export const lineMeta = (row) =>
-  [
-    `Order ${etsyOrderIdOf(row)}`,
-    Number.isInteger(row.quantity) ? `qty ${row.quantity}` : null,
-    row.listingId ? `listing ${row.listingId}` : null,
-  ]
-    .filter(Boolean)
-    .join(" - ");
+// The badge's tooltip: everything, uncut - the state, the reason and the hint.
+export const statusTitle = (row, importerHere) => [stateChip(row).text, row.reason, stateHint(row, importerHere)].filter((part) => typeof part === "string" && part.trim() !== "").join("\n");
+
+export const lineTitle = (row) => (typeof row.title === "string" && row.title.trim() !== "" ? row.title.trim() : "Order line without a title");
 
 export const barTitle = (rows) => {
   const count = rows.length;
