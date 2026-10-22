@@ -1,5 +1,15 @@
 [
   {
+    "version": "1.0.42",
+    "date": "2026-10-22",
+    "changes": [
+      {
+        "text": "Settings > Etsy: \"Import this order\" under the \"Check newest order\" result - after a confirmation, the station that runs the Etsy import imports that one order now, the same way the background import does (a file in the Inbox, or a line in the Etsy bar with the reason). The order is read from Etsy again and refused if it is not paid or already shipped; any other station shows why it cannot import",
+        "clients": ["all"]
+      }
+    ]
+  },
+  {
     "version": "1.0.41",
     "date": "2026-10-22",
     "changes": [
