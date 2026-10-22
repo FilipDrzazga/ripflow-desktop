@@ -100,10 +100,12 @@ export const createEtsyClient = ({ credentials, fetch, now = () => Date.now() })
     return refreshing;
   };
 
-  // GET <ETSY_API_BASE><path>. token: an explicit bearer (the sign-in, before anything is saved).
-  const get = async (path, { query, token } = {}) => {
+  // GET <ETSY_API_BASE><path>. token: an explicit bearer (the sign-in, before anything is saved). apiKeyOnly: an
+  // endpoint Etsy serves on the app key alone (a listing's images) - no bearer, so a station that has the key but
+  // is not signed in can ask too.
+  const get = async (path, { query, token, apiKeyOnly = false } = {}) => {
     const secrets = requireSecrets();
-    const bearer = token ?? (await accessToken());
+    const bearer = apiKeyOnly ? null : (token ?? (await accessToken()));
     const url = new URL(`${ETSY_API_BASE}${path}`);
     for (const [key, value] of Object.entries(query ?? {})) url.searchParams.set(key, String(value));
     let response;
@@ -111,7 +113,7 @@ export const createEtsyClient = ({ credentials, fetch, now = () => Date.now() })
       response = await fetch(url.toString(), {
         headers: {
           "x-api-key": `${secrets.keystring}:${secrets.sharedSecret}`,
-          Authorization: `Bearer ${bearer}`,
+          ...(bearer ? { Authorization: `Bearer ${bearer}` } : {}),
         },
       });
     } catch (err) {
@@ -216,13 +218,24 @@ export const createEtsyClient = ({ credentials, fetch, now = () => Date.now() })
     return get(`/shops/${shopId}/receipts/${receiptId}`);
   };
 
+  // The small picture of a listing for the Inbox bar (FILIP 2026-10-22): the 75x75 address of its first image
+  // (lowest rank), or null when the listing has none. getListingImages needs only the app key.
+  const listingThumbnailUrl = async (listingId) => {
+    if (!/^\d{1,20}$/.test(String(listingId ?? ""))) throw etsyError("ETSY_BAD_LISTING", "The Etsy listing number must be digits only.");
+    const body = await get(`/listings/${listingId}/images`, { apiKeyOnly: true });
+    const images = (Array.isArray(body?.results) ? body.results : []).filter((image) => typeof image?.url_75x75 === "string" && image.url_75x75 !== "");
+    if (images.length === 0) return null;
+    const rankOf = (image) => (Number.isFinite(image.rank) ? image.rank : Number.MAX_SAFE_INTEGER);
+    return images.reduce((best, image) => (rankOf(image) < rankOf(best) ? image : best)).url_75x75;
+  };
+
   const forgetToken = () => {
     cached = null;
   };
 
   const rateLimits = () => limits;
 
-  return { accessToken, get, completeSignIn, testConnection, listOpenReceipts, newestPaidReceipt, getReceipt, forgetToken, rateLimits };
+  return { accessToken, get, completeSignIn, testConnection, listOpenReceipts, newestPaidReceipt, getReceipt, listingThumbnailUrl, forgetToken, rateLimits };
 };
 
 export const summarizeReceipt = (receipt) => {

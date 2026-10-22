@@ -49,6 +49,7 @@ export const createEtsyImportRequests = ({
   dismiss, // dismissEtsyImport
   requestTick, // () => one tick now on this station
   openExternal, // async (url) => opens the address in the browser (shell.openExternal)
+  listingImage = async () => null, // async (listingId) => data: URL | null (helpers/etsyThumbnail.js)
 }) => {
   const guard = () => {
     if (!featureOn()) throw refusal("ETSY_DISABLED", "The Etsy import is not switched on for this shop.");
@@ -111,6 +112,15 @@ export const createEtsyImportRequests = ({
         if (!ETSY_ID_RE.test(id)) throw refusal("INVALID_ETSY_LISTING", "The Etsy listing is not named by its number.");
         await openExternal(`https://www.etsy.com/listing/${id}`);
         return {};
+      }),
+
+    // The listing's small picture for a line of the bar, as a data: URL (null: none, or not reachable now). Only the
+    // digits cross; main asks Etsy and keeps the answer (etsyThumbnail.js), so the bar may ask on every open.
+    listingImage: (listingId) =>
+      asyncAnswer("etsy-imports:listingImage", "Etsy listing picture failed", async () => {
+        const id = typeof listingId === "string" ? listingId.trim() : "";
+        if (!ETSY_ID_RE.test(id)) throw refusal("INVALID_ETSY_LISTING", "The Etsy listing is not named by its number.");
+        return { image: await listingImage(id) };
       }),
   };
 };

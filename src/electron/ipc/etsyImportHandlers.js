@@ -6,6 +6,8 @@ import { getSettings } from "../helpers/getSettings.js";
 import { requestEtsyImportTick, importEtsyReceiptNow } from "./etsyImportLoop.js";
 import { previewNewestEtsyOrder } from "./etsyPreview.js";
 import { toIpcError } from "../helpers/ipcError.js";
+import { createEtsyThumbnails } from "../helpers/etsyThumbnail.js";
+import { getEtsyParts } from "./etsyHandlers.js";
 
 // The Inbox bar's three calls (plan E4). The rules are in helpers/etsyImportRequests.js; this file only
 // supplies the real parts. Kept apart from etsyHandlers.js on purpose: that file is the station's Etsy
@@ -19,12 +21,17 @@ export function registerEtsyImportHandlers() {
     dismiss: dismissEtsyImport,
     requestTick: requestEtsyImportTick,
     openExternal: (url) => shell.openExternal(url),
+    listingImage: createEtsyThumbnails({
+      thumbnailUrl: (listingId) => getEtsyParts().client.listingThumbnailUrl(listingId),
+      fetch: (...args) => fetch(...args),
+    }),
   });
 
   ipcMain.handle("etsy-imports:list", () => requests.list());
   ipcMain.handle("etsy-imports:retry", (_event, request) => requests.retry(request));
   ipcMain.handle("etsy-imports:dismiss", (_event, request) => requests.dismiss(request));
   ipcMain.handle("etsy-imports:openListing", (_event, listingId) => requests.openListing(listingId));
+  ipcMain.handle("etsy-imports:listingImage", (_event, listingId) => requests.listingImage(listingId));
 
   // The dry run of Settings > Etsy: deliberately NOT behind featureOn - it is how a person finds out the flag is off.
   ipcMain.handle("etsy-imports:previewNewest", async () => {

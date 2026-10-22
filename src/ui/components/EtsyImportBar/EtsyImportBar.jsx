@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { LuChevronDown, LuTag } from "react-icons/lu";
 import { SiEtsy } from "react-icons/si";
+import EtsyThumb from "./EtsyThumb";
 import { useStore } from "../../store/useStore";
 import { usePollingPaused, useOnPollingResume } from "../../hooks/usePollingPaused";
 import { isFeatureEnabled } from "../../utils/featureVisibility";
@@ -164,6 +165,7 @@ const EtsyImportBar = () => {
               const suggestion = suggestionOf(row);
               return (
                 <li key={key} className={styles.line}>
+                  <EtsyThumb listingId={row.listingId} enabled={open} />
                   <div className={styles.line_text}>
                     <span className={styles.line_title} title={lineTitle(row)}>
                       {lineTitle(row)}

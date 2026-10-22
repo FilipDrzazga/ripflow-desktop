@@ -318,6 +318,10 @@ const api = Object.freeze({
       if (!isNonEmptyString(listingId)) throw new TypeError("Etsy listing number must be a non-empty string.");
       return ipcRenderer.invoke("etsy-imports:openListing", listingId);
     },
+    listingImage: (listingId) => {
+      if (typeof listingId !== "string" || !/^\d{1,20}$/.test(listingId)) throw new TypeError("Etsy listing number must be a string of digits.");
+      return ipcRenderer.invoke("etsy-imports:listingImage", listingId);
+    },
     previewNewest: () => ipcRenderer.invoke("etsy-imports:previewNewest"),
     importOrder: (receiptId) => {
       if (typeof receiptId !== "string" || !/^\d{1,20}$/.test(receiptId)) throw new TypeError("Etsy order number must be a string of digits.");
