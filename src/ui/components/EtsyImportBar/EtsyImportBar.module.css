@@ -139,8 +139,44 @@
 .links {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px 16px;
-  margin-top: 8px;
+  gap: 6px 8px;
+  margin-top: 10px;
+}
+
+/* The two ways out to Etsy - outlined like the app's other secondary buttons (SewingReceive .ghost_btn), each
+   with its own icon; the trailing arrow says it leaves the app. */
+.open_btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  box-sizing: border-box;
+  padding: 0 10px;
+  line-height: 1;
+  border-radius: 8px;
+  border: 1px solid var(--border-grey);
+  background-color: var(--bg-white);
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+}
+
+.open_btn:hover {
+  background-color: var(--bg-grey);
+  border-color: var(--text-secondary);
+  color: var(--text-primary);
+}
+
+.open_btn_etsy {
+  color: #d5641c;
+}
+
+.open_btn_out {
+  opacity: 0.6;
 }
 
 .link {
