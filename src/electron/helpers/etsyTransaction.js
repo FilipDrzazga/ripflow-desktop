@@ -26,11 +26,18 @@ export const xwdIdsIn = (value) => {
   return [...ids];
 };
 
+// The shop's own listings (FILIP 2026-10-22, read off the live shop: 791 of 791 SKUs that are only digits) carry
+// the pattern number as the SKU ALONE, without the XWD prefix, and every library number is six digits. Only a
+// SKU that is exactly six digits counts: any other all-digit SKU is not read as a pattern.
+const BARE_SKU_RE = /^\d{6}$/;
+
 // -> { xwd: "173706" } or { reason }. The SKU, every variation value and the title are read; the number
 // must be the same everywhere it appears, and appear somewhere.
 export const xwdOfTransaction = (transaction) => {
   const sources = [transaction?.sku, ...variationsOf(transaction).map((v) => v?.formatted_value), transaction?.title];
   const ids = new Set(sources.flatMap(xwdIdsIn));
+  const sku = text(transaction?.sku);
+  if (BARE_SKU_RE.test(sku)) ids.add(sku);
   if (ids.size === 0) return { reason: "No XWD pattern number in the SKU, the variations or the title of the order line." };
   if (ids.size > 1) return { reason: `The order line carries more than one XWD number (${[...ids].map((i) => `XWD${i}`).join(", ")}).` };
   return { xwd: [...ids][0] };

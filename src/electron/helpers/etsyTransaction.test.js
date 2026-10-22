@@ -38,6 +38,22 @@ describe("XWD in an order line", () => {
     expect(xwdOfTransaction(tx({ variations: [{ formatted_name: "Pattern", formatted_value: "XWD7" }] })).xwd).toBe("7");
   });
 
+  it("a SKU of exactly six digits is the number without the XWD prefix", () => {
+    expect(xwdOfTransaction(tx({ sku: "101323" })).xwd).toBe("101323");
+    expect(xwdOfTransaction(tx({ sku: " 101323 " })).xwd).toBe("101323");
+    expect(xwdOfTransaction(tx({ sku: "101323", title: "Octopus XWD101323" })).xwd).toBe("101323");
+  });
+
+  it("any other all-digit SKU is not a pattern number", () => {
+    for (const sku of ["12345", "1013231", "10132a", "101 323"]) {
+      expect(xwdOfTransaction(tx({ sku })).reason).toMatch(/No XWD/);
+    }
+  });
+
+  it("a bare SKU that disagrees with another number is a reason", () => {
+    expect(xwdOfTransaction(tx({ sku: "101323", title: "Rose XWD101324" })).reason).toMatch(/more than one XWD/);
+  });
+
   it("the same number in two places is one number", () => {
     expect(xwdOfTransaction(tx({ sku: "XWD9", title: "Rose XWD9" })).xwd).toBe("9");
   });
