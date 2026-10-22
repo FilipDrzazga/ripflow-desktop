@@ -65,3 +65,10 @@ describe("the Etsy bar of the Inbox", () => {
     expect(css).toMatch(/\.bar\s*\{[^}]*flex-shrink:\s*0;/s);
   });
 });
+
+describe("after a written Retry the field goes back to the database's number (W2)", () => {
+  it("clears the typed text only when the request was written (updated true), and after the reload", () => {
+    expect(bar).toMatch(/written = res\?\.success === true && res\.updated === true;/);
+    expect(bar).toMatch(/await load\(\);\s+if \(written && aliveRef\.current\) setTyped\(\(prev\) => withoutTyped\(prev, key\)\);/);
+  });
+});

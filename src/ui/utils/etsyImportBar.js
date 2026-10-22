@@ -103,3 +103,11 @@ export const dismissNotice = (res, row) => {
 };
 
 export const listingNotice = (res) => (res?.success ? null : failure(res, "Open listing failed"));
+
+// The typed texts of the fields without one line's entry: after a Retry that was written, the field goes back to the
+// number the database holds (`manualXwd`), which another station may have changed since the person typed.
+export const withoutTyped = (typed, key) => {
+  if (!Object.hasOwn(typed, key)) return typed;
+  const { [key]: _dropped, ...rest } = typed;
+  return rest;
+};

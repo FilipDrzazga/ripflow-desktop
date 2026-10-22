@@ -26,6 +26,7 @@ import {
   retryNotice,
   stateChip,
   stateHint,
+  withoutTyped,
 } from "../../utils/etsyImportBar";
 import styles from "./EtsyImportBar.module.css";
 
@@ -97,14 +98,19 @@ const EtsyImportBar = () => {
     }
     if (isInterrupted(row) && !(await showConfirm(retryConfirmMessage(row)))) return;
     setBusyKey(key);
+    let written = false;
     try {
       const res = await retryEtsyImport({ receiptId: row.receiptId, transactionId: row.transactionId, xwd: read.value });
+      written = res?.success === true && res.updated === true;
       notify(retryNotice(res, row), { stage: "etsy-import", code: res?.success ? "ETSY_RETRY" : "ETSY_RETRY_FAILED" });
     } catch (err) {
       notify({ type: "Error", title: "Etsy retry failed", message: err.message }, { stage: "etsy-import", code: "ETSY_RETRY_FAILED" });
     } finally {
       if (aliveRef.current) setBusyKey(null);
       await load();
+      // The request is in the database: from now on the field shows what the database holds (manualXwd), not
+      // what was typed here - another station may change it. After the reload, so it never flashes the old number.
+      if (written && aliveRef.current) setTyped((prev) => withoutTyped(prev, key));
     }
   };
 

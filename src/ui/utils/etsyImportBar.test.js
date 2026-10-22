@@ -119,3 +119,18 @@ describe("answers -> notices", () => {
     expect(listingNotice({ success: false, error: { message: "no browser" } })).toMatchObject({ type: "Error", message: "no browser" });
   });
 });
+
+describe("withoutTyped (W2: the field goes back to the database's number after a written Retry)", () => {
+  it("drops one line's entry and keeps the others, without touching the original", async () => {
+    const { withoutTyped } = await import("./etsyImportBar");
+    const typed = { "1:2": "173706", "3:4": "100234" };
+    expect(withoutTyped(typed, "1:2")).toEqual({ "3:4": "100234" });
+    expect(typed).toEqual({ "1:2": "173706", "3:4": "100234" });
+  });
+
+  it("a line that was never typed in is the same object back", async () => {
+    const { withoutTyped } = await import("./etsyImportBar");
+    const typed = { "3:4": "100234" };
+    expect(withoutTyped(typed, "1:2")).toBe(typed);
+  });
+});
