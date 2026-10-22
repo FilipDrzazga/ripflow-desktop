@@ -1,5 +1,27 @@
 [
   {
+    "version": "1.0.43",
+    "date": "2026-10-22",
+    "changes": [
+      {
+        "text": "Etsy orders show a \"Ship by\" badge (for example \"Ship by Tue 27 Oct\") on their file row in the Inbox and on their card in Production: red when the day is today or past, amber tomorrow, grey later. The date is Etsy's own and is corrected when Etsy moves it",
+        "clients": ["all"]
+      },
+      {
+        "text": "Etsy bar in the Inbox: one slim line per order line - the listing's picture, the name, a state badge with the reason, a suggested XWD number, Retry / Not a print and Open order / Open listing buttons. The bar slides open and shut and no longer adds a second scrollbar; an error in it can no longer take the window down",
+        "clients": ["all"]
+      },
+      {
+        "text": "Etsy import: it checks Etsy every 2 minutes (set in Settings > Etsy > Check Etsy every, 2-60 minutes, next to Etsy's daily allowance), and a Retry of a line whose order is no longer on the list is picked up too, or sent back to review with Etsy's answer",
+        "clients": ["all"]
+      },
+      {
+        "text": "Right-click menus: Open in Etsy carries the Etsy logo",
+        "clients": ["all"]
+      }
+    ]
+  },
+  {
     "version": "1.0.42",
     "date": "2026-10-22",
     "changes": [
