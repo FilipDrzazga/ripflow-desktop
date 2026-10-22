@@ -119,3 +119,31 @@ describe("manualXwdOf", () => {
     expect(() => manualXwdOf(fullWidth)).toThrow(/six digits/);
   });
 });
+
+describe("openListing (E4b)", () => {
+  it("opens the public listing page built from the digits only", async () => {
+    const openExternal = vi.fn(async () => {});
+    const { requests } = make({ openExternal });
+    expect(await requests.openListing(" 1234567890 ")).toEqual({ success: true });
+    expect(openExternal).toHaveBeenCalledWith("https://www.etsy.com/listing/1234567890");
+  });
+
+  it.each(["", "12ab", "1/../2", "https://evil.example", 42, null])("refuses %j and opens nothing", async (value) => {
+    const openExternal = vi.fn(async () => {});
+    const { requests } = make({ openExternal });
+    expect(await requests.openListing(value)).toMatchObject({ success: false, error: { code: "INVALID_ETSY_LISTING" } });
+    expect(openExternal).not.toHaveBeenCalled();
+  });
+
+  it("refuses with features.etsy off, like every call of the bar", async () => {
+    const openExternal = vi.fn(async () => {});
+    const { requests } = make({ featureOn: () => false, openExternal });
+    expect(await requests.openListing("1234567890")).toMatchObject({ success: false, error: { code: "ETSY_DISABLED" } });
+    expect(openExternal).not.toHaveBeenCalled();
+  });
+
+  it("a browser that cannot be started is an error answer, not a throw", async () => {
+    const { requests } = make({ openExternal: async () => { throw new Error("no browser"); } });
+    expect(await requests.openListing("1234567890")).toMatchObject({ success: false });
+  });
+});

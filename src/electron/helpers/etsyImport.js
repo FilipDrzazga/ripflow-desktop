@@ -1,5 +1,5 @@
 import path from "node:path";
-import { ETSY_IMPORT_STATE, ETSY_XWD_INPUT_RE } from "../../shared/constants.js";
+import { ETSY_IMPORT_INTERRUPTED_REASON, ETSY_IMPORT_STATE, ETSY_XWD_INPUT_RE } from "../../shared/constants.js";
 import { isImageFileName } from "../../shared/artworkFile.js";
 import { isEtsyFileName } from "../../shared/orderSource.js";
 import { resolveEtsyFabric } from "./etsyFabric.js";
@@ -221,7 +221,7 @@ export const createEtsyImporter = ({
     imports.setState({
       ...key,
       state: ETSY_IMPORT_STATE.NEEDS_REVIEW,
-      reason: "The import was interrupted and the file is not in the inbox - check PRINTED and Production before importing this line again.",
+      reason: ETSY_IMPORT_INTERRUPTED_REASON,
     });
     summary.needsReview += 1;
   };

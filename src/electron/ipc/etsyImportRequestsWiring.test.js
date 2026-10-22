@@ -55,3 +55,11 @@ describe("the Inbox bar's IPC", () => {
     expect(connection).not.toMatch(/db\.js|etsy-imports:/);
   });
 });
+
+describe("the listing link (E4b)", () => {
+  it("has a handler, a preload entry and the real browser opener", () => {
+    expect(handlers).toContain('ipcMain.handle("etsy-imports:openListing"');
+    expect(preload).toContain('ipcRenderer.invoke("etsy-imports:openListing", listingId)');
+    expect(handlers).toMatch(/openExternal: \(url\) => shell\.openExternal\(url\)/);
+  });
+});

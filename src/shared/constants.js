@@ -129,3 +129,8 @@ export const ETSY_IMPORT_OPEN_STATES = [ETSY_IMPORT_STATE.NEEDS_REVIEW, ETSY_IMP
 
 // A number typed into the bar (and the bare SKU, etsyTransaction.js): every library number is six digits.
 export const ETSY_XWD_INPUT_RE = /^\d{6}$/;
+
+// The reason the importer gives a PENDING line it found left over from an interrupted copy (the file may already
+// be in a batch). One text for the engine that writes it and the Inbox bar that asks for a confirmation on it.
+export const ETSY_IMPORT_INTERRUPTED_REASON =
+  "The import was interrupted and the file is not in the inbox - check PRINTED and Production before importing this line again.";

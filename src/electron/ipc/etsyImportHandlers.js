@@ -1,4 +1,4 @@
-import { ipcMain } from "electron";
+import { ipcMain, shell } from "electron";
 import { createEtsyImportRequests } from "../helpers/etsyImportRequests.js";
 import { listOpenEtsyImports, requestEtsyImportRetry, dismissEtsyImport } from "../helpers/db.js";
 import { getFeature } from "../helpers/shopProfile.js";
@@ -16,9 +16,11 @@ export function registerEtsyImportHandlers() {
     requestRetry: requestEtsyImportRetry,
     dismiss: dismissEtsyImport,
     requestTick: requestEtsyImportTick,
+    openExternal: (url) => shell.openExternal(url),
   });
 
   ipcMain.handle("etsy-imports:list", () => requests.list());
   ipcMain.handle("etsy-imports:retry", (_event, request) => requests.retry(request));
   ipcMain.handle("etsy-imports:dismiss", (_event, request) => requests.dismiss(request));
+  ipcMain.handle("etsy-imports:openListing", (_event, listingId) => requests.openListing(listingId));
 }

@@ -1,0 +1,253 @@
+/* Plan E4b: the Etsy lines that wait for a person, between the Inbox filters and the table. In the flow (not a
+   floating layer): the open list is capped to part of the window and scrolls inside itself, so at 960x560 the
+   table stays reachable. */
+.bar {
+  flex-shrink: 0;
+  margin: 0 20px;
+  border-radius: 12px;
+  border: 1px solid #f0c987;
+  background-color: #fff8ea;
+  color: var(--text-primary);
+  overflow: hidden;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 16px;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.header:hover {
+  background-color: #fff3d9;
+}
+
+.header_icon {
+  flex-shrink: 0;
+  color: #d5641c;
+}
+
+.header_title {
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.header_toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  max-height: 42vh;
+  overflow-y: auto;
+  border-top: 1px solid #f0c987;
+}
+
+.line {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px 24px;
+  padding: 12px 16px;
+  background-color: var(--bg-white);
+}
+
+.line + .line {
+  border-top: 1px solid var(--border-grey);
+}
+
+.line_text {
+  flex: 1 1 320px;
+  min-width: 0;
+}
+
+.line_head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.line_title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.chip {
+  flex-shrink: 0;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.chip_warn {
+  background-color: #fff3cd;
+  color: #856404;
+}
+
+.chip_bad {
+  background-color: #f8d7da;
+  color: #842029;
+}
+
+.chip_wait {
+  background-color: #e3effb;
+  color: #1c5a99;
+}
+
+.line_meta {
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.line_reason {
+  margin-top: 6px;
+  font-size: 13px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.line_hint {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #1c5a99;
+}
+
+.links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  margin-top: 8px;
+}
+
+.link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: #2570c2;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.link:hover {
+  text-decoration: underline;
+}
+
+.actions {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.field_label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.input {
+  width: 160px;
+  height: 34px;
+  padding: 0 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border-grey);
+  background-color: var(--bg-white);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+}
+
+.input:focus {
+  outline: 2px solid #2e7fd6;
+  outline-offset: 0;
+}
+
+.input:disabled {
+  background-color: var(--bg-grey);
+  color: var(--text-secondary);
+}
+
+.input_error {
+  border-color: #a32d2d;
+}
+
+.field_error {
+  font-size: 12px;
+  color: #a32d2d;
+}
+
+.buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.primary,
+.secondary {
+  height: 34px;
+  padding: 0 14px;
+  border-radius: 8px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.primary {
+  border: 1px solid var(--bg-black);
+  background-color: var(--bg-black);
+  color: var(--text-white);
+}
+
+.secondary {
+  border: 1px solid var(--border-grey);
+  background-color: var(--bg-white);
+  color: var(--text-secondary);
+}
+
+.secondary:hover:not(:disabled) {
+  background-color: var(--bg-grey);
+  color: var(--text-primary);
+}
+
+.primary:disabled,
+.secondary:disabled {
+  opacity: 0.45;
+  cursor: default;
+}

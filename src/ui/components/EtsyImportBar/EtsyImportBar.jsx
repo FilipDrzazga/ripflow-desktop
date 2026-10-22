@@ -1,0 +1,213 @@
+import { useCallback, useEffect, useRef, useState } from "react";
+import { LuChevronDown, LuChevronUp, LuExternalLink } from "react-icons/lu";
+import { SiEtsy } from "react-icons/si";
+import { useStore } from "../../store/useStore";
+import { usePollingPaused, useOnPollingResume } from "../../hooks/usePollingPaused";
+import { isFeatureEnabled } from "../../utils/featureVisibility";
+import { notify } from "../../utils/notify";
+import { openEtsyOrder } from "../../utils/orderLink";
+import { showConfirm } from "../../services/systemService";
+import { listEtsyImports, retryEtsyImport, dismissEtsyImport, openEtsyListing } from "../../services/etsyImportService";
+import {
+  ETSY_BAR_POLL_MS,
+  barTitle,
+  canRetry,
+  dismissConfirmMessage,
+  dismissNotice,
+  etsyOrderIdOf,
+  initialXwdInput,
+  isInterrupted,
+  lineKey,
+  lineMeta,
+  lineTitle,
+  listingNotice,
+  readXwdInput,
+  retryConfirmMessage,
+  retryNotice,
+  stateChip,
+  stateHint,
+} from "../../utils/etsyImportBar";
+import styles from "./EtsyImportBar.module.css";
+
+// Plan E4b: the order lines of the Etsy import that wait for a person, above the Inbox table, on EVERY station.
+// It only reads the list and WRITES REQUESTS (Retry with a typed XWD number, Dismiss); the copy into the inbox is
+// always the importer station's. Shown only with features.etsy and at least one open line. Opens INLINE - a modal
+// would be an aria-modal layer over the Inbox, and the operator is meant to keep working in the table.
+const EtsyImportBar = () => {
+  const shopProfile = useStore((s) => s.shopProfile);
+  const enabled = isFeatureEnabled("etsy", shopProfile);
+  const pollingPaused = usePollingPaused();
+
+  const [rows, setRows] = useState([]);
+  const [importerHere, setImporterHere] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [busyKey, setBusyKey] = useState(null);
+  const [typed, setTyped] = useState({}); // line key -> text of the field, once the person touched it
+  const [fieldError, setFieldError] = useState({}); // line key -> message
+  const aliveRef = useRef(true);
+  useEffect(() => {
+    aliveRef.current = true;
+    return () => {
+      aliveRef.current = false;
+    };
+  }, []);
+
+  // A list that could not be read keeps the rows on screen: the bar never blanks because of one bad answer.
+  const load = useCallback(async () => {
+    try {
+      const res = await listEtsyImports();
+      if (!aliveRef.current || !res?.success || !Array.isArray(res.data)) return;
+      setRows(res.data);
+      setImporterHere(res.importerHere === true);
+    } catch (err) {
+      console.error("[EtsyImportBar] list failed:", err);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (enabled) load();
+  }, [enabled, load]);
+
+  useEffect(() => {
+    if (!enabled || pollingPaused) return undefined;
+    const id = setInterval(load, ETSY_BAR_POLL_MS);
+    return () => clearInterval(id);
+  }, [enabled, pollingPaused, load]);
+
+  useOnPollingResume(() => {
+    if (enabled) load();
+  });
+
+  if (!enabled || rows.length === 0) return null;
+
+  const valueOf = (row) => typed[lineKey(row)] ?? initialXwdInput(row);
+
+  const setValue = (row, text) => {
+    const key = lineKey(row);
+    setTyped((prev) => ({ ...prev, [key]: text.replace(/\D/g, "").slice(0, 6) }));
+    setFieldError((prev) => (prev[key] ? { ...prev, [key]: null } : prev));
+  };
+
+  const handleRetry = async (row) => {
+    const key = lineKey(row);
+    const read = readXwdInput(valueOf(row));
+    if (!read.ok) {
+      setFieldError((prev) => ({ ...prev, [key]: read.message }));
+      return;
+    }
+    if (isInterrupted(row) && !(await showConfirm(retryConfirmMessage(row)))) return;
+    setBusyKey(key);
+    try {
+      const res = await retryEtsyImport({ receiptId: row.receiptId, transactionId: row.transactionId, xwd: read.value });
+      notify(retryNotice(res, row), { stage: "etsy-import", code: res?.success ? "ETSY_RETRY" : "ETSY_RETRY_FAILED" });
+    } catch (err) {
+      notify({ type: "Error", title: "Etsy retry failed", message: err.message }, { stage: "etsy-import", code: "ETSY_RETRY_FAILED" });
+    } finally {
+      if (aliveRef.current) setBusyKey(null);
+      await load();
+    }
+  };
+
+  const handleDismiss = async (row) => {
+    if (!(await showConfirm(dismissConfirmMessage(row)))) return;
+    const key = lineKey(row);
+    setBusyKey(key);
+    try {
+      const res = await dismissEtsyImport({ receiptId: row.receiptId, transactionId: row.transactionId });
+      notify(dismissNotice(res, row), { stage: "etsy-import", code: res?.success ? "ETSY_DISMISS" : "ETSY_DISMISS_FAILED" });
+    } catch (err) {
+      notify({ type: "Error", title: "Dismissing the Etsy line failed", message: err.message }, { stage: "etsy-import", code: "ETSY_DISMISS_FAILED" });
+    } finally {
+      if (aliveRef.current) setBusyKey(null);
+      await load();
+    }
+  };
+
+  const handleListing = async (row) => {
+    try {
+      const notice = listingNotice(await openEtsyListing(row.listingId));
+      if (notice) notify(notice, { stage: "etsy-import", code: "OPEN_ETSY_LISTING_FAILED" });
+    } catch (err) {
+      notify({ type: "Error", title: "Open listing failed", message: err.message }, { stage: "etsy-import", code: "OPEN_ETSY_LISTING_FAILED" });
+    }
+  };
+
+  return (
+    <section className={styles.bar} aria-label="Etsy order lines that need a person">
+      <button type="button" className={styles.header} onClick={() => setOpen((v) => !v)} aria-expanded={open}>
+        <SiEtsy size={16} className={styles.header_icon} />
+        <span className={styles.header_title}>{barTitle(rows)}</span>
+        <span className={styles.header_toggle}>
+          {open ? "Hide" : "Show"}
+          {open ? <LuChevronUp size={16} /> : <LuChevronDown size={16} />}
+        </span>
+      </button>
+      {open && (
+        <ul className={styles.list}>
+          {rows.map((row) => {
+            const key = lineKey(row);
+            const busy = busyKey === key;
+            const chip = stateChip(row);
+            const hint = stateHint(row, importerHere);
+            const error = fieldError[key];
+            return (
+              <li key={key} className={styles.line}>
+                <div className={styles.line_text}>
+                  <div className={styles.line_head}>
+                    <span className={styles.line_title} title={lineTitle(row)}>
+                      {lineTitle(row)}
+                    </span>
+                    <span className={`${styles.chip} ${styles[`chip_${chip.tone}`]}`}>{chip.text}</span>
+                  </div>
+                  <div className={styles.line_meta}>{lineMeta(row)}</div>
+                  {row.reason && <div className={styles.line_reason}>{row.reason}</div>}
+                  {hint && <div className={styles.line_hint}>{hint}</div>}
+                  <div className={styles.links}>
+                    <button type="button" className={styles.link} onClick={() => openEtsyOrder(etsyOrderIdOf(row))}>
+                      Open order in Etsy <LuExternalLink size={12} />
+                    </button>
+                    {row.listingId && (
+                      <button type="button" className={styles.link} onClick={() => handleListing(row)}>
+                        Open listing <LuExternalLink size={12} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+                <div className={styles.actions}>
+                  <label className={styles.field}>
+                    <span className={styles.field_label}>XWD number</span>
+                    <input
+                      className={`${styles.input} ${error ? styles.input_error : ""}`}
+                      type="text"
+                      inputMode="numeric"
+                      autoComplete="off"
+                      placeholder="six digits"
+                      value={valueOf(row)}
+                      disabled={busy || !canRetry(row)}
+                      onChange={(e) => setValue(row, e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && canRetry(row) && !busy) handleRetry(row);
+                      }}
+                      aria-invalid={error ? "true" : undefined}
+                    />
+                  </label>
+                  <div className={styles.buttons}>
+                    <button type="button" className={styles.primary} disabled={busy || !canRetry(row)} onClick={() => handleRetry(row)}>
+                      Retry
+                    </button>
+                    <button type="button" className={styles.secondary} disabled={busy} onClick={() => handleDismiss(row)} title="This line is not a print - never import it">
+                      Not a print
+                    </button>
+                  </div>
+                  {error && <div className={styles.field_error}>{error}</div>}
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </section>
+  );
+};
+
+export default EtsyImportBar;

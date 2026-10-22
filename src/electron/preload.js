@@ -314,6 +314,10 @@ const api = Object.freeze({
       if (!isPlainObject(line)) throw new TypeError("Etsy import line must be a plain object.");
       return ipcRenderer.invoke("etsy-imports:dismiss", { receiptId: line.receiptId, transactionId: line.transactionId });
     },
+    openListing: (listingId) => {
+      if (!isNonEmptyString(listingId)) throw new TypeError("Etsy listing number must be a non-empty string.");
+      return ipcRenderer.invoke("etsy-imports:openListing", listingId);
+    },
   }),
 
   update: Object.freeze({

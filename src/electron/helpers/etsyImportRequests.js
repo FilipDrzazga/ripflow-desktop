@@ -41,6 +41,7 @@ export const createEtsyImportRequests = ({
   requestRetry, // requestEtsyImportRetry
   dismiss, // dismissEtsyImport
   requestTick, // () => one tick now on this station
+  openExternal, // async (url) => opens the address in the browser (shell.openExternal)
 }) => {
   const guard = () => {
     if (!featureOn()) throw refusal("ETSY_DISABLED", "The Etsy import is not switched on for this shop.");
@@ -50,6 +51,16 @@ export const createEtsyImportRequests = ({
     try {
       guard();
       return { success: true, ...fn() };
+    } catch (err) {
+      if (err.type !== "Warning") console.error(`[etsy-import] ${stage} failed:`, err);
+      return { success: false, error: toIpcError(err, stage, title) };
+    }
+  };
+
+  const asyncAnswer = async (stage, title, fn) => {
+    try {
+      guard();
+      return { success: true, ...(await fn()) };
     } catch (err) {
       if (err.type !== "Warning") console.error(`[etsy-import] ${stage} failed:`, err);
       return { success: false, error: toIpcError(err, stage, title) };
@@ -83,6 +94,16 @@ export const createEtsyImportRequests = ({
       answer("etsy-imports:dismiss", "Dismissing the Etsy line failed", () => {
         const { updated } = written(dismiss(keyOf(request)));
         return { updated };
+      }),
+
+    // The public page of a listing, for a line whose SKU the person has to look up. The address is built here from
+    // the digits only - the renderer never sends a URL.
+    openListing: (listingId) =>
+      asyncAnswer("etsy-imports:openListing", "Open listing failed", async () => {
+        const id = typeof listingId === "string" ? listingId.trim() : "";
+        if (!ETSY_ID_RE.test(id)) throw refusal("INVALID_ETSY_LISTING", "The Etsy listing is not named by its number.");
+        await openExternal(`https://www.etsy.com/listing/${id}`);
+        return {};
       }),
   };
 };

@@ -22,6 +22,7 @@ import { isFeatureEnabled, isViewEnabled } from "./utils/featureVisibility";
 import { isProfileUnconfigured } from "./utils/shopProfileData";
 import { reloadResultNotice } from "./utils/shopProfileView";
 import InboxWatchPill from "./components/InboxWatchPill/InboxWatchPill";
+import EtsyImportBar from "./components/EtsyImportBar/EtsyImportBar";
 import { PROFILE_STATUS } from "./utils/profileStatus";
 import { notify } from "./utils/notify";
 import { getSettings } from "./services/settingsService";
@@ -357,6 +358,7 @@ const App = () => {
               <div className={styles.print_view}>
                 <DataOverviewSection onNavigate={setActiveView} />
                 <DataFilters />
+                <EtsyImportBar />
                 <InboxWatchPill />
                 <ErrorBoundary>
                   <DataList />
