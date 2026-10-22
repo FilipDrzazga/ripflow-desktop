@@ -24,6 +24,13 @@ const keyOf = (request) => {
   return { receiptId, transactionId };
 };
 
+// "Import this order" (E5): the ONLY thing the renderer sends is the receipt number - digits, or a refusal.
+export const etsyReceiptIdOf = (value) => {
+  const receiptId = typeof value === "string" ? value.trim() : "";
+  if (!ETSY_ID_RE.test(receiptId)) throw refusal("INVALID_ETSY_RECEIPT", "The Etsy order is not named by its number.");
+  return receiptId;
+};
+
 // -> the number to store (six digits) or null for "judge the line again as it is".
 export const manualXwdOf = (value) => {
   if (value === null || value === undefined) return null;

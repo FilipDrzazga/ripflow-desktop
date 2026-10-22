@@ -109,3 +109,28 @@ export const previewLineView = (line) => {
 };
 
 export const previewDate = (iso) => day(iso);
+
+// ---- "Import this order" (plan E5): the importer imports the order the dry run showed, once ------------------------
+
+export const importOrderConfirm = (receiptId) =>
+  `Import Etsy order ET${receiptId} now?\n\nIts lines go to the inbox like any Etsy order (or to the Etsy bar when they cannot be read). If this order was already printed by hand, it will be in the inbox twice. The import start date does not change.`;
+
+const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
+
+// The IPC answer -> the notify() payload. busy and "did not run" are Warnings; a pass that stopped half way is an Error.
+export const importOrderNotice = (res, receiptId) => {
+  const title = `Etsy order ET${receiptId}`;
+  if (!res?.success) return etsyResultNotice(res, { title: "Etsy order import" });
+  if (res.busy) return { type: "Warning", title, message: "The Etsy import is running right now - try again in a moment." };
+  if (!res.ran) return { type: "Warning", title, message: `Not imported: ${res.reason ?? "no reason given"}.` };
+  const counts = [
+    `${plural(res.imported ?? 0, "file")} imported`,
+    res.needsReview ? `${plural(res.needsReview, "line")} in the Etsy bar` : null,
+    res.failed ? `${plural(res.failed, "line")} failed` : null,
+    res.skipped ? `${plural(res.skipped, "line")} already in the import list` : null,
+  ]
+    .filter(Boolean)
+    .join(", ");
+  if (res.reason) return { type: "Error", title, message: `Stopped: ${res.reason}. So far: ${counts}.` };
+  return { type: res.failed || res.needsReview ? "Warning" : "Success", title, message: `${counts}.` };
+};

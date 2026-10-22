@@ -13,14 +13,16 @@
 //   libraryPath:   config.json etsyLibraryPath
 //   since:         epoch seconds the import was switched on, or null
 //   etsyStatus:    etsyCredentials.status(), or null when it could not be read
-export const etsyImportGate = ({ paused, dbOpen, featureOn, enabled, storageSet, libraryPath, since, etsyStatus }) => {
+//   anyStartDate:  true only for "Import this order" (E5): a person named ONE order, so the start date - which
+//                  only decides which orders the tick LISTS - is not asked. Every other line still is.
+export const etsyImportGate = ({ paused, dbOpen, featureOn, enabled, storageSet, libraryPath, since, etsyStatus, anyStartDate = false }) => {
   if (paused) return "the station sleeps or is locked";
   if (!dbOpen) return "there is no database";
   if (featureOn !== true) return "features.etsy is off in the shop profile (or the profile is not loaded)";
   if (enabled !== true) return "this station is not switched on as the Etsy importer (Settings > Etsy)";
   if (!storageSet) return "the storage folder is not set";
   if (!libraryPath) return "the Etsy library folder is not set (Settings > Etsy)";
-  if (!Number.isInteger(since) || since <= 0) return "the import has no start date";
+  if (anyStartDate !== true && (!Number.isInteger(since) || since <= 0)) return "the import has no start date";
   if (!etsyStatus) return "the Etsy key cannot be read";
   if (!etsyStatus.connected || !etsyStatus.shopId) return "this station is not connected to Etsy (Settings > Etsy)";
   return null;

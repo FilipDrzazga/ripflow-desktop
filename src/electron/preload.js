@@ -319,6 +319,10 @@ const api = Object.freeze({
       return ipcRenderer.invoke("etsy-imports:openListing", listingId);
     },
     previewNewest: () => ipcRenderer.invoke("etsy-imports:previewNewest"),
+    importOrder: (receiptId) => {
+      if (typeof receiptId !== "string" || !/^\d{1,20}$/.test(receiptId)) throw new TypeError("Etsy order number must be a string of digits.");
+      return ipcRenderer.invoke("etsy-imports:importOrder", receiptId);
+    },
   }),
 
   update: Object.freeze({

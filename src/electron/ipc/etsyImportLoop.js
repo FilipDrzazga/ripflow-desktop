@@ -19,6 +19,8 @@ const FIRST_TICK_DELAY_MS = 60 * 1000;
 
 // The running loop's tick, for requestEtsyImportTick; null before the start and after the stop.
 let runNow = null;
+// The running loop's one-order import, for importEtsyReceiptNow; null outside the loop's life, like runNow.
+let importNow = null;
 
 const libraryPath = () => getSettings().etsyLibraryPath ?? "";
 
@@ -30,7 +32,8 @@ const storagePathOrNull = () => {
   }
 };
 
-export const gateReason = (isPaused) => {
+// anyStartDate: "Import this order" (E5) - the same gate without the start date.
+export const gateReason = (isPaused, { anyStartDate = false } = {}) => {
   let etsyStatus = null;
   try {
     etsyStatus = getEtsyParts().credentials.status();
@@ -47,13 +50,15 @@ export const gateReason = (isPaused) => {
     libraryPath: settings.etsyLibraryPath ?? "",
     since: getEtsyImportSince(),
     etsyStatus,
+    anyStartDate,
   });
 };
 
 export const startEtsyImportLoop = ({ isPaused }) => {
   const tick = createEtsyImporter({
-    gate: () => gateReason(isPaused),
+    gate: (options) => gateReason(isPaused, options),
     listReceipts: () => getEtsyParts().client.listOpenReceipts({ minCreated: getEtsyImportSince() }),
+    getReceipt: (receiptId) => getEtsyParts().client.getReceipt(receiptId),
     getFabrics: getAllFabrics,
     getFabricMap: getEtsyFabricMap,
     getProfile,
@@ -101,8 +106,24 @@ export const startEtsyImportLoop = ({ isPaused }) => {
     }
     return run();
   };
+  // "Import this order" (E5) shares the tick's `running`: never beside a tick, and a tick that comes due meanwhile
+  // skips like it does beside another tick. A request for a tick that arrived meanwhile runs right after.
+  importNow = async (receiptId) => {
+    if (running) return { busy: true };
+    running = true;
+    try {
+      return await tick.importReceipt(receiptId);
+    } finally {
+      running = false;
+      if (again) {
+        again = false;
+        run().catch((err) => console.error("[etsy-import] tick after the order import failed:", err));
+      }
+    }
+  };
   return () => {
     runNow = null;
+    importNow = null;
     clearTimeout(first);
     clearInterval(timer);
   };
@@ -112,4 +133,11 @@ export const startEtsyImportLoop = ({ isPaused }) => {
 // is not the importer the gate closes the tick at once, so the call is harmless anywhere.
 export const requestEtsyImportTick = () => {
   if (runNow) runNow().catch((err) => console.error("[etsy-import] tick on request failed:", err));
+};
+
+// "Import this order" from Settings > Etsy (E5). -> { busy: true } while a tick runs, else the engine's summary
+// ({ ran, reason, imported, needsReview, failed, skipped }). receiptId: digits, checked by the caller.
+export const importEtsyReceiptNow = async (receiptId) => {
+  if (!importNow) return { ran: false, reason: "the Etsy import has not started yet in this window", imported: 0, needsReview: 0, failed: 0, skipped: 0 };
+  return importNow(receiptId);
 };

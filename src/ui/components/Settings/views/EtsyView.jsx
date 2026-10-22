@@ -1,11 +1,11 @@
 import { useState, useEffect } from "react";
-import { LuSave, LuLink, LuPlugZap, LuUnlink, LuTrash2, LuFolderOpen, LuScanSearch } from "react-icons/lu";
-import { previewNewestEtsyOrder } from "../../../services/etsyImportService";
+import { LuSave, LuLink, LuPlugZap, LuUnlink, LuTrash2, LuFolderOpen, LuScanSearch, LuDownload } from "react-icons/lu";
+import { previewNewestEtsyOrder, importEtsyOrder } from "../../../services/etsyImportService";
 import { getEtsyStatus, saveEtsyKey, connectEtsy, testEtsyConnection, disconnectEtsy, removeEtsyKey } from "../../../services/etsyService";
 import { getSettings, setSettings, selectFolder } from "../../../services/settingsService";
 import { showConfirm } from "../../../services/systemService";
 import { notify } from "@/utils/notify";
-import { etsyStatusLine, etsyResultNotice, etsyTestRows, previewOrderNotes, previewLineView, previewDate } from "@/utils/etsyView";
+import { etsyStatusLine, etsyResultNotice, etsyTestRows, previewOrderNotes, previewLineView, previewDate, importOrderConfirm, importOrderNotice } from "@/utils/etsyView";
 import sharedStyles from "./SettingsView.module.css";
 import styles from "./EtsyView.module.css";
 
@@ -114,6 +114,20 @@ const EtsyView = () => {
     setCheck(null);
     const res = await run("check", previewNewestEtsyOrder, { title: "Check newest order", success: "Checked - nothing was imported." });
     if (res?.success) setCheck(res);
+  };
+
+  // "Import this order" (E5): only the number goes to main, which fetches the order from Etsy again and runs the
+  // importer's own path. Only the importer station does it; any other one gets the reason back.
+  const handleImportOrder = async (receiptId) => {
+    if (!(await showConfirm(importOrderConfirm(receiptId)))) return;
+    setBusy("import");
+    try {
+      notify(importOrderNotice(await importEtsyOrder(receiptId), receiptId));
+    } catch (err) {
+      notify({ type: "Error", title: "Etsy order import failed", message: err.message });
+    } finally {
+      setBusy(null);
+    }
   };
 
   const handleDisconnect = async () => {
@@ -266,6 +280,19 @@ const EtsyView = () => {
                 </div>
               );
             })}
+            {check.receipt?.receiptId && (
+              <div className={styles.buttons}>
+                <button
+                  className={sharedStyles.browse_btn}
+                  onClick={() => handleImportOrder(check.receipt.receiptId)}
+                  disabled={isBusy}
+                  title="Imports this one order now, on the station that is switched On - the import start date does not change"
+                >
+                  <LuDownload size={14} />
+                  {busy === "import" ? "Importing..." : "Import this order"}
+                </button>
+              </div>
+            )}
           </div>
         )}
 

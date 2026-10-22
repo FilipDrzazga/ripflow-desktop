@@ -13,3 +13,6 @@ export const openEtsyListing = (listingId) =>
 // Settings > Etsy > Check newest order: a dry run, nothing is written. -> { receipt, lines, gate } or { success: false, errors }.
 // 60 s: the Etsy call, a listing of the pattern folder on the share and the catalogue.
 export const previewNewestEtsyOrder = () => withTimeout(window.api.etsyImports.previewNewest(), 60_000, "etsy-imports:previewNewest");
+// "Import this order" (E5): the importer station imports ONE order now. -> { busy } or { ran, reason, imported, needsReview,
+// failed, skipped }, or { success: false, errors }. 120 s: the Etsy call plus a copy per line to the share.
+export const importEtsyOrder = (receiptId) => withTimeout(window.api.etsyImports.importOrder(String(receiptId)), 120_000, "etsy-imports:importOrder");

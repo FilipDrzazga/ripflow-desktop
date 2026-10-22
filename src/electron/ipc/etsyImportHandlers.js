@@ -1,9 +1,9 @@
 import { ipcMain, shell } from "electron";
-import { createEtsyImportRequests } from "../helpers/etsyImportRequests.js";
+import { createEtsyImportRequests, etsyReceiptIdOf } from "../helpers/etsyImportRequests.js";
 import { listOpenEtsyImports, requestEtsyImportRetry, dismissEtsyImport } from "../helpers/db.js";
 import { getFeature } from "../helpers/shopProfile.js";
 import { getSettings } from "../helpers/getSettings.js";
-import { requestEtsyImportTick } from "./etsyImportLoop.js";
+import { requestEtsyImportTick, importEtsyReceiptNow } from "./etsyImportLoop.js";
 import { previewNewestEtsyOrder } from "./etsyPreview.js";
 import { toIpcError } from "../helpers/ipcError.js";
 
@@ -32,6 +32,16 @@ export function registerEtsyImportHandlers() {
       return { success: true, ...(await previewNewestEtsyOrder()) };
     } catch (error) {
       return { success: false, errors: [toIpcError(error, "etsy-preview", "Etsy check failed")] };
+    }
+  });
+
+  // "Import this order" (E5): only the number crosses; main fetches the order from Etsy itself. Not behind
+  // featureOn here - the import's own gate asks it (with everything else) and says which one is missing.
+  ipcMain.handle("etsy-imports:importOrder", async (_event, receiptId) => {
+    try {
+      return { success: true, ...(await importEtsyReceiptNow(etsyReceiptIdOf(receiptId))) };
+    } catch (error) {
+      return { success: false, errors: [toIpcError(error, "etsy-import-order", "Etsy order import failed")] };
     }
   });
 }

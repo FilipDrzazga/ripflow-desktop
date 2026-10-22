@@ -191,11 +191,20 @@ export const createEtsyClient = ({ credentials, fetch, now = () => Date.now() })
     return receipts?.results?.[0] ?? null;
   };
 
+  // ONE receipt of the connected shop, with its lines (getShopReceipt), for "Import this order" (E5). The number
+  // goes into the path, so anything but digits is refused before a request is made.
+  const getReceipt = async (receiptId) => {
+    const { shopId } = credentials.status();
+    if (!shopId) throw etsyError("ETSY_NOT_CONNECTED", "This station is not connected to Etsy. Press Connect.");
+    if (!/^\d{1,20}$/.test(String(receiptId ?? ""))) throw etsyError("ETSY_BAD_RECEIPT", "The Etsy order number must be digits only.");
+    return get(`/shops/${shopId}/receipts/${receiptId}`);
+  };
+
   const forgetToken = () => {
     cached = null;
   };
 
-  return { accessToken, get, completeSignIn, testConnection, listOpenReceipts, newestPaidReceipt, forgetToken };
+  return { accessToken, get, completeSignIn, testConnection, listOpenReceipts, newestPaidReceipt, getReceipt, forgetToken };
 };
 
 export const summarizeReceipt = (receipt) => {

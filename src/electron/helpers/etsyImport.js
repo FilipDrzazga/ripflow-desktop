@@ -42,6 +42,8 @@ import {
 //   written with the number its listing title points to in the library (etsySuggestion.js), when exactly one does.
 //   Only a hint for the bar: it is never used to name or copy a file. Not finding one, or not being able to look,
 //   costs nothing - the line is recorded without it.
+// - IMPORT THIS ORDER (E5): one receipt a person named runs through the same lines as the tick (runReceipts), with
+//   the tick's gate minus the start date, after Etsy confirms it is paid and open (oneOffRefusal).
 
 // A PENDING row younger than this may belong to a copy another process is making right now.
 export const STALE_PENDING_MS = 10 * 60 * 1000;
@@ -68,9 +70,22 @@ const xwdOf = (transaction, manualXwd) => {
   return { xwd: typed };
 };
 
+// Why "Import this order" (E5) must not take this receipt, or null. The same orders the tick lists (paid, not
+// shipped, not cancelled) and nothing else: Etsy's own status must be "paid" (= paid and ready for shipping);
+// anything Etsy did not say is a "no".
+export const oneOffRefusal = (receipt, receiptId) => {
+  if (!receipt || idOf(receipt.receipt_id) !== receiptId) return `Etsy did not send order ET${receiptId}.`;
+  if (receipt.is_paid !== true) return `Order ET${receiptId} is not paid.`;
+  if (receipt.is_shipped !== false) return `Order ET${receiptId} is already shipped (or Etsy did not say).`;
+  const status = typeof receipt.status === "string" ? receipt.status.trim().toLowerCase() : "";
+  if (status !== "paid") return `Order ET${receiptId} has the status "${receipt.status ?? "unknown"}" - only a paid order waiting for shipping is imported.`;
+  return null;
+};
+
 export const createEtsyImporter = ({
-  gate, // () => null | "reason the tick must not run"
+  gate, // ({ anyStartDate }?) => null | "reason the tick must not run"
   listReceipts, // async () => receipts[]
+  getReceipt = async () => null, // async (receiptId) => one receipt with its lines, fetched from Etsy (E5)
   getFabrics, // () => [{ name }] | null
   getFabricMap, // () => [{ etsyKey, fabricName }] | null
   getProfile, // () => shop profile | null
@@ -352,28 +367,57 @@ export const createEtsyImporter = ({
     await copyClaimed(plan, summary);
   };
 
+  // Every line of every receipt through processLine - the ONE way a line is imported, for the tick and for
+  // "Import this order" alike. The library is listed once per pass, and only when a line gets that far.
+  const runReceipts = async (receipts, summary) => {
+    let listing = null;
+    const library = () => {
+      if (!listing) listing = filesOf(libraryRoot());
+      return listing;
+    };
+    for (const receipt of Array.isArray(receipts) ? receipts : []) {
+      const transactions = Array.isArray(receipt?.transactions) ? receipt.transactions : [];
+      for (let i = 0; i < transactions.length; i += 1) {
+        await processLine({ receipt, transaction: transactions[i], index: i + 1, total: transactions.length, library }, summary);
+      }
+    }
+  };
+
+  const stoppedReason = (err) => (err instanceof EtsyEnvironmentError ? err.message : `Etsy import stopped: ${err.message ?? err}`);
+
+  const emptySummary = () => ({ ran: false, reason: null, imported: 0, needsReview: 0, failed: 0, skipped: 0 });
+
   // One pass. Never throws: the answer says what happened.
   const tick = async () => {
-    const summary = { ran: false, reason: null, imported: 0, needsReview: 0, failed: 0, skipped: 0 };
+    const summary = emptySummary();
     const blocked = gate();
     if (blocked) return { ...summary, reason: blocked };
     summary.ran = true;
     try {
-      const receipts = await listReceipts();
-      // The library is listed once per tick, and only when a line gets that far.
-      let listing = null;
-      const library = () => {
-        if (!listing) listing = filesOf(libraryRoot());
-        return listing;
-      };
-      for (const receipt of Array.isArray(receipts) ? receipts : []) {
-        const transactions = Array.isArray(receipt?.transactions) ? receipt.transactions : [];
-        for (let i = 0; i < transactions.length; i += 1) {
-          await processLine({ receipt, transaction: transactions[i], index: i + 1, total: transactions.length, library }, summary);
-        }
-      }
+      await runReceipts(await listReceipts(), summary);
     } catch (err) {
-      return { ...summary, reason: err instanceof EtsyEnvironmentError ? err.message : `Etsy import stopped: ${err.message ?? err}` };
+      return { ...summary, reason: stoppedReason(err) };
+    }
+    return summary;
+  };
+
+  // "Import this order" (E5): ONE receipt a person named, on the importer station only. The same gate as the tick
+  // but without the start date (the date only decides what the tick LISTS); the receipt is fetched from Etsy here,
+  // never taken from the screen, and must still be paid and open; then the same runReceipts as the tick, so a line
+  // that already has a row is treated exactly as the tick treats it (never a second copy). The start date itself
+  // is never touched. Never throws: ran false = nothing was looked at, with the reason.
+  tick.importReceipt = async (receiptId) => {
+    const summary = emptySummary();
+    const blocked = gate({ anyStartDate: true });
+    if (blocked) return { ...summary, reason: blocked };
+    try {
+      const receipt = await getReceipt(receiptId);
+      const refused = oneOffRefusal(receipt, receiptId);
+      if (refused) return { ...summary, reason: refused };
+      summary.ran = true;
+      await runReceipts([receipt], summary);
+    } catch (err) {
+      return { ...summary, reason: stoppedReason(err) };
     }
     return summary;
   };
