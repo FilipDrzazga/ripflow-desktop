@@ -32,7 +32,9 @@ import {
 // - A problem of the ENVIRONMENT (library unreachable, a folder that cannot be read) is not a verdict on the
 //   order: it ends the tick and leaves the line without a row, so the next tick tries it again.
 // - RETRY (E4) is a person's request, written from the Inbox bar of ANY station; only this importer acts on it,
-//   and only for a line of an order Etsy still lists as open. The XWD number typed in (manualXwd) replaces the
+//   and only for a line of an order Etsy still says is paid and open - the tick's list, or, for an order the list
+//   does not hold (older than the start date, or no longer open), the order fetched by its number (retryUnlisted):
+//   a refused one goes back to NEEDS_REVIEW with Etsy's answer. The XWD number typed in (manualXwd) replaces the
 //   one read from the line - six digits, checked here as well as in the IPC. The line moves on by a CAS
 //   (RETRY -> PENDING, or RETRY -> NEEDS_REVIEW with the NEW reason), so a person who dismissed it in the
 //   meantime wins, and the copy is the same claim-less half of copyIn. DISMISSED is never looked at again.
@@ -47,6 +49,10 @@ import {
 
 // A PENDING row younger than this may belong to a copy another process is making right now.
 export const STALE_PENDING_MS = 10 * 60 * 1000;
+
+// How many orders outside the tick's list one tick fetches for their RETRY lines (retryUnlisted); the rest wait
+// for the next tick. A bound on the Etsy calls of a tick, not a limit a person reaches by hand.
+export const MAX_UNLISTED_RETRY_ORDERS = 10;
 
 // Longest full path the import writes. Windows' MAX_PATH is 260 and the PRINTED copy lives deeper.
 const MAX_PATH_LENGTH = 240;
@@ -91,7 +97,7 @@ export const createEtsyImporter = ({
   getProfile, // () => shop profile | null
   storageRoot, // () => absolute path of the inbox root (storagePath)
   libraryRoot, // () => absolute path of the Etsy pattern folder
-  imports, // { get, claim, setState, move } - the etsy_imports functions of db.js
+  imports, // { get, claim, setState, move, listRetries } - the etsy_imports functions of db.js
   fs, // { readdir, stat, copyFile, unlink, constants }
   renameNoOverwrite,
   parse, // parsePrintFileName
@@ -339,7 +345,7 @@ export const createEtsyImporter = ({
     await copyIn(prepared.plan, summary, details);
   };
 
-  // A RETRY row of a line Etsy still lists (E4). The line is judged again - with the number typed in, when there
+  // A RETRY row of a line of an open order (E4). The line is judged again - with the number typed in, when there
   // is one - and leaves RETRY only by a CAS: a person who dismissed it meanwhile, or another tick that moved it,
   // makes this one do nothing. manual_xwd stays on the row either way, so the bar shows what was tried.
   const retryLine = async (row, line, summary) => {
@@ -369,16 +375,56 @@ export const createEtsyImporter = ({
 
   // Every line of every receipt through processLine - the ONE way a line is imported, for the tick and for
   // "Import this order" alike. The library is listed once per pass, and only when a line gets that far.
-  const runReceipts = async (receipts, summary) => {
+  // `only` (transaction => boolean) skips the other lines; their place in the order (index / total) stays.
+  // -> the receipts it went through (the tick's list, for retryUnlisted).
+  const runReceipts = async (receipts, summary, only = () => true) => {
     let listing = null;
     const library = () => {
       if (!listing) listing = filesOf(libraryRoot());
       return listing;
     };
-    for (const receipt of Array.isArray(receipts) ? receipts : []) {
+    const all = Array.isArray(receipts) ? receipts : [];
+    for (const receipt of all) {
       const transactions = Array.isArray(receipt?.transactions) ? receipt.transactions : [];
       for (let i = 0; i < transactions.length; i += 1) {
+        if (!only(transactions[i])) continue;
         await processLine({ receipt, transaction: transactions[i], index: i + 1, total: transactions.length, library }, summary);
+      }
+    }
+    return all;
+  };
+
+  // RETRY rows of orders the tick did NOT list (FILIP 2026-10-22: a Retry "did nothing" for good) - an order older
+  // than the start date, which only "Import this order" brings in, or one Etsy no longer lists as open. Each such
+  // order is fetched by its number, as "Import this order" does: still paid and open -> its RETRY lines, and only
+  // those, go through processLine; refused (shipped, cancelled, not sent) -> each RETRY line goes back to
+  // NEEDS_REVIEW by the same CAS with Etsy's answer as the reason, so the bar says why instead of waiting.
+  // listRetries absent (the dry run's table) or unable to answer (null) = nothing to do here.
+  const retryUnlisted = async (listed, summary) => {
+    const rows = typeof imports.listRetries === "function" ? imports.listRetries() : null;
+    if (!Array.isArray(rows) || rows.length === 0) return;
+    const seen = new Set((Array.isArray(listed) ? listed : []).map((r) => idOf(r?.receipt_id)));
+    const wanted = new Map();
+    for (const row of rows) {
+      const receiptId = idOf(row?.receiptId);
+      if (!/^\d+$/.test(receiptId) || seen.has(receiptId)) continue;
+      if (!wanted.has(receiptId)) wanted.set(receiptId, new Set());
+      wanted.get(receiptId).add(idOf(row.transactionId));
+    }
+    for (const [receiptId, lines] of [...wanted].slice(0, MAX_UNLISTED_RETRY_ORDERS)) {
+      const receipt = await getReceipt(receiptId);
+      const refused = oneOffRefusal(receipt, receiptId);
+      if (!refused) {
+        await runReceipts([receipt], summary, (transaction) => lines.has(idOf(transaction?.transaction_id)));
+        continue;
+      }
+      for (const transactionId of lines) {
+        const moved = imports.move({ receiptId, transactionId, from: [ETSY_IMPORT_STATE.RETRY], state: ETSY_IMPORT_STATE.NEEDS_REVIEW, reason: refused });
+        if (moved === null) throw env("The import table could not be written.");
+        if (moved) {
+          summary.needsReview += 1;
+          log(`[etsy-import] retry of receipt ${receiptId} line ${transactionId}: ${refused}`);
+        } else summary.skipped += 1;
       }
     }
   };
@@ -394,7 +440,8 @@ export const createEtsyImporter = ({
     if (blocked) return { ...summary, reason: blocked };
     summary.ran = true;
     try {
-      await runReceipts(await listReceipts(), summary);
+      const listed = await runReceipts(await listReceipts(), summary);
+      await retryUnlisted(listed, summary);
     } catch (err) {
       return { ...summary, reason: stoppedReason(err) };
     }

@@ -334,6 +334,20 @@ export const listOpenEtsyImports = () => {
   }
 };
 
+// The RETRY lines (receiptId, transactionId), for the importer's look at orders its tick did not list
+// (etsyImport.js retryUnlisted). null = could not ask - the importer then does nothing extra.
+export const listEtsyImportRetries = () => {
+  if (!db || !etsyTablesReady) return null;
+  try {
+    return db
+      .prepare("SELECT receipt_id AS receiptId, transaction_id AS transactionId FROM etsy_imports WHERE state = ? ORDER BY updated_at")
+      .all(ETSY_IMPORT_STATE.RETRY);
+  } catch (err) {
+    console.error("[db] listEtsyImportRetries failed:", err);
+    return null;
+  }
+};
+
 // A person's request from the bar, on ANY station (E4): RETRY, with the XWD number typed in or null. It only
 // WRITES the request - the importer station acts on it in its tick. Guarded: only a needs_review or failed line
 // moves (a done, pending or dismissed one is never reopened from here). -> { updated } or null.
@@ -357,8 +371,7 @@ export const requestEtsyImportRetry = ({ receiptId, transactionId, manualXwd = n
 };
 
 // "Not a print" from the bar (E4): DISMISSED, never imported again. From needs_review, failed AND retry: a RETRY
-// of an order Etsy no longer lists (shipped, cancelled, the importer off) is never acted on by the importer, so
-// without this the line would stay in the bar for good. Racing the importer is safe - its CAS from RETRY then
+// waits for the importer, and with the importer off it would stay in the bar for good. Racing the importer is safe - its CAS from RETRY then
 // matches no row and copies nothing. -> { updated } or null.
 export const dismissEtsyImport = ({ receiptId, transactionId }) => {
   if (!db || !etsyTablesReady || !etsyImportsHaveDetails) return null;

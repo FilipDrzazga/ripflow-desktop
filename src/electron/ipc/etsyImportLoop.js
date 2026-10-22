@@ -5,7 +5,7 @@ import { etsyImportGate } from "../helpers/etsyImportGate.js";
 import { getSettings, getEtsyImportSince } from "../helpers/getSettings.js";
 import { getStorageRootPath } from "../helpers/getRootPath.js";
 import { getProfile, getFeature } from "../helpers/shopProfile.js";
-import { isDbOpen, getAllFabrics, getEtsyFabricMap, getEtsyImport, claimEtsyImport, setEtsyImportState, moveEtsyImport } from "../helpers/db.js";
+import { isDbOpen, getAllFabrics, getEtsyFabricMap, getEtsyImport, claimEtsyImport, setEtsyImportState, moveEtsyImport, listEtsyImportRetries } from "../helpers/db.js";
 import { renameNoOverwrite } from "../helpers/renameNoOverwrite.js";
 import { parsePrintFileName } from "../helpers/parseFileName.js";
 
@@ -64,7 +64,7 @@ export const startEtsyImportLoop = ({ isPaused }) => {
     getProfile,
     storageRoot: () => storagePathOrNull(),
     libraryRoot: libraryPath,
-    imports: { get: getEtsyImport, claim: claimEtsyImport, setState: setEtsyImportState, move: moveEtsyImport },
+    imports: { get: getEtsyImport, claim: claimEtsyImport, setState: setEtsyImportState, move: moveEtsyImport, listRetries: listEtsyImportRetries },
     fs: { ...fs.promises, constants: fs.constants },
     renameNoOverwrite,
     parse: parsePrintFileName,
