@@ -152,27 +152,36 @@
   font-weight: 600;
 }
 
+/* The app's badge shape (DataList .rollback_badge / .override_badge): 6px corners, a 1px border a shade of the
+   text colour, 11px/600 (FILIP 2026-10-22, plan FILIP-2). */
 .chip {
   flex-shrink: 0;
-  padding: 1px 8px;
-  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 7px;
+  border-radius: 6px;
+  border: 1px solid transparent;
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 600;
+  white-space: nowrap;
 }
 
 .chip_warn {
-  background-color: #fff3cd;
-  color: #856404;
+  background-color: #fffbeb;
+  border-color: rgba(253, 211, 77, 0.6);
+  color: #b45309;
 }
 
 .chip_bad {
-  background-color: #f8d7da;
-  color: #842029;
+  background-color: #fef2f2;
+  border-color: rgba(220, 38, 38, 0.35);
+  color: #b91c1c;
 }
 
 .chip_wait {
-  background-color: #e3effb;
-  color: #1c5a99;
+  background-color: #eff6ff;
+  border-color: rgba(37, 99, 235, 0.3);
+  color: #1d4ed8;
 }
 
 .line_meta {
