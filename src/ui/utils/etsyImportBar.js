@@ -24,6 +24,13 @@ export const readXwdInput = (text) => {
 // The field starts from the number a person typed before (Retry with an empty field stores NULL and clears it).
 export const initialXwdInput = (row) => (typeof row?.manualXwd === "string" ? row.manualXwd : "");
 
+// E4c: the XWD number the importer found in the library for a line without one (a hint, never applied) - offered
+// only where the person can act on it, and only as six digits.
+export const suggestionOf = (row) =>
+  canRetry(row) && typeof row?.suggestedXwd === "string" && ETSY_XWD_INPUT_RE.test(row.suggestedXwd) ? row.suggestedXwd : null;
+
+export const suggestionText = (xwd) => `Suggestion: XWD${xwd} - a library file matches the design and designer in this listing's title. Check the file before you use it.`;
+
 export const isInterrupted = (row) => row?.reason === ETSY_IMPORT_INTERRUPTED_REASON;
 
 export const isWaitingForImporter = (row) => row?.state === ETSY_IMPORT_STATE.RETRY;

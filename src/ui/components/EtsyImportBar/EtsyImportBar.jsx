@@ -26,6 +26,8 @@ import {
   retryNotice,
   stateChip,
   stateHint,
+  suggestionOf,
+  suggestionText,
   withoutTyped,
 } from "../../utils/etsyImportBar";
 import styles from "./EtsyImportBar.module.css";
@@ -156,6 +158,7 @@ const EtsyImportBar = () => {
             const chip = stateChip(row);
             const hint = stateHint(row, importerHere);
             const error = fieldError[key];
+            const suggestion = suggestionOf(row);
             return (
               <li key={key} className={styles.line}>
                 <div className={styles.line_text}>
@@ -168,6 +171,16 @@ const EtsyImportBar = () => {
                   <div className={styles.line_meta}>{lineMeta(row)}</div>
                   {row.reason && <div className={styles.line_reason}>{row.reason}</div>}
                   {hint && <div className={styles.line_hint}>{hint}</div>}
+                  {suggestion && (
+                    <div className={styles.line_hint}>
+                      {suggestionText(suggestion)}{" "}
+                      {valueOf(row) !== suggestion && (
+                        <button type="button" className={styles.link} disabled={busy} onClick={() => setValue(row, suggestion)}>
+                          Use {suggestion}
+                        </button>
+                      )}
+                    </div>
+                  )}
                   <div className={styles.links}>
                     <button type="button" className={styles.link} onClick={() => openEtsyOrder(etsyOrderIdOf(row))}>
                       Open order in Etsy <LuExternalLink size={12} />

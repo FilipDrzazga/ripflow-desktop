@@ -3,6 +3,7 @@ import { ETSY_IMPORT_INTERRUPTED_REASON, ETSY_IMPORT_STATE, ETSY_XWD_INPUT_RE } 
 import { isImageFileName } from "../../shared/artworkFile.js";
 import { isEtsyFileName } from "../../shared/orderSource.js";
 import { resolveEtsyFabric } from "./etsyFabric.js";
+import { suggestXwdForTitle } from "./etsySuggestion.js";
 import {
   xwdOfTransaction,
   fabricValueOfTransaction,
@@ -37,6 +38,10 @@ import {
 //   meantime wins, and the copy is the same claim-less half of copyIn. DISMISSED is never looked at again.
 // - Every row the import writes carries what a person needs to recognise the line in the bar: title, quantity,
 //   listing id.
+// - SUGGESTION (E4c): a line that stops for want of an XWD number - none on the line, or none in the library - is
+//   written with the number its listing title points to in the library (etsySuggestion.js), when exactly one does.
+//   Only a hint for the bar: it is never used to name or copy a file. Not finding one, or not being able to look,
+//   costs nothing - the line is recorded without it.
 
 // A PENDING row younger than this may belong to a copy another process is making right now.
 export const STALE_PENDING_MS = 10 * 60 * 1000;
@@ -120,7 +125,7 @@ export const createEtsyImporter = ({
     const transactionId = idOf(transaction.transaction_id);
 
     const xwd = xwdOf(transaction, manualXwd);
-    if (xwd.reason) return { reason: xwd.reason };
+    if (xwd.reason) return { reason: xwd.reason, suggest: true };
 
     const qty = transaction.quantity;
     if (!Number.isInteger(qty) || qty <= 0) return { reason: `The quantity of the order line is not a whole number above 0 (${qty}).` };
@@ -139,7 +144,7 @@ export const createEtsyImporter = ({
     }
 
     const files = libraryFilesFor(xwd.xwd, await library(), isImageFileName);
-    if (files.length === 0) return { reason: `No image with XWD${xwd.xwd} in the Etsy library folder.` };
+    if (files.length === 0) return { reason: `No image with XWD${xwd.xwd} in the Etsy library folder.`, suggest: true };
     if (files.length > 1) return { reason: `${files.length} images carry XWD${xwd.xwd} in the Etsy library folder (${files.join(", ")}) - one is expected.` };
     const libraryFile = files[0];
 
@@ -192,6 +197,16 @@ export const createEtsyImporter = ({
   };
 
   const record = (key, state, extra = {}) => imports.claim({ ...key, state, ...extra });
+
+  // The bar's suggestion for a line that stopped at the XWD number: a six-digit string, or null. An unreadable
+  // library is not an answer about this line (the tick meets the same folder at the next line that needs it).
+  const suggestionFor = async (transaction, library) => {
+    try {
+      return suggestXwdForTitle(transaction?.title, await library(), isImageFileName);
+    } catch {
+      return null;
+    }
+  };
 
   // A PENDING row found by a later tick (W2). Never copies.
   const settlePending = async (row, summary) => {
@@ -297,7 +312,8 @@ export const createEtsyImporter = ({
 
     const prepared = await prepare({ receipt, transaction, index, total, library });
     if (prepared.reason) {
-      const claimed = record(key, ETSY_IMPORT_STATE.NEEDS_REVIEW, { reason: prepared.reason, details });
+      const suggestedXwd = prepared.suggest ? await suggestionFor(transaction, library) : null;
+      const claimed = record(key, ETSY_IMPORT_STATE.NEEDS_REVIEW, { reason: prepared.reason, details: { ...details, suggestedXwd } });
       if (claimed === null) throw env("The import table could not be written.");
       if (claimed) {
         summary.needsReview += 1;
@@ -317,7 +333,8 @@ export const createEtsyImporter = ({
     const prepared = await prepare({ ...line, manualXwd: row.manualXwd ?? null });
     const from = [ETSY_IMPORT_STATE.RETRY];
     if (prepared.reason) {
-      const moved = imports.move({ ...key, from, state: ETSY_IMPORT_STATE.NEEDS_REVIEW, reason: prepared.reason, details });
+      const suggestedXwd = prepared.suggest ? await suggestionFor(line.transaction, line.library) : null;
+      const moved = imports.move({ ...key, from, state: ETSY_IMPORT_STATE.NEEDS_REVIEW, reason: prepared.reason, details: { ...details, suggestedXwd } });
       if (moved === null) throw env("The import table could not be written.");
       if (moved) {
         summary.needsReview += 1;

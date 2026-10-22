@@ -136,9 +136,27 @@ const ensureEtsyImportDetailColumns = () => {
     return false;
   }
 };
+// The suggestion of the bar (E4c): the XWD number the importer found in the library for a line it could not read a
+// number from. A column of its OWN with its own flag, so a failed ALTER costs the suggestion and nothing else - the
+// bar and the import work as before without it.
+let etsyImportsHaveSuggestion = false;
+const ensureEtsyImportSuggestionColumn = () => {
+  try {
+    const have = db
+      .prepare("PRAGMA table_info(etsy_imports)")
+      .all()
+      .some((col) => col.name === "suggested_xwd");
+    if (!have) db.exec("ALTER TABLE etsy_imports ADD COLUMN suggested_xwd TEXT");
+    return true;
+  } catch (err) {
+    console.error("[db] ensureEtsyImportSuggestionColumn failed (the Etsy bar shows no suggestions):", err);
+    return false;
+  }
+};
 const ensureEtsyTables = () => {
   etsyTablesReady = false;
   etsyImportsHaveDetails = false;
+  etsyImportsHaveSuggestion = false;
   try {
     const mapIsNew = !db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'etsy_fabric_map'").get();
     db.exec(`
@@ -162,10 +180,12 @@ const ensureEtsyTables = () => {
         quantity       INTEGER,
         listing_id     TEXT,
         manual_xwd     TEXT,
+        suggested_xwd  TEXT,
         UNIQUE (receipt_id, transaction_id)
       )
     `);
     etsyImportsHaveDetails = ensureEtsyImportDetailColumns();
+    etsyImportsHaveSuggestion = ensureEtsyImportSuggestionColumn();
     if (mapIsNew) {
       const hasFabric = db.prepare("SELECT 1 FROM fabrics WHERE name = ?");
       const insert = db.prepare("INSERT OR IGNORE INTO etsy_fabric_map (etsy_key, etsy_name, fabric_name) VALUES (?, ?, ?)");
@@ -192,7 +212,8 @@ export const getEtsyFabricMap = () => {
 
 const ETSY_IMPORT_COLUMNS =
   "receipt_id AS receiptId, transaction_id AS transactionId, state, file_name AS fileName, folder, reason, created_at AS createdAt, updated_at AS updatedAt";
-const ETSY_IMPORT_DETAIL_SELECT = "title, quantity, listing_id AS listingId, manual_xwd AS manualXwd";
+const etsyImportDetailSelect = () =>
+  `title, quantity, listing_id AS listingId, manual_xwd AS manualXwd, ${etsyImportsHaveSuggestion ? "suggested_xwd" : "NULL"} AS suggestedXwd`;
 
 // What the importer knows of a line, as the E4 columns store it: a title is text, a quantity a whole number, a
 // listing id the digits Etsy sent. Anything else is stored as NULL, never coerced into a value.
@@ -201,6 +222,14 @@ const detailsToStore = ({ title, quantity, listingId } = {}) => [
   Number.isInteger(quantity) ? quantity : null,
   listingId === null || listingId === undefined || String(listingId).trim() === "" ? null : String(listingId).trim(),
 ];
+
+// The suggestion a write carries: undefined = the write says nothing about it (a stored one stays), null = clear it,
+// a six-digit string = store it. Anything else is NULL, never coerced into a number.
+const suggestionToStore = (details) => {
+  const value = details?.suggestedXwd;
+  if (value === undefined) return undefined;
+  return typeof value === "string" && /^\d{6}$/.test(value) ? value : null;
+};
 
 // The row of one order line: the row, null = never seen, undefined = the database could not be asked.
 // The two absences are different on purpose - "never seen" lets the import claim the line, "could not ask"
@@ -211,7 +240,7 @@ export const getEtsyImport = (receiptId, transactionId) => {
     return (
       db
         .prepare(
-          `SELECT ${ETSY_IMPORT_COLUMNS}${etsyImportsHaveDetails ? `, ${ETSY_IMPORT_DETAIL_SELECT}` : ""} FROM etsy_imports WHERE receipt_id = ? AND transaction_id = ?`,
+          `SELECT ${ETSY_IMPORT_COLUMNS}${etsyImportsHaveDetails ? `, ${etsyImportDetailSelect()}` : ""} FROM etsy_imports WHERE receipt_id = ? AND transaction_id = ?`,
         )
         .get(String(receiptId), String(transactionId)) ?? null
     );
@@ -231,10 +260,16 @@ export const claimEtsyImport = ({ receiptId, transactionId, state, fileName = nu
   let changes = 0;
   const written = runWrite("claimEtsyImport", () => {
     const values = [String(receiptId), String(transactionId), state, fileName, folder, reason, at, at];
-    const sql = etsyImportsHaveDetails
-      ? "INSERT OR IGNORE INTO etsy_imports (receipt_id, transaction_id, state, file_name, folder, reason, created_at, updated_at, title, quantity, listing_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
-      : "INSERT OR IGNORE INTO etsy_imports (receipt_id, transaction_id, state, file_name, folder, reason, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
-    if (etsyImportsHaveDetails) values.push(...detailsToStore(details));
+    const columns = ["receipt_id", "transaction_id", "state", "file_name", "folder", "reason", "created_at", "updated_at"];
+    if (etsyImportsHaveDetails) {
+      columns.push("title", "quantity", "listing_id");
+      values.push(...detailsToStore(details));
+      if (etsyImportsHaveSuggestion) {
+        columns.push("suggested_xwd");
+        values.push(suggestionToStore(details) ?? null);
+      }
+    }
+    const sql = `INSERT OR IGNORE INTO etsy_imports (${columns.join(", ")}) VALUES (${columns.map(() => "?").join(", ")})`;
     changes = db.prepare(sql).run(...values).changes;
   });
   return written ? changes === 1 : null;
@@ -270,6 +305,11 @@ export const moveEtsyImport = ({ receiptId, transactionId, from, state, reason =
     if (etsyImportsHaveDetails && details) {
       sets.push("title = COALESCE(?, title)", "quantity = COALESCE(?, quantity)", "listing_id = COALESCE(?, listing_id)");
       values.push(...detailsToStore(details));
+      const suggestion = etsyImportsHaveSuggestion ? suggestionToStore(details) : undefined;
+      if (suggestion !== undefined) {
+        sets.push("suggested_xwd = ?");
+        values.push(suggestion);
+      }
     }
     changes = db
       .prepare(`UPDATE etsy_imports SET ${sets.join(", ")} WHERE receipt_id = ? AND transaction_id = ? AND state IN (${states.map(() => "?").join(", ")})`)
@@ -285,7 +325,7 @@ export const listOpenEtsyImports = () => {
   try {
     return db
       .prepare(
-        `SELECT ${ETSY_IMPORT_COLUMNS}, ${ETSY_IMPORT_DETAIL_SELECT} FROM etsy_imports WHERE state IN (${ETSY_IMPORT_OPEN_STATES.map(() => "?").join(", ")}) ORDER BY updated_at DESC`,
+        `SELECT ${ETSY_IMPORT_COLUMNS}, ${etsyImportDetailSelect()} FROM etsy_imports WHERE state IN (${ETSY_IMPORT_OPEN_STATES.map(() => "?").join(", ")}) ORDER BY updated_at DESC`,
       )
       .all(...ETSY_IMPORT_OPEN_STATES);
   } catch (err) {
