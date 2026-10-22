@@ -111,9 +111,21 @@ export const PROFILE_CHANGED = "PROFILE_CHANGED";
 //   DONE          - the file is in the inbox under its name
 //   NEEDS_REVIEW  - not imported, with a reason a person reads (nothing is guessed, nothing is skipped silently)
 //   FAILED        - the copy itself failed after the claim
+//   RETRY         - a person asked the importer to look at the line again (E4), optionally with the XWD
+//                   number typed in (etsy_imports.manual_xwd); only the importer station acts on it
+//   DISMISSED     - a person said the line is not a print (a Sample Book, a Tea Towel...); never imported
 export const ETSY_IMPORT_STATE = {
   PENDING: "pending",
   DONE: "done",
   NEEDS_REVIEW: "needs_review",
   FAILED: "failed",
+  RETRY: "retry",
+  DISMISSED: "dismissed",
 };
+
+// The states a person can act on from the Inbox bar (E4): retry or dismiss. RETRY is listed too, so the
+// bar shows a request that is still waiting for the importer.
+export const ETSY_IMPORT_OPEN_STATES = [ETSY_IMPORT_STATE.NEEDS_REVIEW, ETSY_IMPORT_STATE.FAILED, ETSY_IMPORT_STATE.RETRY];
+
+// A number typed into the bar (and the bare SKU, etsyTransaction.js): every library number is six digits.
+export const ETSY_XWD_INPUT_RE = /^\d{6}$/;

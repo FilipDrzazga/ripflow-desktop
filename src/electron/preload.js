@@ -302,6 +302,20 @@ const api = Object.freeze({
     removeKey: () => ipcRenderer.invoke("etsy:removeKey"),
   }),
 
+  // The Inbox bar of the Etsy import (plan E4), on any station: the lines that wait for a person, and the two
+  // requests a person can write. Only the two key fields and the typed number cross; main checks all three.
+  etsyImports: Object.freeze({
+    list: () => ipcRenderer.invoke("etsy-imports:list"),
+    retry: (line) => {
+      if (!isPlainObject(line)) throw new TypeError("Etsy import line must be a plain object.");
+      return ipcRenderer.invoke("etsy-imports:retry", { receiptId: line.receiptId, transactionId: line.transactionId, xwd: line.xwd ?? null });
+    },
+    dismiss: (line) => {
+      if (!isPlainObject(line)) throw new TypeError("Etsy import line must be a plain object.");
+      return ipcRenderer.invoke("etsy-imports:dismiss", { receiptId: line.receiptId, transactionId: line.transactionId });
+    },
+  }),
+
   update: Object.freeze({
     check: () => ipcRenderer.invoke("update:check"),
     install: () => ipcRenderer.invoke("update:install"),

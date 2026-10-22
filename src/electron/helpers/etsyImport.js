@@ -1,5 +1,5 @@
 import path from "node:path";
-import { ETSY_IMPORT_STATE } from "../../shared/constants.js";
+import { ETSY_IMPORT_STATE, ETSY_XWD_INPUT_RE } from "../../shared/constants.js";
 import { isImageFileName } from "../../shared/artworkFile.js";
 import { isEtsyFileName } from "../../shared/orderSource.js";
 import { resolveEtsyFabric } from "./etsyFabric.js";
@@ -30,6 +30,13 @@ import {
 //   NEEDS_REVIEW.
 // - A problem of the ENVIRONMENT (library unreachable, a folder that cannot be read) is not a verdict on the
 //   order: it ends the tick and leaves the line without a row, so the next tick tries it again.
+// - RETRY (E4) is a person's request, written from the Inbox bar of ANY station; only this importer acts on it,
+//   and only for a line of an order Etsy still lists as open. The XWD number typed in (manualXwd) replaces the
+//   one read from the line - six digits, checked here as well as in the IPC. The line moves on by a CAS
+//   (RETRY -> PENDING, or RETRY -> NEEDS_REVIEW with the NEW reason), so a person who dismissed it in the
+//   meantime wins, and the copy is the same claim-less half of copyIn. DISMISSED is never looked at again.
+// - Every row the import writes carries what a person needs to recognise the line in the bar: title, quantity,
+//   listing id.
 
 // A PENDING row younger than this may belong to a copy another process is making right now.
 export const STALE_PENDING_MS = 10 * 60 * 1000;
@@ -45,6 +52,17 @@ const tmpNameOf = (receiptId, transactionId) => `.etsy-${receiptId}-${transactio
 
 const idOf = (value) => (value === null || value === undefined ? "" : String(value).trim());
 
+// What the Inbox bar shows of a line; db.js stores NULL for anything that is not the expected type.
+const detailsOf = (transaction) => ({ title: transaction?.title, quantity: transaction?.quantity, listingId: transaction?.listing_id });
+
+// -> { xwd } or { reason }: the number a person typed in, else the one the line carries.
+const xwdOf = (transaction, manualXwd) => {
+  if (manualXwd === null || manualXwd === undefined || manualXwd === "") return xwdOfTransaction(transaction);
+  const typed = String(manualXwd).trim();
+  if (!ETSY_XWD_INPUT_RE.test(typed)) return { reason: `The XWD number typed in (${typed}) is not six digits.` };
+  return { xwd: typed };
+};
+
 export const createEtsyImporter = ({
   gate, // () => null | "reason the tick must not run"
   listReceipts, // async () => receipts[]
@@ -53,7 +71,7 @@ export const createEtsyImporter = ({
   getProfile, // () => shop profile | null
   storageRoot, // () => absolute path of the inbox root (storagePath)
   libraryRoot, // () => absolute path of the Etsy pattern folder
-  imports, // { get, claim, setState } - the three etsy_imports functions of db.js
+  imports, // { get, claim, setState, move } - the etsy_imports functions of db.js
   fs, // { readdir, stat, copyFile, unlink, constants }
   renameNoOverwrite,
   parse, // parsePrintFileName
@@ -97,11 +115,11 @@ export const createEtsyImporter = ({
   };
 
   // -> { plan } or { reason }. Reads the disk only through the folder listings of this tick (`library`).
-  const prepare = async ({ receipt, transaction, index, total, library }) => {
+  const prepare = async ({ receipt, transaction, index, total, library, manualXwd = null }) => {
     const receiptId = idOf(receipt.receipt_id);
     const transactionId = idOf(transaction.transaction_id);
 
-    const xwd = xwdOfTransaction(transaction);
+    const xwd = xwdOf(transaction, manualXwd);
     if (xwd.reason) return { reason: xwd.reason };
 
     const qty = transaction.quantity;
@@ -208,19 +226,24 @@ export const createEtsyImporter = ({
     summary.needsReview += 1;
   };
 
-  const copyIn = async (plan, summary) => {
+  const copyIn = async (plan, summary, details) => {
     const key = { receiptId: plan.receiptId, transactionId: plan.transactionId };
-    const folderPath = path.join(storageRoot(), plan.fabric.name);
-    const tmp = path.join(folderPath, tmpNameOf(plan.receiptId, plan.transactionId));
-    const finalPath = path.join(folderPath, plan.fileName);
-    const source = path.join(libraryRoot(), plan.libraryFile);
-
-    const claimed = record(key, ETSY_IMPORT_STATE.PENDING, { fileName: plan.fileName, folder: plan.fabric.name });
+    const claimed = record(key, ETSY_IMPORT_STATE.PENDING, { fileName: plan.fileName, folder: plan.fabric.name, details });
     if (claimed === null) throw env("The import table could not be written.");
     if (claimed === false) {
       summary.skipped += 1;
       return;
     }
+    await copyClaimed(plan, summary);
+  };
+
+  // The copy of a line this tick owns (a claim, or the CAS of a RETRY): .tmp -> rename without overwrite -> DONE.
+  const copyClaimed = async (plan, summary) => {
+    const key = { receiptId: plan.receiptId, transactionId: plan.transactionId };
+    const folderPath = path.join(storageRoot(), plan.fabric.name);
+    const tmp = path.join(folderPath, tmpNameOf(plan.receiptId, plan.transactionId));
+    const finalPath = path.join(folderPath, plan.fileName);
+    const source = path.join(libraryRoot(), plan.libraryFile);
 
     const fail = async (state, reason) => {
       await fs.unlink(tmp).catch(() => {});
@@ -264,15 +287,17 @@ export const createEtsyImporter = ({
 
     const existing = imports.get(receiptId, transactionId);
     if (existing === undefined) throw env("The import table could not be read.");
+    const details = detailsOf(transaction);
     if (existing) {
       if (existing.state === ETSY_IMPORT_STATE.PENDING) await settlePending(existing, summary);
-      else summary.skipped += 1;
+      else if (existing.state === ETSY_IMPORT_STATE.RETRY) await retryLine(existing, { receipt, transaction, index, total, library }, summary);
+      else summary.skipped += 1; // DONE, NEEDS_REVIEW, FAILED, DISMISSED: a person decides, not the tick
       return;
     }
 
     const prepared = await prepare({ receipt, transaction, index, total, library });
     if (prepared.reason) {
-      const claimed = record(key, ETSY_IMPORT_STATE.NEEDS_REVIEW, { reason: prepared.reason });
+      const claimed = record(key, ETSY_IMPORT_STATE.NEEDS_REVIEW, { reason: prepared.reason, details });
       if (claimed === null) throw env("The import table could not be written.");
       if (claimed) {
         summary.needsReview += 1;
@@ -280,7 +305,34 @@ export const createEtsyImporter = ({
       } else summary.skipped += 1;
       return;
     }
-    await copyIn(prepared.plan, summary);
+    await copyIn(prepared.plan, summary, details);
+  };
+
+  // A RETRY row of a line Etsy still lists (E4). The line is judged again - with the number typed in, when there
+  // is one - and leaves RETRY only by a CAS: a person who dismissed it meanwhile, or another tick that moved it,
+  // makes this one do nothing. manual_xwd stays on the row either way, so the bar shows what was tried.
+  const retryLine = async (row, line, summary) => {
+    const key = { receiptId: row.receiptId, transactionId: row.transactionId };
+    const details = detailsOf(line.transaction);
+    const prepared = await prepare({ ...line, manualXwd: row.manualXwd ?? null });
+    const from = [ETSY_IMPORT_STATE.RETRY];
+    if (prepared.reason) {
+      const moved = imports.move({ ...key, from, state: ETSY_IMPORT_STATE.NEEDS_REVIEW, reason: prepared.reason, details });
+      if (moved === null) throw env("The import table could not be written.");
+      if (moved) {
+        summary.needsReview += 1;
+        log(`[etsy-import] retry of receipt ${row.receiptId} line ${row.transactionId}: ${prepared.reason}`);
+      } else summary.skipped += 1;
+      return;
+    }
+    const { plan } = prepared;
+    const moved = imports.move({ ...key, from, state: ETSY_IMPORT_STATE.PENDING, reason: null, fileName: plan.fileName, folder: plan.fabric.name, details });
+    if (moved === null) throw env("The import table could not be written.");
+    if (!moved) {
+      summary.skipped += 1;
+      return;
+    }
+    await copyClaimed(plan, summary);
   };
 
   // One pass. Never throws: the answer says what happened.

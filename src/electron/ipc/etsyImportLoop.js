@@ -5,7 +5,7 @@ import { etsyImportGate } from "../helpers/etsyImportGate.js";
 import { getSettings, getEtsyImportSince } from "../helpers/getSettings.js";
 import { getStorageRootPath } from "../helpers/getRootPath.js";
 import { getProfile, getFeature } from "../helpers/shopProfile.js";
-import { isDbOpen, getAllFabrics, getEtsyFabricMap, getEtsyImport, claimEtsyImport, setEtsyImportState } from "../helpers/db.js";
+import { isDbOpen, getAllFabrics, getEtsyFabricMap, getEtsyImport, claimEtsyImport, setEtsyImportState, moveEtsyImport } from "../helpers/db.js";
 import { renameNoOverwrite } from "../helpers/renameNoOverwrite.js";
 import { parsePrintFileName } from "../helpers/parseFileName.js";
 
@@ -16,6 +16,9 @@ import { parsePrintFileName } from "../helpers/parseFileName.js";
 export const ETSY_IMPORT_INTERVAL_MS = 5 * 60 * 1000;
 // The first tick waits, so the start-up reads (profile, fabrics, inbox) are not joined by an Etsy call.
 const FIRST_TICK_DELAY_MS = 60 * 1000;
+
+// The running loop's tick, for requestEtsyImportTick; null before the start and after the stop.
+let runNow = null;
 
 const libraryPath = () => getSettings().etsyLibraryPath ?? "";
 
@@ -56,7 +59,7 @@ export const startEtsyImportLoop = ({ isPaused }) => {
     getProfile,
     storageRoot: () => storagePathOrNull(),
     libraryRoot: libraryPath,
-    imports: { get: getEtsyImport, claim: claimEtsyImport, setState: setEtsyImportState },
+    imports: { get: getEtsyImport, claim: claimEtsyImport, setState: setEtsyImportState, move: moveEtsyImport },
     fs: { ...fs.promises, constants: fs.constants },
     renameNoOverwrite,
     parse: parsePrintFileName,
@@ -64,6 +67,7 @@ export const startEtsyImportLoop = ({ isPaused }) => {
   });
 
   let running = false;
+  let again = false;
   let lastNote = null;
 
   const run = async () => {
@@ -80,12 +84,32 @@ export const startEtsyImportLoop = ({ isPaused }) => {
     } finally {
       running = false;
     }
+    if (again) {
+      again = false;
+      await run();
+    }
   };
 
   const first = setTimeout(run, FIRST_TICK_DELAY_MS);
   const timer = setInterval(run, ETSY_IMPORT_INTERVAL_MS);
+  // A request that arrives during a tick gets one more pass right after it (that tick may have read the row
+  // before the request was written); the interval keeps its old rule and simply skips.
+  runNow = () => {
+    if (running) {
+      again = true;
+      return Promise.resolve();
+    }
+    return run();
+  };
   return () => {
+    runNow = null;
     clearTimeout(first);
     clearInterval(timer);
   };
+};
+
+// A Retry from the Inbox bar of THIS station (E4): one tick now instead of within 5 minutes. On a station that
+// is not the importer the gate closes the tick at once, so the call is harmless anywhere.
+export const requestEtsyImportTick = () => {
+  if (runNow) runNow().catch((err) => console.error("[etsy-import] tick on request failed:", err));
 };

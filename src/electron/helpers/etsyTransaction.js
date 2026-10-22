@@ -1,11 +1,11 @@
 import { repeatTypeOf } from "../../shared/artworkFile.js";
 
 // What an order line of the Etsy API (a `transaction` of a receipt) says, and the one file name that
-// becomes of it. EVERYTHING that depends on how the shop fills in its listings is in this file, because
-// none of it is confirmed on a real order yet (no sign-in has run): where the pattern number (XWD) sits,
-// which variation carries the print type. When the real order shows it, this is the only file that
-// changes. Until then nothing is guessed - a line that cannot be read as ONE thing is reported with its
-// reason, and the import writes no file for it.
+// becomes of it. EVERYTHING that depends on how the shop fills in its listings is in this file. The sign-in
+// works and the listings were read (FILIP 2026-10-22: the SKU carries the bare six-digit number), but no real
+// ORDER has gone through the import yet, so which variation carries the print type is still unconfirmed.
+// When a real order shows it, this is the only file that changes. Until then nothing is guessed - a line that
+// cannot be read as ONE thing is reported with its reason, and the import writes no file for it.
 //
 //   receipt:     { receipt_id, name, transactions: [...] }
 //   transaction: { transaction_id, title, sku, quantity, variations: [{ formatted_name, formatted_value }] }

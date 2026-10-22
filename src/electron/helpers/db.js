@@ -9,6 +9,7 @@ import { printerOfBatch } from "../../shared/batchFolderName.js";
 import { preferredPrinterToStore, storesPreferredPrinter, lengthExtraToStore } from "./fabricInput.js";
 import { stageExtToStore } from "../../shared/artworkFile.js";
 import { ETSY_FABRIC_SEED, etsyKey } from "./etsyFabric.js";
+import { ETSY_IMPORT_STATE, ETSY_IMPORT_OPEN_STATES } from "../../shared/constants.js";
 
 let db = null;
 let stmtInsert = null;
@@ -107,8 +108,37 @@ const runWrite = (label, fn) => {
 // and writes only the pairs whose Fabrics name is in `fabrics` to the character: another shop's database
 // gets no row, and a pair the shop deleted later does not come back at the next start (W7).
 let etsyTablesReady = false;
+// The columns of the Inbox bar (E4): what the line is (title, quantity, listing_id - written by the importer, the
+// only station signed in to Etsy) and the XWD number a person typed in (manual_xwd). In the CREATE for a new
+// table and added by ALTER for one an earlier build made. A failed ALTER (SQLITE_BUSY on the share) costs the
+// bar only: the import keeps working as before, and every E4 accessor answers "could not".
+let etsyImportsHaveDetails = false;
+const ETSY_IMPORT_DETAIL_COLUMNS = [
+  ["title", "TEXT"],
+  ["quantity", "INTEGER"],
+  ["listing_id", "TEXT"],
+  ["manual_xwd", "TEXT"],
+];
+const ensureEtsyImportDetailColumns = () => {
+  try {
+    const have = new Set(
+      db
+        .prepare("PRAGMA table_info(etsy_imports)")
+        .all()
+        .map((col) => col.name),
+    );
+    for (const [name, type] of ETSY_IMPORT_DETAIL_COLUMNS) {
+      if (!have.has(name)) db.exec(`ALTER TABLE etsy_imports ADD COLUMN ${name} ${type}`);
+    }
+    return true;
+  } catch (err) {
+    console.error("[db] ensureEtsyImportDetailColumns failed (the Etsy Inbox bar stays off):", err);
+    return false;
+  }
+};
 const ensureEtsyTables = () => {
   etsyTablesReady = false;
+  etsyImportsHaveDetails = false;
   try {
     const mapIsNew = !db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'etsy_fabric_map'").get();
     db.exec(`
@@ -128,9 +158,14 @@ const ensureEtsyTables = () => {
         reason         TEXT,
         created_at     TEXT NOT NULL,
         updated_at     TEXT NOT NULL,
+        title          TEXT,
+        quantity       INTEGER,
+        listing_id     TEXT,
+        manual_xwd     TEXT,
         UNIQUE (receipt_id, transaction_id)
       )
     `);
+    etsyImportsHaveDetails = ensureEtsyImportDetailColumns();
     if (mapIsNew) {
       const hasFabric = db.prepare("SELECT 1 FROM fabrics WHERE name = ?");
       const insert = db.prepare("INSERT OR IGNORE INTO etsy_fabric_map (etsy_key, etsy_name, fabric_name) VALUES (?, ?, ?)");
@@ -155,6 +190,18 @@ export const getEtsyFabricMap = () => {
   }
 };
 
+const ETSY_IMPORT_COLUMNS =
+  "receipt_id AS receiptId, transaction_id AS transactionId, state, file_name AS fileName, folder, reason, created_at AS createdAt, updated_at AS updatedAt";
+const ETSY_IMPORT_DETAIL_SELECT = "title, quantity, listing_id AS listingId, manual_xwd AS manualXwd";
+
+// What the importer knows of a line, as the E4 columns store it: a title is text, a quantity a whole number, a
+// listing id the digits Etsy sent. Anything else is stored as NULL, never coerced into a value.
+const detailsToStore = ({ title, quantity, listingId } = {}) => [
+  typeof title === "string" && title.trim() ? title.trim() : null,
+  Number.isInteger(quantity) ? quantity : null,
+  listingId === null || listingId === undefined || String(listingId).trim() === "" ? null : String(listingId).trim(),
+];
+
 // The row of one order line: the row, null = never seen, undefined = the database could not be asked.
 // The two absences are different on purpose - "never seen" lets the import claim the line, "could not ask"
 // must never look like it.
@@ -164,7 +211,7 @@ export const getEtsyImport = (receiptId, transactionId) => {
     return (
       db
         .prepare(
-          "SELECT receipt_id AS receiptId, transaction_id AS transactionId, state, file_name AS fileName, folder, reason, created_at AS createdAt, updated_at AS updatedAt FROM etsy_imports WHERE receipt_id = ? AND transaction_id = ?",
+          `SELECT ${ETSY_IMPORT_COLUMNS}${etsyImportsHaveDetails ? `, ${ETSY_IMPORT_DETAIL_SELECT}` : ""} FROM etsy_imports WHERE receipt_id = ? AND transaction_id = ?`,
         )
         .get(String(receiptId), String(transactionId)) ?? null
     );
@@ -177,16 +224,18 @@ export const getEtsyImport = (receiptId, transactionId) => {
 // Takes the key (receipt_id, transaction_id) of one order line: INSERT OR IGNORE against the UNIQUE, so of
 // two stations (or two ticks) exactly one gets `true`. false = the line already has a row; null = the write
 // failed or there is no database - the caller does nothing for the line (fail closed).
-export const claimEtsyImport = ({ receiptId, transactionId, state, fileName = null, folder = null, reason = null }) => {
+// `details` ({ title, quantity, listingId }) is written when the E4 columns exist and left out when they do not.
+export const claimEtsyImport = ({ receiptId, transactionId, state, fileName = null, folder = null, reason = null, details }) => {
   if (!db || !etsyTablesReady) return null;
   const at = new Date().toISOString();
   let changes = 0;
   const written = runWrite("claimEtsyImport", () => {
-    changes = db
-      .prepare(
-        "INSERT OR IGNORE INTO etsy_imports (receipt_id, transaction_id, state, file_name, folder, reason, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-      )
-      .run(String(receiptId), String(transactionId), state, fileName, folder, reason, at, at).changes;
+    const values = [String(receiptId), String(transactionId), state, fileName, folder, reason, at, at];
+    const sql = etsyImportsHaveDetails
+      ? "INSERT OR IGNORE INTO etsy_imports (receipt_id, transaction_id, state, file_name, folder, reason, created_at, updated_at, title, quantity, listing_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+      : "INSERT OR IGNORE INTO etsy_imports (receipt_id, transaction_id, state, file_name, folder, reason, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+    if (etsyImportsHaveDetails) values.push(...detailsToStore(details));
+    changes = db.prepare(sql).run(...values).changes;
   });
   return written ? changes === 1 : null;
 };
@@ -204,6 +253,86 @@ export const setEtsyImportState = ({ receiptId, transactionId, state, reason = n
       String(transactionId),
     );
   });
+};
+
+// A GUARDED move of one line (E4): only from one of `from` - the importer's CAS RETRY -> PENDING and
+// RETRY -> NEEDS_REVIEW. true = this caller moved it, false = the row was not in `from` (another tick, a person
+// who dismissed it meanwhile), null = the write failed. `fileName` / `folder` undefined keep the stored ones;
+// `details` refreshes the E4 columns when they exist.
+export const moveEtsyImport = ({ receiptId, transactionId, from, state, reason = null, fileName, folder, details }) => {
+  if (!db || !etsyTablesReady) return null;
+  const states = Array.isArray(from) ? from.filter((s) => typeof s === "string") : [];
+  if (states.length === 0) return null;
+  let changes = 0;
+  const written = runWrite("moveEtsyImport", () => {
+    const sets = ["state = ?", "reason = ?", "file_name = COALESCE(?, file_name)", "folder = COALESCE(?, folder)", "updated_at = ?"];
+    const values = [state, reason, fileName ?? null, folder ?? null, new Date().toISOString()];
+    if (etsyImportsHaveDetails && details) {
+      sets.push("title = COALESCE(?, title)", "quantity = COALESCE(?, quantity)", "listing_id = COALESCE(?, listing_id)");
+      values.push(...detailsToStore(details));
+    }
+    changes = db
+      .prepare(`UPDATE etsy_imports SET ${sets.join(", ")} WHERE receipt_id = ? AND transaction_id = ? AND state IN (${states.map(() => "?").join(", ")})`)
+      .run(...values, String(receiptId), String(transactionId), ...states).changes;
+  });
+  return written ? changes === 1 : null;
+};
+
+// The lines the Inbox bar shows (E4): needs_review, failed and retry, newest first. null = could not ask (no
+// database, no table, no E4 columns) - the bar then says so instead of showing an empty list.
+export const listOpenEtsyImports = () => {
+  if (!db || !etsyTablesReady || !etsyImportsHaveDetails) return null;
+  try {
+    return db
+      .prepare(
+        `SELECT ${ETSY_IMPORT_COLUMNS}, ${ETSY_IMPORT_DETAIL_SELECT} FROM etsy_imports WHERE state IN (${ETSY_IMPORT_OPEN_STATES.map(() => "?").join(", ")}) ORDER BY updated_at DESC`,
+      )
+      .all(...ETSY_IMPORT_OPEN_STATES);
+  } catch (err) {
+    console.error("[db] listOpenEtsyImports failed:", err);
+    return null;
+  }
+};
+
+// A person's request from the bar, on ANY station (E4): RETRY, with the XWD number typed in or null. It only
+// WRITES the request - the importer station acts on it in its tick. Guarded: only a needs_review or failed line
+// moves (a done, pending or dismissed one is never reopened from here). -> { updated } or null.
+export const requestEtsyImportRetry = ({ receiptId, transactionId, manualXwd = null }) => {
+  if (!db || !etsyTablesReady || !etsyImportsHaveDetails) return null;
+  let changes = 0;
+  const written = runWrite("requestEtsyImportRetry", () => {
+    changes = db
+      .prepare("UPDATE etsy_imports SET state = ?, manual_xwd = ?, updated_at = ? WHERE receipt_id = ? AND transaction_id = ? AND state IN (?, ?)")
+      .run(
+        ETSY_IMPORT_STATE.RETRY,
+        manualXwd,
+        new Date().toISOString(),
+        String(receiptId),
+        String(transactionId),
+        ETSY_IMPORT_STATE.NEEDS_REVIEW,
+        ETSY_IMPORT_STATE.FAILED,
+      ).changes;
+  });
+  return written ? { updated: changes === 1 } : null;
+};
+
+// "Not a print" from the bar (E4): DISMISSED, never imported again. Same guard as the retry. -> { updated } or null.
+export const dismissEtsyImport = ({ receiptId, transactionId }) => {
+  if (!db || !etsyTablesReady || !etsyImportsHaveDetails) return null;
+  let changes = 0;
+  const written = runWrite("dismissEtsyImport", () => {
+    changes = db
+      .prepare("UPDATE etsy_imports SET state = ?, updated_at = ? WHERE receipt_id = ? AND transaction_id = ? AND state IN (?, ?)")
+      .run(
+        ETSY_IMPORT_STATE.DISMISSED,
+        new Date().toISOString(),
+        String(receiptId),
+        String(transactionId),
+        ETSY_IMPORT_STATE.NEEDS_REVIEW,
+        ETSY_IMPORT_STATE.FAILED,
+      ).changes;
+  });
+  return written ? { updated: changes === 1 } : null;
 };
 
 // Idempotent: add the `alias` column to an existing `fabrics` table if missing.
