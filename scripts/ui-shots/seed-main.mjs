@@ -27,6 +27,8 @@ import {
   INBOX_AGES,
   STAGE_CHAIN,
   withAllFeaturesOff,
+  withEtsyOn,
+  DEMO_ETSY_LINES,
   buildFiles,
   buildInboxPlan,
   makeRng,
@@ -103,7 +105,7 @@ const main = async () => {
   await registerIpcHandlers();
 
   // saveShopProfile does not validate (the import path does), so the demo profile goes through the import validator first.
-  const SHOP = VARIANT === "v1" ? withAllFeaturesOff(DEMO_SHOP) : DEMO_SHOP;
+  const SHOP = VARIANT === "v1" ? withAllFeaturesOff(DEMO_SHOP) : VARIANT === "v5" ? withEtsyOn(DEMO_SHOP) : DEMO_SHOP;
   const verdict = validateShopProfile(SHOP, { schemaVersion: DEFAULT_PROFILE.schemaVersion });
   if (!verdict.ok) return fail(`the demo shop profile is invalid: ${verdict.errors.join("; ")}`);
   // Then through the app's compare-and-swap write.
@@ -300,6 +302,24 @@ const main = async () => {
     fs.mkdirSync(layout.storageCorruptPath, { recursive: true });
     assertInside(demoHome, path.join(layout.storageCorruptPath, "ripflow.db"));
     fs.writeFileSync(path.join(layout.storageCorruptPath, "ripflow.db"), "this is not a SQLite database - demo".repeat(40), "utf8");
+  }
+
+  if (VARIANT === "v5") {
+    // The Etsy bar: the lines are written the way the importer writes them (claim), then the one retry request
+    // the way a person's click writes it. The typed number of line 2 is the importer's column, set directly.
+    for (const line of DEMO_ETSY_LINES) {
+      const key = { receiptId: line.receiptId, transactionId: line.transactionId };
+      const claimed = db.claimEtsyImport({
+        ...key,
+        state: line.state,
+        reason: line.reason,
+        details: { title: line.title, quantity: line.quantity, listingId: line.listingId },
+      });
+      if (claimed !== true) return fail(`the demo Etsy line ${line.receiptId} was not claimed (${claimed})`);
+      if (line.manualXwd) real.prepare("UPDATE etsy_imports SET manual_xwd = ? WHERE receipt_id = ? AND transaction_id = ?").run(line.manualXwd, line.receiptId, line.transactionId);
+      if (line.retryRequested && db.requestEtsyImportRetry({ ...key, manualXwd: null })?.updated !== true) return fail(`the demo retry of ${line.receiptId} was refused`);
+    }
+    console.log(`[seed] etsy bar: ${DEMO_ETSY_LINES.length} lines`);
   }
 
   real.close();

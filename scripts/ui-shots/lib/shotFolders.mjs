@@ -11,6 +11,7 @@ const FOLDERS = {
   ST: "settings",
   WZ: "wizard",
   SW: "sweep",
+  EB: "etsy-bar",
   SR: "search",
 };
 

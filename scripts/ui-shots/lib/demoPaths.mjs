@@ -48,7 +48,7 @@ export const demoLayout = (demoHome) => {
   };
 };
 
-export const VARIANTS = ["v0", "v1", "v2", "v3", "v4"];
+export const VARIANTS = ["v0", "v1", "v2", "v3", "v4", "v5"];
 
 // true when `target` is `base` or lies under it (case-insensitive, like Windows).
 export const isUnder = (target, base) => {

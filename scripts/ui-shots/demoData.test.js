@@ -103,3 +103,26 @@ describe("variants and custom-order demo data (UI-3)", () => {
     expect(old.stages.every((s) => s !== "shipped")).toBe(true);
   });
 });
+
+describe("variant V5 - the Etsy bar (E4b)", () => {
+  it("turns only features.etsy on and the profile still passes the import validator", async () => {
+    const { withEtsyOn } = await import("./demoData.mjs");
+    const shop = withEtsyOn(DEMO_SHOP);
+    expect(shop.features.etsy).toBe(true);
+    expect(DEMO_SHOP.features.etsy).toBeUndefined();
+    expect({ ...shop.features, etsy: undefined }).toEqual({ ...DEMO_SHOP.features, etsy: undefined });
+    expect(validateShopProfile(shop, { schemaVersion: DEFAULT_PROFILE.schemaVersion }).ok).toBe(true);
+  });
+
+  it("the lines are distinct, open, and what the bar lists is what the importer can leave", async () => {
+    const { DEMO_ETSY_LINES } = await import("./demoData.mjs");
+    expect(new Set(DEMO_ETSY_LINES.map((l) => `${l.receiptId}:${l.transactionId}`)).size).toBe(DEMO_ETSY_LINES.length);
+    for (const line of DEMO_ETSY_LINES) {
+      expect(["needs_review", "failed"], line.receiptId).toContain(line.state);
+      expect(line.reason, line.receiptId).toBeTruthy();
+      if (line.manualXwd) expect(line.manualXwd).toMatch(/^\d{6}$/);
+    }
+    expect(DEMO_ETSY_LINES.some((l) => l.state === "failed")).toBe(true);
+    expect(DEMO_ETSY_LINES.some((l) => l.retryRequested)).toBe(true);
+  });
+});

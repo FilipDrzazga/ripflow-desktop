@@ -184,3 +184,57 @@ export const DEMO_CUSTOM_ORDERS = [
 ];
 
 export const DEMO_WORKSTATION = "DEMO-STATION-1";
+
+// Variant V5 (plan E4b): the Etsy bar of the Inbox. The shop turns features.etsy on; the lines below are what the
+// importer would have left for a person (fictional shop, fictional orders). `manualXwd` = a number typed in before.
+export const withEtsyOn = (shop) => ({ ...shop, features: { ...shop.features, etsy: true } });
+
+export const DEMO_ETSY_LINES = [
+  {
+    receiptId: "3900000101",
+    transactionId: "4100000001",
+    state: "needs_review",
+    title: "Peony Garden Velvet Upholstery Fabric, Floral Print by the Yard",
+    quantity: 2,
+    listingId: "1700000001",
+    reason: "No XWD pattern number in the SKU, the variations or the title of the order line.",
+  },
+  {
+    receiptId: "3900000102",
+    transactionId: "4100000002",
+    state: "needs_review",
+    title: "Mid-Century Atomic Linen Blend, Curtain and Cushion Fabric",
+    quantity: 1,
+    listingId: "1700000002",
+    reason: "No image with XWD100234 in the Etsy library folder.",
+    manualXwd: "100234",
+  },
+  {
+    receiptId: "3900000103",
+    transactionId: "4100000003",
+    state: "needs_review",
+    title: "Velvet Fabric Sample Book - 12 Swatches",
+    quantity: 1,
+    listingId: "1700000003",
+    reason: 'The order line has no "Fabric" variation.',
+  },
+  {
+    receiptId: "3900000104",
+    transactionId: "4100000004",
+    state: "failed",
+    title: "Botanical Stripe Cotton Sateen, Bedding Fabric",
+    quantity: 3,
+    listingId: "1700000004",
+    reason: "The copy into the inbox failed: the network folder was not reachable.",
+  },
+  {
+    receiptId: "3900000105",
+    transactionId: "4100000005",
+    state: "needs_review",
+    title: "Coastal Geometric Twill, Outdoor Cushion Fabric",
+    quantity: 1,
+    listingId: "1700000005",
+    reason: "2 images carry XWD100877 in the Etsy library folder (A.tif, B.tif) - one is expected.",
+    retryRequested: true,
+  },
+];
