@@ -117,13 +117,15 @@
   background-color: var(--bg-white);
 }
 
+/* One order line = one row (FILIP 2026-10-22): what it is and why it stopped on the left, cut with an ellipsis
+   (the whole text on hover), the ways out and the actions on the right. A window too narrow for both wraps the
+   actions under the text. */
 .line {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
+  align-items: center;
   flex-wrap: wrap;
-  gap: 12px 24px;
-  padding: 12px 16px;
+  gap: 8px 16px;
+  padding: 10px 16px;
   background-color: var(--bg-white);
 }
 
@@ -132,22 +134,20 @@
 }
 
 .line_text {
-  flex: 1 1 320px;
+  flex: 1 1 360px;
   min-width: 0;
-}
-
-.line_head {
   display: flex;
   align-items: center;
-  gap: 8px;
-  min-width: 0;
+  gap: 10px;
+  white-space: nowrap;
 }
 
 .line_title {
-  min-width: 0;
+  flex: 0 1 auto;
+  min-width: 60px;
+  max-width: 40%;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
   font-size: 14px;
   font-weight: 600;
 }
@@ -176,29 +176,27 @@
 }
 
 .line_meta {
-  margin-top: 2px;
+  flex-shrink: 0;
   font-size: 12px;
   color: var(--text-secondary);
 }
 
 .line_reason {
-  margin-top: 6px;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
   font-size: 13px;
-  line-height: 1.4;
-  overflow-wrap: anywhere;
 }
 
-.line_hint {
-  margin-top: 4px;
+.suggestion {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   font-size: 12px;
+  font-weight: 600;
   color: #1c5a99;
-}
-
-.links {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px 8px;
-  margin-top: 10px;
 }
 
 /* The two ways out to Etsy - outlined like the app's other secondary buttons (SewingReceive .ghost_btn), each
@@ -254,25 +252,13 @@
 .actions {
   flex: 0 0 auto;
   display: flex;
-  flex-direction: column;
+  align-items: center;
   gap: 8px;
 }
 
-.field {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.field_label {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--text-secondary);
-}
-
 .input {
-  width: 160px;
-  height: 34px;
+  width: 130px;
+  height: 32px;
   padding: 0 10px;
   border-radius: 8px;
   border: 1px solid var(--border-grey);
@@ -299,18 +285,14 @@
 }
 
 .field_error {
+  flex-basis: 100%;
   font-size: 12px;
   color: #a32d2d;
 }
 
-.buttons {
-  display: flex;
-  gap: 8px;
-}
-
 .primary,
 .secondary {
-  height: 34px;
+  height: 32px;
   padding: 0 14px;
   border-radius: 8px;
   font: inherit;
