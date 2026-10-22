@@ -196,7 +196,7 @@ const DataList = () => {
   };
 
   const handleOpenInShopify = async (item) => {
-    const orderId = item.orderId ?? item.file?.name?.match(/ON\d+/i)?.[0]?.toUpperCase() ?? null;
+    const orderId = orderIdOf(item.orderId, item.file?.name);
     if (!orderId) {
       notify(
         { type: "Warning", title: "No order number", message: "No order number for this file." },

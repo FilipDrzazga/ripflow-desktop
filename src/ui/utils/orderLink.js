@@ -2,7 +2,7 @@
 // One decision for the four menus (Inbox, BatchHistory, Production Batches + Receive), so an
 // Etsy order can never be sent to the Shopify search in one view and to Etsy in another.
 
-import { ORDER_SOURCE, orderSourceOf } from "../../shared/orderSource";
+import { ORDER_SOURCE, orderSourceOf, orderIdFromFileName } from "../../shared/orderSource";
 import { isFeatureEnabled } from "./featureVisibility";
 import { openInEtsy as openInEtsyApi } from "../services/fileService";
 import { notify } from "./notify";
@@ -12,11 +12,11 @@ export const ORDER_LINK = Object.freeze({
   ETSY: "etsy",
 });
 
-// The order number of a file: the parsed one, else the first ON<digits> / ET<digits> in the
-// file name (a BatchHistory row read from disk, an inbox row parsed before the field existed).
+// The order number of a file: the parsed one, else the first ON<digits> / ET<digits> TOKEN of the
+// file name (orderIdFromFileName; a BatchHistory row read from disk, an inbox row parsed before the field existed).
 export const orderIdOf = (orderId, fileName) => {
   if (typeof orderId === "string" && orderId.trim() !== "") return orderId;
-  return String(fileName ?? "").match(/(?:ON|ET)\d+/i)?.[0]?.toUpperCase() ?? null;
+  return orderIdFromFileName(fileName);
 };
 
 // ORDER_LINK.ETSY for an Etsy order (no feature flag: see openInEtsy.js in main), otherwise

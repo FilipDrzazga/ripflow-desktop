@@ -20,6 +20,10 @@ export const SHOP_MARKER = Object.freeze({
 // One file-name token that is an order number of a known source.
 export const ORDER_ID_RE = /^(ON|ET)\d+$/i;
 
+// An order number as a whole "_"-delimited token of a file name (the parser's own tokenizing): it starts the
+// name or follows "_", and ends at "_", the extension dot or the end - "Velvet2_..." is not ET2.
+const ORDER_ID_IN_NAME_RE = /(?:^|_)((?:ON|ET)\d+)(?=_|\.|$)/i;
+
 const ETSY_ORDER_RE = /^ET(\d+)$/i;
 const SHOPIFY_ORDER_RE = /^ON\d+$/i;
 
@@ -33,6 +37,10 @@ export const orderSourceOf = (orderId) => {
   if (SHOPIFY_ORDER_RE.test(id)) return ORDER_SOURCE.SHOPIFY;
   return null;
 };
+
+// The first order number (upper case) that is a whole token of a file name, or null. The one fallback for a row
+// the parser gave no orderId (a BatchHistory row read from disk, an invalid inbox file).
+export const orderIdFromFileName = (name) => text(name).match(ORDER_ID_IN_NAME_RE)?.[1]?.toUpperCase() ?? null;
 
 // The Etsy receipt id of an "ET<digits>" order number, as a digit string, or null.
 export const etsyReceiptId = (orderId) => text(orderId).match(ETSY_ORDER_RE)?.[1] ?? null;

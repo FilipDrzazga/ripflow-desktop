@@ -22,6 +22,7 @@
 import { APP_VIEW } from "../constants/appViews";
 import { dayKeyFromBatchPath } from "./dayKey";
 import { stageFileName } from "../../shared/artworkFile";
+import { orderIdFromFileName } from "../../shared/orderSource";
 import { ORDER_STAGE_PIPELINE, UNKNOWN_ORDER_KEY, UNKNOWN_ORDER_LABEL } from "./groupByOrder";
 
 // Where a file is now: the two pre-print places, a PRODUCTION_STAGE value verbatim, or HISTORY - printed and
@@ -110,7 +111,7 @@ const inboxRow = ({ item, held, heldReason, production }) => {
     fileName: name,
     // An item the parser gave no orderId (an invalid file) still shows under the ON number in its name,
     // like the order column of the Inbox list does.
-    orderKey: orderKeyOf(text(item.orderId) || name.match(/ON\d+/i)?.[0]),
+    orderKey: orderKeyOf(text(item.orderId) || orderIdFromFileName(name)),
     customerName: text(item.customerName) || null,
     where: held ? ORDER_SEARCH_WHERE.HELD : ORDER_SEARCH_WHERE.INBOX,
     since: isoOf(item.createdAt),
@@ -162,7 +163,7 @@ const historyRow = ({ file, batch, dayFolder }) => {
   return {
     fileId: stem,
     fileName: name,
-    orderKey: orderKeyOf(text(file.orderId) || name.match(/ON\d+/i)?.[0]),
+    orderKey: orderKeyOf(text(file.orderId) || orderIdFromFileName(name)),
     customerName: text(file.customerName) || null,
     where: ORDER_SEARCH_WHERE.HISTORY,
     since: printedBatchTime(dayFolder, batch.name),

@@ -767,7 +767,7 @@ const BatchHistory = () => {
   }, []);
 
   const handleOpenInShopify = useCallback(async (file) => {
-    const orderId = file.orderId ?? file.name.match(/ON\d+/i)?.[0]?.toUpperCase() ?? null;
+    const orderId = orderIdOf(file.orderId, file.name);
     if (!orderId) {
       notify(
         { type: "Warning", title: "No order number", message: "No order number for this file." },
