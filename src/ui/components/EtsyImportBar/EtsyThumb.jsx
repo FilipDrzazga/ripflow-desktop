@@ -14,7 +14,11 @@ const EtsyThumb = ({ listingId, enabled }) => {
   useEffect(() => {
     if (!enabled || !listingId) return undefined;
     let cancelled = false;
-    getEtsyListingImage(listingId)
+    // Through Promise.resolve().then: a call that throws at once (a preload without this channel, a number the
+    // preload refuses) becomes the grey square, never an exception out of the effect - that took the whole window
+    // down (FILIP 2026-10-22 14:19: the DEV app's preload predated the channel).
+    Promise.resolve()
+      .then(() => getEtsyListingImage(listingId))
       .then((res) => {
         if (!cancelled) setLoaded({ id: listingId, image: res?.success && typeof res.image === "string" ? res.image : null });
       })
