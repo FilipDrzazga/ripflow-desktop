@@ -477,13 +477,29 @@ export const createEtsyImporter = ({
   const retryUnlisted = async (listed, summary) => {
     const rows = typeof imports.listRetries === "function" ? imports.listRetries() : null;
     if (!Array.isArray(rows) || rows.length === 0) return;
-    const seen = new Set((Array.isArray(listed) ? listed : []).map((r) => idOf(r?.receipt_id)));
+    const listedById = new Map((Array.isArray(listed) ? listed : []).map((r) => [idOf(r?.receipt_id), r]));
     const wanted = new Map();
+    const goneFromList = new Map();
     for (const row of rows) {
       const receiptId = idOf(row?.receiptId);
-      if (!/^\d+$/.test(receiptId) || seen.has(receiptId)) continue;
+      if (!/^\d+$/.test(receiptId)) continue;
+      const transactionId = idOf(row.transactionId);
+      const onList = listedById.get(receiptId);
+      if (onList) {
+        // D80: the list carries the order but no longer this line - a RETRY the pass above could not reach. Only when the
+        // list really carries a transactions array (an answer without one says nothing about the lines).
+        const carried = Array.isArray(onList.transactions) && onList.transactions.some((t) => idOf(t?.transaction_id) === transactionId);
+        if (Array.isArray(onList.transactions) && !carried) {
+          if (!goneFromList.has(receiptId)) goneFromList.set(receiptId, new Set());
+          goneFromList.get(receiptId).add(transactionId);
+        }
+        continue;
+      }
       if (!wanted.has(receiptId)) wanted.set(receiptId, new Set());
-      wanted.get(receiptId).add(idOf(row.transactionId));
+      wanted.get(receiptId).add(transactionId);
+    }
+    for (const [receiptId, lines] of goneFromList) {
+      backToReview(receiptId, lines, `Etsy's order ET${receiptId} no longer has this line.`, summary);
     }
     for (const [receiptId, lines] of [...wanted].slice(0, MAX_UNLISTED_RETRY_ORDERS)) {
       const receipt = await fetchUnlisted(receiptId);

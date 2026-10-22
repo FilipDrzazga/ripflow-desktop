@@ -121,12 +121,12 @@ describe("what the extra look leaves alone", () => {
     expect(t.getReceipt).not.toHaveBeenCalled();
   });
 
-  it("an order on the list is never fetched by number, even when its RETRY line is still RETRY after the pass", async () => {
+  it("an order on the list is never fetched by number; its RETRY line the list no longer carries goes back to NEEDS_REVIEW", async () => {
     const t = setup({ fetched: open([lm()]) });
     t.imports.putRetry({ manualXwd: "173706" }); // line 501
     t.setReceipts([receipt([lm({ transaction_id: 502 })])]); // the listed order, without line 501
     await t.tick();
-    expect(t.imports.rows.get(KEY).state).toBe(ETSY_IMPORT_STATE.RETRY);
+    expect(t.imports.rows.get(KEY).state).toBe(ETSY_IMPORT_STATE.NEEDS_REVIEW);
     expect(t.getReceipt).not.toHaveBeenCalled();
   });
 
