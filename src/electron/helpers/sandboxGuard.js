@@ -20,6 +20,7 @@ export const PATH_SETTING_KEYS = Object.freeze(["storagePath", "xmlPath", "custo
 export const NON_PATH_SETTING_KEYS = Object.freeze([
   "workstationName",
   "etsyImportEnabled", // a switch, not a path - the library folder it reads is etsyLibraryPath above
+  "etsyImportIntervalMin", // minutes between two Etsy import ticks
   "labelPrinterName", // a printer device name, not a path - label printing is blocked in labelPrinter.js
   "workstationRole",
   "shippedRetentionDays",

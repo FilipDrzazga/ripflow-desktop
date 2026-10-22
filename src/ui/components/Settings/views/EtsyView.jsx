@@ -5,7 +5,8 @@ import { getEtsyStatus, saveEtsyKey, connectEtsy, testEtsyConnection, disconnect
 import { getSettings, setSettings, selectFolder } from "../../../services/settingsService";
 import { showConfirm } from "../../../services/systemService";
 import { notify } from "@/utils/notify";
-import { etsyStatusLine, etsyResultNotice, etsyTestRows, previewOrderNotes, previewLineView, previewDate, importOrderConfirm, importOrderNotice } from "@/utils/etsyView";
+import { etsyStatusLine, etsyResultNotice, etsyTestRows, previewOrderNotes, previewLineView, previewDate, importOrderConfirm, importOrderNotice, etsyPaceLine } from "@/utils/etsyView";
+import { clampEtsyImportMinutes, ETSY_IMPORT_MIN_MINUTES, ETSY_IMPORT_MAX_MINUTES } from "../../../../shared/etsyImportInterval";
 import sharedStyles from "./SettingsView.module.css";
 import styles from "./EtsyView.module.css";
 
@@ -25,12 +26,17 @@ const EtsyView = () => {
   const [allSettings, setAllSettings] = useState(null);
   const [importEnabled, setImportEnabled] = useState(false);
   const [libraryPath, setLibraryPath] = useState("");
+  // The field holds what is typed; the minutes are its clamped value (on blur the field shows them).
+  const [intervalText, setIntervalText] = useState(String(clampEtsyImportMinutes(undefined)));
+  const intervalMin = clampEtsyImportMinutes(intervalText);
+  const [limits, setLimits] = useState(null); // Etsy's request allowance from its last answer to this station
   const [savedImport, setSavedImport] = useState(null);
   const [savingImport, setSavingImport] = useState(false);
 
   const take = (res) => {
     if (res && "status" in res) setStatus(res.status);
     if (res?.redirectUri) setRedirectUri(res.redirectUri);
+    if (res && "limits" in res) setLimits(res.limits);
   };
 
   useEffect(() => {
@@ -47,7 +53,8 @@ const EtsyView = () => {
         setAllSettings(res.settings);
         setImportEnabled(res.settings.etsyImportEnabled === true);
         setLibraryPath(res.settings.etsyLibraryPath ?? "");
-        setSavedImport({ enabled: res.settings.etsyImportEnabled === true, path: res.settings.etsyLibraryPath ?? "" });
+        setIntervalText(String(clampEtsyImportMinutes(res.settings.etsyImportIntervalMin)));
+        setSavedImport({ enabled: res.settings.etsyImportEnabled === true, path: res.settings.etsyLibraryPath ?? "", minutes: clampEtsyImportMinutes(res.settings.etsyImportIntervalMin) });
       })
       .catch(() => setAllSettings(null));
   }, []);
@@ -60,10 +67,10 @@ const EtsyView = () => {
   const handleSaveImport = async () => {
     setSavingImport(true);
     try {
-      const res = await setSettings({ ...allSettings, etsyImportEnabled: importEnabled, etsyLibraryPath: libraryPath.trim() });
+      const res = await setSettings({ ...allSettings, etsyImportEnabled: importEnabled, etsyLibraryPath: libraryPath.trim(), etsyImportIntervalMin: intervalMin });
       if (res.success) {
-        setAllSettings((s) => ({ ...s, etsyImportEnabled: importEnabled, etsyLibraryPath: libraryPath.trim() }));
-        setSavedImport({ enabled: importEnabled, path: libraryPath.trim() });
+        setAllSettings((s) => ({ ...s, etsyImportEnabled: importEnabled, etsyLibraryPath: libraryPath.trim(), etsyImportIntervalMin: intervalMin }));
+        setSavedImport({ enabled: importEnabled, path: libraryPath.trim(), minutes: intervalMin });
         notify({ type: "Success", title: "Etsy import", message: importEnabled ? "This station imports Etsy orders from now on." : "Etsy import is off on this station." });
       } else {
         notify({ type: "Error", title: "Etsy import not saved", message: res.error || "Could not save settings." });
@@ -145,7 +152,8 @@ const EtsyView = () => {
   const line = loaded ? etsyStatusLine(status) : { tone: "off", text: "Reading the Etsy connection..." };
   const canStore = !!status?.encryption;
   const isBusy = busy !== null;
-  const importChanged = savedImport !== null && (savedImport.enabled !== importEnabled || savedImport.path !== libraryPath.trim());
+  const importChanged =
+    savedImport !== null && (savedImport.enabled !== importEnabled || savedImport.path !== libraryPath.trim() || savedImport.minutes !== intervalMin);
   const importNeedsFolder = importEnabled && libraryPath.trim() === "";
 
   return (
@@ -319,7 +327,7 @@ const EtsyView = () => {
             </button>
           </div>
           <p className={sharedStyles.hint}>
-            Only ONE station should be On. It checks Etsy every 2 minutes and puts a file for each paid, unshipped order line into the inbox. It also needs the Etsy
+            Only ONE station should be On. It checks Etsy every {intervalMin} minutes and puts a file for each paid, unshipped order line into the inbox. It also needs the Etsy
             feature turned on in the shop profile. Turning it Off forgets the moment it was turned On: orders that arrive while it is Off are never imported
             later.
           </p>
@@ -345,8 +353,30 @@ const EtsyView = () => {
           {importNeedsFolder && <p className={sharedStyles.field_error}>Choose the pattern folder before turning the import On.</p>}
           <p className={sharedStyles.hint}>Patterns are only copied from here, never moved. Each order line needs exactly one image with its XWD number in the name.</p>
         </div>
+        <div className={sharedStyles.field}>
+          <label className={sharedStyles.label} htmlFor="etsy-interval">
+            Check Etsy every (minutes)
+          </label>
+          <div className={sharedStyles.input_row}>
+            <input
+              id="etsy-interval"
+              className={sharedStyles.input}
+              type="number"
+              min={ETSY_IMPORT_MIN_MINUTES}
+              max={ETSY_IMPORT_MAX_MINUTES}
+              value={intervalText}
+              onChange={(e) => setIntervalText(e.target.value)}
+              onBlur={() => setIntervalText(String(intervalMin))}
+              disabled={allSettings === null}
+              style={{ maxWidth: 100 }}
+            />
+          </div>
+          <p className={sharedStyles.hint}>
+            {ETSY_IMPORT_MIN_MINUTES} to {ETSY_IMPORT_MAX_MINUTES} minutes, on the importer station; the new pace starts after its next check. {etsyPaceLine(intervalMin, limits)}
+          </p>
+        </div>
       </div>
-      {/* The footer Save is the one for every import option above (On/Off and the folder), like General and Paths: leaving the tab drops what is not saved. */}
+      {/* The footer Save is the one for every import option above (On/Off, the folder, the interval), like General and Paths: leaving the tab drops what is not saved. */}
       <div className={sharedStyles.view_footer}>
         {importChanged && <span className={styles.unsaved}>Not saved yet - press Save import settings</span>}
         <button className={sharedStyles.save_btn} onClick={handleSaveImport} disabled={savingImport || !importChanged || importNeedsFolder}>

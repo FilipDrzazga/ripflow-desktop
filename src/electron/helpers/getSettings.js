@@ -1,5 +1,6 @@
 import os from "node:os";
 import Store from "electron-store";
+import { clampEtsyImportMinutes, ETSY_IMPORT_DEFAULT_MINUTES } from "../../shared/etsyImportInterval.js";
 
 const store = new Store({
   defaults: {
@@ -13,6 +14,8 @@ const store = new Store({
     // machine, rule 25) AND the shop profile has features.etsy; the library is the folder of Etsy patterns.
     etsyImportEnabled: false,
     etsyLibraryPath: "",
+    // How often the importer asks Etsy (minutes, FILIP 2026-10-22); range in shared/etsyImportInterval.js.
+    etsyImportIntervalMin: ETSY_IMPORT_DEFAULT_MINUTES,
     labelPrinterName: "",
     workstationRole: "",
     shippedRetentionDays: 30,
@@ -29,6 +32,7 @@ export const getSettings = () => ({
   customOrderFolderPath: store.get("customOrderFolderPath"),
   etsyImportEnabled: store.get("etsyImportEnabled") === true,
   etsyLibraryPath: store.get("etsyLibraryPath"),
+  etsyImportIntervalMin: clampEtsyImportMinutes(store.get("etsyImportIntervalMin")),
   labelPrinterName: store.get("labelPrinterName"),
   workstationRole: store.get("workstationRole"),
   shippedRetentionDays: store.get("shippedRetentionDays"),
@@ -37,7 +41,7 @@ export const getSettings = () => ({
   clientId: store.get("clientId"),
 });
 
-export const setSettings = ({ storagePath, xmlPath, workstationName, customOrderFolderPath, etsyImportEnabled, etsyLibraryPath, labelPrinterName, workstationRole, shippedRetentionDays, batchHistoryEagerDays, labelPrintMode, clientId }) => {
+export const setSettings = ({ storagePath, xmlPath, workstationName, customOrderFolderPath, etsyImportEnabled, etsyLibraryPath, etsyImportIntervalMin, labelPrinterName, workstationRole, shippedRetentionDays, batchHistoryEagerDays, labelPrintMode, clientId }) => {
   if (storagePath !== undefined) store.set("storagePath", storagePath);
   if (xmlPath !== undefined) store.set("xmlPath", xmlPath);
   if (workstationName !== undefined) store.set("workstationName", workstationName);
@@ -51,6 +55,7 @@ export const setSettings = ({ storagePath, xmlPath, workstationName, customOrder
     if (!on) store.delete("etsyImportSince");
     store.set("etsyImportEnabled", on);
   }
+  if (etsyImportIntervalMin !== undefined) store.set("etsyImportIntervalMin", clampEtsyImportMinutes(etsyImportIntervalMin));
   if (labelPrinterName !== undefined) store.set("labelPrinterName", labelPrinterName);
   if (workstationRole !== undefined) store.set("workstationRole", workstationRole);
   if (shippedRetentionDays !== undefined) store.set("shippedRetentionDays", Math.max(1, Math.floor(Number(shippedRetentionDays) || 30)));

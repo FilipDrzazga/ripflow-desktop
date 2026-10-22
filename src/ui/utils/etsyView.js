@@ -134,3 +134,15 @@ export const importOrderNotice = (res, receiptId) => {
   if (res.reason) return { type: "Error", title, message: `Stopped: ${res.reason}. So far: ${counts}.` };
   return { type: res.failed || res.needsReview ? "Warning" : "Success", title, message: `${counts}.` };
 };
+
+// The import's pace beside Etsy's allowance (FILIP 2026-10-22: "how many requests a day may I make?"). A tick is
+// one page of the order list (+1 per 100 open orders) and up to 10 orders fetched by number for a Retry, so a day
+// costs between 1 and 11 requests a tick. limits: what Etsy reported on its last answer to this station (null when
+// it has not answered yet).
+export const etsyPaceLine = (minutes, limits) => {
+  const ticks = Math.round((24 * 60) / minutes);
+  const use = `Every ${minutes} min the import makes ${ticks.toLocaleString("en-GB")} to ${(ticks * 11).toLocaleString("en-GB")} Etsy requests a day.`;
+  if (!Number.isInteger(limits?.perDay)) return `${use} Etsy shows this app's daily limit on its answers - press Test connection to read it.`;
+  const left = Number.isInteger(limits.remainingToday) ? ` (${limits.remainingToday.toLocaleString("en-GB")} left in the last 24 h)` : "";
+  return `${use} Etsy allows this app ${limits.perDay.toLocaleString("en-GB")} a day${left}.`;
+};

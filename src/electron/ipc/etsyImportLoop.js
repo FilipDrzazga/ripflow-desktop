@@ -8,12 +8,15 @@ import { getProfile, getFeature } from "../helpers/shopProfile.js";
 import { isDbOpen, getAllFabrics, getEtsyFabricMap, getEtsyImport, claimEtsyImport, setEtsyImportState, moveEtsyImport, listEtsyImportRetries } from "../helpers/db.js";
 import { renameNoOverwrite } from "../helpers/renameNoOverwrite.js";
 import { parsePrintFileName } from "../helpers/parseFileName.js";
+import { clampEtsyImportMinutes } from "../../shared/etsyImportInterval.js";
 
 // The background half of the Etsy import (plan E3b-2): ONE tick every few minutes on the station that is
 // switched on as the importer. The rules of the import itself are in helpers/etsyImport.js; this file only
 // supplies the real parts and the pause. Started once from main.js with the power pause of that file.
 
-export const ETSY_IMPORT_INTERVAL_MS = 2 * 60 * 1000;
+// The wait between two ticks, read again before every wait: a change in Settings > Etsy applies from the next tick,
+// without a restart (FILIP 2026-10-22). Default and range: shared/etsyImportInterval.js.
+export const etsyImportIntervalMs = () => clampEtsyImportMinutes(getSettings().etsyImportIntervalMin) * 60 * 1000;
 // The first tick waits, so the start-up reads (profile, fabrics, inbox) are not joined by an Etsy call.
 const FIRST_TICK_DELAY_MS = 60 * 1000;
 
@@ -95,8 +98,19 @@ export const startEtsyImportLoop = ({ isPaused }) => {
     }
   };
 
-  const first = setTimeout(run, FIRST_TICK_DELAY_MS);
-  const timer = setInterval(run, ETSY_IMPORT_INTERVAL_MS);
+  // One timer at a time: each tick, when it ends, books the next one with the interval of that moment.
+  let timer = null;
+  let stopped = false;
+  const schedule = (ms) => {
+    timer = setTimeout(() => {
+      run()
+        .catch((err) => console.error("[etsy-import] tick failed:", err))
+        .finally(() => {
+          if (!stopped) schedule(etsyImportIntervalMs());
+        });
+    }, ms);
+  };
+  schedule(FIRST_TICK_DELAY_MS);
   // A request that arrives during a tick gets one more pass right after it (that tick may have read the row
   // before the request was written); the interval keeps its old rule and simply skips.
   runNow = () => {
@@ -124,8 +138,8 @@ export const startEtsyImportLoop = ({ isPaused }) => {
   return () => {
     runNow = null;
     importNow = null;
-    clearTimeout(first);
-    clearInterval(timer);
+    stopped = true;
+    clearTimeout(timer);
   };
 };
 

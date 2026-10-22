@@ -29,8 +29,23 @@ const readJson = async (response) => {
   }
 };
 
+// The app's request allowance as Etsy reported it on an answer (rate-limit headers; the daily count is a rolling
+// 24 hours). null when the answer carried none - a test double, a proxy, an error page.
+export const readRateLimits = (headers, at) => {
+  const num = (name) => {
+    const raw = typeof headers?.get === "function" ? headers.get(name) : null;
+    const value = raw === null || raw === undefined || raw === "" ? NaN : Number(raw);
+    return Number.isInteger(value) && value >= 0 ? value : null;
+  };
+  const perDay = num("x-limit-per-day");
+  const remainingToday = num("x-remaining-today");
+  if (perDay === null && remainingToday === null) return null;
+  return { perDay, remainingToday, perSecond: num("x-limit-per-second"), at: new Date(at).toISOString() };
+};
+
 export const createEtsyClient = ({ credentials, fetch, now = () => Date.now() }) => {
   let cached = null; // { token, expiresAt }
+  let limits = null; // the last readRateLimits of an API answer, for Settings > Etsy
 
   const requireSecrets = () => {
     const secrets = credentials.secrets();
@@ -102,6 +117,7 @@ export const createEtsyClient = ({ credentials, fetch, now = () => Date.now() })
     } catch (err) {
       throw etsyError("ETSY_UNREACHABLE", `Etsy could not be reached: ${err.message}`);
     }
+    limits = readRateLimits(response.headers, now()) ?? limits;
     const body = await readJson(response);
     if (!response.ok) {
       const reason = body?.error || `HTTP ${response.status}`;
@@ -204,7 +220,9 @@ export const createEtsyClient = ({ credentials, fetch, now = () => Date.now() })
     cached = null;
   };
 
-  return { accessToken, get, completeSignIn, testConnection, listOpenReceipts, newestPaidReceipt, getReceipt, forgetToken };
+  const rateLimits = () => limits;
+
+  return { accessToken, get, completeSignIn, testConnection, listOpenReceipts, newestPaidReceipt, getReceipt, forgetToken, rateLimits };
 };
 
 export const summarizeReceipt = (receipt) => {
