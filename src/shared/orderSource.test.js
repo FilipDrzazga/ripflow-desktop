@@ -38,6 +38,25 @@ describe("orderIdFromFileName - the fallback reads a whole token only (D73)", ()
   });
 });
 
+describe("orderIdFromFileName - names typed by hand (D82)", () => {
+  it("finds the number after a space, a dash, a comma or a bracket", () => {
+    const cases = [
+      ["ON308523 - LUCY HADFIELD.jpg", "ON308523"],
+      ["HOLD - ON307609_Ann_Lee.pdf", "ON307609"],
+      ["Dupioni, 3 meters, ON314410, Mio.jpg", "ON314410"],
+      ["VICTORIA 1 - ON314911.png", "ON314911"],
+      ["Tea towel (ET3456789012) Ann.pdf", "ET3456789012"],
+    ];
+    for (const [name, id] of cases) expect(orderIdFromFileName(name), name).toBe(id);
+  });
+
+  it("still reads no number out of the inside of a word", () => {
+    for (const v of ["Velvet2 Ann.pdf", "Jacket10, Ann.pdf", "CUSHION1 - x.pdf", "xON12 x.pdf", "ON12a x.pdf", "ON 12 x.pdf", "eco jersey - ON312373JASMINE.png"]) {
+      expect(orderIdFromFileName(v), v).toBeNull();
+    }
+  });
+});
+
 describe("etsyReceiptId", () => {
   it("is the digits of an Etsy order number", () => {
     expect(etsyReceiptId("ET3456789012")).toBe("3456789012");

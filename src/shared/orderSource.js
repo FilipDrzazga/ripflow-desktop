@@ -20,9 +20,11 @@ export const SHOP_MARKER = Object.freeze({
 // One file-name token that is an order number of a known source.
 export const ORDER_ID_RE = /^(ON|ET)\d+$/i;
 
-// An order number as a whole "_"-delimited token of a file name (the parser's own tokenizing): it starts the
-// name or follows "_", and ends at "_", the extension dot or the end - "Velvet2_..." is not ET2.
-const ORDER_ID_IN_NAME_RE = /(?:^|_)((?:ON|ET)\d+)(?=_|\.|$)/i;
+// An order number as a whole word of a file name: ON / ET + digits with no letter or digit right before or after it.
+// The parser's own files separate it with "_" or ".", but names typed by hand carry it after a space, " - " or a comma
+// ("ON308523 - LUCY ...", "Dupioni, 3 meters, ON314410, ..."; D82), while a number inside a word is still not one:
+// "Velvet2_..." is not ET2, "CUSHION1_..." is not ON1.
+const ORDER_ID_IN_NAME_RE = /(?:^|[^A-Za-z0-9])((?:ON|ET)\d+)(?![A-Za-z0-9])/i;
 
 const ETSY_ORDER_RE = /^ET(\d+)$/i;
 const SHOPIFY_ORDER_RE = /^ON\d+$/i;
@@ -38,7 +40,7 @@ export const orderSourceOf = (orderId) => {
   return null;
 };
 
-// The first order number (upper case) that is a whole token of a file name, or null. The one fallback for a row
+// The first order number (upper case) that is a whole word of a file name, or null. The one fallback for a row
 // the parser gave no orderId (a BatchHistory row read from disk, an invalid inbox file).
 export const orderIdFromFileName = (name) => text(name).match(ORDER_ID_IN_NAME_RE)?.[1]?.toUpperCase() ?? null;
 
