@@ -1,5 +1,31 @@
 [
   {
+    "version": "1.0.44",
+    "date": "2026-10-22",
+    "changes": [
+      {
+        "text": "Etsy orders show the buyer's note: a small speech-bubble button beside \"Ship by\" on the Inbox row and on the Production card. Hover to read the whole note, click to open the order on Etsy. A note is cleared 90 days after its order is finished",
+        "clients": ["all"]
+      },
+      {
+        "text": "Etsy bar: the tooltip of a suggested XWD number now names the library file it comes from, so you can check it before pressing Use and Retry",
+        "clients": ["all"]
+      },
+      {
+        "text": "Order numbers are also read from hand-named files (for example \"ON308523 - NAME\"), but no longer from the middle of a word - a file without an order number no longer opens a made-up Etsy order",
+        "clients": ["all"]
+      },
+      {
+        "text": "Etsy: a Retry of a line that its order no longer carries is sent back to review with the reason instead of waiting for good",
+        "clients": ["all"]
+      },
+      {
+        "text": "Production: the Enter that ends a barcode scan no longer presses the button that has the focus",
+        "clients": ["all"]
+      }
+    ]
+  },
+  {
     "version": "1.0.43",
     "date": "2026-10-22",
     "changes": [
