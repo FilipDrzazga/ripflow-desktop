@@ -18,7 +18,7 @@ class ErrorBoundary extends Component {
   render() {
     if (this.state.error) {
       return (
-        <div className={styles.container}>
+        <div className={`${styles.container} ${this.props.compact ? styles.compact : ""}`}>
           <p className={styles.title}>Something went wrong</p>
           <p className={styles.message}>{this.state.error.message}</p>
           <button

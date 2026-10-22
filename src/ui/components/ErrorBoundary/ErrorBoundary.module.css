@@ -37,3 +37,22 @@
 .retry:hover {
   background: var(--color-hover, rgba(0, 0, 0, 0.05));
 }
+
+/* compact: a strip in the place of a small part of a view (the Etsy bar of the Inbox), not a panel that takes the
+   whole column - the view around it stays usable. */
+.compact {
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  flex-shrink: 0;
+  height: auto;
+  margin: 0 20px;
+  padding: 10px 16px;
+  border: 1px solid var(--border-grey);
+  border-radius: 12px;
+  background-color: var(--bg-white);
+}
+
+.compact .retry {
+  margin-top: 0;
+}

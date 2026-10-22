@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { LuChevronDown, LuTag } from "react-icons/lu";
 import { SiEtsy } from "react-icons/si";
 import EtsyThumb from "./EtsyThumb";
+import ErrorBoundary from "../ErrorBoundary/ErrorBoundary";
 import { useStore } from "../../store/useStore";
 import { usePollingPaused, useOnPollingResume } from "../../hooks/usePollingPaused";
 import { isFeatureEnabled } from "../../utils/featureVisibility";
@@ -37,7 +38,7 @@ import styles from "./EtsyImportBar.module.css";
 // It only reads the list and WRITES REQUESTS (Retry with a typed XWD number, Dismiss); the copy into the inbox is
 // always the importer station's. Shown only with features.etsy and at least one open line. Opens INLINE - a modal
 // would be an aria-modal layer over the Inbox, and the operator is meant to keep working in the table.
-const EtsyImportBar = () => {
+const EtsyImportBarContent = () => {
   const shopProfile = useStore((s) => s.shopProfile);
   const enabled = isFeatureEnabled("etsy", shopProfile);
   const pollingPaused = usePollingPaused();
@@ -234,5 +235,15 @@ const EtsyImportBar = () => {
     </section>
   );
 };
+
+// The bar is mounted ONLY with its own boundary (S2 2026-10-22 14:23): an error inside it - a render of an
+// unexpected row, a future effect - leaves a small "Something went wrong / Try again" strip in its place, never
+// the whole window down with the Inbox under it (FILIP 14:19). Inside this module, so no mount of the bar can
+// forget it.
+const EtsyImportBar = () => (
+  <ErrorBoundary compact>
+    <EtsyImportBarContent />
+  </ErrorBoundary>
+);
 
 export default EtsyImportBar;
