@@ -791,6 +791,18 @@ export const initDb = () => {
         stmtF.run(f.name, f.type, f.xmlWidth, f.rollWidth, f.isVelvet, f.isLinen, f.isBlossom);
       }
     }
+    // D72: an older build (no allowance table) deletes or renames a material without touching its
+    // allowance row, which would then be inherited by a later material of that name. Drop rows with no
+    // material. Skipped while the catalogue is empty (a catalogue read that came back empty must never
+    // wipe the allowances - same floor as pruneOrphanHeldFiles); its own try/catch: a failure here
+    // costs the cleanup only.
+    if (fabricsCount > 0) {
+      try {
+        db.prepare("DELETE FROM fabric_length_extra WHERE name NOT IN (SELECT name FROM fabrics)").run();
+      } catch (err) {
+        console.error("[db] pruning orphan fabric_length_extra rows failed:", err);
+      }
+    }
 
     // ── shop_profile ──────────────────────────────────────────────────────────
     // One row, one JSON blob. CHECK(id = 1) makes a second row impossible, so every
@@ -1336,7 +1348,9 @@ export const setFabricLengthExtra = (oldName, name, percent) => {
   if (!db) return false;
   try {
     db.transaction(() => {
-      const existing = db.prepare("SELECT percent FROM fabric_length_extra WHERE name = ?").get(oldName || name)?.percent ?? 0;
+      // An ADD (no oldName) has nothing to keep: fabricAddError refuses a name that has a material, so a
+      // row under it is an orphan an older build left behind (D72) and must not be inherited.
+      const existing = oldName ? (db.prepare("SELECT percent FROM fabric_length_extra WHERE name = ?").get(oldName)?.percent ?? 0) : 0;
       const value = lengthExtraToStore(percent, existing);
       if (oldName && oldName !== name) db.prepare("DELETE FROM fabric_length_extra WHERE name = ?").run(oldName);
       if (value > 0) db.prepare("INSERT OR REPLACE INTO fabric_length_extra (name, percent) VALUES (?, ?)").run(name, value);
