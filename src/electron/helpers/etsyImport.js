@@ -3,6 +3,7 @@ import { ETSY_IMPORT_INTERRUPTED_REASON, ETSY_IMPORT_STATE, ETSY_XWD_INPUT_RE } 
 import { isImageFileName } from "../../shared/artworkFile.js";
 import { MAX_UNLISTED_RETRY_ORDERS } from "../../shared/etsyImportInterval.js";
 import { etsyShipByOf } from "../../shared/etsyShipBy.js";
+import { etsyBuyerNoteOf } from "../../shared/etsyBuyerNote.js";
 import { isEtsyFileName } from "../../shared/orderSource.js";
 import { resolveEtsyFabric } from "./etsyFabric.js";
 import { suggestXwdForTitle } from "./etsySuggestion.js";
@@ -54,6 +55,9 @@ import {
 //   one (a backfill, or Etsy moved it) - compared in memory first, so an unchanged date costs no write. A missing or
 //   invalid date never clears a stored one, and a failed write of it is logged and costs only the date: the line
 //   goes on exactly as without it. The dry run never writes it.
+// - BUYER'S NOTE (plan MSG): the receipt's message_from_buyer, kept on every line of the order, by the same rules as
+//   the ship-by date (etsyBuyerNoteOf decides what is usable; an empty one never clears a stored note). It is a
+//   CUSTOMER's free text: it never reaches the log - not the note, not the message of an error about writing it.
 
 // A PENDING row younger than this may belong to a copy another process is making right now.
 export const STALE_PENDING_MS = 10 * 60 * 1000;
@@ -73,12 +77,14 @@ const tmpNameOf = (receiptId, transactionId) => `.etsy-${receiptId}-${transactio
 
 const idOf = (value) => (value === null || value === undefined ? "" : String(value).trim());
 
-// What the Inbox bar shows of a line; db.js stores NULL for anything that is not the expected type.
-const detailsOf = (transaction) => ({
+// What the Inbox bar shows of a line; db.js stores NULL for anything that is not the expected type. The buyer's note
+// belongs to the receipt, so every line of the order carries the same one.
+const detailsOf = (transaction, receipt) => ({
   title: transaction?.title,
   quantity: transaction?.quantity,
   listingId: transaction?.listing_id,
   shipBy: transaction?.expected_ship_date,
+  buyerNote: receipt?.message_from_buyer,
 });
 
 // -> { xwd } or { reason }: the number a person typed in, else the one the line carries.
@@ -110,7 +116,7 @@ export const createEtsyImporter = ({
   getProfile, // () => shop profile | null
   storageRoot, // () => absolute path of the inbox root (storagePath)
   libraryRoot, // () => absolute path of the Etsy pattern folder
-  imports, // { get, claim, setState, move, listRetries, setShipBy } - the etsy_imports functions of db.js
+  imports, // { get, claim, setState, move, listRetries, setShipBy, setBuyerNote } - the etsy_imports functions of db.js
   fs, // { readdir, stat, copyFile, unlink, constants }
   renameNoOverwrite,
   parse, // parsePrintFileName
@@ -255,6 +261,19 @@ export const createEtsyImporter = ({
     }
   };
 
+  // The buyer's note of a line that already has a row - the twin of refreshShipBy: written only when Etsy sends a
+  // usable note and the row holds a different one (`row.buyerNote` undefined = no column). Never throws, and the log
+  // says only THAT it failed: neither the note nor the error's message (which could quote it) is written there.
+  const refreshBuyerNote = (key, row, value) => {
+    const buyerNote = etsyBuyerNoteOf(value);
+    if (buyerNote === null || row.buyerNote === undefined || row.buyerNote === buyerNote || typeof imports.setBuyerNote !== "function") return;
+    try {
+      if (imports.setBuyerNote({ ...key, buyerNote }) === null) log(`[etsy-import] receipt ${key.receiptId} line ${key.transactionId}: the buyer's note could not be written.`);
+    } catch (err) {
+      log(`[etsy-import] receipt ${key.receiptId} line ${key.transactionId}: the buyer's note could not be written (${err?.code ?? err?.name ?? "error"}).`);
+    }
+  };
+
   // A PENDING row found by a later tick (W2). Never copies.
   const settlePending = async (row, summary) => {
     const age = now() - Date.parse(row.updatedAt);
@@ -349,10 +368,13 @@ export const createEtsyImporter = ({
 
     const existing = imports.get(receiptId, transactionId);
     if (existing === undefined) throw env("The import table could not be read.");
-    const details = detailsOf(transaction);
+    const details = detailsOf(transaction, receipt);
     if (existing) {
-      // A RETRY carries the date in its own move (retryLine); every other state is refreshed here.
-      if (existing.state !== ETSY_IMPORT_STATE.RETRY) refreshShipBy(key, existing, details.shipBy);
+      // A RETRY carries the date and the note in its own move (retryLine); every other state is refreshed here.
+      if (existing.state !== ETSY_IMPORT_STATE.RETRY) {
+        refreshShipBy(key, existing, details.shipBy);
+        refreshBuyerNote(key, existing, details.buyerNote);
+      }
       if (existing.state === ETSY_IMPORT_STATE.PENDING) await settlePending(existing, summary);
       else if (existing.state === ETSY_IMPORT_STATE.RETRY) await retryLine(existing, { receipt, transaction, index, total, library }, summary);
       else summary.skipped += 1; // DONE, NEEDS_REVIEW, FAILED, DISMISSED: a person decides, not the tick
@@ -378,7 +400,7 @@ export const createEtsyImporter = ({
   // makes this one do nothing. manual_xwd stays on the row either way, so the bar shows what was tried.
   const retryLine = async (row, line, summary) => {
     const key = { receiptId: row.receiptId, transactionId: row.transactionId };
-    const details = detailsOf(line.transaction);
+    const details = detailsOf(line.transaction, line.receipt);
     const prepared = await prepare({ ...line, manualXwd: row.manualXwd ?? null });
     const from = [ETSY_IMPORT_STATE.RETRY];
     if (prepared.reason) {

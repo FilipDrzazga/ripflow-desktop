@@ -2,6 +2,7 @@
 
 import { ETSY_TICK_MAX_REQUESTS } from "../../shared/etsyImportInterval";
 import { etsyShipByOf } from "../../shared/etsyShipBy";
+import { etsyBuyerNoteOf } from "../../shared/etsyBuyerNote";
 
 const day = (iso) => {
   const ms = Date.parse(iso ?? "");
@@ -94,6 +95,10 @@ export const previewOrderNotes = (res) => {
   );
   return notes;
 };
+
+// The buyer's note of the order (plan MSG; main sends it as `buyerNote`, next to `receipt`), or null when there is none
+// worth showing. Cleaned again here by the same rule, so the page never relies on main having done it.
+export const previewBuyerNote = (res) => etsyBuyerNoteOf(res?.buyerNote);
 
 // One order line -> { ok, headline, rows: [{ label, value }] }.
 export const previewLineView = (line) => {

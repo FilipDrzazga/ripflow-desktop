@@ -145,6 +145,7 @@ describe("the four E4 columns", () => {
       "ALTER TABLE etsy_imports ADD COLUMN manual_xwd TEXT",
       "ALTER TABLE etsy_imports ADD COLUMN suggested_xwd TEXT",
       "ALTER TABLE etsy_imports ADD COLUMN ship_by INTEGER",
+      "ALTER TABLE etsy_imports ADD COLUMN buyer_note TEXT",
     ]);
     sql = [];
     initDb();

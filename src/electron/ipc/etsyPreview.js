@@ -9,12 +9,15 @@ import { getProfile } from "../helpers/shopProfile.js";
 import { getAllFabrics, getEtsyFabricMap, getEtsyImport } from "../helpers/db.js";
 import { renameNoOverwrite } from "../helpers/renameNoOverwrite.js";
 import { parsePrintFileName } from "../helpers/parseFileName.js";
+import { etsyBuyerNoteOf } from "../../shared/etsyBuyerNote.js";
 
 // Settings -> Etsy -> "Check newest order": a DRY RUN of the import on the newest paid order of the shop. It builds
 // the same engine as the background tick (helpers/etsyImport.js) and asks only for `preview`, which goes through
 // the same prepare() and writes nothing: the engine gets NO claim / setState / move here (only `get`), so a write
 // would throw instead of happening, and no file is copied. Works on any station - it also says why the real
 // tick would not run here right now (the gate), which is the one thing a switched-on station keeps quiet.
+// `buyerNote` (plan MSG) is the order's note as the import would keep it - a key of its own, NOT in receiptFacts,
+// which carries no buyer data; null = none usable.
 
 const failure = (message) => Object.assign(new Error(message), { code: "ETSY_PREVIEW_NOT_READY", type: "Warning", title: "Etsy" });
 
@@ -49,5 +52,5 @@ export const previewNewestEtsyOrder = async () => {
   });
   const lines = await importer.preview(receipt);
 
-  return { receipt: receiptFacts(receipt, getEtsyImportSince()), lines, gate };
+  return { receipt: receiptFacts(receipt, getEtsyImportSince()), buyerNote: etsyBuyerNoteOf(receipt.message_from_buyer), lines, gate };
 };

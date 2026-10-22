@@ -105,6 +105,25 @@
   color: var(--text-secondary);
 }
 
+/* The buyer's note (plan MSG): a customer's own words, line breaks kept. */
+.check_buyer_note {
+  padding: 8px 10px;
+  border-radius: 8px;
+  background-color: var(--bg-white);
+}
+
+.check_buyer_note_label {
+  margin-bottom: 4px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.check_buyer_note_text {
+  color: var(--text-primary);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
 .check_line {
   padding: 8px 10px;
   border-radius: 8px;

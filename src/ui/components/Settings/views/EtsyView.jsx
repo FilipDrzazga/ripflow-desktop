@@ -5,7 +5,7 @@ import { getEtsyStatus, saveEtsyKey, connectEtsy, testEtsyConnection, disconnect
 import { getSettings, setSettings, selectFolder } from "../../../services/settingsService";
 import { showConfirm } from "../../../services/systemService";
 import { notify } from "@/utils/notify";
-import { etsyStatusLine, etsyResultNotice, etsyTestRows, previewOrderNotes, previewLineView, previewDate, importOrderConfirm, importOrderNotice, etsyPaceLine } from "@/utils/etsyView";
+import { etsyStatusLine, etsyResultNotice, etsyTestRows, previewOrderNotes, previewBuyerNote, previewLineView, previewDate, importOrderConfirm, importOrderNotice, etsyPaceLine } from "@/utils/etsyView";
 import { clampEtsyImportMinutes, ETSY_IMPORT_MIN_MINUTES, ETSY_IMPORT_MAX_MINUTES } from "../../../../shared/etsyImportInterval";
 import sharedStyles from "./SettingsView.module.css";
 import styles from "./EtsyView.module.css";
@@ -22,6 +22,7 @@ const EtsyView = () => {
   const [busy, setBusy] = useState(null);
   const [test, setTest] = useState(null);
   const [check, setCheck] = useState(null); // the answer of "Check newest order"
+  const buyerNote = previewBuyerNote(check);
   // The order import of THIS station (E3b-2): per-machine settings, not part of the Etsy connection above.
   const [allSettings, setAllSettings] = useState(null);
   const [importEnabled, setImportEnabled] = useState(false);
@@ -272,6 +273,12 @@ const EtsyView = () => {
                 {note.text}
               </div>
             ))}
+            {buyerNote && (
+              <div className={styles.check_buyer_note}>
+                <div className={styles.check_buyer_note_label}>Buyer's note</div>
+                <div className={styles.check_buyer_note_text}>{buyerNote}</div>
+              </div>
+            )}
             {check.lines.map((line) => {
               const view = previewLineView(line);
               return (

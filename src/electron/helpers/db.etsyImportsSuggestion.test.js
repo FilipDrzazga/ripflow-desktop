@@ -138,6 +138,7 @@ describe("the suggested_xwd column", () => {
     expect(sql.filter((s) => /^ALTER TABLE etsy_imports ADD COLUMN/.test(s))).toEqual([
       "ALTER TABLE etsy_imports ADD COLUMN suggested_xwd TEXT",
       "ALTER TABLE etsy_imports ADD COLUMN ship_by INTEGER",
+      "ALTER TABLE etsy_imports ADD COLUMN buyer_note TEXT",
     ]);
     sql = [];
     initDb();

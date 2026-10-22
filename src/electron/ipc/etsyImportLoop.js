@@ -15,6 +15,7 @@ import {
   moveEtsyImport,
   listEtsyImportRetries,
   setEtsyImportShipBy,
+  setEtsyImportBuyerNote,
 } from "../helpers/db.js";
 import { renameNoOverwrite } from "../helpers/renameNoOverwrite.js";
 import { parsePrintFileName } from "../helpers/parseFileName.js";
@@ -77,7 +78,7 @@ export const startEtsyImportLoop = ({ isPaused }) => {
     getProfile,
     storageRoot: () => storagePathOrNull(),
     libraryRoot: libraryPath,
-    imports: { get: getEtsyImport, claim: claimEtsyImport, setState: setEtsyImportState, move: moveEtsyImport, listRetries: listEtsyImportRetries, setShipBy: setEtsyImportShipBy },
+    imports: { get: getEtsyImport, claim: claimEtsyImport, setState: setEtsyImportState, move: moveEtsyImport, listRetries: listEtsyImportRetries, setShipBy: setEtsyImportShipBy, setBuyerNote: setEtsyImportBuyerNote },
     fs: { ...fs.promises, constants: fs.constants },
     renameNoOverwrite,
     parse: parsePrintFileName,
