@@ -1,5 +1,23 @@
 [
   {
+    "version": "1.0.40",
+    "date": "2026-10-22",
+    "changes": [
+      {
+        "text": "Every PrintFactory XML document now carries two extra elements: <RepeatType> (None for a PDF) and an empty <Dpi>. IMPORTANT: the PrintFactory workflow must accept both elements in every job before a station on this build prints - check this on one station first. Nothing else in the XML changes",
+        "clients": ["all"]
+      },
+      {
+        "text": "Etsy order import (optional, off until the shop profile has the Etsy flag, so a station without it looks the same as before): Settings > Station > Etsy holds the sign-in; ONE station imports the open Etsy orders as image tiles (ET<order>_..._ETSY) into the inbox folder of their fabric. Image files go through the whole pipeline - Inbox, Rip, PRINTED, rollback, Production",
+        "clients": ["all"]
+      },
+      {
+        "text": "Inbox: an Etsy bar above the table lists order lines the importer could not read (with Etsy on). Per line: Retry (optionally with a typed six-digit XWD number), \"Not a print\", Open order / Open listing, and a Suggestion - the library number that matches the listing title - which Use only puts in the field. \"Open in Etsy\" also sits in the file menus",
+        "clients": ["all"]
+      }
+    ]
+  },
+  {
     "version": "1.0.39",
     "date": "2026-10-20",
     "changes": [
