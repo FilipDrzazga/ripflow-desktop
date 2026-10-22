@@ -33,7 +33,7 @@ describe("etsyOAuth - connect address", () => {
       response_type: "code",
       client_id: "abc123",
       redirect_uri: ETSY_REDIRECT_URI,
-      scope: "transactions_r listings_r",
+      scope: "transactions_r listings_r shops_r",
       state: "ST",
       code_challenge: "CH",
       code_challenge_method: "S256",

@@ -13,7 +13,9 @@ export const ETSY_TOKEN_URL = "https://api.etsy.com/v3/public/oauth/token";
 
 // transactions_r: receipts (orders) and their items. listings_r: active listings, for the
 // listing -> pattern map and the "Etsy check" (plan E4) - asked now so connecting once is enough.
-export const ETSY_SCOPES = ["transactions_r", "listings_r"];
+// shops_r: GET /users/me (which shop is behind the token) answers 403 without it - FILIP 2026-10-22,
+// the first real sign-in.
+export const ETSY_SCOPES = ["transactions_r", "listings_r", "shops_r"];
 
 const base64Url = (buffer) => buffer.toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 
