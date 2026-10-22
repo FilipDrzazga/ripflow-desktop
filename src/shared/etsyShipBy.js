@@ -10,3 +10,7 @@ export const ETSY_SHIP_BY_MAX = 1e11;
 // (missing, 0, a string, a fraction, milliseconds). null is "Etsy said nothing usable" - never a reason to clear a
 // date already stored.
 export const etsyShipByOf = (value) => (Number.isSafeInteger(value) && value > 0 && value < ETSY_SHIP_BY_MAX ? value : null);
+
+// The most order numbers one "ship dates" question may carry (plan ETA-2). The renderer cuts its list to this and
+// main refuses a longer one, so the SQL placeholder list stays small whatever the Inbox / Production hold.
+export const ETSY_SHIP_DATES_MAX = 500;

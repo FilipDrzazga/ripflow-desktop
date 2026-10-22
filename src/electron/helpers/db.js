@@ -368,6 +368,28 @@ export const setEtsyImportShipBy = ({ receiptId, transactionId, shipBy }) => {
   return written ? changes === 1 : null;
 };
 
+// The ship-by date of each Etsy ORDER among `receiptIds` (plan ETA-2): the EARLIEST ship_by of its lines, whatever their
+// state but dismissed (a "not a print" line is not part of what has to leave). { receiptId: epoch s } with only the
+// orders that have a date; null = could not ask (no database, no table, no column, a failed SELECT) - the badge then
+// simply is not there, which is not the same as "no order has a date".
+export const listEtsyShipDates = (receiptIds) => {
+  if (!db || !etsyTablesReady || !etsyImportsHaveShipBy) return null;
+  if (!Array.isArray(receiptIds)) return null;
+  const ids = [...new Set(receiptIds.map(String))];
+  if (ids.length === 0) return {};
+  try {
+    const rows = db
+      .prepare(
+        `SELECT receipt_id AS receiptId, MIN(ship_by) AS shipBy FROM etsy_imports WHERE state != ? AND ship_by IS NOT NULL AND receipt_id IN (${ids.map(() => "?").join(", ")}) GROUP BY receipt_id`,
+      )
+      .all(ETSY_IMPORT_STATE.DISMISSED, ...ids);
+    return Object.fromEntries(rows.map((row) => [row.receiptId, row.shipBy]));
+  } catch (err) {
+    console.error("[db] listEtsyShipDates failed:", err);
+    return null;
+  }
+};
+
 // The lines the Inbox bar shows (E4): needs_review, failed and retry, newest first. null = could not ask (no
 // database, no table, no E4 columns) - the bar then says so instead of showing an empty list.
 export const listOpenEtsyImports = () => {

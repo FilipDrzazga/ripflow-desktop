@@ -11,6 +11,7 @@ import {
 import { useStore } from "@/store/useStore";
 import { getPrinterColor } from "@/utils/shopProfileData";
 import { claimShiftMouseDown } from "@/utils/rangeSelect";
+import ShipByBadge from "../ShipByBadge/ShipByBadge";
 import style from "./Production.module.css";
 
 const SEWING_PIPELINE = [
@@ -72,7 +73,7 @@ const FOUND_FADE_S = 2;
 // The card must not learn about pdfjs, file paths or PdfThumb — a lens that wants
 // a thumbnail builds the element and hands it over. Lenses that pass nothing
 // render exactly as before and pay for no SMB reads.
-const ProductionCard = ({ stage: row, history = [], highlighted, restored = false, selected, awaitingQc, ripError, idleDays = null, idleAlert = false, thumbnail, onRipBadgeClick, onSelect, onContextMenu }) => {
+const ProductionCard = ({ stage: row, history = [], highlighted, restored = false, selected, awaitingQc, ripError, idleDays = null, idleAlert = false, shipBy = null, thumbnail, onRipBadgeClick, onSelect, onContextMenu }) => {
   const cardRef  = useRef(null);
   // printer badge colours are shop-profile data (ETAP 2e step 4)
   const shopProfile = useStore((s) => s.shopProfile);
@@ -162,6 +163,7 @@ const ProductionCard = ({ stage: row, history = [], highlighted, restored = fals
       <LuFileText className={style.card_file_icon} />
       <div className={style.card_info}>
         <span className={style.card_filename} title={row.file_id}>{row.file_id}</span>
+        <ShipByBadge seconds={shipBy} />
         {ripError && (
           <span
             className={style.card_type_badge_rip_error}

@@ -322,6 +322,12 @@ const api = Object.freeze({
       if (typeof listingId !== "string" || !/^\d{1,20}$/.test(listingId)) throw new TypeError("Etsy listing number must be a string of digits.");
       return ipcRenderer.invoke("etsy-imports:listingImage", listingId);
     },
+    shipDates: (receiptIds) => {
+      if (!Array.isArray(receiptIds) || receiptIds.some((id) => typeof id !== "string" || !/^\d{1,20}$/.test(id))) {
+        throw new TypeError("Etsy order numbers must be a list of strings of digits.");
+      }
+      return ipcRenderer.invoke("etsy-imports:shipDates", receiptIds);
+    },
     previewNewest: () => ipcRenderer.invoke("etsy-imports:previewNewest"),
     importOrder: (receiptId) => {
       if (typeof receiptId !== "string" || !/^\d{1,20}$/.test(receiptId)) throw new TypeError("Etsy order number must be a string of digits.");

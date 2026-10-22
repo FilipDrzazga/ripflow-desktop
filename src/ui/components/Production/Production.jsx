@@ -64,6 +64,8 @@ import {
 import ContextMenu from "../ContextMenu/ContextMenu";
 import PdfPreviewModal from "../PdfPreviewModal/PdfPreviewModal";
 import ProductionCard from "./ProductionCard";
+import { useEtsyShipDates } from "../../hooks/useEtsyShipDates";
+import { shipByOfOrder } from "../../utils/etsyShipBadge";
 import RipErrorPopover from "../RipErrorPopover/RipErrorPopover";
 import ProductionRollbackModal from "./ProductionRollbackModal";
 import OrderView from "./OrderView";
@@ -246,6 +248,13 @@ const DayGroupHeader = ({ day, collapsed, onToggle, onFilter }) => {
 
 const Production = () => {
   const productionStages = useStore((s) => s.productionStages);
+  // The "Ship by" badge of an Etsy order (plan ETA-2): asked for the orders that have not shipped yet - a shipped file
+  // has nothing left to be late for, and it is the bulk of the table.
+  const unshippedOrderIds = useMemo(
+    () => Object.values(productionStages).filter((r) => r.stage !== PRODUCTION_STAGE.SHIPPED).map((r) => r.order_id),
+    [productionStages],
+  );
+  const etsyShipDates = useEtsyShipDates(unshippedOrderIds);
   const loadAllStages = useStore((s) => s.loadAllStages);
   const pollingPaused = usePollingPaused(); // power pause OR hidden window (B2a)
   const loadStagesAfter = useStore((s) => s.loadStagesAfter);
@@ -1478,6 +1487,7 @@ const Production = () => {
       // and never learns the threshold or reads a clock, same as awaitingQc.
       idleDays={isStuck(row, now) ? idleDaysOf(row, now) : null}
       idleAlert={(idleDaysOf(row, now) ?? 0) >= STALE_DAYS_ALERT}
+      shipBy={row.stage === PRODUCTION_STAGE.SHIPPED ? null : shipByOfOrder(etsyShipDates, row.order_id)}
       onRipBadgeClick={(error, x, y) => setRipPopover({ error, x, y })}
       onSelect={handleCardSelect}
       onContextMenu={(r, x, y) => setContextMenu({ row: r, x, y })}

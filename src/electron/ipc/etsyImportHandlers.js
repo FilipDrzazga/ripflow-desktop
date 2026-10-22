@@ -1,6 +1,6 @@
 import { ipcMain, shell } from "electron";
 import { createEtsyImportRequests, etsyReceiptIdOf } from "../helpers/etsyImportRequests.js";
-import { listOpenEtsyImports, requestEtsyImportRetry, dismissEtsyImport } from "../helpers/db.js";
+import { listOpenEtsyImports, requestEtsyImportRetry, dismissEtsyImport, listEtsyShipDates } from "../helpers/db.js";
 import { getFeature } from "../helpers/shopProfile.js";
 import { getSettings } from "../helpers/getSettings.js";
 import { requestEtsyImportTick, importEtsyReceiptNow } from "./etsyImportLoop.js";
@@ -20,6 +20,7 @@ export function registerEtsyImportHandlers() {
     requestRetry: requestEtsyImportRetry,
     dismiss: dismissEtsyImport,
     requestTick: requestEtsyImportTick,
+    shipDates: listEtsyShipDates,
     openExternal: (url) => shell.openExternal(url),
     listingImage: createEtsyThumbnails({
       thumbnailUrl: (listingId) => getEtsyParts().client.listingThumbnailUrl(listingId),
@@ -31,6 +32,7 @@ export function registerEtsyImportHandlers() {
   ipcMain.handle("etsy-imports:retry", (_event, request) => requests.retry(request));
   ipcMain.handle("etsy-imports:dismiss", (_event, request) => requests.dismiss(request));
   ipcMain.handle("etsy-imports:openListing", (_event, listingId) => requests.openListing(listingId));
+  ipcMain.handle("etsy-imports:shipDates", (_event, receiptIds) => requests.shipDates(receiptIds));
   ipcMain.handle("etsy-imports:listingImage", (_event, listingId) => requests.listingImage(listingId));
 
   // The dry run of Settings > Etsy: deliberately NOT behind featureOn - it is how a person finds out the flag is off.

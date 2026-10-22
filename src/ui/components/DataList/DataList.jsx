@@ -11,6 +11,9 @@ import { resolveIcon } from "../../constants/rollbackReasonIcons";
 import { openInFolder as openInFolderApi, openInShopify as openInShopifyApi } from "../../services/fileService";
 import { ORDER_LINK, orderIdOf, orderLinkFor, openEtsyOrder } from "../../utils/orderLink";
 import { ORDER_SOURCE } from "../../../shared/orderSource";
+import ShipByBadge from "../ShipByBadge/ShipByBadge";
+import { useEtsyShipDates } from "../../hooks/useEtsyShipDates";
+import { shipByOfOrder } from "../../utils/etsyShipBadge";
 import { materialClassSlot } from "../../utils/materialClasses";
 import { FiInbox, FiLock, FiUnlock } from "react-icons/fi";
 import {
@@ -98,6 +101,11 @@ const DataList = () => {
   const selectedOverrides = useStore((state) => state.selectedOverrides);
   const setOverridesBulk = useStore((state) => state.setOverridesBulk);
   const clearOverride = useStore((state) => state.clearOverride);
+  // The "Ship by" badge of an Etsy order (plan ETA-2): asked for EVERY Etsy order in the inbox, not just the filtered
+  // rows, so typing in the filter does not ask again.
+  const allFiles = useStore((state) => state.files);
+  const etsyOrderIds = useMemo(() => allFiles.flatMap((group) => group.items.map((item) => item.orderId)), [allFiles]);
+  const etsyShipDates = useEtsyShipDates(etsyOrderIds);
   const [contextMenu, setContextMenu] = useState(null);
   const [holdModal, setHoldModal] = useState(null);
   const [holdReason, setHoldReason] = useState("");
@@ -429,6 +437,7 @@ const DataList = () => {
                           <LuFileText className={style.file_icon} />
                         )}
                         <span className={style.file_name_text}>{item.file.name}</span>
+                        <ShipByBadge className={style.ship_by_badge} seconds={shipByOfOrder(etsyShipDates, item.orderId)} />
                         {rollbackReason &&
                           (() => {
                             const def = reasonDefinitions.find((r) => r.code === rollbackReason.reasonCode);

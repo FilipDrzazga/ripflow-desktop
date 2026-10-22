@@ -1,5 +1,6 @@
 import { toIpcError } from "./ipcError.js";
 import { ETSY_XWD_INPUT_RE } from "../../shared/constants.js";
+import { ETSY_SHIP_DATES_MAX, etsyShipByOf } from "../../shared/etsyShipBy.js";
 
 // What the Inbox bar of ANY station may ask about the Etsy import (plan E4): the open lines, a Retry (optionally
 // with the XWD number typed in) and a Dismiss. It only reads and WRITES REQUESTS in etsy_imports - the copy is
@@ -50,6 +51,7 @@ export const createEtsyImportRequests = ({
   requestTick, // () => one tick now on this station
   openExternal, // async (url) => opens the address in the browser (shell.openExternal)
   listingImage = async () => null, // async (listingId) => data: URL | null (helpers/etsyThumbnail.js)
+  shipDates = () => null, // (receiptIds) => { receiptId: epoch s } | null (listEtsyShipDates)
 }) => {
   const guard = () => {
     if (!featureOn()) throw refusal("ETSY_DISABLED", "The Etsy import is not switched on for this shop.");
@@ -112,6 +114,20 @@ export const createEtsyImportRequests = ({
         if (!ETSY_ID_RE.test(id)) throw refusal("INVALID_ETSY_LISTING", "The Etsy listing is not named by its number.");
         await openExternal(`https://www.etsy.com/listing/${id}`);
         return {};
+      }),
+
+    // The "Ship by" badge of Inbox / Production (plan ETA-2): the earliest ship-by date of each of the asked orders.
+    // Only a list of receipt numbers (digits, at most ETSY_SHIP_DATES_MAX) crosses - never the whole table, which grows
+    // with every order. An order without a date is simply not in the answer; null from the database is an error.
+    shipDates: (receiptIds) =>
+      answer("etsy-imports:shipDates", "Reading the Etsy ship-by dates failed", () => {
+        if (!Array.isArray(receiptIds)) throw refusal("INVALID_ETSY_RECEIPT", "The Etsy orders are not named by a list of numbers.");
+        const ids = [...new Set(receiptIds.map(etsyReceiptIdOf))];
+        if (ids.length > ETSY_SHIP_DATES_MAX) throw refusal("TOO_MANY_ETSY_RECEIPTS", `At most ${ETSY_SHIP_DATES_MAX} Etsy orders can be asked at once.`);
+        const found = ids.length === 0 ? {} : shipDates(ids);
+        if (!found) throw Object.assign(new Error("The Etsy ship-by dates could not be read."), { code: "DB_READ_FAILED" });
+        // A value that is not a date is dropped here as well - the badge only ever sees what etsyShipByOf accepts.
+        return { data: Object.fromEntries(Object.entries(found).filter(([, value]) => etsyShipByOf(value) !== null)) };
       }),
 
     // The listing's small picture for a line of the bar, as a data: URL (null: none, or not reachable now). Only the

@@ -1,0 +1,32 @@
+/* Same pill as the other row badges (rollback / idle / reprint): 11px, 6px radius, icon + text. The colours are the
+   --ship-* tokens of global.css, one trio per tone. */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  padding: 2px 7px 2px 5px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.due {
+  background: var(--ship-due-bg);
+  border-color: var(--ship-due-border);
+  color: var(--ship-due-text);
+}
+
+.soon {
+  background: var(--ship-soon-bg);
+  border-color: var(--ship-soon-border);
+  color: var(--ship-soon-text);
+}
+
+.later {
+  background: var(--ship-later-bg);
+  border-color: var(--ship-later-border);
+  color: var(--ship-later-text);
+}

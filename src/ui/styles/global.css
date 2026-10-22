@@ -24,6 +24,17 @@
   --border-grey: #e5e7eb;
   --border-black: #303030;
 
+  /* === SHIP BY (ShipByBadge: the Etsy ship-by date of an order, by how close the day is) === */
+  --ship-due-bg: #fef2f2;
+  --ship-due-border: rgba(220, 38, 38, 0.4);
+  --ship-due-text: #dc2626;
+  --ship-soon-bg: #fef6e7;
+  --ship-soon-border: rgba(180, 83, 9, 0.35);
+  --ship-soon-text: #b45309;
+  --ship-later-bg: var(--bg-grey);
+  --ship-later-border: var(--border-grey);
+  --ship-later-text: var(--text-secondary);
+
   /* === CARD === */
   --card-shadow:
     0rem 0.3125rem 0.3125rem -0.15625rem #00000008, 0rem 0.1875rem 0.1875rem -0.09375rem #00000005,

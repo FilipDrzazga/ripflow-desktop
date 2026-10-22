@@ -205,6 +205,11 @@
   white-space: nowrap;
 }
 
+/* The Etsy "Ship by" pill (ShipByBadge): only the gap, the pill is the component's */
+.ship_by_badge {
+  margin-left: 8px;
+}
+
 .rollback_badge_icon {
   font-size: 12px;
   flex-shrink: 0;
