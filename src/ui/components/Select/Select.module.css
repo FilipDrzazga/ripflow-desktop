@@ -94,8 +94,8 @@
   top: -6px;
   z-index: 1;
   flex-shrink: 0;
-  margin: -6px -6px 12px;
-  padding: 8px 6px 6px;
+  margin: -6px -6px 6px;
+  padding: 14px 6px 12px;
   background: #ffffff;
   border-bottom: 1px solid var(--border-grey);
   border-radius: 14px 14px 0 0;
