@@ -7,6 +7,7 @@ import { showConfirm } from "../../../services/systemService";
 import { notify } from "@/utils/notify";
 import { etsyStatusLine, etsyResultNotice, etsyTestRows, previewOrderNotes, previewBuyerNote, previewLineView, previewDate, importOrderConfirm, importOrderNotice, etsyPaceLine } from "@/utils/etsyView";
 import { clampEtsyImportMinutes, ETSY_IMPORT_MIN_MINUTES, ETSY_IMPORT_MAX_MINUTES } from "../../../../shared/etsyImportInterval";
+import EtsyListingChoices from "./EtsyListingChoices";
 import sharedStyles from "./SettingsView.module.css";
 import styles from "./EtsyView.module.css";
 
@@ -382,6 +383,7 @@ const EtsyView = () => {
             {ETSY_IMPORT_MIN_MINUTES} to {ETSY_IMPORT_MAX_MINUTES} minutes, on the importer station; the new pace starts after its next check. {etsyPaceLine(intervalMin, limits)}
           </p>
         </div>
+        <EtsyListingChoices />
       </div>
       {/* The footer Save is the one for every import option above (On/Off, the folder, the interval), like General and Paths: leaving the tab drops what is not saved. */}
       <div className={sharedStyles.view_footer}>

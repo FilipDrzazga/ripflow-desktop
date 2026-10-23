@@ -13,6 +13,7 @@ import {
   getEtsyListingTypes,
   setEtsyListingType,
   deleteEtsyListingType,
+  getEtsyListingTitles,
 } from "../helpers/db.js";
 import { getFeature } from "../helpers/shopProfile.js";
 import { getSettings } from "../helpers/getSettings.js";
@@ -40,6 +41,7 @@ export function registerEtsyImportHandlers() {
     listListingTypes: getEtsyListingTypes,
     saveListingType: setEtsyListingType,
     forgetListingType: deleteEtsyListingType,
+    listingTitles: getEtsyListingTitles,
     requestTick: requestEtsyImportTick,
     shipDates: listEtsyShipDates,
     openExternal: (url) => shell.openExternal(url),
@@ -54,6 +56,7 @@ export function registerEtsyImportHandlers() {
   ipcMain.handle("etsy-imports:setListingFabric", (_event, request) => requests.setListingFabric(request));
   ipcMain.handle("etsy-imports:listingFabrics", () => requests.listingFabrics());
   ipcMain.handle("etsy-imports:forgetListingFabric", (_event, listingId) => requests.forgetListingFabric(listingId));
+  ipcMain.handle("etsy-imports:listingChoices", () => requests.listingChoices());
   ipcMain.handle("etsy-imports:setListingPrintType", (_event, request) => requests.setListingPrintType(request));
   ipcMain.handle("etsy-imports:listingPrintTypes", () => requests.listingPrintTypes());
   ipcMain.handle("etsy-imports:forgetListingPrintType", (_event, listingId) => requests.forgetListingPrintType(listingId));

@@ -18,6 +18,8 @@ export const listEtsyListingFabrics = () => withTimeout(window.api.etsyImports.l
 export const forgetEtsyListingFabric = (listingId) =>
   withTimeout(window.api.etsyImports.forgetListingFabric(String(listingId)), 10_000, "etsy-imports:forgetListingFabric");
 
+// Settings > Etsy: what is remembered per listing, in one answer: { data: [{ listingId, title, fabric, printType }] }.
+export const listEtsyListingChoices = () => withTimeout(window.api.etsyImports.listingChoices(), 10_000, "etsy-imports:listingChoices");
 // Plan FAB-3c: the print type chosen for a line is remembered for its listing; listingPrintTypes -> { data: { [listingId]: code } }.
 export const setEtsyListingPrintType = ({ receiptId, transactionId, printType }) =>
   withTimeout(window.api.etsyImports.setListingPrintType({ receiptId, transactionId, printType }), 10_000, "etsy-imports:setListingPrintType");

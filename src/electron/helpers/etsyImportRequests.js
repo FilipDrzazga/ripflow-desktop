@@ -81,6 +81,7 @@ export const createEtsyImportRequests = ({
   listListingTypes = () => null, // getEtsyListingTypes
   saveListingType = () => null, // setEtsyListingType
   forgetListingType = () => null, // deleteEtsyListingType
+  listingTitles = () => null, // getEtsyListingTitles
   requestTick, // () => one tick now on this station
   openExternal, // async (url) => opens the address in the browser (shell.openExternal)
   listingImage = async () => null, // async (listingId) => data: URL | null (helpers/etsyThumbnail.js)
@@ -148,6 +149,27 @@ export const createEtsyImportRequests = ({
         if (!ETSY_ID_RE.test(listingId)) throw refusal("NO_ETSY_LISTING", "The Etsy order line has no listing to remember a fabric for.");
         written(saveListingFabric({ listingId, fabricName }));
         return { listingId };
+      }),
+
+    // Settings > Etsy: everything remembered per listing in ONE answer - [{ listingId, title, fabric, printType }], newest
+    // choice first. fabric / printType are null where only the other was chosen; title is null when no line row of the
+    // listing carries one. Either memory that cannot be read is an error, never a list that quietly lacks half of it.
+    listingChoices: () =>
+      answer("etsy-imports:listingChoices", "Reading the remembered Etsy choices failed", () => {
+        const fabrics = listListingFabrics();
+        const types = listListingTypes();
+        if (!Array.isArray(fabrics) || !Array.isArray(types)) {
+          throw Object.assign(new Error("The remembered Etsy choices could not be read."), { code: "DB_READ_FAILED" });
+        }
+        const order = [...new Set([...fabrics, ...types].map((r) => r.listingId))];
+        const titles = listingTitles(order) ?? {};
+        const data = order.map((listingId) => ({
+          listingId,
+          title: typeof titles[listingId] === "string" ? titles[listingId] : null,
+          fabric: fabrics.find((r) => r.listingId === listingId)?.fabricName ?? null,
+          printType: types.find((r) => r.listingId === listingId)?.printType ?? null,
+        }));
+        return { data };
       }),
 
     // Plan FAB-3c: the print type a person chose for a line's listing (a snood, an apron). The same rules as the fabric:

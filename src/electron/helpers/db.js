@@ -410,6 +410,25 @@ export const deleteEtsyListingType = (listingId) => {
   return written ? { deleted: changes === 1 } : null;
 };
 
+// The title Etsy gave each of the asked listings, from the newest line row that carries one: { [listingId]: title }.
+// For Settings > Etsy, so a remembered choice can be told by a name and not only by a number. {} = asked, none known;
+// null = could not ask (no database, no table, no E4 columns, a failed SELECT). At most 500 ids, digits only.
+export const getEtsyListingTitles = (listingIds) => {
+  if (!db || !etsyTablesReady || !etsyImportsHaveDetails) return null;
+  if (!Array.isArray(listingIds)) return null;
+  const ids = [...new Set(listingIds.filter((id) => typeof id === "string" && ETSY_LISTING_ID_RE.test(id)))].slice(0, 500);
+  if (ids.length === 0) return {};
+  try {
+    const rows = db
+      .prepare(`SELECT listing_id AS listingId, title FROM etsy_imports WHERE listing_id IN (${ids.map(() => "?").join(", ")}) AND title IS NOT NULL ORDER BY updated_at ASC`)
+      .all(...ids);
+    return Object.fromEntries(rows.map((row) => [row.listingId, row.title]));
+  } catch (err) {
+    console.error("[db] getEtsyListingTitles failed:", err);
+    return null;
+  }
+};
+
 const ETSY_IMPORT_COLUMNS =
   "receipt_id AS receiptId, transaction_id AS transactionId, state, file_name AS fileName, folder, reason, created_at AS createdAt, updated_at AS updatedAt";
 const etsyImportDetailSelect = () =>

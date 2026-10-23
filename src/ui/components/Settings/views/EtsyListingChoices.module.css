@@ -1,0 +1,95 @@
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background-color: var(--bg-grey-light);
+  font-size: 13px;
+}
+
+.title {
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.choices {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 8px;
+}
+
+.choice {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 4px 2px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border-grey);
+  background-color: var(--bg-white);
+  color: var(--text-primary);
+}
+
+.choice_text {
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.none {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.forget,
+.open {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.open {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+}
+
+.forget:hover:not(:disabled),
+.open:hover {
+  background-color: var(--bg-grey);
+  color: var(--text-primary);
+}
+
+.forget:focus-visible,
+.open:focus-visible {
+  outline: 2px solid #2e7fd6;
+  outline-offset: 1px;
+}
+
+.forget:disabled {
+  opacity: 0.45;
+  cursor: default;
+}

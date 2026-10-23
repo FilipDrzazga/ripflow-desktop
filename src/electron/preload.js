@@ -341,6 +341,8 @@ const api = Object.freeze({
       if (typeof listingId !== "string" || !/^\d{1,20}$/.test(listingId)) throw new TypeError("Etsy listing number must be a string of digits.");
       return ipcRenderer.invoke("etsy-imports:forgetListingFabric", listingId);
     },
+    // Settings > Etsy: -> { success, data: [{ listingId, title, fabric, printType }] }, everything remembered per listing.
+    listingChoices: () => ipcRenderer.invoke("etsy-imports:listingChoices"),
     // Plan FAB-3c: the print type (a snood, an apron) a person chose for a line, remembered for its listing.
     setListingPrintType: (line) => {
       if (!isPlainObject(line)) throw new TypeError("Etsy import line must be a plain object.");
