@@ -4,7 +4,7 @@ import { listEtsyListingChoices, forgetEtsyListingFabric, forgetEtsyListingPrint
 import { showConfirm } from "../../../services/systemService";
 import { notify } from "@/utils/notify";
 import { listingNotice } from "@/utils/etsyImportBar";
-import { FORGET_KIND, choiceRows, choiceTitle, choicesLoadError, forgetConfirmMessage, forgetNotice, printTypeLabel } from "@/utils/etsyListingChoices";
+import { FORGET_KIND, choiceRows, choiceTitle, choicesLoadError, choicesSwitchedOff, forgetConfirmMessage, forgetNotice, printTypeLabel } from "@/utils/etsyListingChoices";
 import sharedStyles from "./SettingsView.module.css";
 import styles from "./EtsyListingChoices.module.css";
 
@@ -15,6 +15,7 @@ import styles from "./EtsyListingChoices.module.css";
 const EtsyListingChoices = () => {
   const [rows, setRows] = useState(null); // null = not read yet, or could not be read
   const [loadError, setLoadError] = useState(null);
+  const [switchedOff, setSwitchedOff] = useState(false); // features.etsy is Off: nothing to list, nothing to say
   const [busyKey, setBusyKey] = useState(null);
   const aliveRef = useRef(true);
   useEffect(() => {
@@ -29,6 +30,7 @@ const EtsyListingChoices = () => {
       const res = await listEtsyListingChoices();
       if (!aliveRef.current) return;
       const next = choiceRows(res);
+      setSwitchedOff(choicesSwitchedOff(res));
       if (next) {
         setRows(next);
         setLoadError(null);
@@ -87,6 +89,8 @@ const EtsyListingChoices = () => {
       </span>
     );
   };
+
+  if (switchedOff) return null;
 
   return (
     <div className={sharedStyles.field}>

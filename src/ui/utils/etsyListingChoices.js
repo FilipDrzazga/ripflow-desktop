@@ -46,3 +46,9 @@ export const choiceRows = (res) => {
 };
 
 export const choicesLoadError = (res) => failure(res, "Reading the remembered Etsy choices failed");
+
+// The code main answers with while features.etsy is Off (etsyImportRequests.js guard). Not a failure: the list has nothing to show
+// for a shop that does not use the import, so the view renders nothing instead of a red error.
+export const ETSY_DISABLED_CODE = "ETSY_DISABLED";
+
+export const choicesSwitchedOff = (res) => res?.success === false && res.error?.code === ETSY_DISABLED_CODE;
