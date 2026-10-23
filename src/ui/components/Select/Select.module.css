@@ -58,6 +58,7 @@
   max-width: 280px;
   max-height: 360px;
   overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 6px;
   border: 1px solid rgba(34, 51, 84, 0.08);
   border-radius: 14px;

@@ -50,14 +50,20 @@ const Select = ({ value, options, onChange, title, warn = false, disabled = fals
     };
     document.addEventListener("mousedown", handleMouseDown);
     document.addEventListener("keydown", handleKey);
-    // the menu is positioned once, from the button: any scroll or resize would leave it behind
+    // the menu is positioned once, from the button: a scroll of the page or a resize would leave it behind. The menu's OWN
+    // scrolling (a long list, capped in height) is the person choosing, and must not close it - the capturing listener
+    // below sees the scroll events of every element, so it looks where the event came from.
+    const handleScroll = (e) => {
+      if (menuRef.current && e.target instanceof Node && menuRef.current.contains(e.target)) return;
+      close();
+    };
     window.addEventListener("resize", close);
-    window.addEventListener("scroll", close, true);
+    window.addEventListener("scroll", handleScroll, true);
     return () => {
       document.removeEventListener("mousedown", handleMouseDown);
       document.removeEventListener("keydown", handleKey);
       window.removeEventListener("resize", close);
-      window.removeEventListener("scroll", close, true);
+      window.removeEventListener("scroll", handleScroll, true);
     };
   }, [open]);
 
