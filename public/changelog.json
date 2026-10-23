@@ -1,5 +1,19 @@
 [
   {
+    "version": "1.0.48",
+    "date": "2026-10-23",
+    "changes": [
+      {
+        "text": "Updates are now downloaded from a new location. Nothing to do: the app switches over by itself with this version, and Settings > Updates works as before",
+        "clients": ["all"]
+      },
+      {
+        "text": "Settings > Etsy: while the Etsy feature is switched off, \"Remembered choices\" shows nothing instead of a red error, and a choice that cannot be saved because the database could not be read now says so rather than reporting a missing line",
+        "clients": ["all"]
+      }
+    ]
+  },
+  {
     "version": "1.0.47",
     "date": "2026-10-23",
     "changes": [
