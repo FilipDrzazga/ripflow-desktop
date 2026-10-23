@@ -147,6 +147,7 @@ export const createEtsyImportRequests = ({
         const key = keyOf(request);
         const fabricName = fabricNameOf(request?.fabric, hasFabric);
         const row = getLine(key.receiptId, key.transactionId);
+        if (row === undefined) throw Object.assign(new Error("The Etsy import table could not be read."), { code: "DB_READ_FAILED" });
         if (!row) throw refusal("ETSY_LINE_GONE", "The Etsy order line is not in the import table (any more).");
         if (!OPEN_STATES.has(row.state)) throw refusal("ETSY_LINE_CLOSED", "That Etsy order line is no longer waiting for a person.");
         const listingId = typeof row.listingId === "string" ? row.listingId.trim() : "";
@@ -192,6 +193,7 @@ export const createEtsyImportRequests = ({
         const key = keyOf(request);
         const printType = listingPrintTypeOf(request?.printType);
         const row = getLine(key.receiptId, key.transactionId);
+        if (row === undefined) throw Object.assign(new Error("The Etsy import table could not be read."), { code: "DB_READ_FAILED" });
         if (!row) throw refusal("ETSY_LINE_GONE", "The Etsy order line is not in the import table (any more).");
         if (!OPEN_STATES.has(row.state)) throw refusal("ETSY_LINE_CLOSED", "That Etsy order line is no longer waiting for a person.");
         const listingId = typeof row.listingId === "string" ? row.listingId.trim() : "";

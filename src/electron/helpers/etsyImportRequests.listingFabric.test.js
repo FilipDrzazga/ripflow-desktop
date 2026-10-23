@@ -77,7 +77,7 @@ describe("setListingFabric", () => {
 
   it.each([
     ["a line that is not in the table", null, "ETSY_LINE_GONE"],
-    ["a table that could not be asked", undefined, "ETSY_LINE_GONE"],
+    ["a table that could not be asked", undefined, "DB_READ_FAILED"],
     ["a line with no listing", { ...ROW, listingId: null }, "NO_ETSY_LISTING"],
     ["a listing that is not digits", { ...ROW, listingId: "abc" }, "NO_ETSY_LISTING"],
   ])("refuses %s", (_label, row, code) => {
