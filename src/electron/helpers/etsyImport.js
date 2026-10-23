@@ -44,6 +44,8 @@ import {
 //   meantime wins, and the copy is the same claim-less half of copyIn. DISMISSED is never looked at again.
 // - Every row the import writes carries what a person needs to recognise the line in the bar: title, quantity,
 //   listing id.
+// - FABRIC OF A LISTING (plan FAB): a line whose "Fabric" variation is missing or does not resolve takes the fabric a
+//   person chose for its listing in the bar (etsy_listing_fabric); a variation that resolves always wins.
 // - SUGGESTION (E4c): a line that stops for want of an XWD number - none on the line, or none in the library - is
 //   written with the number its listing title points to in the library (etsySuggestion.js), when exactly one does.
 //   Only a hint for the bar: it is never used to name or copy a file. Not finding one, or not being able to look,
@@ -113,6 +115,7 @@ export const createEtsyImporter = ({
   getReceipt = async () => null, // async (receiptId) => one receipt with its lines, fetched from Etsy (E5)
   getFabrics, // () => [{ name }] | null
   getFabricMap, // () => [{ etsyKey, fabricName }] | null
+  getListingFabric = () => null, // (listingId: digits) => the fabric name remembered for the listing | null (none, or could not ask)
   getProfile, // () => shop profile | null
   storageRoot, // () => absolute path of the inbox root (storagePath)
   libraryRoot, // () => absolute path of the Etsy pattern folder
@@ -139,6 +142,25 @@ export const createEtsyImporter = ({
       if (err.code === "ENOENT" || err.code === "ENOTDIR") return false;
       throw env(`Cannot look at the folder ${dir} (${err.code ?? err.message}).`);
     }
+  };
+
+  // -> { fabric } (a row of the catalogue) or { reason }. The order line's own "Fabric" variation decides whenever it
+  // resolves. Only when it is missing or does not resolve does the fabric a person chose for the LISTING (FAB, the
+  // bar's "remember") step in; with none remembered the line stops with the variation's reason, as ever. A remembered
+  // fabric the catalogue no longer has stops the line too - never another fabric. An unreadable memory is no memory.
+  const fabricOf = (transaction, catalogue) => {
+    const variation = fabricValueOfTransaction(transaction);
+    let stopped = variation.reason;
+    if (!stopped) {
+      const resolved = resolveEtsyFabric(variation.value, catalogue());
+      if (!resolved.reason) return resolved;
+      stopped = resolved.reason;
+    }
+    const listingId = idOf(transaction.listing_id);
+    const remembered = listingId ? getListingFabric(listingId) : null;
+    if (typeof remembered !== "string" || remembered === "") return { reason: stopped };
+    const chosen = catalogue().fabrics.find((f) => f.name === remembered);
+    return chosen ? { fabric: chosen } : { reason: `The fabric "${remembered}" remembered for this listing is not in Fabrics (any more).` };
   };
 
   // The proof of W4: the name we are about to write reads back as the order line we built it from.
@@ -170,14 +192,15 @@ export const createEtsyImporter = ({
     const qty = transaction.quantity;
     if (!Number.isInteger(qty) || qty <= 0) return { reason: `The quantity of the order line is not a whole number above 0 (${qty}).` };
 
-    const fabricText = fabricValueOfTransaction(transaction);
-    if (fabricText.reason) return { reason: fabricText.reason };
-    const fabrics = getFabrics();
-    const map = getFabricMap();
-    if (!Array.isArray(fabrics) || !Array.isArray(map)) throw env("The Fabrics catalogue or the Etsy -> Fabrics table could not be read.");
-    const resolved = resolveEtsyFabric(fabricText.value, { map, fabrics });
-    if (resolved.reason) return { reason: resolved.reason };
-    const fabric = resolved.fabric;
+    const catalogue = () => {
+      const fabrics = getFabrics();
+      const map = getFabricMap();
+      if (!Array.isArray(fabrics) || !Array.isArray(map)) throw env("The Fabrics catalogue or the Etsy -> Fabrics table could not be read.");
+      return { fabrics, map };
+    };
+    const fabricChoice = fabricOf(transaction, catalogue);
+    if (fabricChoice.reason) return { reason: fabricChoice.reason };
+    const fabric = fabricChoice.fabric;
 
     if (!(await folderExists(path.join(storageRoot(), fabric.name)))) {
       return { reason: `There is no inbox folder "${fabric.name}" in the storage folder.` };

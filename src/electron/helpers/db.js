@@ -203,8 +203,30 @@ const ensureEtsyImportBuyerNoteColumn = () => {
     return false;
   }
 };
+// The fabric a person chose for an Etsy LISTING (plan FAB): the importer uses it for a line whose own "Fabric" variation
+// is missing or does not resolve, so a listing that never carries one (a snood) is chosen once, not at every order.
+// A table of its OWN with its own flag and try/catch (a failed CREATE costs the remembered choices only - the bar and
+// the import work as before), and no column added to etsy_imports. Shared config (rule 16): the choice belongs to the
+// shop, every station sees it. listing_id = the digits Etsy sends, fabric_name = a row of `fabrics` to the character.
+let etsyListingFabricReady = false;
+const ensureEtsyListingFabricTable = () => {
+  try {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS etsy_listing_fabric (
+        listing_id  TEXT PRIMARY KEY,
+        fabric_name TEXT NOT NULL,
+        updated_at  TEXT NOT NULL
+      )
+    `);
+    return true;
+  } catch (err) {
+    console.error("[db] ensureEtsyListingFabricTable failed (no remembered fabric per Etsy listing):", err);
+    return false;
+  }
+};
 const ensureEtsyTables = () => {
   etsyTablesReady = false;
+  etsyListingFabricReady = false;
   etsyImportsHaveDetails = false;
   etsyImportsHaveSuggestion = false;
   etsyImportsHaveSuggestedFile = false;
@@ -245,6 +267,7 @@ const ensureEtsyTables = () => {
     etsyImportsHaveSuggestedFile = ensureEtsyImportSuggestedFileColumn();
     etsyImportsHaveShipBy = ensureEtsyImportShipByColumn();
     etsyImportsHaveBuyerNote = ensureEtsyImportBuyerNoteColumn();
+    etsyListingFabricReady = ensureEtsyListingFabricTable();
     if (mapIsNew) {
       const hasFabric = db.prepare("SELECT 1 FROM fabrics WHERE name = ?");
       const insert = db.prepare("INSERT OR IGNORE INTO etsy_fabric_map (etsy_key, etsy_name, fabric_name) VALUES (?, ?, ?)");
@@ -267,6 +290,54 @@ export const getEtsyFabricMap = () => {
     console.error("[db] getEtsyFabricMap failed:", err);
     return null;
   }
+};
+
+const ETSY_LISTING_ID_RE = /^\d{1,20}$/;
+
+// [{ listingId, fabricName }], or null when it could not be read (no DB, no table, a failed SELECT) - never [] for that.
+export const getEtsyListingFabrics = () => {
+  if (!db || !etsyTablesReady || !etsyListingFabricReady) return null;
+  try {
+    return db.prepare("SELECT listing_id AS listingId, fabric_name AS fabricName FROM etsy_listing_fabric ORDER BY updated_at DESC").all();
+  } catch (err) {
+    console.error("[db] getEtsyListingFabrics failed:", err);
+    return null;
+  }
+};
+
+// The fabric remembered for ONE listing: its name, or null (none, or the table could not be read - the importer treats
+// both as "nothing remembered", the line then stops with its own reason).
+export const getEtsyListingFabric = (listingId) => {
+  const id = String(listingId ?? "").trim();
+  if (!ETSY_LISTING_ID_RE.test(id)) return null;
+  const found = getEtsyListingFabrics()?.find((row) => row.listingId === id);
+  return found ? found.fabricName : null;
+};
+
+// Remember (or replace) the fabric of a listing. true = written; null = could not (no table, a bad listing id or
+// name, a failed write) - the caller then does not go on as if the choice were kept.
+export const setEtsyListingFabric = ({ listingId, fabricName }) => {
+  if (!db || !etsyTablesReady || !etsyListingFabricReady) return null;
+  const id = typeof listingId === "string" ? listingId.trim() : "";
+  if (!ETSY_LISTING_ID_RE.test(id) || typeof fabricName !== "string" || fabricName === "" || fabricName.length > 200) return null;
+  const written = runWrite("setEtsyListingFabric", () => {
+    db.prepare(
+      "INSERT INTO etsy_listing_fabric (listing_id, fabric_name, updated_at) VALUES (?, ?, ?) ON CONFLICT(listing_id) DO UPDATE SET fabric_name = excluded.fabric_name, updated_at = excluded.updated_at",
+    ).run(id, fabricName, new Date().toISOString());
+  });
+  return written ? true : null;
+};
+
+// Forget the choice of a listing. -> { deleted } (false = there was none) or null when it could not be done.
+export const deleteEtsyListingFabric = (listingId) => {
+  if (!db || !etsyTablesReady || !etsyListingFabricReady) return null;
+  const id = typeof listingId === "string" ? listingId.trim() : "";
+  if (!ETSY_LISTING_ID_RE.test(id)) return null;
+  let changes = 0;
+  const written = runWrite("deleteEtsyListingFabric", () => {
+    changes = db.prepare("DELETE FROM etsy_listing_fabric WHERE listing_id = ?").run(id).changes;
+  });
+  return written ? { deleted: changes === 1 } : null;
 };
 
 const ETSY_IMPORT_COLUMNS =

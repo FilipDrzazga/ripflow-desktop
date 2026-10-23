@@ -1,6 +1,16 @@
 import { ipcMain, shell } from "electron";
 import { createEtsyImportRequests, etsyReceiptIdOf } from "../helpers/etsyImportRequests.js";
-import { listOpenEtsyImports, requestEtsyImportRetry, dismissEtsyImport, listEtsyShipDates } from "../helpers/db.js";
+import {
+  listOpenEtsyImports,
+  requestEtsyImportRetry,
+  dismissEtsyImport,
+  listEtsyShipDates,
+  getEtsyImport,
+  getAllFabrics,
+  getEtsyListingFabrics,
+  setEtsyListingFabric,
+  deleteEtsyListingFabric,
+} from "../helpers/db.js";
 import { getFeature } from "../helpers/shopProfile.js";
 import { getSettings } from "../helpers/getSettings.js";
 import { requestEtsyImportTick, importEtsyReceiptNow } from "./etsyImportLoop.js";
@@ -19,6 +29,11 @@ export function registerEtsyImportHandlers() {
     list: listOpenEtsyImports,
     requestRetry: requestEtsyImportRetry,
     dismiss: dismissEtsyImport,
+    getLine: getEtsyImport,
+    hasFabric: (name) => (getAllFabrics() ?? []).some((f) => f.name === name),
+    listListingFabrics: getEtsyListingFabrics,
+    saveListingFabric: setEtsyListingFabric,
+    forgetListingFabric: deleteEtsyListingFabric,
     requestTick: requestEtsyImportTick,
     shipDates: listEtsyShipDates,
     openExternal: (url) => shell.openExternal(url),
@@ -30,6 +45,9 @@ export function registerEtsyImportHandlers() {
 
   ipcMain.handle("etsy-imports:list", () => requests.list());
   ipcMain.handle("etsy-imports:retry", (_event, request) => requests.retry(request));
+  ipcMain.handle("etsy-imports:setListingFabric", (_event, request) => requests.setListingFabric(request));
+  ipcMain.handle("etsy-imports:listingFabrics", () => requests.listingFabrics());
+  ipcMain.handle("etsy-imports:forgetListingFabric", (_event, listingId) => requests.forgetListingFabric(listingId));
   ipcMain.handle("etsy-imports:dismiss", (_event, request) => requests.dismiss(request));
   ipcMain.handle("etsy-imports:openListing", (_event, listingId) => requests.openListing(listingId));
   ipcMain.handle("etsy-imports:shipDates", (_event, receiptIds) => requests.shipDates(receiptIds));

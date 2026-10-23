@@ -24,6 +24,20 @@ export const readXwdInput = (text) => {
 // The field starts from the number a person typed before (Retry with an empty field stores NULL and clears it).
 export const initialXwdInput = (row) => (typeof row?.manualXwd === "string" ? row.manualXwd : "");
 
+// Plan FAB: the fabric remembered for the line's listing ("" = none; the importer then reads it off the order line).
+// `remembered` is { [listingId]: fabricName }, as the bar loads it.
+export const rememberedFabricOf = (remembered, row) => {
+  const name = row?.listingId ? remembered?.[row.listingId] : undefined;
+  return typeof name === "string" ? name : "";
+};
+
+// The names the fabric field offers: the Fabrics catalogue in its own order, plus the remembered choice when the
+// catalogue no longer has it (so the field shows what the database holds; main refuses a new write of it).
+export const fabricChoices = (fabricConfig, current = "") => {
+  const names = Array.isArray(fabricConfig?.fabrics) ? fabricConfig.fabrics.map((f) => f?.name).filter((n) => typeof n === "string" && n !== "") : [];
+  return current !== "" && !names.includes(current) ? [current, ...names] : names;
+};
+
 // E4c: the XWD number the importer found in the library for a line without one (a hint, never applied) - offered
 // only where the person can act on it, and only as six digits.
 export const suggestionOf = (row) =>

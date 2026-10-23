@@ -11,6 +11,13 @@ export const dismissEtsyImport = ({ receiptId, transactionId }) =>
 export const openEtsyListing = (listingId) =>
   withTimeout(window.api.etsyImports.openListing(String(listingId)), 5_000, "etsy-imports:openListing");
 
+// Plan FAB: the fabric chosen for a line is remembered for its listing; listingFabrics -> { data: { [listingId]: name } }.
+export const setEtsyListingFabric = ({ receiptId, transactionId, fabric }) =>
+  withTimeout(window.api.etsyImports.setListingFabric({ receiptId, transactionId, fabric }), 10_000, "etsy-imports:setListingFabric");
+export const listEtsyListingFabrics = () => withTimeout(window.api.etsyImports.listingFabrics(), 10_000, "etsy-imports:listingFabrics");
+export const forgetEtsyListingFabric = (listingId) =>
+  withTimeout(window.api.etsyImports.forgetListingFabric(String(listingId)), 10_000, "etsy-imports:forgetListingFabric");
+
 // The listing's small picture as a data: URL (main fetches it from Etsy and keeps it).
 export const getEtsyListingImage = (listingId) =>
   withTimeout(window.api.etsyImports.listingImage(String(listingId)), 20_000, "etsy-imports:listingImage");

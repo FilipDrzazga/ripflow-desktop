@@ -9,7 +9,7 @@ import { isFeatureEnabled } from "../../utils/featureVisibility";
 import { notify } from "../../utils/notify";
 import { openEtsyOrder } from "../../utils/orderLink";
 import { showConfirm } from "../../services/systemService";
-import { listEtsyImports, retryEtsyImport, dismissEtsyImport, openEtsyListing } from "../../services/etsyImportService";
+import { listEtsyImports, retryEtsyImport, dismissEtsyImport, openEtsyListing, listEtsyListingFabrics, setEtsyListingFabric } from "../../services/etsyImportService";
 import {
   ETSY_BAR_POLL_MS,
   barTitle,
@@ -17,12 +17,14 @@ import {
   dismissConfirmMessage,
   dismissNotice,
   etsyOrderIdOf,
+  fabricChoices,
   initialXwdInput,
   isInterrupted,
   lineKey,
   lineTitle,
   listingNotice,
   readXwdInput,
+  rememberedFabricOf,
   retryConfirmMessage,
   retryNotice,
   stateChip,
@@ -43,6 +45,7 @@ const STATE_ICON = { warn: LuTriangleAlert, bad: LuCircleX, wait: LuClock };
 // would be an aria-modal layer over the Inbox, and the operator is meant to keep working in the table.
 const EtsyImportBarContent = () => {
   const shopProfile = useStore((s) => s.shopProfile);
+  const fabricConfig = useStore((s) => s.fabricConfig);
   const enabled = isFeatureEnabled("etsy", shopProfile);
   const pollingPaused = usePollingPaused();
 
@@ -51,6 +54,8 @@ const EtsyImportBarContent = () => {
   const [open, setOpen] = useState(false);
   const [busyKey, setBusyKey] = useState(null);
   const [typed, setTyped] = useState({}); // line key -> text of the field, once the person touched it
+  const [remembered, setRemembered] = useState({}); // listing id -> the fabric remembered for it (etsy_listing_fabric)
+  const [typedFabric, setTypedFabric] = useState({}); // line key -> fabric name, once the person chose one
   const [fieldError, setFieldError] = useState({}); // line key -> message
   const aliveRef = useRef(true);
   useEffect(() => {
@@ -67,6 +72,9 @@ const EtsyImportBarContent = () => {
       if (!aliveRef.current || !res?.success || !Array.isArray(res.data)) return;
       setRows(res.data);
       setImporterHere(res.importerHere === true);
+      // The remembered fabrics ride on the same reload; an unreadable answer keeps the last one (the field then shows it).
+      const fabrics = await listEtsyListingFabrics();
+      if (aliveRef.current && fabrics?.success && fabrics.data && typeof fabrics.data === "object") setRemembered(fabrics.data);
     } catch (err) {
       console.error("[EtsyImportBar] list failed:", err);
     }
@@ -90,6 +98,10 @@ const EtsyImportBarContent = () => {
 
   const valueOf = (row) => typed[lineKey(row)] ?? initialXwdInput(row);
 
+  const fabricOf = (row) => typedFabric[lineKey(row)] ?? rememberedFabricOf(remembered, row);
+
+  const setFabric = (row, name) => setTypedFabric((prev) => ({ ...prev, [lineKey(row)]: name }));
+
   const setValue = (row, text) => {
     const key = lineKey(row);
     setTyped((prev) => ({ ...prev, [key]: text.replace(/\D/g, "").slice(0, 6) }));
@@ -107,6 +119,21 @@ const EtsyImportBarContent = () => {
     setBusyKey(key);
     let written = false;
     try {
+      // A fabric picked that differs from the one remembered for the listing is remembered FIRST: if that write fails
+      // the Retry is not sent, so the line never retries without the choice the person made.
+      const fabric = fabricOf(row);
+      if (fabric !== "" && fabric !== rememberedFabricOf(remembered, row)) {
+        const saved = await setEtsyListingFabric({ receiptId: row.receiptId, transactionId: row.transactionId, fabric });
+        if (!saved?.success) {
+          notify({ type: "Error", title: "Remembering the fabric failed", message: saved?.error?.message ?? "The fabric was not saved - nothing was retried." }, { stage: "etsy-import", code: "ETSY_FABRIC_FAILED" });
+          return;
+        }
+        // From now on the field shows what the database holds for the listing (the reload below confirms it).
+        if (aliveRef.current) {
+          setRemembered((prev) => ({ ...prev, [row.listingId]: fabric }));
+          setTypedFabric((prev) => withoutTyped(prev, key));
+        }
+      }
       const res = await retryEtsyImport({ receiptId: row.receiptId, transactionId: row.transactionId, xwd: read.value });
       written = res?.success === true && res.updated === true;
       notify(retryNotice(res, row), { stage: "etsy-import", code: res?.success ? "ETSY_RETRY" : "ETSY_RETRY_FAILED" });
@@ -192,6 +219,27 @@ const EtsyImportBarContent = () => {
                           </button>
                         )}
                       </span>
+                    )}
+                    {/* Plan FAB: for a listing that carries no usable Fabric variation (a snood). The choice is remembered for
+                        the LISTING - the next order of it goes through without asking - and used only where the order's own
+                        variation is missing or does not resolve. */}
+                    {row.listingId && (
+                      <select
+                        className={styles.select}
+                        aria-label="Fabric for this listing"
+                        title="Fabric for this listing - remembered for every later order of it, used when the order carries no usable Fabric variation"
+                        value={fabricOf(row)}
+                        disabled={busy || !canRetry(row)}
+                        onChange={(e) => setFabric(row, e.target.value)}
+                      >
+                        {/* A remembered fabric is replaced by another one, not cleared here (Settings > Etsy forgets it). */}
+                        {rememberedFabricOf(remembered, row) === "" && <option value="">Fabric from the order</option>}
+                        {fabricChoices(fabricConfig, fabricOf(row)).map((name) => (
+                          <option key={name} value={name}>
+                            {name}
+                          </option>
+                        ))}
+                      </select>
                     )}
                     <input
                       className={`${styles.input} ${error ? styles.input_error : ""}`}

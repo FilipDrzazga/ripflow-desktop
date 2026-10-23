@@ -1,5 +1,5 @@
 import { toIpcError } from "./ipcError.js";
-import { ETSY_XWD_INPUT_RE } from "../../shared/constants.js";
+import { ETSY_IMPORT_STATE, ETSY_XWD_INPUT_RE } from "../../shared/constants.js";
 import { ETSY_SHIP_DATES_MAX, etsyShipByOf } from "../../shared/etsyShipBy.js";
 import { etsyBuyerNoteOf } from "../../shared/etsyBuyerNote.js";
 
@@ -43,12 +43,33 @@ export const manualXwdOf = (value) => {
   return typed;
 };
 
+const isControlChar = (c) => c.charCodeAt(0) < 32 || c.charCodeAt(0) === 127;
+
+// -> the fabric name a person chose, checked: a non-empty string of a sane length with no control character, and a row
+// of the Fabrics catalogue to the character (`has` is the catalogue's own answer, so a stale list in the bar cannot
+// write a name that is gone). Never trimmed or case-folded into another name.
+export const fabricNameOf = (value, has) => {
+  if (typeof value !== "string" || value === "" || value.length > 200 || [...value].some(isControlChar)) {
+    throw refusal("INVALID_FABRIC", "The fabric must be chosen from the Fabrics list.");
+  }
+  if (has(value) !== true) throw refusal("UNKNOWN_FABRIC", `"${value}" is not in the Fabrics catalogue.`);
+  return value;
+};
+
+// The states in which the bar offers a line to a person (the same set as ETSY_IMPORT_OPEN_STATES).
+const OPEN_STATES = new Set([ETSY_IMPORT_STATE.NEEDS_REVIEW, ETSY_IMPORT_STATE.FAILED, ETSY_IMPORT_STATE.RETRY]);
+
 export const createEtsyImportRequests = ({
   featureOn, // () => getFeature("etsy")
   isImporter, // () => this station is switched on as the importer
   list, // listOpenEtsyImports
   requestRetry, // requestEtsyImportRetry
   dismiss, // dismissEtsyImport
+  getLine = () => undefined, // (receiptId, transactionId) => the etsy_imports row | null | undefined (getEtsyImport)
+  hasFabric = () => false, // (name) => the name is a row of the Fabrics catalogue (fail closed: no answer, no fabric)
+  listListingFabrics = () => null, // getEtsyListingFabrics
+  saveListingFabric = () => null, // setEtsyListingFabric
+  forgetListingFabric = () => null, // deleteEtsyListingFabric
   requestTick, // () => one tick now on this station
   openExternal, // async (url) => opens the address in the browser (shell.openExternal)
   listingImage = async () => null, // async (listingId) => data: URL | null (helpers/etsyThumbnail.js)
@@ -99,6 +120,38 @@ export const createEtsyImportRequests = ({
         const importerHere = Boolean(isImporter());
         if (updated && importerHere) requestTick();
         return { updated, importerHere };
+      }),
+
+    // Plan FAB: the fabric a person chose for a line, remembered for its LISTING (the importer uses it for a line whose own
+    // Fabric variation is missing or does not resolve). The renderer names the LINE and the fabric; the listing comes from
+    // the row, never from the renderer. Only a line the bar offers (needs_review / failed / retry) can set one. It only
+    // writes the choice - the person still presses Retry.
+    setListingFabric: (request) =>
+      answer("etsy-imports:setListingFabric", "Remembering the Etsy fabric failed", () => {
+        const key = keyOf(request);
+        const fabricName = fabricNameOf(request?.fabric, hasFabric);
+        const row = getLine(key.receiptId, key.transactionId);
+        if (!row) throw refusal("ETSY_LINE_GONE", "The Etsy order line is not in the import table (any more).");
+        if (!OPEN_STATES.has(row.state)) throw refusal("ETSY_LINE_CLOSED", "That Etsy order line is no longer waiting for a person.");
+        const listingId = typeof row.listingId === "string" ? row.listingId.trim() : "";
+        if (!ETSY_ID_RE.test(listingId)) throw refusal("NO_ETSY_LISTING", "The Etsy order line has no listing to remember a fabric for.");
+        written(saveListingFabric({ listingId, fabricName }));
+        return { listingId };
+      }),
+
+    // { [listingId]: fabricName } - what is remembered, for the bar (the field shows it) and for Settings.
+    listingFabrics: () =>
+      answer("etsy-imports:listingFabrics", "Reading the remembered Etsy fabrics failed", () => {
+        const rows = listListingFabrics();
+        if (!Array.isArray(rows)) throw Object.assign(new Error("The remembered Etsy fabrics could not be read."), { code: "DB_READ_FAILED" });
+        return { data: Object.fromEntries(rows.map((r) => [r.listingId, r.fabricName])) };
+      }),
+
+    forgetListingFabric: (listingId) =>
+      answer("etsy-imports:forgetListingFabric", "Forgetting the Etsy fabric failed", () => {
+        const id = typeof listingId === "string" ? listingId.trim() : "";
+        if (!ETSY_ID_RE.test(id)) throw refusal("INVALID_ETSY_LISTING", "The Etsy listing is not named by its number.");
+        return { deleted: written(forgetListingFabric(id)).deleted };
       }),
 
     dismiss: (request) =>

@@ -329,6 +329,18 @@ const api = Object.freeze({
       }
       return ipcRenderer.invoke("etsy-imports:shipDates", receiptIds);
     },
+    // Plan FAB: the fabric a person chose for a line, remembered for its listing. Only the line key and the fabric's name
+    // cross; main reads the listing off the row and checks the name against the Fabrics catalogue.
+    setListingFabric: (line) => {
+      if (!isPlainObject(line)) throw new TypeError("Etsy import line must be a plain object.");
+      return ipcRenderer.invoke("etsy-imports:setListingFabric", { receiptId: line.receiptId, transactionId: line.transactionId, fabric: line.fabric });
+    },
+    // -> { success, data: { [listingId]: fabricName } }
+    listingFabrics: () => ipcRenderer.invoke("etsy-imports:listingFabrics"),
+    forgetListingFabric: (listingId) => {
+      if (typeof listingId !== "string" || !/^\d{1,20}$/.test(listingId)) throw new TypeError("Etsy listing number must be a string of digits.");
+      return ipcRenderer.invoke("etsy-imports:forgetListingFabric", listingId);
+    },
     previewNewest: () => ipcRenderer.invoke("etsy-imports:previewNewest"),
     importOrder: (receiptId) => {
       if (typeof receiptId !== "string" || !/^\d{1,20}$/.test(receiptId)) throw new TypeError("Etsy order number must be a string of digits.");
