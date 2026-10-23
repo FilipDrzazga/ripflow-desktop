@@ -9,7 +9,7 @@ import { printerOfBatch } from "../../shared/batchFolderName.js";
 import { preferredPrinterToStore, storesPreferredPrinter, lengthExtraToStore } from "./fabricInput.js";
 import { stageExtToStore } from "../../shared/artworkFile.js";
 import { ETSY_FABRIC_SEED, etsyKey } from "./etsyFabric.js";
-import { ETSY_IMPORT_STATE, ETSY_IMPORT_OPEN_STATES } from "../../shared/constants.js";
+import { ETSY_IMPORT_STATE, ETSY_IMPORT_OPEN_STATES, ETSY_LISTING_PRINT_TYPES } from "../../shared/constants.js";
 import { etsyShipByOf } from "../../shared/etsyShipBy.js";
 import { etsyBuyerNoteOf, ETSY_BUYER_NOTE_RETENTION_DAYS } from "../../shared/etsyBuyerNote.js";
 
@@ -224,9 +224,29 @@ const ensureEtsyListingFabricTable = () => {
     return false;
   }
 };
+// The print type a person chose for an Etsy LISTING (plan FAB-3c): a snood or an apron, whose order line has no print type of
+// its own. A table of its OWN beside etsy_listing_fabric - a listing may need only one of the two choices - with its own
+// flag and try/catch: a failed CREATE costs the remembered types only. print_type = a key of ETSY_LISTING_PRINT_TYPES.
+let etsyListingTypeReady = false;
+const ensureEtsyListingTypeTable = () => {
+  try {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS etsy_listing_type (
+        listing_id TEXT PRIMARY KEY,
+        print_type TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      )
+    `);
+    return true;
+  } catch (err) {
+    console.error("[db] ensureEtsyListingTypeTable failed (no remembered print type per Etsy listing):", err);
+    return false;
+  }
+};
 const ensureEtsyTables = () => {
   etsyTablesReady = false;
   etsyListingFabricReady = false;
+  etsyListingTypeReady = false;
   etsyImportsHaveDetails = false;
   etsyImportsHaveSuggestion = false;
   etsyImportsHaveSuggestedFile = false;
@@ -268,6 +288,7 @@ const ensureEtsyTables = () => {
     etsyImportsHaveShipBy = ensureEtsyImportShipByColumn();
     etsyImportsHaveBuyerNote = ensureEtsyImportBuyerNoteColumn();
     etsyListingFabricReady = ensureEtsyListingFabricTable();
+    etsyListingTypeReady = ensureEtsyListingTypeTable();
     if (mapIsNew) {
       const hasFabric = db.prepare("SELECT 1 FROM fabrics WHERE name = ?");
       const insert = db.prepare("INSERT OR IGNORE INTO etsy_fabric_map (etsy_key, etsy_name, fabric_name) VALUES (?, ?, ?)");
@@ -336,6 +357,55 @@ export const deleteEtsyListingFabric = (listingId) => {
   let changes = 0;
   const written = runWrite("deleteEtsyListingFabric", () => {
     changes = db.prepare("DELETE FROM etsy_listing_fabric WHERE listing_id = ?").run(id).changes;
+  });
+  return written ? { deleted: changes === 1 } : null;
+};
+
+// [{ listingId, printType }], or null when it could not be read - never [] for that. Only a type a person can still
+// choose (ETSY_LISTING_PRINT_TYPES) is returned: a stored value outside it is a row nobody reads.
+export const getEtsyListingTypes = () => {
+  if (!db || !etsyTablesReady || !etsyListingTypeReady) return null;
+  try {
+    return db
+      .prepare("SELECT listing_id AS listingId, print_type AS printType FROM etsy_listing_type ORDER BY updated_at DESC")
+      .all()
+      .filter((row) => Object.hasOwn(ETSY_LISTING_PRINT_TYPES, row.printType));
+  } catch (err) {
+    console.error("[db] getEtsyListingTypes failed:", err);
+    return null;
+  }
+};
+
+// The print type remembered for ONE listing (a key of ETSY_LISTING_PRINT_TYPES) or null (none, or could not ask).
+export const getEtsyListingType = (listingId) => {
+  const id = String(listingId ?? "").trim();
+  if (!ETSY_LISTING_ID_RE.test(id)) return null;
+  const found = getEtsyListingTypes()?.find((row) => row.listingId === id);
+  return found ? found.printType : null;
+};
+
+// Remember (or replace) the print type of a listing. true = written; null = could not (no table, a bad listing id, a type
+// outside ETSY_LISTING_PRINT_TYPES, a failed write).
+export const setEtsyListingType = ({ listingId, printType }) => {
+  if (!db || !etsyTablesReady || !etsyListingTypeReady) return null;
+  const id = typeof listingId === "string" ? listingId.trim() : "";
+  if (!ETSY_LISTING_ID_RE.test(id) || typeof printType !== "string" || !Object.hasOwn(ETSY_LISTING_PRINT_TYPES, printType)) return null;
+  const written = runWrite("setEtsyListingType", () => {
+    db.prepare(
+      "INSERT INTO etsy_listing_type (listing_id, print_type, updated_at) VALUES (?, ?, ?) ON CONFLICT(listing_id) DO UPDATE SET print_type = excluded.print_type, updated_at = excluded.updated_at",
+    ).run(id, printType, new Date().toISOString());
+  });
+  return written ? true : null;
+};
+
+// Forget the print type of a listing. -> { deleted } (false = there was none) or null when it could not be done.
+export const deleteEtsyListingType = (listingId) => {
+  if (!db || !etsyTablesReady || !etsyListingTypeReady) return null;
+  const id = typeof listingId === "string" ? listingId.trim() : "";
+  if (!ETSY_LISTING_ID_RE.test(id)) return null;
+  let changes = 0;
+  const written = runWrite("deleteEtsyListingType", () => {
+    changes = db.prepare("DELETE FROM etsy_listing_type WHERE listing_id = ?").run(id).changes;
   });
   return written ? { deleted: changes === 1 } : null;
 };

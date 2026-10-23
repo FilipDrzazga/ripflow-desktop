@@ -127,6 +127,10 @@ export const ETSY_IMPORT_STATE = {
 // bar shows a request that is still waiting for the importer.
 export const ETSY_IMPORT_OPEN_STATES = [ETSY_IMPORT_STATE.NEEDS_REVIEW, ETSY_IMPORT_STATE.FAILED, ETSY_IMPORT_STATE.RETRY];
 
+// The print types a person can remember for an Etsy LISTING (plan FAB-3c): the two products whose order line carries no
+// print type of its own. A code of the shop profile's productTypes[]; the label is what the file name says.
+export const ETSY_LISTING_PRINT_TYPES = Object.freeze({ SNOOD: "Snood", APRON: "Apron" });
+
 // A number typed into the bar (and the bare SKU, etsyTransaction.js): every library number is six digits.
 export const ETSY_XWD_INPUT_RE = /^\d{6}$/;
 

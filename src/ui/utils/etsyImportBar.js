@@ -2,7 +2,7 @@
 // The rows come from IPC `etsy-imports:list` (db.listOpenEtsyImports): receiptId, transactionId, state,
 // reason, title, quantity, listingId, manualXwd, updatedAt.
 
-import { ETSY_IMPORT_INTERRUPTED_REASON, ETSY_IMPORT_STATE, ETSY_XWD_INPUT_RE } from "../../shared/constants";
+import { ETSY_IMPORT_INTERRUPTED_REASON, ETSY_IMPORT_STATE, ETSY_LISTING_PRINT_TYPES, ETSY_XWD_INPUT_RE } from "../../shared/constants";
 
 // How often the bar asks for the open lines: a read of one small table, and the importer checks Etsy every few minutes (Settings > Etsy on that station).
 export const ETSY_BAR_POLL_MS = 30_000;
@@ -29,6 +29,16 @@ export const initialXwdInput = (row) => (typeof row?.manualXwd === "string" ? ro
 export const rememberedFabricOf = (remembered, row) => {
   const name = row?.listingId ? remembered?.[row.listingId] : undefined;
   return typeof name === "string" ? name : "";
+};
+
+// Plan FAB-3c: the print types a person can remember for a listing (a snood, an apron), as { value, label } for the field.
+export const LISTING_PRINT_TYPE_CHOICES = Object.entries(ETSY_LISTING_PRINT_TYPES).map(([value, label]) => ({ value, label }));
+
+// The print type remembered for the line's listing ("" = none; the order line's variations then decide).
+// `remembered` is { [listingId]: code }, as the bar loads it. A code outside the choices reads as none.
+export const rememberedPrintTypeOf = (remembered, row) => {
+  const code = row?.listingId ? remembered?.[row.listingId] : undefined;
+  return typeof code === "string" && Object.hasOwn(ETSY_LISTING_PRINT_TYPES, code) ? code : "";
 };
 
 // The names the fabric field offers: the Fabrics catalogue in its own order, plus the remembered choice when the

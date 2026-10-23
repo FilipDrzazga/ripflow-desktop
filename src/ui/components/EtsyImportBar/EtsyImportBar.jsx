@@ -9,7 +9,7 @@ import { isFeatureEnabled } from "../../utils/featureVisibility";
 import { notify } from "../../utils/notify";
 import { openEtsyOrder } from "../../utils/orderLink";
 import { showConfirm } from "../../services/systemService";
-import { listEtsyImports, retryEtsyImport, dismissEtsyImport, openEtsyListing, listEtsyListingFabrics, setEtsyListingFabric } from "../../services/etsyImportService";
+import { listEtsyImports, retryEtsyImport, dismissEtsyImport, openEtsyListing, listEtsyListingFabrics, setEtsyListingFabric, listEtsyListingPrintTypes, setEtsyListingPrintType } from "../../services/etsyImportService";
 import {
   ETSY_BAR_POLL_MS,
   barTitle,
@@ -19,6 +19,8 @@ import {
   etsyOrderIdOf,
   fabricChoices,
   initialXwdInput,
+  LISTING_PRINT_TYPE_CHOICES,
+  rememberedPrintTypeOf,
   isInterrupted,
   lineKey,
   lineTitle,
@@ -56,6 +58,8 @@ const EtsyImportBarContent = () => {
   const [typed, setTyped] = useState({}); // line key -> text of the field, once the person touched it
   const [remembered, setRemembered] = useState({}); // listing id -> the fabric remembered for it (etsy_listing_fabric)
   const [typedFabric, setTypedFabric] = useState({}); // line key -> fabric name, once the person chose one
+  const [rememberedTypes, setRememberedTypes] = useState({}); // listing id -> the print type remembered for it (etsy_listing_type)
+  const [typedType, setTypedType] = useState({}); // line key -> print type code, once the person chose one
   const [fieldError, setFieldError] = useState({}); // line key -> message
   const aliveRef = useRef(true);
   useEffect(() => {
@@ -75,6 +79,8 @@ const EtsyImportBarContent = () => {
       // The remembered fabrics ride on the same reload; an unreadable answer keeps the last one (the field then shows it).
       const fabrics = await listEtsyListingFabrics();
       if (aliveRef.current && fabrics?.success && fabrics.data && typeof fabrics.data === "object") setRemembered(fabrics.data);
+      const types = await listEtsyListingPrintTypes();
+      if (aliveRef.current && types?.success && types.data && typeof types.data === "object") setRememberedTypes(types.data);
     } catch (err) {
       console.error("[EtsyImportBar] list failed:", err);
     }
@@ -99,6 +105,10 @@ const EtsyImportBarContent = () => {
   const valueOf = (row) => typed[lineKey(row)] ?? initialXwdInput(row);
 
   const fabricOf = (row) => typedFabric[lineKey(row)] ?? rememberedFabricOf(remembered, row);
+
+  const printTypeOf = (row) => typedType[lineKey(row)] ?? rememberedPrintTypeOf(rememberedTypes, row);
+
+  const setPrintType = (row, code) => setTypedType((prev) => ({ ...prev, [lineKey(row)]: code }));
 
   const setFabric = (row, name) => setTypedFabric((prev) => ({ ...prev, [lineKey(row)]: name }));
 
@@ -132,6 +142,19 @@ const EtsyImportBarContent = () => {
         if (aliveRef.current) {
           setRemembered((prev) => ({ ...prev, [row.listingId]: fabric }));
           setTypedFabric((prev) => withoutTyped(prev, key));
+        }
+      }
+      // The same for the print type of the listing (a snood, an apron).
+      const printType = printTypeOf(row);
+      if (printType !== "" && printType !== rememberedPrintTypeOf(rememberedTypes, row)) {
+        const saved = await setEtsyListingPrintType({ receiptId: row.receiptId, transactionId: row.transactionId, printType });
+        if (!saved?.success) {
+          notify({ type: "Error", title: "Remembering the print type failed", message: saved?.error?.message ?? "The print type was not saved - nothing was retried." }, { stage: "etsy-import", code: "ETSY_PRINT_TYPE_FAILED" });
+          return;
+        }
+        if (aliveRef.current) {
+          setRememberedTypes((prev) => ({ ...prev, [row.listingId]: printType }));
+          setTypedType((prev) => withoutTyped(prev, key));
         }
       }
       const res = await retryEtsyImport({ receiptId: row.receiptId, transactionId: row.transactionId, xwd: read.value });
@@ -237,6 +260,24 @@ const EtsyImportBarContent = () => {
                         {fabricChoices(fabricConfig, fabricOf(row)).map((name) => (
                           <option key={name} value={name}>
                             {name}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                    {/* Plan FAB-3c: a snood or an apron is not named by its order line - the type is chosen for the LISTING. */}
+                    {row.listingId && (
+                      <select
+                        className={styles.select_narrow}
+                        aria-label="Product type for this listing"
+                        title="Product type for this listing - remembered for every later order of it; leave empty when the order line names the type"
+                        value={printTypeOf(row)}
+                        disabled={busy || !canRetry(row)}
+                        onChange={(e) => setPrintType(row, e.target.value)}
+                      >
+                        {rememberedPrintTypeOf(rememberedTypes, row) === "" && <option value="">Type from the order</option>}
+                        {LISTING_PRINT_TYPE_CHOICES.map((choice) => (
+                          <option key={choice.value} value={choice.value}>
+                            {choice.label}
                           </option>
                         ))}
                       </select>

@@ -1,5 +1,5 @@
 import path from "node:path";
-import { ETSY_IMPORT_INTERRUPTED_REASON, ETSY_IMPORT_STATE, ETSY_XWD_INPUT_RE } from "../../shared/constants.js";
+import { ETSY_IMPORT_INTERRUPTED_REASON, ETSY_IMPORT_STATE, ETSY_LISTING_PRINT_TYPES, ETSY_XWD_INPUT_RE } from "../../shared/constants.js";
 import { isImageFileName } from "../../shared/artworkFile.js";
 import { MAX_UNLISTED_RETRY_ORDERS } from "../../shared/etsyImportInterval.js";
 import { etsyShipByOf } from "../../shared/etsyShipBy.js";
@@ -46,6 +46,8 @@ import {
 //   listing id.
 // - FABRIC OF A LISTING (plan FAB): a line whose "Fabric" variation is missing or does not resolve takes the fabric a
 //   person chose for its listing in the bar (etsy_listing_fabric); a variation that resolves always wins.
+// - PRINT TYPE OF A LISTING (plan FAB-3c): a snood or an apron is not named by its order line; the type a person chose
+//   for the listing in the bar (etsy_listing_type) is the type, and the file name must read back as exactly it.
 // - SUGGESTION (E4c): a line that stops for want of an XWD number - none on the line, or none in the library - is
 //   written with the number its listing title points to in the library (etsySuggestion.js), when exactly one does.
 //   Only a hint for the bar: it is never used to name or copy a file. Not finding one, or not being able to look,
@@ -120,6 +122,7 @@ export const createEtsyImporter = ({
   getFabrics, // () => [{ name }] | null
   getFabricMap, // () => [{ etsyKey, fabricName }] | null
   getListingFabric = () => null, // (listingId: digits) => the fabric name remembered for the listing | null (none, or could not ask)
+  getListingType = () => null, // (listingId: digits) => the print type remembered for the listing (a key of ETSY_LISTING_PRINT_TYPES) | null
   getProfile, // () => shop profile | null
   storageRoot, // () => absolute path of the inbox root (storagePath)
   libraryRoot, // () => absolute path of the Etsy pattern folder
@@ -167,6 +170,14 @@ export const createEtsyImporter = ({
     return chosen ? { fabric: chosen } : { reason: `The fabric "${remembered}" remembered for this listing is not in Fabrics (any more).` };
   };
 
+  // The print type remembered for the line's listing, or null (none, a stored value a person can no longer choose, or the
+  // memory could not be read - then the variations decide, as ever).
+  const rememberedTypeOf = (transaction) => {
+    const listingId = idOf(transaction.listing_id);
+    const code = listingId ? getListingType(listingId) : null;
+    return typeof code === "string" && Object.hasOwn(ETSY_LISTING_PRINT_TYPES, code) ? code : null;
+  };
+
   // The proof of W4: the name we are about to write reads back as the order line we built it from.
   const readBackProblem = (name, plan) => {
     const out = parse(name, { dir: path.join(storageRoot(), plan.fabric.name), fullPath: null, shopConfig: plan.profile });
@@ -181,6 +192,7 @@ export const createEtsyImporter = ({
     if (out.x !== plan.index || out.y !== plan.total) wrong.push("x of y");
     if (out.repeatType !== plan.repeat) wrong.push("repeat type");
     if (!ETSY_PRINT_TYPES.includes(out.printTypeCode)) wrong.push("print type");
+    else if (plan.expectType && out.printTypeCode !== plan.expectType) wrong.push("print type");
     if (!isEtsyFileName(name)) wrong.push("Etsy name shape");
     return wrong.length > 0 ? `it reads back with a different ${wrong.join(", ")}` : null;
   };
@@ -232,12 +244,16 @@ export const createEtsyImporter = ({
       fabric,
       profile,
       libraryFile,
+      expectType: rememberedTypeOf(transaction),
       ext: libraryFile.slice(libraryFile.lastIndexOf(".") + 1),
     };
 
     // The print type: whichever variation text makes a name that reads back as a Linear Meter, Fat Quarter or
     // Sample. Exactly one text may do that - two different ones are an order line we cannot tell apart.
-    const candidates = typeTextCandidates(transaction);
+    // A print type a person chose for the LISTING (a snood, an apron - whose order line says none) is the type: the
+    // variations are not asked, and the name must read back as exactly that type.
+    const { expectType } = base;
+    const candidates = expectType ? [ETSY_LISTING_PRINT_TYPES[expectType]] : typeTextCandidates(transaction);
     const accepted = [];
     const problems = [];
     for (const typeText of candidates) {

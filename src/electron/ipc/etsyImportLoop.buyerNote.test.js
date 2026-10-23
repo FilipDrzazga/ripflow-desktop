@@ -15,6 +15,7 @@ vi.mock("../helpers/db.js", () => ({
   getAllFabrics: () => [],
   getEtsyFabricMap: () => [],
   getEtsyListingFabric: () => null,
+  getEtsyListingType: () => null,
   getEtsyImport: db.getEtsyImport,
   claimEtsyImport: () => true,
   setEtsyImportState: () => true,

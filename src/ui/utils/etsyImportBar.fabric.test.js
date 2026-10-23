@@ -40,3 +40,36 @@ describe("fabricChoices", () => {
     expect(fabricChoices(value)).toEqual([]);
   });
 });
+
+// Plan FAB-3c: the print type remembered for the listing, as the second field of the bar shows it.
+import { LISTING_PRINT_TYPE_CHOICES, rememberedPrintTypeOf } from "./etsyImportBar";
+
+describe("LISTING_PRINT_TYPE_CHOICES", () => {
+  it("offers the snood and the apron, by code and label", () => {
+    expect(LISTING_PRINT_TYPE_CHOICES).toEqual([
+      { value: "SNOOD", label: "Snood" },
+      { value: "APRON", label: "Apron" },
+    ]);
+  });
+});
+
+describe("rememberedPrintTypeOf", () => {
+  const remembered = { 1351273307: "SNOOD", 42: "CUSHION" };
+
+  it("is the type remembered for the line's listing", () => {
+    expect(rememberedPrintTypeOf(remembered, { listingId: "1351273307" })).toBe("SNOOD");
+  });
+
+  it.each([
+    ["another listing", { listingId: "7" }],
+    ["a code that cannot be chosen", { listingId: "42" }],
+    ["a line without a listing", { listingId: null }],
+    ["no row", null],
+  ])("is empty for %s", (_label, row) => {
+    expect(rememberedPrintTypeOf(remembered, row)).toBe("");
+  });
+
+  it.each([[null], [undefined], [{ 1351273307: 5 }]])("is empty when the memory is %j", (memory) => {
+    expect(rememberedPrintTypeOf(memory, { listingId: "1351273307" })).toBe("");
+  });
+});

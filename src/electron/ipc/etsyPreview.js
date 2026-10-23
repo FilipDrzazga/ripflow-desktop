@@ -6,7 +6,7 @@ import { receiptFacts } from "../helpers/etsyApi.js";
 import { getSettings, getEtsyImportSince } from "../helpers/getSettings.js";
 import { getStorageRootPath } from "../helpers/getRootPath.js";
 import { getProfile } from "../helpers/shopProfile.js";
-import { getAllFabrics, getEtsyFabricMap, getEtsyListingFabric, getEtsyImport } from "../helpers/db.js";
+import { getAllFabrics, getEtsyFabricMap, getEtsyListingFabric, getEtsyListingType, getEtsyImport } from "../helpers/db.js";
 import { renameNoOverwrite } from "../helpers/renameNoOverwrite.js";
 import { parsePrintFileName } from "../helpers/parseFileName.js";
 import { etsyBuyerNoteOf } from "../../shared/etsyBuyerNote.js";
@@ -43,6 +43,7 @@ export const previewNewestEtsyOrder = async () => {
     getFabrics: getAllFabrics,
     getFabricMap: getEtsyFabricMap,
     getListingFabric: getEtsyListingFabric,
+    getListingType: getEtsyListingType,
     getProfile,
     storageRoot: () => storage,
     libraryRoot: () => library,

@@ -299,6 +299,28 @@
   font-size: 13px;
 }
 
+.select_narrow {
+  width: 132px;
+  height: 30px;
+  padding: 0 8px;
+  border-radius: 8px;
+  border: 1px solid var(--border-grey);
+  background-color: var(--bg-white);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 13px;
+}
+
+.select_narrow:focus {
+  outline: 2px solid #2e7fd6;
+  outline-offset: 0;
+}
+
+.select_narrow:disabled {
+  background-color: var(--bg-grey);
+  color: var(--text-secondary);
+}
+
 .select:focus {
   outline: 2px solid #2e7fd6;
   outline-offset: 0;

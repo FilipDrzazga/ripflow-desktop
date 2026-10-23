@@ -1,5 +1,5 @@
 import { toIpcError } from "./ipcError.js";
-import { ETSY_IMPORT_STATE, ETSY_XWD_INPUT_RE } from "../../shared/constants.js";
+import { ETSY_IMPORT_STATE, ETSY_LISTING_PRINT_TYPES, ETSY_XWD_INPUT_RE } from "../../shared/constants.js";
 import { ETSY_SHIP_DATES_MAX, etsyShipByOf } from "../../shared/etsyShipBy.js";
 import { etsyBuyerNoteOf } from "../../shared/etsyBuyerNote.js";
 
@@ -56,6 +56,14 @@ export const fabricNameOf = (value, has) => {
   return value;
 };
 
+// -> the print type code a person chose for a listing: one of ETSY_LISTING_PRINT_TYPES, exactly as spelled.
+export const listingPrintTypeOf = (value) => {
+  if (typeof value !== "string" || !Object.hasOwn(ETSY_LISTING_PRINT_TYPES, value)) {
+    throw refusal("INVALID_PRINT_TYPE", "The print type must be chosen from the list.");
+  }
+  return value;
+};
+
 // The states in which the bar offers a line to a person (the same set as ETSY_IMPORT_OPEN_STATES).
 const OPEN_STATES = new Set([ETSY_IMPORT_STATE.NEEDS_REVIEW, ETSY_IMPORT_STATE.FAILED, ETSY_IMPORT_STATE.RETRY]);
 
@@ -70,6 +78,9 @@ export const createEtsyImportRequests = ({
   listListingFabrics = () => null, // getEtsyListingFabrics
   saveListingFabric = () => null, // setEtsyListingFabric
   forgetListingFabric = () => null, // deleteEtsyListingFabric
+  listListingTypes = () => null, // getEtsyListingTypes
+  saveListingType = () => null, // setEtsyListingType
+  forgetListingType = () => null, // deleteEtsyListingType
   requestTick, // () => one tick now on this station
   openExternal, // async (url) => opens the address in the browser (shell.openExternal)
   listingImage = async () => null, // async (listingId) => data: URL | null (helpers/etsyThumbnail.js)
@@ -137,6 +148,36 @@ export const createEtsyImportRequests = ({
         if (!ETSY_ID_RE.test(listingId)) throw refusal("NO_ETSY_LISTING", "The Etsy order line has no listing to remember a fabric for.");
         written(saveListingFabric({ listingId, fabricName }));
         return { listingId };
+      }),
+
+    // Plan FAB-3c: the print type a person chose for a line's listing (a snood, an apron). The same rules as the fabric:
+    // the listing comes from the row, the line must be one the bar offers, the code must be one of ETSY_LISTING_PRINT_TYPES.
+    setListingPrintType: (request) =>
+      answer("etsy-imports:setListingPrintType", "Remembering the Etsy print type failed", () => {
+        const key = keyOf(request);
+        const printType = listingPrintTypeOf(request?.printType);
+        const row = getLine(key.receiptId, key.transactionId);
+        if (!row) throw refusal("ETSY_LINE_GONE", "The Etsy order line is not in the import table (any more).");
+        if (!OPEN_STATES.has(row.state)) throw refusal("ETSY_LINE_CLOSED", "That Etsy order line is no longer waiting for a person.");
+        const listingId = typeof row.listingId === "string" ? row.listingId.trim() : "";
+        if (!ETSY_ID_RE.test(listingId)) throw refusal("NO_ETSY_LISTING", "The Etsy order line has no listing to remember a print type for.");
+        written(saveListingType({ listingId, printType }));
+        return { listingId };
+      }),
+
+    // { [listingId]: printType } - what is remembered, for the bar and for Settings.
+    listingPrintTypes: () =>
+      answer("etsy-imports:listingPrintTypes", "Reading the remembered Etsy print types failed", () => {
+        const rows = listListingTypes();
+        if (!Array.isArray(rows)) throw Object.assign(new Error("The remembered Etsy print types could not be read."), { code: "DB_READ_FAILED" });
+        return { data: Object.fromEntries(rows.map((r) => [r.listingId, r.printType])) };
+      }),
+
+    forgetListingPrintType: (listingId) =>
+      answer("etsy-imports:forgetListingPrintType", "Forgetting the Etsy print type failed", () => {
+        const id = typeof listingId === "string" ? listingId.trim() : "";
+        if (!ETSY_ID_RE.test(id)) throw refusal("INVALID_ETSY_LISTING", "The Etsy listing is not named by its number.");
+        return { deleted: written(forgetListingType(id)).deleted };
       }),
 
     // { [listingId]: fabricName } - what is remembered, for the bar (the field shows it) and for Settings.

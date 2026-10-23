@@ -341,6 +341,17 @@ const api = Object.freeze({
       if (typeof listingId !== "string" || !/^\d{1,20}$/.test(listingId)) throw new TypeError("Etsy listing number must be a string of digits.");
       return ipcRenderer.invoke("etsy-imports:forgetListingFabric", listingId);
     },
+    // Plan FAB-3c: the print type (a snood, an apron) a person chose for a line, remembered for its listing.
+    setListingPrintType: (line) => {
+      if (!isPlainObject(line)) throw new TypeError("Etsy import line must be a plain object.");
+      return ipcRenderer.invoke("etsy-imports:setListingPrintType", { receiptId: line.receiptId, transactionId: line.transactionId, printType: line.printType });
+    },
+    // -> { success, data: { [listingId]: printType } }
+    listingPrintTypes: () => ipcRenderer.invoke("etsy-imports:listingPrintTypes"),
+    forgetListingPrintType: (listingId) => {
+      if (typeof listingId !== "string" || !/^\d{1,20}$/.test(listingId)) throw new TypeError("Etsy listing number must be a string of digits.");
+      return ipcRenderer.invoke("etsy-imports:forgetListingPrintType", listingId);
+    },
     previewNewest: () => ipcRenderer.invoke("etsy-imports:previewNewest"),
     importOrder: (receiptId) => {
       if (typeof receiptId !== "string" || !/^\d{1,20}$/.test(receiptId)) throw new TypeError("Etsy order number must be a string of digits.");
