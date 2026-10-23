@@ -72,6 +72,10 @@ const releaseNotes = () => {
   return entry.changes.map((c) => "- " + c.text).join("\n");
 };
 
+// The WHOLE changelog file goes into app.asar of the installer, which lives in a public repo -
+// not only the notes of this version (REPO-1b, S2 review).
+const changelogLeaks = () => publicContentProblems(fs.readFileSync("public/changelog.json", "utf8"), "public/changelog.json contains");
+
 if (command === "build") {
   const problems = buildPreconditions({
     version,
@@ -80,6 +84,7 @@ if (command === "build") {
     targetExists: fs.existsSync(target),
   });
   releaseNotes(); // the changelog must already carry this version
+  problems.push(...changelogLeaks());
   if (problems.length) stop(problems);
   console.log(`release build ${version} -> ${target}`);
   if (dryRun) {
@@ -110,12 +115,15 @@ if (command === "build") {
   const yml = readLatestYml(fs.readFileSync(ymlPath, "utf8"));
   const body = releaseNotes();
   const { repos, problems: repoProblems } = releaseRepos({ primary: primaryRepo, alsoRepo });
-  const leaks = publicContentProblems(body);
+  const leaks = changelogLeaks();
   if (repoProblems.length || leaks.length) stop([...repoProblems, ...leaks]);
   console.log(`release publish ${version} to ${repos.join(" + ")} as ${full ? "a FULL release - every station takes it on its next start + quit" : "a PRE-release (updater ignores it)"}`);
   if (dryRun) {
     // dry-run is network-free: ls-remote would already talk to GitHub
     console.log(`  [dry-run] check that tag v${version} is on origin (git ls-remote)`);
+    for (const [i, r] of repos.entries()) {
+      console.log(`  [dry-run] ${r}: GET repo (exists, push allowed${i === 0 ? ", PUBLIC" : ""}) + GET release for v${version} = 404 - before any POST`);
+    }
     for (const r of repos) {
       console.log(`  [dry-run] ${r}: POST /releases ` + JSON.stringify({ ...releaseRequest({ version, body, full }), body: "(changelog)" }));
       for (const a of assetPlan(version, yml)) console.log(`  [dry-run] ${r}: upload ${a.local} as ${a.remote}`);
@@ -127,17 +135,22 @@ if (command === "build") {
   const env = fs.readFileSync(".env", "utf8");
   const token = ((env.match(/^GH_TOKEN=(.+)$/m) || [])[1] || "").trim().replace(/^["']|["']$/g, "");
   if (!token) stop(["no GH_TOKEN in .env"]);
-  const results = await publishToRepos({
-    repos,
-    token,
-    version,
-    body,
-    full,
-    yml,
-    readFile: (f) => fs.readFileSync(path.join(target, f)),
-    fetch,
-    log: (m) => console.log("  " + m),
-  });
+  let results;
+  try {
+    results = await publishToRepos({
+      repos,
+      token,
+      version,
+      body,
+      full,
+      yml,
+      readFile: (f) => fs.readFileSync(path.join(target, f)),
+      fetch,
+      log: (m) => console.log("  " + m),
+    });
+  } catch (err) {
+    stop([err.message]);
+  }
   for (const r of results) {
     if (!full && r.latest === `v${version}`) stop([`${r.repo}: releases/latest points at the pre-release - check GitHub before anything updates`]);
   }

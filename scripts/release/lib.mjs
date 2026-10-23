@@ -111,7 +111,49 @@ export const releaseRepos = ({ primary, alsoRepo }) => {
   return { repos: [primary, alsoRepo], problems: [] };
 };
 
+// Before the FIRST POST, for EVERY repo: the whole run is refused when any of them cannot take it.
+// A half-done transition release cannot be repaired by running the script again (the second run
+// stops at "already exists" in the repo that got it), and "no release for the tag" answers 404 for
+// a repo that does not exist at all - so the repo itself is asked first (REPO-1b, S2 review):
+//   - it exists and the token may push to it (permissions.push);
+//   - the FIRST (primary) repo is public: the app reads its Releases without a token, so a private
+//     one makes auto-update silently dead on every station;
+//   - no release for v<version> in it yet.
+// Returns one text per problem, empty = ready. Makes only GET requests.
+export const checkReposReady = async ({ repos, token, version, fetch }) => {
+  const headers = { Authorization: "Bearer " + token, Accept: "application/vnd.github+json", "User-Agent": "ripflow-release" };
+  const problems = [];
+  for (const [i, repo] of repos.entries()) {
+    const api = `https://api.github.com/repos/${repo}`;
+    const info = await fetch(api, { headers });
+    if (info.status === 401 || info.status === 403) {
+      problems.push(`${repo}: GitHub refused GH_TOKEN (HTTP ${info.status}) - renew it in .env`);
+      continue;
+    }
+    if (info.status === 404) {
+      problems.push(`${repo}: no such repo, or GH_TOKEN cannot see it`);
+      continue;
+    }
+    if (!info.ok) {
+      problems.push(`${repo}: reading the repo failed: HTTP ${info.status}`);
+      continue;
+    }
+    const data = await info.json();
+    if (data?.permissions?.push !== true) problems.push(`${repo}: GH_TOKEN cannot write to it (no push permission)`);
+    if (i === 0 && data?.private !== false) {
+      problems.push(`${repo}: is not public - the app reads its Releases without a token, so updates would stop on every station`);
+    }
+    const tag = await fetch(`${api}/releases/tags/v${version}`, { headers });
+    if (tag.ok) problems.push(`${repo}: a release for v${version} already exists`);
+    else if (tag.status === 401 || tag.status === 403) problems.push(`${repo}: GitHub refused GH_TOKEN (HTTP ${tag.status}) - renew it in .env`);
+    else if (tag.status !== 404) problems.push(`${repo}: checking for a v${version} release failed: HTTP ${tag.status}`);
+  }
+  return problems;
+};
+
 export const publishToRepos = async ({ repos, ...rest }) => {
+  const problems = await checkReposReady({ repos, token: rest.token, version: rest.version, fetch: rest.fetch });
+  if (problems.length) throw new Error(`nothing was published - ${problems.join("; ")}`);
   const done = [];
   for (const repo of repos) {
     try {
@@ -133,7 +175,10 @@ const PUBLIC_CONTENT_LEAKS = [
   ["a client server (FAS-LON)", /FAS-LON/i],
   ["a drive path (O:\\ or O:/)", /\bO:[\\/]/],
   ["an order number (ON + 6 digits)", /\bON\d{6}\b/i],
+  ["an Etsy order number (ET + 9 or more digits)", /\bET\d{9,}\b/],
 ];
 
-export const publicContentProblems = (text) =>
-  PUBLIC_CONTENT_LEAKS.filter(([, re]) => re.test(String(text))).map(([label]) => `the release notes contain ${label}`);
+// `subject` says what was read, with its verb: the notes of this release, or the whole changelog
+// file (all of it is inside app.asar of the public installer).
+export const publicContentProblems = (text, subject = "the release notes contain") =>
+  PUBLIC_CONTENT_LEAKS.filter(([, re]) => re.test(String(text))).map(([label]) => `${subject} ${label}`);
