@@ -35,7 +35,7 @@ const STORE_HANDLE_RE = /^[a-z0-9][a-z0-9-]*$/;
 // outside this list would be a row nobody reads (new codes need a parser of their own - ETAP 5).
 // Since ETAP 4 (4-types-d) the profile lists the SUBSET the shop makes: a missing code is a type
 // this shop does not have, and parseFileName refuses such a file (4-types-e).
-export const PRODUCT_TYPE_CODES = ["SAMPLE", "FQ", "TEA_TOWEL"];
+export const PRODUCT_TYPE_CODES = ["SAMPLE", "FQ", "TEA_TOWEL", "SNOOD", "APRON"];
 
 export const FEATURE_FLAGS = ["customOrders", "analytics", "ripErrors", "labelPrinting", "shopify", "sewing"];
 // Flags a profile MAY omit (off then, like getFeature reads a missing one): added after v4 without a schema bump, so

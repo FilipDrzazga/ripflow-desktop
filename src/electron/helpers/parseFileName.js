@@ -27,6 +27,8 @@ const PRINT_TYPE_LABEL = {
   SAMPLE: "Sample",
   CUSHION: "Cushion",
   TEA_TOWEL: "Tea Towel",
+  SNOOD: "Snood",
+  APRON: "Apron",
   UNKNOWN: "UNKNOWN",
 };
 
@@ -140,6 +142,8 @@ function detectPrintTypeFromText(textLower) {
   if (textLower.includes("sample print")) return "SAMPLE";
   if (textLower.includes("cushion")) return "CUSHION";
   if (textLower.includes("tea towel")) return "TEA_TOWEL";
+  if (textLower.includes("snood")) return "SNOOD";
+  if (textLower.includes("apron")) return "APRON";
   return "UNKNOWN";
 }
 
@@ -283,6 +287,13 @@ function applyLmDimensions(out, shopConfig) {
 
   if (out.printTypeCode === "FQ") {
     applyProductDims(out, "FQ", shopConfig);
+    return;
+  }
+
+  // Etsy products with a fixed size (FILIP 2026-10-23): the size comes from the shop profile like FQ / SAMPLE, never
+  // from the name - no entry in productTypes[] and the file is refused (UNKNOWN_PRODUCT_SIZE).
+  if (out.printTypeCode === "SNOOD" || out.printTypeCode === "APRON") {
+    applyProductDims(out, out.printTypeCode, shopConfig);
   }
 }
 

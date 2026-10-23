@@ -56,6 +56,16 @@
       "code": "TEA_TOWEL",
       "width": 700,
       "height": 500
+    },
+    {
+      "code": "SNOOD",
+      "width": 500,
+      "height": 700
+    },
+    {
+      "code": "APRON",
+      "width": 500,
+      "height": 700
     }
   ],
   "folders": {

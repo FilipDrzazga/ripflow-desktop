@@ -92,7 +92,7 @@ describe("validateShopProfile v4 - named classes and a subset of product types",
 
   it("a product code the parser does not read is still refused", () => {
     expect(errorsOf((p) => (p.productTypes[0].code = "CUSHION"))).toEqual([
-      'productTypes[0].code: must be one of SAMPLE, FQ, TEA_TOWEL (got "CUSHION").',
+      'productTypes[0].code: must be one of SAMPLE, FQ, TEA_TOWEL, SNOOD, APRON (got "CUSHION").',
     ]);
   });
 

@@ -61,6 +61,10 @@ import {
 //   the ship-by date (etsyBuyerNoteOf decides what is usable; an empty one never clears a stored note). It is a
 //   CUSTOMER's free text: it never reaches the log - not the note, not the message of an error about writing it.
 
+// The print types an Etsy line may read back as: the three of its variations, and the two fixed-size products of the shop
+// profile (FILIP 2026-10-23: a snood and an apron are ordered on Etsy and have their own branch in the workflow).
+const ETSY_PRINT_TYPES = ["LM", "FQ", "SAMPLE", "SNOOD", "APRON"];
+
 // A PENDING row younger than this may belong to a copy another process is making right now.
 export const STALE_PENDING_MS = 10 * 60 * 1000;
 
@@ -176,7 +180,7 @@ export const createEtsyImporter = ({
     if (out.artworkId !== `XWD${plan.xwd}`) wrong.push("XWD");
     if (out.x !== plan.index || out.y !== plan.total) wrong.push("x of y");
     if (out.repeatType !== plan.repeat) wrong.push("repeat type");
-    if (!["LM", "FQ", "SAMPLE"].includes(out.printTypeCode)) wrong.push("print type");
+    if (!ETSY_PRINT_TYPES.includes(out.printTypeCode)) wrong.push("print type");
     if (!isEtsyFileName(name)) wrong.push("Etsy name shape");
     return wrong.length > 0 ? `it reads back with a different ${wrong.join(", ")}` : null;
   };
