@@ -1,0 +1,5 @@
+/* Etsy's own orange. `svg.etsy` (one class + one element) beats a list's plain `.file_icon` colour, and loses to a
+   state rule such as BatchHistory's `.file_row_rolled_back .file_icon`, so a rolled-back row stays red. */
+svg.etsy {
+  color: var(--etsy-orange);
+}

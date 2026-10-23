@@ -1,5 +1,6 @@
 import { useMemo, useState, useRef, useEffect } from "react";
-import { LuChevronRight, LuChevronDown, LuPackageCheck, LuFileText } from "react-icons/lu";
+import { LuChevronRight, LuChevronDown, LuPackageCheck } from "react-icons/lu";
+import FileIcon from "../FileIcon/FileIcon";
 import { useStore } from "../../store/useStore";
 import { STAGE_LABEL, STAGE_SHORT_LABEL, STAGE_COLOR } from "../../../shared/constants";
 import { groupByOrder, ORDER_STAGE_PIPELINE, UNKNOWN_ORDER_LABEL, UNKNOWN_ORDER_KEY } from "../../utils/groupByOrder";
@@ -32,7 +33,7 @@ const OrderFileRow = ({ row }) => {
   const pc = row.printer ? (getPrinterColor(shopProfile, row.printer) ?? { bg: "#f0f0f0", color: "#616161" }) : null;
   return (
     <div className={ov.file_row}>
-      <LuFileText className={ov.file_icon} />
+      <FileIcon orderId={row.order_id} fileName={row.file_id} className={ov.file_icon} />
       <span className={ov.file_name}>{row.file_id}</span>
       {row.print_type === "LM"
         ? row.meters != null && <span className={ov.file_qty}>{row.meters}m</span>

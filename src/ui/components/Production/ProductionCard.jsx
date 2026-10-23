@@ -3,7 +3,7 @@ import gsap from "gsap";
 import {
   LuScissors,
   LuPrinter, LuThermometer, LuSearch, LuPackage, LuTruck,
-  LuFileText, LuCheck, LuRotateCcw, LuTriangleAlert, LuClock,
+  LuCheck, LuRotateCcw, LuTriangleAlert, LuClock,
 } from "react-icons/lu";
 import {
   PRODUCTION_STAGE, STAGE_LABEL, STAGE_SHORT_LABEL, STAGE_COLOR,
@@ -11,6 +11,7 @@ import {
 import { useStore } from "@/store/useStore";
 import { getPrinterColor } from "@/utils/shopProfileData";
 import { claimShiftMouseDown } from "@/utils/rangeSelect";
+import FileIcon from "../FileIcon/FileIcon";
 import ShipByBadge from "../ShipByBadge/ShipByBadge";
 import BuyerNoteBubble from "../BuyerNoteBubble/BuyerNoteBubble";
 import style from "./Production.module.css";
@@ -161,7 +162,7 @@ const ProductionCard = ({ stage: row, history = [], highlighted, restored = fals
       <span className={`${style.card_checkbox} ${selected ? style.card_checkbox_checked : ""}`}>
         {selected && <LuCheck size={10} />}
       </span>
-      <LuFileText className={style.card_file_icon} />
+      <FileIcon orderId={row.order_id} fileName={row.file_id} className={style.card_file_icon} />
       <div className={style.card_info}>
         <span className={style.card_filename} title={row.file_id}>{row.file_id}</span>
         <ShipByBadge seconds={shipBy} />

@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { LuFileText } from "react-icons/lu";
+import FileIcon from "../FileIcon/FileIcon";
 import { HiChevronDown } from "react-icons/hi2";
 import { useStore } from "../../store/useStore";
 import { resolveIcon } from "../../constants/rollbackReasonIcons";
@@ -242,7 +242,7 @@ const ProductionRollbackModal = ({ rows, onConfirm, onCancel }) => {
                 className={style.card}
                 style={{ margin: "3px 0", cursor: "default", flexWrap: "wrap", height: "auto", minHeight: 44, paddingTop: reason?.code === "OTHER" ? 10 : 0, paddingBottom: reason?.code === "OTHER" ? 10 : 0 }}
               >
-                <LuFileText className={style.card_file_icon} />
+                <FileIcon orderId={row.order_id} fileName={row.file_id} className={style.card_file_icon} />
                 <div className={style.card_info}>
                   <span className={style.card_filename} title={row.file_id}>{row.file_id}</span>
                   {row.printer && (() => {

@@ -19,6 +19,10 @@ export const orderIdOf = (orderId, fileName) => {
   return orderIdFromFileName(fileName);
 };
 
+// Is this file an Etsy order - by its order number, else by the number inside the file name. The one question the
+// file icon asks (components/FileIcon), so a file wears the Etsy mark in the inbox, Production and BatchHistory alike.
+export const isEtsyOrder = (orderId, fileName) => orderSourceOf(orderIdOf(orderId, fileName)) === ORDER_SOURCE.ETSY;
+
 // ORDER_LINK.ETSY for an Etsy order (no feature flag: see openInEtsy.js in main), otherwise
 // ORDER_LINK.SHOPIFY when the shop has features.shopify on - exactly the old condition, so a
 // row with no order number keeps its Shopify entry and the "No order number" warning - else null.

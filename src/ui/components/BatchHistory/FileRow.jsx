@@ -1,5 +1,6 @@
-import { LuFileText, LuCheck, LuTriangleAlert } from "react-icons/lu";
+import { LuCheck, LuTriangleAlert } from "react-icons/lu";
 import { FILE_STATUS } from "../../../shared/constants";
+import FileIcon from "../FileIcon/FileIcon";
 import StageBadge from "../StageBadge/StageBadge";
 import { claimShiftMouseDown } from "../../utils/rangeSelect";
 import style from "./BatchHistory.module.css";
@@ -46,7 +47,7 @@ const FileRow = ({ file, batch, stageRow, ripError, onRipBadgeClick, activeConte
           {isSelected && <LuCheck size={10} />}
         </span>
       )}
-      <LuFileText className={style.file_icon} />
+      <FileIcon fileName={file.name} className={style.file_icon} />
       <span className={style.file_name_group}>
         <span className={style.file_name} title={file.name}>
           {file.name}

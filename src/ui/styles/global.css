@@ -35,6 +35,9 @@
   --ship-later-border: var(--border-grey);
   --ship-later-text: var(--text-secondary);
 
+  /* === ETSY (the mark that replaces the file icon of an Etsy order, in every list) === */
+  --etsy-orange: #f1641e;
+
   /* === CARD === */
   --card-shadow:
     0rem 0.3125rem 0.3125rem -0.15625rem #00000008, 0rem 0.1875rem 0.1875rem -0.09375rem #00000005,

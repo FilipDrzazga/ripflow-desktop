@@ -285,7 +285,7 @@
 /* An Etsy order (ET<receipt>_..._ETSY.pdf) shows the Etsy mark in place of the file icon,
    in Etsy's own orange so it reads at a glance in a long list. */
 .file_icon.etsy_icon {
-  color: #f1641e;
+  color: var(--etsy-orange);
 }
 
 .list_item.list_item_selected {
