@@ -1,5 +1,31 @@
 [
   {
+    "version": "1.0.45",
+    "date": "2026-10-23",
+    "changes": [
+      {
+        "text": "Etsy bar: for an order line that names no fabric or no product type (a snood, an apron), pick the fabric and the product type in two dropdowns - the fabric list has a search field. The choice is remembered for the listing, so its next order goes through without asking",
+        "clients": ["all"]
+      },
+      {
+        "text": "Settings > Etsy > Remembered choices per listing: see the fabric and the product type remembered for each Etsy listing and forget either one",
+        "clients": ["all"]
+      },
+      {
+        "text": "New print types Snood and Apron, each with its own symbol in Print and its own entry in the type filter. They need a size in the shop profile (Settings > Shop Profile > Import) - until it is there, such a file is refused with that reason. The job XML carries them as PrintTypeCode SNOOD / APRON",
+        "clients": ["all"]
+      },
+      {
+        "text": "Etsy orders: clicking the buyer's-note bubble now opens the order on Etsy with the buyer conversation already expanded",
+        "clients": ["all"]
+      },
+      {
+        "text": "Dropdowns: a long list scrolls inside its menu, and the menu is wide enough that a long name wraps instead of getting a sideways scrollbar",
+        "clients": ["all"]
+      }
+    ]
+  },
+  {
     "version": "1.0.44",
     "date": "2026-10-22",
     "changes": [
