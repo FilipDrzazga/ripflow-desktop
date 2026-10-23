@@ -1,5 +1,15 @@
 [
   {
+    "version": "1.0.47",
+    "date": "2026-10-23",
+    "changes": [
+      {
+        "text": "A file from an Etsy order keeps the Etsy logo instead of the plain file icon everywhere, not only in Print: on the Production cards and in the Orders view, in Batch history, in the rollback window and in the Ctrl+F order search",
+        "clients": ["all"]
+      }
+    ]
+  },
+  {
     "version": "1.0.46",
     "date": "2026-10-23",
     "changes": [
