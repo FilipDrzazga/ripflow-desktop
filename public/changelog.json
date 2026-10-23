@@ -66,7 +66,7 @@
         "clients": ["all"]
       },
       {
-        "text": "Order numbers are also read from hand-named files (for example \"ON308523 - NAME\"), but no longer from the middle of a word - a file without an order number no longer opens a made-up Etsy order",
+        "text": "Order numbers are also read from hand-named files (for example \"ON + six digits - NAME\"), but no longer from the middle of a word - a file without an order number no longer opens a made-up Etsy order",
         "clients": ["all"]
       },
       {
