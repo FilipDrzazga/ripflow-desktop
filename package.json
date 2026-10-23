@@ -41,7 +41,7 @@
     "publish": {
       "provider": "github",
       "owner": "FilipDrzazga",
-      "repo": "ripflow-desktop",
+      "repo": "ripflow-releases",
       "releaseType": "release"
     }
   },

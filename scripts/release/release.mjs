@@ -2,7 +2,7 @@
 // (USPR 7, 2026-09-24). Run from the repo root:
 //
 //   node scripts/release/release.mjs build   [--out <dir>] [--dry-run]
-//   node scripts/release/release.mjs publish [--out <dir>] [--full] [--dry-run]
+//   node scripts/release/release.mjs publish [--out <dir>] [--full] [--also-repo <owner/repo>] [--dry-run]
 //
 // build:   clean tree + HEAD tagged v<package.json version> -> vite build ->
 //          electron-builder --win --publish never -> the installer, its blockmap and
@@ -11,6 +11,14 @@
 // publish: the copied files -> a GitHub release for the pushed tag, a PRE-release unless
 //          --full is given; prints what releases/latest answers afterwards.
 // <out> defaults to %USERPROFILE%\ripflow-releases.
+//
+// Where the release goes (REPO-1): the code repo is private, the installers live in the PUBLIC
+// releases repo named in package.json build.publish (the app looks there). The tag v<version>
+// stays in the CODE repo (publish checks it on origin); in the releases repo GitHub creates the
+// tag itself on that repo's default branch, which is why that repo needs one commit (README).
+// --also-repo <owner/repo> sends the SAME files and notes there too - only for the transition
+// release, so stations that still look in the old repo get it; afterwards it is not used.
+// The notes are public: publish stops when they name a client, a server, a drive or an order.
 //
 // Why, from the two traps of 2026-09-24:
 //   - the 1.0.22 installer was lost: the next `vite build` emptied dist/. So the copy out
@@ -31,7 +39,9 @@ import {
   buildPreconditions,
   releaseRequest,
   assetPlan,
-  publishRelease,
+  publishToRepos,
+  releaseRepos,
+  publicContentProblems,
 } from "./lib.mjs";
 
 const args = process.argv.slice(2);
@@ -43,12 +53,13 @@ const optionValue = (name) => {
 };
 const dryRun = has("--dry-run");
 const full = has("--full");
+const alsoRepo = has("--also-repo") ? (optionValue("--also-repo") ?? "") : null; // "" = flag without a value, refused
 const outRoot = optionValue("--out") || path.join(os.homedir(), "ripflow-releases");
 
 const pkg = JSON.parse(fs.readFileSync("package.json", "utf8"));
 const version = pkg.version;
 const target = path.join(outRoot, version);
-const repo = `${pkg.build.publish.owner}/${pkg.build.publish.repo}`;
+const primaryRepo = `${pkg.build.publish.owner}/${pkg.build.publish.repo}`;
 const git = (...a) => execFileSync("git", a, { encoding: "utf8" }).trim();
 const stop = (problems) => {
   for (const p of problems) console.error("release: " + p);
@@ -98,12 +109,17 @@ if (command === "build") {
   if (!fs.existsSync(ymlPath)) stop([`no ${ymlPath} - run "release.mjs build" first`]);
   const yml = readLatestYml(fs.readFileSync(ymlPath, "utf8"));
   const body = releaseNotes();
-  console.log(`release publish ${version} as ${full ? "a FULL release - every station takes it on its next start + quit" : "a PRE-release (updater ignores it)"}`);
+  const { repos, problems: repoProblems } = releaseRepos({ primary: primaryRepo, alsoRepo });
+  const leaks = publicContentProblems(body);
+  if (repoProblems.length || leaks.length) stop([...repoProblems, ...leaks]);
+  console.log(`release publish ${version} to ${repos.join(" + ")} as ${full ? "a FULL release - every station takes it on its next start + quit" : "a PRE-release (updater ignores it)"}`);
   if (dryRun) {
     // dry-run is network-free: ls-remote would already talk to GitHub
     console.log(`  [dry-run] check that tag v${version} is on origin (git ls-remote)`);
-    console.log("  [dry-run] POST /releases " + JSON.stringify({ ...releaseRequest({ version, body, full }), body: "(changelog)" }));
-    for (const a of assetPlan(version, yml)) console.log(`  [dry-run] upload ${a.local} as ${a.remote}`);
+    for (const r of repos) {
+      console.log(`  [dry-run] ${r}: POST /releases ` + JSON.stringify({ ...releaseRequest({ version, body, full }), body: "(changelog)" }));
+      for (const a of assetPlan(version, yml)) console.log(`  [dry-run] ${r}: upload ${a.local} as ${a.remote}`);
+    }
     process.exit(0);
   }
   const onOrigin = git("ls-remote", "--tags", "origin", `v${version}`) !== "";
@@ -111,8 +127,8 @@ if (command === "build") {
   const env = fs.readFileSync(".env", "utf8");
   const token = ((env.match(/^GH_TOKEN=(.+)$/m) || [])[1] || "").trim().replace(/^["']|["']$/g, "");
   if (!token) stop(["no GH_TOKEN in .env"]);
-  const res = await publishRelease({
-    repo,
+  const results = await publishToRepos({
+    repos,
     token,
     version,
     body,
@@ -122,7 +138,9 @@ if (command === "build") {
     fetch,
     log: (m) => console.log("  " + m),
   });
-  if (!full && res.latest === `v${version}`) stop(["releases/latest points at the pre-release - check GitHub before anything updates"]);
+  for (const r of results) {
+    if (!full && r.latest === `v${version}`) stop([`${r.repo}: releases/latest points at the pre-release - check GitHub before anything updates`]);
+  }
 } else {
-  stop(["usage: node scripts/release/release.mjs build|publish [--out <dir>] [--full] [--dry-run]"]);
+  stop(["usage: node scripts/release/release.mjs build|publish [--out <dir>] [--full] [--also-repo <owner/repo>] [--dry-run]"]);
 }

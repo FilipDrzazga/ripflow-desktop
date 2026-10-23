@@ -92,3 +92,48 @@ export const publishRelease = async ({ repo, token, version, body, full, yml, re
   log(`releases/latest = ${latest.tag_name}${full ? "" : " (a pre-release must NOT be it)"}`);
   return { url: rel.html_url, latest: latest.tag_name };
 };
+
+// REPO-1: the release goes to the repo in package.json build.publish (the public releases repo,
+// where the installed app looks) and, on a transition release only, ALSO to a second repo
+// (--also-repo): the old one, where stations that still run a build pointing at it look. The
+// primary repo comes first; a failure in a later one is named with its repo and with what is
+// already published, never swallowed.
+const REPO_NAME = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
+
+export const releaseRepos = ({ primary, alsoRepo }) => {
+  if (alsoRepo === null || alsoRepo === undefined) return { repos: [primary], problems: [] };
+  if (!REPO_NAME.test(String(alsoRepo))) {
+    return { repos: [primary], problems: [`--also-repo needs owner/repo, got "${alsoRepo}"`] };
+  }
+  if (String(alsoRepo).toLowerCase() === primary.toLowerCase()) {
+    return { repos: [primary], problems: [`--also-repo ${alsoRepo} is the repo the release already goes to`] };
+  }
+  return { repos: [primary, alsoRepo], problems: [] };
+};
+
+export const publishToRepos = async ({ repos, ...rest }) => {
+  const done = [];
+  for (const repo of repos) {
+    try {
+      done.push({ repo, ...(await publishRelease({ ...rest, repo })) });
+    } catch (err) {
+      const already = done.length ? ` (already published to ${done.map((d) => d.repo).join(", ")})` : "";
+      throw new Error(`${repo}: ${err.message}${already}`);
+    }
+  }
+  return done;
+};
+
+// The release notes become PUBLIC with the release (the releases repo is public). A shop's name,
+// its server or an order number must not travel there: one label per kind found, empty = fine.
+const PUBLIC_CONTENT_LEAKS = [
+  ["a client name (Alex)", /\balex\b/i],
+  ["a client name (Fashion Formula)", /fashion\s*formula/i],
+  ["a client domain (fashionformulauk)", /fashionformulauk/i],
+  ["a client server (FAS-LON)", /FAS-LON/i],
+  ["a drive path (O:\\ or O:/)", /\bO:[\\/]/],
+  ["an order number (ON + 6 digits)", /\bON\d{6}\b/i],
+];
+
+export const publicContentProblems = (text) =>
+  PUBLIC_CONTENT_LEAKS.filter(([, re]) => re.test(String(text))).map(([label]) => `the release notes contain ${label}`);

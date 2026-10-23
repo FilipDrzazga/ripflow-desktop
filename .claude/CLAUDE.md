@@ -155,7 +155,10 @@ npm run lint       # ESLint flat config v9 — separate rules for ui/ and electr
 
 # Release (agents/docs/RUNBOOK-WDROZENIE.md, section 3) — NOT `npm run build:dist`, which publishes a FULL release at once
 node scripts/release/release.mjs build             # tagged HEAD -> installer copied out of dist/ + SHA256SUMS
-node scripts/release/release.mjs publish [--full]  # a PRE-release unless --full; --dry-run on both
+node scripts/release/release.mjs publish [--full] [--also-repo FilipDrzazga/ripflow-desktop]  # a PRE-release unless --full; --dry-run on both
+#   Releases go to the PUBLIC releases repo of package.json build.publish (ripflow-releases, REPO-1: the code repo is to become private,
+#   the app only reads public Releases). --also-repo = the SAME release also to the old repo: ONLY the transition release, for stations that still
+#   look there. The notes are public: publish refuses notes that name a client, a server, a drive or an order number.
 npm run test       # Vitest — runs every *.test.js: src/** and eslint-rules/ (node environment)
 npm run test:watch # Vitest watch mode
 
