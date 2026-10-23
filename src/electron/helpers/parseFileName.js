@@ -5,7 +5,7 @@ import {
   DIMS_FQ,
   DIMS_TEA_TOWEL,
 } from "../../shared/printWidths.js";
-import { ORDER_ID_RE, SHOP_MARKER, orderSourceOf } from "../../shared/orderSource.js";
+import { ORDER_ID_RE, ORDER_SOURCE, SHOP_MARKER, orderSourceOf } from "../../shared/orderSource.js";
 import { PDF_EXT, IMAGE_EXTS, isImageExt, repeatTypeOf } from "../../shared/artworkFile.js";
 
 function nowIso() {
@@ -147,6 +147,15 @@ function detectPrintTypeFromText(textLower) {
   return "UNKNOWN";
 }
 
+// SNOOD and APRON are products of the Etsy shop only (FILIP 2026-10-23 "Tylko Etsy"): the words name a type only in the
+// name of an Etsy order. In any other name ("Apron Strings Print" on a Shopify order, a hand-named file) they are text,
+// as they were before the two types existed.
+function printTypeOfText(textLower, orderId) {
+  const code = detectPrintTypeFromText(textLower);
+  if ((code === "SNOOD" || code === "APRON") && orderSourceOf(orderId) !== ORDER_SOURCE.ETSY) return "UNKNOWN";
+  return code;
+}
+
 function parseQtyToken(token) {
   // "3x" => 3
   const m = String(token || "")
@@ -220,7 +229,8 @@ const BUILT_IN_DIMS = {
 };
 
 function resolveProductDims(code, shopConfig) {
-  if (shopConfig === undefined) return BUILT_IN_DIMS[code] ?? null;
+  // A code with no built-in size (SNOOD, APRON: only the profile knows them) is refused like a profile without a row.
+  if (shopConfig === undefined) return BUILT_IN_DIMS[code] ?? { refused: `${code} has no built-in size and no shop profile was given` };
   if (!shopConfig || typeof shopConfig !== "object") {
     return { refused: `the shop profile could not be read, so the ${code} size is unknown - use Reload shop data in Settings > Shop Profile` };
   }
@@ -521,7 +531,7 @@ function parseXwdBased(tokens, baseOut, shopConfig) {
   }
 
   const tvLower = (typeVariant || "").toLowerCase();
-  out.printTypeCode = detectPrintTypeFromText(tvLower);
+  out.printTypeCode = printTypeOfText(tvLower, out.orderId);
   out.printType = toPrintTypeLabel(out.printTypeCode);
 
   // size extraction depends on printType
@@ -717,7 +727,7 @@ function parsePrintFileName(fileName, options = {}) {
     out.x = xo.x;
     out.y = xo.y;
 
-    out.printTypeCode = detectPrintTypeFromText(tokens.join(" ").toLowerCase());
+    out.printTypeCode = printTypeOfText(tokens.join(" ").toLowerCase(), out.orderId);
     out.printType = toPrintTypeLabel(out.printTypeCode);
 
     addError(out, "UNKNOWN_FORMAT", "Filename format not recognized (neither Cushion nor Tea Towel nor XWD-based).");

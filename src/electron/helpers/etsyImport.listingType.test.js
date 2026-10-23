@@ -39,13 +39,13 @@ describe("a print type remembered for the listing", () => {
     expect(t.getListingType).toHaveBeenCalledWith(LISTING);
   });
 
-  it("wins over a variation that reads as another type - the person said what this listing is", async () => {
+  it("never overrides a variation that reads as a type - one wrong click must not turn a metre listing into snoods (S2 W2)", async () => {
     const t = setup({ [LISTING]: "SNOOD" });
     t.setReceipts([receipt([lm()])]); // Fabric Drill + "Linear Meter - 1m increments"
     await t.tick();
     const [name] = inboxOf(t.disk, "Drill");
-    expect(name).toContain("_Snood_XWD");
-    expect(name).not.toContain("Linear Meter");
+    expect(name).toContain("Linear Meter");
+    expect(name).not.toContain("_Snood_XWD");
   });
 
   it("with the profile lacking the type's size the line stops with the parser's refusal, nothing copied", async () => {

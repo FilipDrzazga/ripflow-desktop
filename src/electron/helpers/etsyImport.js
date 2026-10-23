@@ -46,8 +46,9 @@ import {
 //   listing id.
 // - FABRIC OF A LISTING (plan FAB): a line whose "Fabric" variation is missing or does not resolve takes the fabric a
 //   person chose for its listing in the bar (etsy_listing_fabric); a variation that resolves always wins.
-// - PRINT TYPE OF A LISTING (plan FAB-3c): a snood or an apron is not named by its order line; the type a person chose
-//   for the listing in the bar (etsy_listing_type) is the type, and the file name must read back as exactly it.
+// - PRINT TYPE OF A LISTING (plan FAB-3c): a snood or an apron is not named by its order line; when no variation reads as a
+//   print type, the type a person chose for the listing in the bar (etsy_listing_type) is the type, and the file name must
+//   read back as exactly it. A variation that reads as a type always wins.
 // - SUGGESTION (E4c): a line that stops for want of an XWD number - none on the line, or none in the library - is
 //   written with the number its listing title points to in the library (etsySuggestion.js), when exactly one does.
 //   Only a hint for the bar: it is never used to name or copy a file. Not finding one, or not being able to look,
@@ -244,25 +245,30 @@ export const createEtsyImporter = ({
       fabric,
       profile,
       libraryFile,
-      expectType: rememberedTypeOf(transaction),
       ext: libraryFile.slice(libraryFile.lastIndexOf(".") + 1),
     };
 
     // The print type: whichever variation text makes a name that reads back as a Linear Meter, Fat Quarter or
     // Sample. Exactly one text may do that - two different ones are an order line we cannot tell apart.
-    // A print type a person chose for the LISTING (a snood, an apron - whose order line says none) is the type: the
-    // variations are not asked, and the name must read back as exactly that type.
-    const { expectType } = base;
-    const candidates = expectType ? [ETSY_LISTING_PRINT_TYPES[expectType]] : typeTextCandidates(transaction);
+    // The order line's own variations decide first, as with the fabric. Only when none of them reads as a print type does
+    // the type a person chose for the LISTING (a snood, an apron - whose order line says none) stand in, and then the name
+    // must read back as exactly that type. A remembered type never overrides a variation that reads as a type: one wrong
+    // click on a metre listing would otherwise turn every later order of it into a snood.
+    const candidates = typeTextCandidates(transaction);
     const accepted = [];
     const problems = [];
-    for (const typeText of candidates) {
+    const tryTypeText = (typeText, expectType) => {
       const fileName = buildEtsyTileName({ ...base, customerName: receipt.name, material: fabric.name, typeText });
-      const problem = readBackProblem(fileName, { ...base });
+      const problem = readBackProblem(fileName, { ...base, expectType });
       if (problem) problems.push(`"${typeText}": ${problem}`);
       else accepted.push({ typeText, fileName });
-    }
+      return problem;
+    };
+    for (const typeText of candidates) tryTypeText(typeText, null);
+    const expectType = rememberedTypeOf(transaction);
+    const rememberedProblem = accepted.length === 0 && expectType ? tryTypeText(ETSY_LISTING_PRINT_TYPES[expectType], expectType) : null;
     if (accepted.length === 0) {
+      if (rememberedProblem) return { reason: `The print type remembered for this listing (${ETSY_LISTING_PRINT_TYPES[expectType]}) cannot be used: ${rememberedProblem}.` };
       return {
         reason:
           candidates.length === 0
