@@ -257,6 +257,7 @@ const EtsyImportBarContent = () => {
                           disabled={busy || !canRetry(row)}
                           title="Fabric for this listing - remembered for every later order of it, used when the order carries no usable Fabric variation"
                           ariaLabel="Fabric for this listing"
+                          searchable
                         />
                       )}
                       {/* Plan FAB-3c: a snood or an apron is not named by its order line - the type is chosen for the LISTING. */}
