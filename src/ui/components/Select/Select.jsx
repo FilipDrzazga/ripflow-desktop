@@ -6,6 +6,7 @@ import styles from "./Select.module.css";
 
 const OPTION_HEIGHT = 38; // px, one row of the menu - only used to decide whether it fits below
 const MENU_GAP = 6;
+const MENU_MAX_HEIGHT = 360; // px, a longer list (the whole Fabrics catalogue) scrolls inside the menu
 
 // The app's own dropdown, in the look of the Print filter menus (DataFilters), for places where a
 // native <select> would show the operating system's list. options: [{ value, label, short? }] -
@@ -22,7 +23,7 @@ const Select = ({ value, options, onChange, title, warn = false, disabled = fals
   useLayoutEffect(() => {
     if (!open || !buttonRef.current) return;
     const rect = buttonRef.current.getBoundingClientRect();
-    const menuHeight = options.length * OPTION_HEIGHT + 12;
+    const menuHeight = Math.min(options.length * OPTION_HEIGHT + 12, MENU_MAX_HEIGHT);
     const fitsBelow = rect.bottom + MENU_GAP + menuHeight <= window.innerHeight;
     setPlace({
       left: rect.left,

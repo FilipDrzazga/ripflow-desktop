@@ -259,8 +259,17 @@
   cursor: default;
 }
 
+/* The fields of a line (suggestion, the two dropdowns, the XWD number) and their distance from the buttons on the right
+   (FILIP 2026-10-23: everything ran together). */
+.fields {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-right: 16px;
+}
+
 .input {
-  width: 112px;
+  width: 84px;
   height: 30px;
   padding: 0 10px;
   border-radius: 8px;
@@ -285,50 +294,6 @@
 
 .input_error {
   border-color: #a32d2d;
-}
-
-.select {
-  width: 168px;
-  height: 30px;
-  padding: 0 8px;
-  border-radius: 8px;
-  border: 1px solid var(--border-grey);
-  background-color: var(--bg-white);
-  color: var(--text-primary);
-  font: inherit;
-  font-size: 13px;
-}
-
-.select_narrow {
-  width: 132px;
-  height: 30px;
-  padding: 0 8px;
-  border-radius: 8px;
-  border: 1px solid var(--border-grey);
-  background-color: var(--bg-white);
-  color: var(--text-primary);
-  font: inherit;
-  font-size: 13px;
-}
-
-.select_narrow:focus {
-  outline: 2px solid #2e7fd6;
-  outline-offset: 0;
-}
-
-.select_narrow:disabled {
-  background-color: var(--bg-grey);
-  color: var(--text-secondary);
-}
-
-.select:focus {
-  outline: 2px solid #2e7fd6;
-  outline-offset: 0;
-}
-
-.select:disabled {
-  background-color: var(--bg-grey);
-  color: var(--text-secondary);
 }
 
 .field_error {

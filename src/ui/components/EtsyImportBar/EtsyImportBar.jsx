@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { LuBan, LuChevronDown, LuCircleX, LuClock, LuRotateCw, LuSparkles, LuTag, LuTriangleAlert } from "react-icons/lu";
 import { SiEtsy } from "react-icons/si";
 import EtsyThumb from "./EtsyThumb";
+import Select from "../Select/Select";
 import ErrorBoundary from "../ErrorBoundary/ErrorBoundary";
 import { useStore } from "../../store/useStore";
 import { usePollingPaused, useOnPollingResume } from "../../hooks/usePollingPaused";
@@ -17,9 +18,9 @@ import {
   dismissConfirmMessage,
   dismissNotice,
   etsyOrderIdOf,
-  fabricChoices,
+  fabricSelectOptions,
   initialXwdInput,
-  LISTING_PRINT_TYPE_CHOICES,
+  printTypeSelectOptions,
   rememberedPrintTypeOf,
   isInterrupted,
   lineKey,
@@ -233,71 +234,59 @@ const EtsyImportBarContent = () => {
                     </span>
                   </div>
                   <div className={styles.actions}>
-                    {suggestion && (
-                      <span className={styles.suggestion_slot}>
-                        {valueOf(row) !== suggestion && (
-                          <button type="button" className={styles.suggestion} disabled={busy} onClick={() => setValue(row, suggestion)} title={suggestionText(suggestion) + suggestionFileNote(row)}>
-                            <LuSparkles size={12} />
-                            XWD{suggestion}
-                          </button>
-                        )}
-                      </span>
-                    )}
-                    {/* Plan FAB: for a listing that carries no usable Fabric variation (a snood). The choice is remembered for
-                        the LISTING - the next order of it goes through without asking - and used only where the order's own
-                        variation is missing or does not resolve. */}
-                    {row.listingId && (
-                      <select
-                        className={styles.select}
-                        aria-label="Fabric for this listing"
-                        title="Fabric for this listing - remembered for every later order of it, used when the order carries no usable Fabric variation"
-                        value={fabricOf(row)}
+                    {/* The fields keep their distance from the buttons on the right (FILIP 2026-10-23: everything ran together). */}
+                    <div className={styles.fields}>
+                      {suggestion && (
+                        <span className={styles.suggestion_slot}>
+                          {valueOf(row) !== suggestion && (
+                            <button type="button" className={styles.suggestion} disabled={busy} onClick={() => setValue(row, suggestion)} title={suggestionText(suggestion) + suggestionFileNote(row)}>
+                              <LuSparkles size={12} />
+                              XWD{suggestion}
+                            </button>
+                          )}
+                        </span>
+                      )}
+                      {/* Plan FAB: for a listing that carries no usable Fabric variation (a snood). The choice is remembered for
+                          the LISTING - the next order of it goes through without asking - and used only where the order's own
+                          variation is missing or does not resolve. The app's own dropdown (components/Select), not the system's list. */}
+                      {row.listingId && (
+                        <Select
+                          value={fabricOf(row)}
+                          options={fabricSelectOptions(fabricConfig, fabricOf(row), rememberedFabricOf(remembered, row) !== "")}
+                          onChange={(name) => setFabric(row, name)}
+                          disabled={busy || !canRetry(row)}
+                          title="Fabric for this listing - remembered for every later order of it, used when the order carries no usable Fabric variation"
+                          ariaLabel="Fabric for this listing"
+                        />
+                      )}
+                      {/* Plan FAB-3c: a snood or an apron is not named by its order line - the type is chosen for the LISTING. */}
+                      {row.listingId && (
+                        <Select
+                          value={printTypeOf(row)}
+                          options={printTypeSelectOptions(rememberedPrintTypeOf(rememberedTypes, row) !== "")}
+                          onChange={(code) => setPrintType(row, code)}
+                          disabled={busy || !canRetry(row)}
+                          title="Product type for this listing - remembered for every later order of it; leave empty when the order line names the type"
+                          ariaLabel="Product type for this listing"
+                        />
+                      )}
+                      <input
+                        className={`${styles.input} ${error ? styles.input_error : ""}`}
+                        type="text"
+                        inputMode="numeric"
+                        autoComplete="off"
+                        placeholder="XWD"
+                        aria-label="XWD number, six digits"
+                        title="XWD number, six digits"
+                        value={valueOf(row)}
                         disabled={busy || !canRetry(row)}
-                        onChange={(e) => setFabric(row, e.target.value)}
-                      >
-                        {/* A remembered fabric is replaced by another one, not cleared here (Settings > Etsy forgets it). */}
-                        {rememberedFabricOf(remembered, row) === "" && <option value="">Fabric from the order</option>}
-                        {fabricChoices(fabricConfig, fabricOf(row)).map((name) => (
-                          <option key={name} value={name}>
-                            {name}
-                          </option>
-                        ))}
-                      </select>
-                    )}
-                    {/* Plan FAB-3c: a snood or an apron is not named by its order line - the type is chosen for the LISTING. */}
-                    {row.listingId && (
-                      <select
-                        className={styles.select_narrow}
-                        aria-label="Product type for this listing"
-                        title="Product type for this listing - remembered for every later order of it; leave empty when the order line names the type"
-                        value={printTypeOf(row)}
-                        disabled={busy || !canRetry(row)}
-                        onChange={(e) => setPrintType(row, e.target.value)}
-                      >
-                        {rememberedPrintTypeOf(rememberedTypes, row) === "" && <option value="">Type from the order</option>}
-                        {LISTING_PRINT_TYPE_CHOICES.map((choice) => (
-                          <option key={choice.value} value={choice.value}>
-                            {choice.label}
-                          </option>
-                        ))}
-                      </select>
-                    )}
-                    <input
-                      className={`${styles.input} ${error ? styles.input_error : ""}`}
-                      type="text"
-                      inputMode="numeric"
-                      autoComplete="off"
-                      placeholder="XWD number"
-                      aria-label="XWD number, six digits"
-                      title="XWD number, six digits"
-                      value={valueOf(row)}
-                      disabled={busy || !canRetry(row)}
-                      onChange={(e) => setValue(row, e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" && canRetry(row) && !busy) handleRetry(row);
-                      }}
-                      aria-invalid={error ? "true" : undefined}
-                    />
+                        onChange={(e) => setValue(row, e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && canRetry(row) && !busy) handleRetry(row);
+                        }}
+                        aria-invalid={error ? "true" : undefined}
+                      />
+                    </div>
                     {/* Icon buttons in the Batch tab's style (FILIP 2026-10-22 16:33); the words are the tooltip and the
                         accessible name. */}
                     <button type="button" className={`${styles.action_btn} ${styles.action_success}`} disabled={busy || !canRetry(row)} onClick={() => handleRetry(row)} title="Retry" aria-label="Retry">

@@ -34,6 +34,19 @@ export const rememberedFabricOf = (remembered, row) => {
 // Plan FAB-3c: the print types a person can remember for a listing (a snood, an apron), as { value, label } for the field.
 export const LISTING_PRINT_TYPE_CHOICES = Object.entries(ETSY_LISTING_PRINT_TYPES).map(([value, label]) => ({ value, label }));
 
+// The options of the bar's two dropdowns (components/Select: { value, label }). "" = nothing chosen, the order line decides;
+// it is offered only while nothing is remembered - a remembered choice is replaced by another one, not cleared here
+// (Settings > Etsy forgets it).
+export const fabricSelectOptions = (fabricConfig, current = "", hasRemembered = false) => [
+  ...(hasRemembered ? [] : [{ value: "", label: "Fabric from the order" }]),
+  ...fabricChoices(fabricConfig, current).map((name) => ({ value: name, label: name })),
+];
+
+export const printTypeSelectOptions = (hasRemembered = false) => [
+  ...(hasRemembered ? [] : [{ value: "", label: "Type from the order" }]),
+  ...LISTING_PRINT_TYPE_CHOICES,
+];
+
 // The print type remembered for the line's listing ("" = none; the order line's variations then decide).
 // `remembered` is { [listingId]: code }, as the bar loads it. A code outside the choices reads as none.
 export const rememberedPrintTypeOf = (remembered, row) => {
