@@ -1,5 +1,23 @@
 [
   {
+    "version": "1.0.46",
+    "date": "2026-10-23",
+    "changes": [
+      {
+        "text": "Snood and Apron are recognised only in Etsy file names. An order from another shop that happens to contain the word \"Apron\" or \"Snood\" in a product name is no longer turned into a Snood / Apron print",
+        "clients": ["all"]
+      },
+      {
+        "text": "Etsy import: the variation chosen on the order always decides the fabric and the print type. The choice remembered for the listing is used only when the order names no print type, and the refusal says so when that remembered type cannot be used",
+        "clients": ["all"]
+      },
+      {
+        "text": "Settings > Etsy: a warning appears when a second station is also switched on as the Etsy importer - only one station should import",
+        "clients": ["all"]
+      }
+    ]
+  },
+  {
     "version": "1.0.45",
     "date": "2026-10-23",
     "changes": [
