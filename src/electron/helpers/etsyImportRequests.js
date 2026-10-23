@@ -2,6 +2,7 @@ import { toIpcError } from "./ipcError.js";
 import { ETSY_IMPORT_STATE, ETSY_LISTING_PRINT_TYPES, ETSY_XWD_INPUT_RE } from "../../shared/constants.js";
 import { ETSY_SHIP_DATES_MAX, etsyShipByOf } from "../../shared/etsyShipBy.js";
 import { etsyBuyerNoteOf } from "../../shared/etsyBuyerNote.js";
+import { otherLiveImporters } from "../../shared/etsyImporters.js";
 
 // What the Inbox bar of ANY station may ask about the Etsy import (plan E4): the open lines, a Retry (optionally
 // with the XWD number typed in) and a Dismiss. It only reads and WRITES REQUESTS in etsy_imports - the copy is
@@ -82,6 +83,9 @@ export const createEtsyImportRequests = ({
   saveListingType = () => null, // setEtsyListingType
   forgetListingType = () => null, // deleteEtsyListingType
   listingTitles = () => null, // getEtsyListingTitles
+  listImporters = () => null, // listEtsyImporters
+  ownWorkstation = () => "", // () => the name of THIS station (settings)
+  now = () => Date.now(),
   requestTick, // () => one tick now on this station
   openExternal, // async (url) => opens the address in the browser (shell.openExternal)
   listingImage = async () => null, // async (listingId) => data: URL | null (helpers/etsyThumbnail.js)
@@ -149,6 +153,15 @@ export const createEtsyImportRequests = ({
         if (!ETSY_ID_RE.test(listingId)) throw refusal("NO_ETSY_LISTING", "The Etsy order line has no listing to remember a fabric for.");
         written(saveListingFabric({ listingId, fabricName }));
         return { listingId };
+      }),
+
+    // Settings > Etsy (plan IMP-W): the OTHER stations whose Etsy-import switch is On - [{ workstation, minutesAgo }], the
+    // newest heartbeat first. [] = asked, none alive; a heartbeat table that cannot be read is an error, never "none".
+    otherImporters: () =>
+      answer("etsy-imports:otherImporters", "Reading the Etsy importers failed", () => {
+        const rows = listImporters();
+        if (!Array.isArray(rows)) throw Object.assign(new Error("The Etsy importers could not be read."), { code: "DB_READ_FAILED" });
+        return { data: otherLiveImporters(rows, ownWorkstation(), now()) };
       }),
 
     // Settings > Etsy: everything remembered per listing in ONE answer - [{ listingId, title, fabric, printType }], newest

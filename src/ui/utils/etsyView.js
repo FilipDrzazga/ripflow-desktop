@@ -27,6 +27,25 @@ export const etsyStatusLine = (status, now = Date.now()) => {
   return { tone: "ok", text: `Connected to ${shop}${until ? ` - sign-in valid until ${until} if unused` : ""}.` };
 };
 
+// Plan IMP-W: what Settings > Etsy says about the OTHER stations that have the import switch On. others: [{ workstation,
+// minutesAgo }] (the newest heartbeat first); thisEnabled: this station's SAVED switch. null = nothing to say. A second
+// importer is a warning (it doubles the requests to Etsy and the first to meet a problem parks the line for both); when
+// this station is Off it is only the answer to "who imports?".
+export const minutesAgoText = (minutes) => (minutes <= 0 ? "just now" : minutes === 1 ? "1 minute ago" : `${minutes} minutes ago`);
+
+export const otherImportersNotice = (others, thisEnabled) => {
+  if (!Array.isArray(others) || others.length === 0) return null;
+  const names = others.map((o) => o.workstation).join(", ");
+  const last = minutesAgoText(others[0].minutesAgo);
+  if (thisEnabled === true) {
+    return {
+      tone: "warn",
+      text: `${names} ${others.length > 1 ? "are" : "is"} also switched on as an Etsy importer (last check ${last}). Two importers double the requests to Etsy, and the one that meets a problem first parks the line for both. Turn it Off on all but one.`,
+    };
+  }
+  return { tone: "off", text: `Etsy orders are imported by ${names} (last check ${last}).` };
+};
+
 // An IPC answer -> the notify() payload. A cancelled sign-in is a Warning, not an Error.
 export const etsyResultNotice = (res, { title, success }) => {
   if (res?.success) return { type: "Success", title, message: success };

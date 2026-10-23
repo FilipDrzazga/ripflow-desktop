@@ -1,11 +1,11 @@
 import { useState, useEffect } from "react";
 import { LuSave, LuLink, LuPlugZap, LuUnlink, LuTrash2, LuFolderOpen, LuScanSearch, LuDownload } from "react-icons/lu";
-import { previewNewestEtsyOrder, importEtsyOrder } from "../../../services/etsyImportService";
+import { previewNewestEtsyOrder, importEtsyOrder, listEtsyOtherImporters } from "../../../services/etsyImportService";
 import { getEtsyStatus, saveEtsyKey, connectEtsy, testEtsyConnection, disconnectEtsy, removeEtsyKey } from "../../../services/etsyService";
 import { getSettings, setSettings, selectFolder } from "../../../services/settingsService";
 import { showConfirm } from "../../../services/systemService";
 import { notify } from "@/utils/notify";
-import { etsyStatusLine, etsyResultNotice, etsyTestRows, previewOrderNotes, previewBuyerNote, previewLineView, previewDate, importOrderConfirm, importOrderNotice, etsyPaceLine } from "@/utils/etsyView";
+import { etsyStatusLine, etsyResultNotice, etsyTestRows, previewOrderNotes, previewBuyerNote, previewLineView, previewDate, importOrderConfirm, importOrderNotice, etsyPaceLine, otherImportersNotice } from "@/utils/etsyView";
 import { clampEtsyImportMinutes, ETSY_IMPORT_MIN_MINUTES, ETSY_IMPORT_MAX_MINUTES } from "../../../../shared/etsyImportInterval";
 import EtsyListingChoices from "./EtsyListingChoices";
 import sharedStyles from "./SettingsView.module.css";
@@ -33,6 +33,7 @@ const EtsyView = () => {
   const intervalMin = clampEtsyImportMinutes(intervalText);
   const [limits, setLimits] = useState(null); // Etsy's request allowance from its last answer to this station
   const [savedImport, setSavedImport] = useState(null);
+  const [others, setOthers] = useState(null); // the OTHER stations whose import switch is On (IMP-W); null = not read
   const [savingImport, setSavingImport] = useState(false);
 
   const take = (res) => {
@@ -61,6 +62,19 @@ const EtsyView = () => {
       .catch(() => setAllSettings(null));
   }, []);
 
+  // A failed read keeps what was shown: the notice is a help, never a reason to blank the view.
+  const loadOthers = () => {
+    listEtsyOtherImporters()
+      .then((res) => {
+        if (res?.success && Array.isArray(res.data)) setOthers(res.data);
+      })
+      .catch(() => {});
+  };
+
+  useEffect(() => {
+    loadOthers();
+  }, []);
+
   const handleBrowseLibrary = async () => {
     const res = await selectFolder();
     if (!res.canceled && res.path) setLibraryPath(res.path);
@@ -73,6 +87,7 @@ const EtsyView = () => {
       if (res.success) {
         setAllSettings((s) => ({ ...s, etsyImportEnabled: importEnabled, etsyLibraryPath: libraryPath.trim(), etsyImportIntervalMin: intervalMin }));
         setSavedImport({ enabled: importEnabled, path: libraryPath.trim(), minutes: intervalMin });
+        loadOthers();
         notify({ type: "Success", title: "Etsy import", message: importEnabled ? "This station imports Etsy orders from now on." : "Etsy import is off on this station." });
       } else {
         notify({ type: "Error", title: "Etsy import not saved", message: res.error || "Could not save settings." });
@@ -157,6 +172,8 @@ const EtsyView = () => {
   const importChanged =
     savedImport !== null && (savedImport.enabled !== importEnabled || savedImport.path !== libraryPath.trim() || savedImport.minutes !== intervalMin);
   const importNeedsFolder = importEnabled && libraryPath.trim() === "";
+  // The warning follows the SAVED switch of this station (that is what its heartbeat says), not the unsaved toggle.
+  const importersNotice = otherImportersNotice(others, savedImport?.enabled === true);
 
   return (
     <div className={sharedStyles.view}>
@@ -339,6 +356,11 @@ const EtsyView = () => {
             feature turned on in the shop profile. Turning it Off forgets the moment it was turned On: orders that arrive while it is Off are never imported
             later.
           </p>
+          {importersNotice && (
+            <div className={`${styles.status} ${styles[`status_${importersNotice.tone}`]}`} role="status">
+              {importersNotice.text}
+            </div>
+          )}
         </div>
         <div className={sharedStyles.field}>
           <label className={sharedStyles.label} htmlFor="etsy-library">

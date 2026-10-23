@@ -19,6 +19,8 @@ import {
   setEtsyImportShipBy,
   setEtsyImportBuyerNote,
   purgeOldEtsyBuyerNotes,
+  touchEtsyImporter,
+  removeEtsyImporter,
 } from "../helpers/db.js";
 import { renameNoOverwrite } from "../helpers/renameNoOverwrite.js";
 import { parsePrintFileName } from "../helpers/parseFileName.js";
@@ -31,6 +33,22 @@ import { clampEtsyImportMinutes } from "../../shared/etsyImportInterval.js";
 // The wait between two ticks, read again before every wait: a change in Settings > Etsy applies from the next tick,
 // without a restart (FILIP 2026-10-22). Default and range: shared/etsyImportInterval.js.
 export const etsyImportIntervalMs = () => clampEtsyImportMinutes(getSettings().etsyImportIntervalMin) * 60 * 1000;
+// Plan IMP-W: tell the shared database whether THIS station is switched on as the importer, so Settings > Etsy can warn
+// when a second one is. On = the heartbeat row is rewritten, Off = it is removed. Judged by the switch itself, not by the
+// gate: a station that is On but paused or not yet signed in to Etsy still counts as an importer. Never throws and never
+// costs a tick; a station with no name writes nothing.
+const beat = () => {
+  try {
+    const settings = getSettings();
+    const workstation = typeof settings.workstationName === "string" ? settings.workstationName.trim() : "";
+    if (workstation === "") return;
+    if (settings.etsyImportEnabled === true) touchEtsyImporter({ workstation, intervalMin: clampEtsyImportMinutes(settings.etsyImportIntervalMin) });
+    else removeEtsyImporter(workstation);
+  } catch (err) {
+    console.error("[etsy-import] heartbeat failed:", err?.code ?? err?.name ?? "error");
+  }
+};
+
 // The first tick waits, so the start-up reads (profile, fabrics, inbox) are not joined by an Etsy call.
 const FIRST_TICK_DELAY_MS = 60 * 1000;
 
@@ -99,6 +117,7 @@ export const startEtsyImportLoop = ({ isPaused }) => {
     running = true;
     try {
       const result = await tick();
+      beat();
       purgeOldEtsyBuyerNotes(); // D81: long-finished orders lose their buyer's note (never throws; null = could not)
       // One line per CHANGE of the reason, never one per tick: a switched-off station is quiet.
       const note = result.reason ?? null;

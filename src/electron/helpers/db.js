@@ -243,10 +243,30 @@ const ensureEtsyListingTypeTable = () => {
     return false;
   }
 };
+// The heartbeat of the stations switched on as the Etsy importer (plan IMP-W, src/shared/etsyImporters.js): one row per
+// station, rewritten after every tick, so Settings > Etsy can warn when a second station imports. A table of its OWN
+// with its own flag and try/catch: a failed CREATE costs the warning only.
+let etsyImportersReady = false;
+const ensureEtsyImportersTable = () => {
+  try {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS etsy_importers (
+        workstation  TEXT PRIMARY KEY,
+        interval_min INTEGER NOT NULL,
+        last_tick_at TEXT NOT NULL
+      )
+    `);
+    return true;
+  } catch (err) {
+    console.error("[db] ensureEtsyImportersTable failed (no warning about a second Etsy importer):", err);
+    return false;
+  }
+};
 const ensureEtsyTables = () => {
   etsyTablesReady = false;
   etsyListingFabricReady = false;
   etsyListingTypeReady = false;
+  etsyImportersReady = false;
   etsyImportsHaveDetails = false;
   etsyImportsHaveSuggestion = false;
   etsyImportsHaveSuggestedFile = false;
@@ -289,6 +309,7 @@ const ensureEtsyTables = () => {
     etsyImportsHaveBuyerNote = ensureEtsyImportBuyerNoteColumn();
     etsyListingFabricReady = ensureEtsyListingFabricTable();
     etsyListingTypeReady = ensureEtsyListingTypeTable();
+    etsyImportersReady = ensureEtsyImportersTable();
     if (mapIsNew) {
       const hasFabric = db.prepare("SELECT 1 FROM fabrics WHERE name = ?");
       const insert = db.prepare("INSERT OR IGNORE INTO etsy_fabric_map (etsy_key, etsy_name, fabric_name) VALUES (?, ?, ?)");
@@ -425,6 +446,44 @@ export const getEtsyListingTitles = (listingIds) => {
     return Object.fromEntries(rows.map((row) => [row.listingId, row.title]));
   } catch (err) {
     console.error("[db] getEtsyListingTitles failed:", err);
+    return null;
+  }
+};
+
+// This station's heartbeat as an Etsy importer: written after every tick of a station whose switch is On. true = written;
+// null = could not (no table, a bad name or interval, a failed write) - the caller goes on, the heartbeat is never worth a tick.
+export const touchEtsyImporter = ({ workstation, intervalMin }) => {
+  if (!db || !etsyTablesReady || !etsyImportersReady) return null;
+  const name = typeof workstation === "string" ? workstation.trim() : "";
+  if (name === "" || name.length > 100 || !Number.isInteger(intervalMin) || intervalMin < 1 || intervalMin > 1440) return null;
+  const written = runWrite("touchEtsyImporter", () => {
+    db.prepare(
+      "INSERT INTO etsy_importers (workstation, interval_min, last_tick_at) VALUES (?, ?, ?) ON CONFLICT(workstation) DO UPDATE SET interval_min = excluded.interval_min, last_tick_at = excluded.last_tick_at",
+    ).run(name, intervalMin, new Date().toISOString());
+  });
+  return written ? true : null;
+};
+
+// The station's switch is Off (or the station is gone): its heartbeat row goes. -> { deleted } or null (could not).
+export const removeEtsyImporter = (workstation) => {
+  if (!db || !etsyTablesReady || !etsyImportersReady) return null;
+  const name = typeof workstation === "string" ? workstation.trim() : "";
+  if (name === "" || name.length > 100) return null;
+  let changes = 0;
+  const written = runWrite("removeEtsyImporter", () => {
+    changes = db.prepare("DELETE FROM etsy_importers WHERE workstation = ?").run(name).changes;
+  });
+  return written ? { deleted: changes === 1 } : null;
+};
+
+// Every heartbeat row: [{ workstation, intervalMin, lastTickAt }] or null when it could not be read (never [] for that).
+// Whether a row is still alive is decided by src/shared/etsyImporters.js.
+export const listEtsyImporters = () => {
+  if (!db || !etsyTablesReady || !etsyImportersReady) return null;
+  try {
+    return db.prepare("SELECT workstation, interval_min AS intervalMin, last_tick_at AS lastTickAt FROM etsy_importers").all();
+  } catch (err) {
+    console.error("[db] listEtsyImporters failed:", err);
     return null;
   }
 };
