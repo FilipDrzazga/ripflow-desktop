@@ -3,7 +3,7 @@
 // Two kinds of type, told apart by where their SIZE comes from:
 // - LM and CUSHION are sized from the file itself (the fabric catalogue's width for LM, the size
 //   in the name for a cushion) - every shop has them, they are always offered;
-// - SAMPLE, FQ and TEA_TOWEL have a fixed size that comes ONLY from the shop profile's
+// - SAMPLE, FQ, TEA_TOWEL, SNOOD and APRON have a fixed size that comes ONLY from the shop profile's
 //   productTypes[] (4-types-e: no entry = the file is refused). They are offered only when the
 //   profile carries them, so a shop without tea towels does not see a Tea Towel filter.
 // No profile -> only LM and Cushion. The ORDER is the old fixed list's. New type codes are ETAP 5
@@ -17,6 +17,8 @@ const OPTIONS = [
   { value: "SAMPLE", label: "Sample", fromProfile: true },
   { value: "CUSHION", label: "Cushion", fromProfile: false },
   { value: "TEA_TOWEL", label: "Tea Towel", fromProfile: true },
+  { value: "SNOOD", label: "Snood", fromProfile: true },
+  { value: "APRON", label: "Apron", fromProfile: true },
 ];
 
 const profileTypeCodes = (profile) =>
