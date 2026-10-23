@@ -9,7 +9,7 @@ import { estimatePrintLength } from "../../../shared/estimatePrintLength";
 import { FILE_STATUS } from "../../../shared/constants";
 import { resolveIcon } from "../../constants/rollbackReasonIcons";
 import { openInFolder as openInFolderApi, openInShopify as openInShopifyApi } from "../../services/fileService";
-import { ORDER_LINK, orderIdOf, orderLinkFor, openEtsyOrder } from "../../utils/orderLink";
+import { ORDER_LINK, orderIdOf, orderLinkFor, openEtsyOrder, openEtsyConversation } from "../../utils/orderLink";
 import { ORDER_SOURCE } from "../../../shared/orderSource";
 import ShipByBadge from "../ShipByBadge/ShipByBadge";
 import BuyerNoteBubble from "../BuyerNoteBubble/BuyerNoteBubble";
@@ -439,7 +439,7 @@ const DataList = () => {
                         )}
                         <span className={style.file_name_text}>{item.file.name}</span>
                         <ShipByBadge className={style.ship_by_badge} seconds={shipByOfOrder(etsyShipDates, item.orderId)} />
-                        <BuyerNoteBubble note={buyerNoteOfOrder(etsyShipDates, item.orderId)} onOpen={() => openEtsyOrder(item.orderId)} />
+                        <BuyerNoteBubble note={buyerNoteOfOrder(etsyShipDates, item.orderId)} onOpen={() => openEtsyConversation(item.orderId)} />
                         {rollbackReason &&
                           (() => {
                             const def = reasonDefinitions.find((r) => r.code === rollbackReason.reasonCode);

@@ -318,8 +318,8 @@ export async function registerIpcHandlers() {
     return openInShopify(orderName);
   });
 
-  ipcMain.handle("open-in-etsy", async (_event, orderName) => {
-    return openInEtsy(orderName);
+  ipcMain.handle("open-in-etsy", async (_event, orderName, conversation) => {
+    return openInEtsy(orderName, { conversation: conversation === true });
   });
 
   // Tell the PRINTED-read diagnostics which station they are on. A resolver, not a value:

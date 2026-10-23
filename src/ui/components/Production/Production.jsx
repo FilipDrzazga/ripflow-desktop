@@ -46,7 +46,7 @@ import { APP_VIEW } from "../../constants/appViews";
 import { isSearchTargetFor } from "../../utils/searchTarget";
 import { revealElement } from "../../utils/revealElement";
 import { isFeatureEnabled } from "../../utils/featureVisibility";
-import { ORDER_LINK, orderLinkFor, openEtsyOrder } from "../../utils/orderLink";
+import { ORDER_LINK, orderLinkFor, openEtsyOrder, openEtsyConversation } from "../../utils/orderLink";
 import { canMarkShipped, isShippableRow } from "../../utils/markShipped";
 import { canRollbackRows } from "../../utils/productionRollback";
 import { batchRipErrorOf } from "../../utils/ripErrorsByFile";
@@ -1493,7 +1493,7 @@ const Production = () => {
       idleAlert={(idleDaysOf(row, now) ?? 0) >= STALE_DAYS_ALERT}
       shipBy={row.stage === PRODUCTION_STAGE.SHIPPED ? null : shipByOfOrder(etsyShipDates, row.order_id)}
       buyerNote={row.stage === PRODUCTION_STAGE.SHIPPED ? null : buyerNoteOfOrder(etsyShipDates, row.order_id)}
-      onBuyerNoteClick={() => openEtsyOrder(row.order_id)}
+      onBuyerNoteClick={() => openEtsyConversation(row.order_id)}
       onRipBadgeClick={(error, x, y) => setRipPopover({ error, x, y })}
       onSelect={handleCardSelect}
       onContextMenu={(r, x, y) => setContextMenu({ row: r, x, y })}

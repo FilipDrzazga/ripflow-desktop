@@ -27,8 +27,7 @@ export const orderLinkFor = (orderId, profile) => {
   return isFeatureEnabled("shopify", profile) ? ORDER_LINK.SHOPIFY : null;
 };
 
-export const openEtsyOrder = async (orderId) => {
-  const res = await openInEtsyApi(orderId);
+const reportOpenFailure = (res) => {
   if (!res?.success) {
     const err = res?.errors?.[0];
     notify(
@@ -40,4 +39,14 @@ export const openEtsyOrder = async (orderId) => {
       { stage: "app", code: "OPEN_ETSY_FAILED" },
     );
   }
+};
+
+export const openEtsyOrder = async (orderId) => {
+  reportOpenFailure(await openInEtsyApi(orderId));
+};
+
+// Plan MSG-3: the same order with the buyer conversation expanded (the buyer's-note bubble) - one click less than
+// "Open order" + "Message buyer". Same gate and same failure report; only the address main builds differs.
+export const openEtsyConversation = async (orderId) => {
+  reportOpenFailure(await openInEtsyApi(orderId, { conversation: true }));
 };

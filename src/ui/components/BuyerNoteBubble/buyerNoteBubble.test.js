@@ -63,14 +63,14 @@ describe("the note is only ever React text", () => {
 });
 
 describe("the two views", () => {
-  it("Inbox puts one bubble beside the badge and opens the order page on Etsy", () => {
+  it("Inbox puts one bubble beside the badge and opens the conversation on Etsy", () => {
     expect(dataList.match(/<BuyerNoteBubble /g)).toHaveLength(1);
-    expect(dataList).toContain("<BuyerNoteBubble note={buyerNoteOfOrder(etsyShipDates, item.orderId)} onOpen={() => openEtsyOrder(item.orderId)} />");
+    expect(dataList).toContain("<BuyerNoteBubble note={buyerNoteOfOrder(etsyShipDates, item.orderId)} onOpen={() => openEtsyConversation(item.orderId)} />");
   });
 
   it("Production hands the card a note (none for a shipped card) and the same opener; the card stays presentational", () => {
     expect(production).toContain("buyerNote={row.stage === PRODUCTION_STAGE.SHIPPED ? null : buyerNoteOfOrder(etsyShipDates, row.order_id)}");
-    expect(production).toContain("onBuyerNoteClick={() => openEtsyOrder(row.order_id)}");
+    expect(production).toContain("onBuyerNoteClick={() => openEtsyConversation(row.order_id)}");
     expect(card).toContain("<BuyerNoteBubble note={buyerNote} onOpen={onBuyerNoteClick} />");
     expect(card).not.toContain("useEtsyShipDates");
     expect(card).not.toContain("openEtsyOrder");

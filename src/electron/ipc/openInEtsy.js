@@ -16,7 +16,13 @@ const STAGES = {
   DONE: "done",
 };
 
-export const openInEtsy = async (orderName) => {
+// `conversation: true` (plan MSG-3) opens the same page with the buyer conversation expanded, the address Etsy's own
+// "Message buyer" button leads to (FILIP 2026-10-23, from the browser's address bar). It adds no number: the receipt id is
+// still the only thing built into the address.
+const ORDER_URL = "https://www.etsy.com/your/orders/sold?order_id=";
+const CONVERSATION_URL = "https://www.etsy.com/your/orders/sold?ref=seller-platform-mcnav&expand_convo=true&order_id=";
+
+export const openInEtsy = async (orderName, { conversation = false } = {}) => {
   const result = {
     success: false,
     errors: [],
@@ -38,7 +44,7 @@ export const openInEtsy = async (orderName) => {
 
     stage = STAGES.OPEN;
 
-    await shell.openExternal(`https://www.etsy.com/your/orders/sold?order_id=${receiptId}`);
+    await shell.openExternal(`${conversation === true ? CONVERSATION_URL : ORDER_URL}${receiptId}`);
 
     result.success = true;
     stage = STAGES.DONE;

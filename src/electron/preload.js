@@ -55,9 +55,9 @@ const api = Object.freeze({
     if (!isNonEmptyString(orderName)) throw new TypeError("Order name must be a non-empty string.");
     return ipcRenderer.invoke("open-in-shopify", orderName);
   },
-  openInEtsy: (orderName) => {
+  openInEtsy: (orderName, options) => {
     if (!isNonEmptyString(orderName)) throw new TypeError("Order name must be a non-empty string.");
-    return ipcRenderer.invoke("open-in-etsy", orderName);
+    return ipcRenderer.invoke("open-in-etsy", orderName, options?.conversation === true);
   },
   readPrintedFolder: () => ipcRenderer.invoke("read-printed-folder"),
   readPrintedDays: () => ipcRenderer.invoke("read-printed-days"),
